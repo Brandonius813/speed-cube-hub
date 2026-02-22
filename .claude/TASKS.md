@@ -120,7 +120,7 @@ These depend on Phase 1 tasks.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | T01 ✅ |
 | **Estimated scope** | ~5 files |
