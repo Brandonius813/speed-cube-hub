@@ -203,6 +203,12 @@ Each practice session captures (based on the proven model from brandontruecubing
 ## Completed Features
 
 - [x] Project scaffolding (Next.js, Supabase clients, Shadcn/ui, folder structure)
+- [x] Shadcn UI components installed (button, card, badge, avatar, input, label, select, textarea)
+- [x] Shared layout components (Navbar + Footer)
+- [x] Database schema SQL migration (profiles + sessions tables with RLS)
+- [x] TypeScript types (Profile, Session) and constants (WCA_EVENTS, PRACTICE_TYPES)
+- [x] Landing page (Hero with gradient glow, Features with visual mockups, SocialProof stats)
+- [x] Auth system (Login, Signup, Logout server actions + pages + middleware + auth-aware Navbar)
 
 ## Notes
 

@@ -96,9 +96,11 @@ See `.env.local.example` for required variables:
 
 ```
 /                    → Landing page (hero, features, social proof)
-/dashboard           → Practice stats dashboard (filters, charts, session log)
-/profile             → User profile (header, stats, cubes, PBs, links, activity)
-/log                 → Log a practice session (form)
+/login               → Login page (email + password)
+/signup              → Signup page (email + password + display name)
+/dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
+/profile             → User profile (header, stats, cubes, PBs, links, activity) [protected]
+/log                 → Log a practice session (form) [protected]
 ```
 
 Routes will be added as features are built. Keep this section updated.
