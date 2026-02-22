@@ -85,10 +85,20 @@ See `.env.local.example` for required variables:
 - `SUPABASE_SERVICE_ROLE_KEY` — Service role key (server-side only)
 - `ADMIN_USER_ID` — Admin user ID for server-side data fetches
 
+## Design System
+
+- **Theme:** Dark-first. See PRD "Style Guide" section for full color reference.
+- **Fonts:** Inter (sans-serif, body/headings) + JetBrains Mono (monospace, numbers/stats/times)
+- **Design source:** v0 repo at `Brandonius813/speed-cube-hub-visual-design`
+- **Monospace for numbers:** Always use `font-mono` for solve times, stats, and numeric data.
+
 ## Routes
 
 ```
-/                    → Home / landing page (TBD from v0 designs)
+/                    → Landing page (hero, features, social proof)
+/dashboard           → Practice stats dashboard (filters, charts, session log)
+/profile             → User profile (header, stats, cubes, PBs, links, activity)
+/log                 → Log a practice session (form)
 ```
 
 Routes will be added as features are built. Keep this section updated.
