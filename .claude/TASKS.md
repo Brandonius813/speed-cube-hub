@@ -33,8 +33,8 @@ These have no dependencies. Start here.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | ~5 files |
 
@@ -60,8 +60,8 @@ These have no dependencies. Start here.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | ~4 files + SQL |
 
