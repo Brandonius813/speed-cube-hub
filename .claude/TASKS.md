@@ -120,8 +120,8 @@ These depend on Phase 1 tasks.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T01 ✅ |
 | **Estimated scope** | ~5 files |
 
@@ -148,8 +148,8 @@ These depend on Phase 1 tasks.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T01 ✅, T02 ✅ |
 | **Estimated scope** | ~8 files |
 
