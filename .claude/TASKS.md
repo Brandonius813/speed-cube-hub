@@ -148,7 +148,7 @@ These depend on Phase 1 tasks.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | T01 ✅, T02 ✅ |
 | **Estimated scope** | ~8 files |
