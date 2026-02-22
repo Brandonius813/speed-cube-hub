@@ -107,6 +107,17 @@ Routes will be added as features are built. Keep this section updated.
 
 The product requirements document is at `.claude/SPEED_CUBE_HUB_PRD.md`. Read it at the start of every session to understand what's been built and what's remaining.
 
+## Task List (Multi-Session)
+
+The shared task list is at `.claude/TASKS.md`. This is a coordinated task board designed for up to 5 Claude sessions working in parallel. Each session should:
+
+1. `git pull origin dev` before starting
+2. Claim an available task by updating its status to `🏗️ In Progress`
+3. Commit the claim immediately so other sessions see it
+4. Build the feature, then mark it `✅ Done` and push
+
+Always check dependencies before claiming a task — don't start work that depends on unfinished tasks.
+
 ## Feature Status
 
 Features will be tracked in the PRD with checkmarks. Refer to it for current progress.
