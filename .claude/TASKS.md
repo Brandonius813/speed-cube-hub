@@ -33,7 +33,7 @@ These have no dependencies. Start here.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | ~5 files |
@@ -60,7 +60,7 @@ These have no dependencies. Start here.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | ~4 files + SQL |
