@@ -1,3 +1,21 @@
+export type ProfileCube = {
+  name: string;
+  brand: string;
+  model: string;
+  event: string;
+};
+
+export type ProfileLink = {
+  platform: string;
+  url: string;
+  label: string;
+};
+
+export type ProfileAccomplishment = {
+  title: string;
+  date: string | null;
+};
+
 export type Profile = {
   id: string;
   display_name: string;
@@ -6,6 +24,9 @@ export type Profile = {
   avatar_url: string | null;
   wca_id: string | null;
   events: string[];
+  cubes: ProfileCube[];
+  links: ProfileLink[];
+  accomplishments: ProfileAccomplishment[];
   created_at: string;
   updated_at: string;
 };

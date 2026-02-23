@@ -5,6 +5,8 @@ import { SocialProof } from "@/components/landing/social-proof"
 import { Footer } from "@/components/shared/footer"
 import { getGlobalStats } from "@/lib/actions/stats"
 
+export const dynamic = "force-dynamic"
+
 export default async function Home() {
   const stats = await getGlobalStats()
 

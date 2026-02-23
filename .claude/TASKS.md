@@ -96,18 +96,12 @@ Built `PracticeHeatmap` component. 52-week grid with color intensity, hover tool
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL + 1 file |
 
-**What to do:**
-1. Add `cubes`, `links`, `accomplishments` JSONB columns to profiles table
-2. Update TypeScript Profile type
-
-**Acceptance criteria:**
-- New columns exist in Supabase
-- Types updated
-- `npm run build` passes
+Added `cubes`, `links`, `accomplishments` JSONB columns via migration `002_add_profile_customization.sql`. Updated Profile type with `ProfileCube`, `ProfileLink`, `ProfileAccomplishment` types. **Note:** SQL must be run in Supabase dashboard.
 
 ---
 
