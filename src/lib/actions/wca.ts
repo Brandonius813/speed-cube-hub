@@ -62,9 +62,8 @@ export async function getWcaResults(
   }
 }
 
-export async function updateWcaId(
-  wcaId: string | null
-): Promise<{ error?: string }> {
+/** Remove the WCA ID from the current user's profile */
+export async function unlinkWcaId(): Promise<{ error?: string }> {
   const supabase = await createClient()
 
   const {
@@ -75,39 +74,13 @@ export async function updateWcaId(
     return { error: "Not authenticated" }
   }
 
-  // Validate WCA ID format if provided (e.g., 2024TRUE02)
-  if (wcaId && wcaId.trim() !== "") {
-    const trimmed = wcaId.trim().toUpperCase()
+  const { error } = await supabase
+    .from("profiles")
+    .update({ wca_id: null })
+    .eq("id", user.id)
 
-    // Basic format check: year + letters/digits
-    if (!/^\d{4}[A-Z]{2,}\d{2}$/.test(trimmed)) {
-      return { error: "Invalid WCA ID format. Example: 2024TRUE02" }
-    }
-
-    // Verify the WCA ID exists
-    const { error: wcaError } = await getWcaResults(trimmed)
-    if (wcaError) {
-      return { error: `Could not verify WCA ID: ${wcaError}` }
-    }
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ wca_id: trimmed })
-      .eq("id", user.id)
-
-    if (error) {
-      return { error: error.message }
-    }
-  } else {
-    // Clear WCA ID
-    const { error } = await supabase
-      .from("profiles")
-      .update({ wca_id: null })
-      .eq("id", user.id)
-
-    if (error) {
-      return { error: error.message }
-    }
+  if (error) {
+    return { error: error.message }
   }
 
   return {}
