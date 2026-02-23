@@ -161,7 +161,8 @@ Replaced hardcoded links with editable list from `links` JSONB column. Supports 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅ |
 | **Estimated scope** | 2 files |
 
