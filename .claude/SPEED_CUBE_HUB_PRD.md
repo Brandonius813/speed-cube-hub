@@ -221,6 +221,14 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Signup with first name / last name / middle name (optional) instead of display name
 - [x] Mobile optimization (44px touch targets, no hover-only interactions, mobile nav icons, overflow protection)
 - [x] Vercel deployment (production at speedcubehub.com, preview on dev pushes)
+- [x] Login redirect loop fix (excluded auth routes from middleware, carry cookies on redirect)
+- [x] Dynamic landing page stats (real user/session/hours/solves counts from database)
+- [x] Practice activity heatmap on dashboard (GitHub-style 52-week grid)
+- [x] Profile customization schema (cubes, links, accomplishments JSONB columns)
+- [x] Profile edit mode (edit display name, bio, avatar via modal)
+- [x] Editable main cubes section on profile (add/edit/delete from cubes JSONB)
+- [x] Notable accomplishments section on profile (add/edit/delete milestones)
+- [x] Editable social links on profile (YouTube, IG, TikTok, X, Discord, WCA, website)
 
 ## Notes
 
