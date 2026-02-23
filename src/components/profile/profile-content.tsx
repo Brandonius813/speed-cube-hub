@@ -65,7 +65,7 @@ export function ProfileContent({
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} isOwner />
       <ProfileStats sessions={sessions} />
 
       {wcaMessage && (

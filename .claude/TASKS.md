@@ -109,19 +109,12 @@ Added `cubes`, `links`, `accomplishments` JSONB columns via migration `002_add_p
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅ |
 | **Estimated scope** | 3 files |
 
-**What to build:**
-1. "Edit Profile" button (owner only)
-2. Edit modal for: display name, bio, avatar
-3. `updateProfile()` server action
-
-**Acceptance criteria:**
-- Owner can edit and save profile
-- `npm run build` passes
+Added `updateProfile()` server action, `EditProfileModal` dialog component, and "Edit Profile" button (owner only) to profile header. Also displays actual avatar image when available.
 
 ---
 
