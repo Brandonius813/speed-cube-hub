@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import type { Profile, Session } from "@/lib/types"
+import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink, Session } from "@/lib/types"
 
 export async function getProfile(): Promise<{
   profile: Profile | null
@@ -78,6 +78,162 @@ export async function updateProfile(fields: {
     .from("profiles")
     .update({
       ...fields,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/profile")
+  return { success: true }
+}
+
+const VALID_PLATFORMS = [
+  "youtube",
+  "instagram",
+  "tiktok",
+  "x",
+  "discord",
+  "wca",
+  "website",
+] as const
+
+export async function updateProfileLinks(
+  links: ProfileLink[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  if (links.length > 10) {
+    return { success: false, error: "Maximum 10 links allowed." }
+  }
+
+  // Validate each link
+  for (const link of links) {
+    if (!link.url.trim()) {
+      return { success: false, error: "URL is required for each link." }
+    }
+    const url = link.url.trim()
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      return { success: false, error: `Invalid URL: ${url}` }
+    }
+    if (!link.label.trim()) {
+      return { success: false, error: "Label is required for each link." }
+    }
+    if (!VALID_PLATFORMS.includes(link.platform as (typeof VALID_PLATFORMS)[number])) {
+      return { success: false, error: `Invalid platform: ${link.platform}` }
+    }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      links: links.map((l) => ({
+        platform: l.platform,
+        url: l.url.trim(),
+        label: l.label.trim(),
+      })),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/profile")
+  return { success: true }
+}
+
+export async function updateProfileAccomplishments(
+  accomplishments: ProfileAccomplishment[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  if (accomplishments.length > 20) {
+    return { success: false, error: "Maximum 20 accomplishments allowed." }
+  }
+
+  for (const a of accomplishments) {
+    if (!a.title.trim()) {
+      return { success: false, error: "Title is required for each accomplishment." }
+    }
+    if (a.title.length > 200) {
+      return { success: false, error: "Title must be under 200 characters." }
+    }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      accomplishments: accomplishments.map((a) => ({
+        title: a.title.trim(),
+        date: a.date || null,
+      })),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/profile")
+  return { success: true }
+}
+
+export async function updateProfileCubes(
+  cubes: ProfileCube[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  if (cubes.length > 20) {
+    return { success: false, error: "Maximum 20 cubes allowed." }
+  }
+
+  for (const c of cubes) {
+    if (!c.name.trim()) {
+      return { success: false, error: "Cube name is required." }
+    }
+    if (!c.event.trim()) {
+      return { success: false, error: "Event is required for each cube." }
+    }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      cubes: cubes.map((c) => ({
+        name: c.name.trim(),
+        brand: c.brand.trim(),
+        model: c.model.trim(),
+        event: c.event.trim(),
+      })),
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { ProfileHeader } from "@/components/profile/profile-header"
 import { ProfileStats } from "@/components/profile/profile-stats"
 import { MainCubes } from "@/components/profile/main-cubes"
+import { Accomplishments } from "@/components/profile/accomplishments"
 import { PBGrid } from "@/components/profile/pb-grid"
 import { LinksSponsors } from "@/components/profile/links-sponsors"
 import { RecentActivity } from "@/components/profile/recent-activity"
@@ -87,9 +88,10 @@ export function ProfileContent({
           competitionCount={wcaData.competition_count}
         />
       )}
-      <MainCubes />
+      <MainCubes cubes={profile.cubes ?? []} isOwner />
+      <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner />
       <PBGrid sessions={sessions} />
-      <LinksSponsors />
+      <LinksSponsors links={profile.links} isOwner />
       <RecentActivity sessions={sessions.slice(0, 10)} />
     </div>
   )

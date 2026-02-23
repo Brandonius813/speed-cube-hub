@@ -122,17 +122,12 @@ Added `updateProfile()` server action, `EditProfileModal` dialog component, and 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T15 ✅, T16 ✅ |
 | **Estimated scope** | 2 files |
 
-**What to build:**
-Editable list of cubing milestones (title + optional date). Add/edit/delete.
-
-**Acceptance criteria:**
-- CRUD for accomplishments
-- Visible to all visitors
-- `npm run build` passes
+Built `Accomplishments` component with add/edit/delete modals. Added `updateProfileAccomplishments()` server action. Visible to all visitors, edit controls for owner only.
 
 ---
 
@@ -140,16 +135,12 @@ Editable list of cubing milestones (title + optional date). Add/edit/delete.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T15 ✅, T16 ✅ |
 | **Estimated scope** | 1 file |
 
-**What to build:**
-Replace hardcoded cubes with editable list from `cubes` JSONB column.
-
-**Acceptance criteria:**
-- Owner can add/edit/delete cubes
-- `npm run build` passes
+Replaced hardcoded cubes with editable list from `cubes` JSONB column. Added `updateProfileCubes()` server action with add/edit/delete modals. Event selector uses WCA_EVENTS.
 
 ---
 
@@ -157,18 +148,12 @@ Replace hardcoded cubes with editable list from `cubes` JSONB column.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅, T16 ✅ |
 | **Estimated scope** | 1 file |
 
-**What to build:**
-Replace hardcoded links with editable list from `links` JSONB column. Support YouTube, IG, TikTok, X, Discord, WCA, custom URL.
-
-**Acceptance criteria:**
-- Owner can add/edit/delete links
-- Platform icons display
-- `npm run build` passes
+Replaced hardcoded links with editable list from `links` JSONB column. Supports YouTube, IG, TikTok, X, Discord, WCA, Website. Inline add/edit/delete forms for owner. Added `updateProfileLinks()` server action.
 
 ---
 
