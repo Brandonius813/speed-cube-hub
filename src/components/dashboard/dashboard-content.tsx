@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import { StatsCards } from "@/components/dashboard/stats-cards"
+import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { EventPieChart } from "@/components/dashboard/event-pie-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { SessionLog } from "@/components/dashboard/session-log"
@@ -56,6 +57,7 @@ export function DashboardContent({
         onRangeChange={setSelectedRange}
       />
       <StatsCards stats={initialStats} />
+      <PracticeHeatmap sessions={initialSessions} />
 
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
         <EventPieChart sessions={filteredSessions} />
