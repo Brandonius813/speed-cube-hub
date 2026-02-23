@@ -1,14 +1,15 @@
 import { Navbar } from "@/components/shared/navbar"
 import { Footer } from "@/components/shared/footer"
 import { ProfileContent } from "@/components/profile/profile-content"
-import { getProfile, getRecentActivity } from "@/lib/actions/profiles"
+import { getProfile } from "@/lib/actions/profiles"
+import { getSessions } from "@/lib/actions/sessions"
 
 export const dynamic = "force-dynamic"
 
 export default async function ProfilePage() {
-  const [profileResult, sessions] = await Promise.all([
+  const [profileResult, sessionsResult] = await Promise.all([
     getProfile(),
-    getRecentActivity(),
+    getSessions(),
   ])
 
   if (!profileResult.profile) {
@@ -31,7 +32,7 @@ export default async function ProfilePage() {
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <ProfileContent
           profile={profileResult.profile}
-          sessions={sessions}
+          sessions={sessionsResult.data}
         />
       </main>
       <Footer />

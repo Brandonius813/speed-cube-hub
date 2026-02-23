@@ -22,7 +22,7 @@ export function ProfileContent({
       <MainCubes />
       <PBGrid sessions={sessions} />
       <LinksSponsors />
-      <RecentActivity sessions={sessions} />
+      <RecentActivity sessions={sessions.slice(0, 10)} />
     </div>
   )
 }
