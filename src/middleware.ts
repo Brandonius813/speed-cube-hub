@@ -37,8 +37,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Redirect unauthenticated users away from protected routes
-  const isProtected = PROTECTED_ROUTES.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
+  // Use exact match or match with trailing slash to avoid
+  // "/log" accidentally matching "/login"
+  const pathname = request.nextUrl.pathname
+  const isProtected = PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
   )
 
   if (!user && isProtected) {
