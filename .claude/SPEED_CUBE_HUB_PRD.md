@@ -209,6 +209,9 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] TypeScript types (Profile, Session) and constants (WCA_EVENTS, PRACTICE_TYPES)
 - [x] Landing page (Hero with gradient glow, Features with visual mockups, SocialProof stats)
 - [x] Auth system (Login, Signup, Logout server actions + pages + middleware + auth-aware Navbar)
+- [x] Log Session page (form with validation, createSession server action, success state)
+- [x] Dashboard page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
+- [x] Profile page (header, stats, main cubes, PB grid, links/sponsors, recent activity timeline)
 
 ## Notes
 
