@@ -50,8 +50,10 @@ Each page uses a two-file pattern:
 - `src/lib/supabase/server.ts` — Server-side Supabase client (uses cookies)
 - `src/lib/supabase/admin.ts` — Service-role client (bypasses RLS)
 - `src/lib/actions/` — Server actions directory
+- `src/lib/actions/wca.ts` — WCA API integration (fetch results, update WCA ID)
 - `src/components/ui/` — Shadcn/ui components
 - `src/components/shared/` — Shared app components (navbar, etc.)
+- `src/components/profile/` — Profile page components (header, stats, WCA results, etc.)
 
 ### Path Alias
 
