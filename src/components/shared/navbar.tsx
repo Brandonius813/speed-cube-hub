@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Timer, LogOut, LayoutDashboard, User } from "lucide-react"
+import { Box, LogOut, LayoutDashboard, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { logout } from "@/lib/actions/auth"
@@ -30,7 +30,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         <Link href="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <Timer className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+          <Box className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
           <span className="text-sm font-semibold text-foreground sm:text-lg">
             SpeedCubeHub
           </span>

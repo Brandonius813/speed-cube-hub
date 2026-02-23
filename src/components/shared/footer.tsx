@@ -1,17 +1,20 @@
-import { Box } from "lucide-react";
+import { Box } from "lucide-react"
 
 export function Footer() {
   return (
     <footer className="border-t border-border/50 px-4 py-8 sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Box className="h-4 w-4" />
           <span className="text-sm">Speed Cube Hub</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Built for cubers, by cubers.
+          Built by cubers, for cubers.
+        </p>
+        <p className="text-xs text-muted-foreground/60">
+          Brand True
         </p>
       </div>
     </footer>
-  );
+  )
 }

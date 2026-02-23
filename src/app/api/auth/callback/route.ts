@@ -1,5 +1,5 @@
+import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -10,9 +10,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url))
   }
 
-  const supabase = await createClient()
+  // Create the redirect response FIRST so we can set cookies on it
+  const redirectUrl = new URL(next, request.url)
+  const response = NextResponse.redirect(redirectUrl)
 
-  // Exchange the code for a session
+  // Create Supabase client that sets cookies directly on the redirect response
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  // Exchange the code for a session — cookies are set on the response
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
@@ -54,5 +74,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, request.url))
+  return response
 }

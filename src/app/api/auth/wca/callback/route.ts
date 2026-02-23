@@ -1,17 +1,21 @@
+import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get("code")
-  const error = searchParams.get("error")
+  const errorParam = searchParams.get("error")
 
   // If user denied access or something went wrong at WCA
-  if (error || !code) {
+  if (errorParam || !code) {
     return NextResponse.redirect(
       new URL("/profile?wca_error=denied", request.url)
     )
   }
+
+  // Build the success redirect response so we can set cookies on it
+  const successUrl = new URL("/profile?wca_linked=true", request.url)
+  const response = NextResponse.redirect(successUrl)
 
   try {
     // Exchange the authorization code for an access token
@@ -31,6 +35,8 @@ export async function GET(request: NextRequest) {
     )
 
     if (!tokenRes.ok) {
+      const errorBody = await tokenRes.text()
+      console.error("WCA token exchange failed:", errorBody)
       return NextResponse.redirect(
         new URL("/profile?wca_error=token_failed", request.url)
       )
@@ -62,8 +68,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Save the verified WCA ID to the user's profile
-    const supabase = await createClient()
+    // Create Supabase client with cookies on the redirect response
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -85,10 +107,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Success — redirect back to profile
-    return NextResponse.redirect(
-      new URL("/profile?wca_linked=true", request.url)
-    )
+    return response
   } catch {
     return NextResponse.redirect(
       new URL("/profile?wca_error=unknown", request.url)

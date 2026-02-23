@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Timer } from "lucide-react"
+import { Box } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -36,7 +36,7 @@ export default function SignupPage() {
         <CardContent className="p-6 sm:p-8">
           <div className="mb-6 flex flex-col items-center gap-2">
             <Link href="/" className="flex items-center gap-1.5">
-              <Timer className="h-5 w-5 text-primary" />
+              <Box className="h-5 w-5 text-primary" />
               <span className="text-sm font-semibold text-foreground">SpeedCubeHub</span>
             </Link>
             <h1 className="text-xl font-bold text-foreground">Create your account</h1>

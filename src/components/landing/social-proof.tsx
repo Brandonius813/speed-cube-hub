@@ -1,8 +1,16 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Users } from "lucide-react"
+import type { GlobalStats } from "@/lib/actions/stats"
 
-export function SocialProof() {
+function formatStat(num: number): string {
+  if (num >= 10000) return `${(num / 1000).toFixed(1).replace(/\.0$/, "")}K+`
+  if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, "")}K+`
+  if (num > 0) return `${num}+`
+  return "0"
+}
+
+export function SocialProof({ stats }: { stats: GlobalStats }) {
   return (
     <section className="px-4 py-12 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-3xl">
@@ -18,7 +26,7 @@ export function SocialProof() {
             </div>
 
             <h2 className="text-balance text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">
-              Join <span className="text-accent">500+</span> speed cubers
+              Join <span className="text-accent">{formatStat(stats.totalUsers)}</span> speed cubers
             </h2>
 
             <p className="mx-auto mt-3 max-w-lg text-pretty text-sm leading-relaxed text-muted-foreground sm:mt-4 sm:text-base">
@@ -28,16 +36,16 @@ export function SocialProof() {
 
             <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-4">
               <div className="rounded-lg bg-secondary/60 px-2 py-3 text-center sm:bg-transparent sm:px-0 sm:py-0">
-                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">12K+</div>
+                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">{formatStat(stats.totalSessions)}</div>
                 <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:mt-1 sm:text-sm">Sessions logged</div>
               </div>
               <div className="rounded-lg bg-secondary/60 px-2 py-3 text-center sm:bg-transparent sm:px-0 sm:py-0">
-                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">3.2K</div>
+                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">{formatStat(stats.totalHours)}</div>
                 <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:mt-1 sm:text-sm">Hours practiced</div>
               </div>
               <div className="rounded-lg bg-secondary/60 px-2 py-3 text-center sm:bg-transparent sm:px-0 sm:py-0">
-                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">850+</div>
-                <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:mt-1 sm:text-sm">PBs broken</div>
+                <div className="font-mono text-xl font-bold text-foreground sm:text-2xl">{formatStat(stats.totalSolves)}</div>
+                <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:mt-1 sm:text-sm">Solves completed</div>
               </div>
             </div>
 
