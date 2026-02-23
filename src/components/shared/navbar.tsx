@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Timer, LogOut } from "lucide-react"
+import { Timer, LogOut, LayoutDashboard, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { logout } from "@/lib/actions/auth"
@@ -40,15 +40,19 @@ export function Navbar() {
           <div className="flex items-center gap-2 sm:gap-6">
             <Link
               href="/dashboard"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Dashboard"
             >
-              Dashboard
+              <LayoutDashboard className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Dashboard</span>
             </Link>
             <Link
               href="/profile"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Profile"
             >
-              Profile
+              <User className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Profile</span>
             </Link>
             <Link href="/log">
               <Button

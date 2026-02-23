@@ -53,14 +53,14 @@ export function ProfileStats({ sessions }: { sessions: Session[] }) {
   ]
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-2 sm:gap-4">
       {stats.map((stat) => (
         <Card key={stat.label} className="border-border/50 bg-card">
-          <CardContent className="p-4 text-center">
-            <p className="font-mono text-2xl font-bold text-foreground">
+          <CardContent className="p-3 text-center sm:p-4">
+            <p className="font-mono text-lg font-bold text-foreground sm:text-2xl">
               {stat.value}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground sm:text-xs">{stat.label}</p>
           </CardContent>
         </Card>
       ))}

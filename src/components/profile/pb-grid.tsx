@@ -86,12 +86,12 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
               key={pb.event}
               className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div
-                  className="h-3 w-3 rounded-sm"
+                  className="h-3 w-3 shrink-0 rounded-sm"
                   style={{ backgroundColor: pb.color }}
                 />
-                <span className="font-medium text-foreground">{pb.label}</span>
+                <span className="truncate font-medium text-foreground">{pb.label}</span>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Best Avg</p>

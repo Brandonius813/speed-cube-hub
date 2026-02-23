@@ -57,7 +57,7 @@ export function DashboardFilters({
               <Badge
                 key={event.id}
                 variant="outline"
-                className={`cursor-pointer transition-all ${
+                className={`min-h-[44px] cursor-pointer px-3 transition-all ${
                   selectedEvent === event.id
                     ? eventColorMap[event.id] || "bg-foreground text-background"
                     : "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
@@ -72,13 +72,13 @@ export function DashboardFilters({
 
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {dateRanges.map((range) => (
               <Button
                 key={range.value}
                 variant="ghost"
                 size="sm"
-                className={`h-7 px-2.5 text-xs ${
+                className={`h-11 px-3 text-xs ${
                   selectedRange === range.value
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:text-foreground"
