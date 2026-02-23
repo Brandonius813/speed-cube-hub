@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Timer } from "lucide-react"
+import { ArrowRight, Box } from "lucide-react"
 
 export function Hero() {
   return (
@@ -12,7 +12,7 @@ export function Hero() {
 
       <div className="relative mx-auto max-w-4xl text-center">
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs sm:gap-2.5 sm:px-4 sm:py-2 sm:text-sm text-muted-foreground">
-          <Timer className="h-6 w-6 shrink-0 text-accent sm:h-7 sm:w-7" />
+          <Box className="h-6 w-6 shrink-0 text-accent sm:h-7 sm:w-7" />
           <span>Track every solve. Improve every session.</span>
         </div>
 
