@@ -28,11 +28,18 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
-  const displayName = formData.get("displayName") as string
+  const firstName = (formData.get("firstName") as string)?.trim()
+  const middleName = (formData.get("middleName") as string)?.trim() || ""
+  const lastName = (formData.get("lastName") as string)?.trim()
 
-  if (!email || !password || !displayName) {
-    return { error: "All fields are required." }
+  if (!email || !password || !firstName || !lastName) {
+    return { error: "First name, last name, email, and password are required." }
   }
+
+  // Build display name: "First Last" or "First Middle Last"
+  const displayName = middleName
+    ? `${firstName} ${middleName} ${lastName}`
+    : `${firstName} ${lastName}`
 
   const supabase = await createClient()
 
@@ -51,8 +58,8 @@ export async function signup(formData: FormData) {
   }
 
   // Create the profile row
-  // Generate a handle from the display name (lowercase, no spaces, add random suffix)
-  const baseHandle = displayName
+  // Generate a handle from the name (lowercase, no spaces, add random suffix)
+  const baseHandle = `${firstName}${lastName}`
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 20)

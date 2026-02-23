@@ -42,14 +42,38 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="Brandon"
+                  required
+                  className="min-h-11"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="True"
+                  required
+                  className="min-h-11"
+                />
+              </div>
+            </div>
+
             <div className="flex flex-col gap-2">
-              <Label htmlFor="displayName">Display Name</Label>
+              <Label htmlFor="middleName">Middle Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Input
-                id="displayName"
-                name="displayName"
+                id="middleName"
+                name="middleName"
                 type="text"
-                placeholder="Your name"
-                required
+                placeholder=""
                 className="min-h-11"
               />
             </div>
