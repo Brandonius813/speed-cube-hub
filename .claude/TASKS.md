@@ -109,7 +109,8 @@ Added `cubes`, `links`, `accomplishments` JSONB columns via migration `002_add_p
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅ |
 | **Estimated scope** | 3 files |
 
