@@ -138,9 +138,11 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ```
 /                    → Landing page (hero, features, social proof)
-/dashboard           → Practice stats dashboard (filters, charts, session log)
-/profile             → User profile (header, stats, cubes, PBs, links, activity)
-/log                 → Log a practice session (form)
+/login               → Login page (email + password)
+/signup              → Signup page (email + password + display name)
+/dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
+/profile             → User profile (header, stats, cubes, PBs, WCA results, activity) [protected]
+/log                 → Log a practice session (form) [protected]
 ```
 
 ## Design Source
@@ -213,6 +215,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Dashboard page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
 - [x] Profile page (header, stats, main cubes, PB grid, links/sponsors, recent activity timeline)
 - [x] WCA API integration (fetch official results, display on profile, link/unlink WCA ID)
+- [x] Mobile optimization (44px touch targets, no hover-only interactions, mobile nav icons, overflow protection)
 
 ## Notes
 
