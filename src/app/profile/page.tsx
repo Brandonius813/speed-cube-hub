@@ -3,7 +3,7 @@ import { Footer } from "@/components/shared/footer"
 import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
-import { getWcaResults } from "@/lib/actions/wca"
+import { getWcaResults, getUpcomingCompetitions } from "@/lib/actions/wca"
 
 export const dynamic = "force-dynamic"
 
@@ -27,10 +27,13 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch WCA results if user has a WCA ID linked
-  const wcaResult = profileResult.profile.wca_id
-    ? await getWcaResults(profileResult.profile.wca_id)
-    : null
+  // Fetch WCA results and upcoming competitions if user has a WCA ID linked
+  const [wcaResult, upcomingCompsResult] = profileResult.profile.wca_id
+    ? await Promise.all([
+        getWcaResults(profileResult.profile.wca_id),
+        getUpcomingCompetitions(),
+      ])
+    : [null, null]
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,6 +43,7 @@ export default async function ProfilePage() {
           profile={profileResult.profile}
           sessions={sessionsResult.data}
           wcaData={wcaResult?.data ?? null}
+          upcomingCompetitions={upcomingCompsResult?.data ?? []}
         />
       </main>
       <Footer />

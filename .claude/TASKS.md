@@ -161,18 +161,12 @@ Replaced hardcoded links with editable list from `links` JSONB column. Supports 
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅ |
 | **Estimated scope** | 2 files |
 
-**What to build:**
-Fetch upcoming competitions from WCA API for users with linked WCA ID.
-
-**Acceptance criteria:**
-- Shows upcoming comps if WCA ID linked
-- Hidden gracefully if none
-- `npm run build` passes
+Added `getUpcomingCompetitions()` to WCA actions (public API, cached 1hr). Built `UpcomingCompetitions` component with date badges, city/venue info, and external links. Fetched in profile server component, shown only when WCA ID is linked. Hidden gracefully if no upcoming comps.
 
 ---
 

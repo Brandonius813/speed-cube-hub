@@ -62,6 +62,61 @@ export async function getWcaResults(
   }
 }
 
+export type WcaCompetition = {
+  id: string
+  name: string
+  city: string
+  country_iso2: string
+  start_date: string
+  end_date: string
+  url: string
+  venue: string
+}
+
+/** Fetch upcoming WCA competitions (public endpoint, no auth required) */
+export async function getUpcomingCompetitions(
+  countryIso2?: string
+): Promise<{ data: WcaCompetition[]; error?: string }> {
+  try {
+    const params = new URLSearchParams({
+      sort: "start_date",
+      per_page: "5",
+      start: new Date().toISOString().split("T")[0],
+    })
+    if (countryIso2) {
+      params.set("country_iso2", countryIso2)
+    }
+
+    const res = await fetch(
+      `https://www.worldcubeassociation.org/api/v0/competitions?${params}`,
+      { next: { revalidate: 3600 } } // cache for 1 hour
+    )
+
+    if (!res.ok) {
+      return { data: [], error: "Failed to fetch upcoming competitions" }
+    }
+
+    const raw = await res.json()
+
+    const competitions: WcaCompetition[] = (raw as Record<string, unknown>[]).map(
+      (comp: Record<string, unknown>) => ({
+        id: comp.id as string,
+        name: comp.name as string,
+        city: comp.city as string,
+        country_iso2: comp.country_iso2 as string,
+        start_date: comp.start_date as string,
+        end_date: comp.end_date as string,
+        url: comp.url as string,
+        venue: (comp.venue as { name?: string })?.name ?? (comp.venue as string) ?? "",
+      })
+    )
+
+    return { data: competitions }
+  } catch {
+    return { data: [], error: "Failed to connect to WCA API" }
+  }
+}
+
 /** Remove the WCA ID from the current user's profile */
 export async function unlinkWcaId(): Promise<{ error?: string }> {
   const supabase = await createClient()
