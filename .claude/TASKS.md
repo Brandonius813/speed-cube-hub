@@ -157,7 +157,8 @@ Replace hardcoded cubes with editable list from `cubes` JSONB column.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-E |
 | **Dependencies** | T15 ✅, T16 ✅ |
 | **Estimated scope** | 1 file |
 
