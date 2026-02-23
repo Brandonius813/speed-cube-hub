@@ -83,6 +83,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 - Pull a user's official WCA competition results via the WCA API
 - Display official results alongside practice data
+- **WCA OAuth verification** — users link their WCA account by signing in through the official WCA website (prevents claiming someone else's ID)
 - Show how practice performance compares to competition performance over time
 
 ### Supported WCA Events (all 17)
@@ -138,8 +139,8 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ```
 /                    → Landing page (hero, features, social proof)
-/login               → Login page (email + password)
-/signup              → Signup page (email + password + display name)
+/login               → Login page (email + password + Google OAuth)
+/signup              → Signup page (first/last/middle name + email + password + Google OAuth)
 /dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
 /profile             → User profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /log                 → Log a practice session (form) [protected]
@@ -215,7 +216,11 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Dashboard page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
 - [x] Profile page (header, stats, main cubes, PB grid, links/sponsors, recent activity timeline)
 - [x] WCA API integration (fetch official results, display on profile, link/unlink WCA ID)
+- [x] WCA OAuth verification (users sign in through WCA to prove they own their WCA ID)
+- [x] Google sign-in (OAuth on both signup and login pages, auto profile creation)
+- [x] Signup with first name / last name / middle name (optional) instead of display name
 - [x] Mobile optimization (44px touch targets, no hover-only interactions, mobile nav icons, overflow protection)
+- [x] Vercel deployment (production at speedcubehub.com, preview on dev pushes)
 
 ## Notes
 

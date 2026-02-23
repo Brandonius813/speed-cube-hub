@@ -20,8 +20,9 @@ There are no tests configured in this project yet.
 
 - **Git root:** `/Users/brandontrue/Documents/Coding/speed-cube-hub/`
 - **Repo:** `Brandonius813/speed-cube-hub` (private)
+- **Production URL:** `https://www.speedcubehub.com`
 - **`dev` branch:** All new work goes here. Push triggers Vercel preview deployment.
-- **`main` branch:** Production. Push auto-deploys to production domain.
+- **`main` branch:** Production. Push auto-deploys to speedcubehub.com.
 - **Workflow:** Commit and push to `dev` after every working feature. When user says "go live," merge `dev` into `main` and push.
 
 ## Architecture Overview
@@ -50,7 +51,9 @@ Each page uses a two-file pattern:
 - `src/lib/supabase/server.ts` — Server-side Supabase client (uses cookies)
 - `src/lib/supabase/admin.ts` — Service-role client (bypasses RLS)
 - `src/lib/actions/` — Server actions directory
-- `src/lib/actions/wca.ts` — WCA API integration (fetch results, update WCA ID)
+- `src/lib/actions/wca.ts` — WCA API integration (fetch results, unlink WCA ID)
+- `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
+- `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
 - `src/components/shared/` — Shared app components (navbar, etc.)
 - `src/components/profile/` — Profile page components (header, stats, WCA results, etc.)
@@ -82,10 +85,13 @@ Each page uses a two-file pattern:
 ## Environment Variables
 
 See `.env.local.example` for required variables:
-- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL (ends in `.supabase.co`, NOT `.com`)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon/public key
 - `SUPABASE_SERVICE_ROLE_KEY` — Service role key (server-side only)
 - `ADMIN_USER_ID` — Admin user ID for server-side data fetches
+- `WCA_CLIENT_ID` — WCA OAuth application ID (server-side)
+- `WCA_CLIENT_SECRET` — WCA OAuth secret (server-side)
+- `NEXT_PUBLIC_WCA_CLIENT_ID` — WCA OAuth application ID (client-side, for redirect URL)
 
 ## Design System
 
@@ -98,8 +104,8 @@ See `.env.local.example` for required variables:
 
 ```
 /                    → Landing page (hero, features, social proof)
-/login               → Login page (email + password)
-/signup              → Signup page (email + password + display name)
+/login               → Login page (email + password + Google OAuth)
+/signup              → Signup page (first/last/middle name + email + password + Google OAuth)
 /dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
 /profile             → User profile (header, stats, cubes, PBs, links, activity) [protected]
 /log                 → Log a practice session (form) [protected]
