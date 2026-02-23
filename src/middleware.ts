@@ -46,8 +46,9 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login"
     const redirectResponse = NextResponse.redirect(url)
     // Carry any cookies the Supabase client set (e.g., clearing stale sessions)
+    // Pass the full cookie object to preserve options (path, httpOnly, secure, etc.)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value)
+      redirectResponse.cookies.set(cookie)
     })
     return redirectResponse
   }
