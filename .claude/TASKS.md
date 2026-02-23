@@ -279,8 +279,8 @@ These are the meat of the MVP. All 3 can be built in parallel.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Profile |
 | **Dependencies** | T02 ✅, T07 ✅ |
 | **Estimated scope** | ~3 files |
 
