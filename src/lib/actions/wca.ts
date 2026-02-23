@@ -54,7 +54,7 @@ export async function getWcaResults(
         name: data.person.name,
         country: { name: data.person.country.name },
         competition_count: data.competition_count,
-        personal_records: data.person.personal_records,
+        personal_records: data.personal_records,
       },
     }
   } catch {
