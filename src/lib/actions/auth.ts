@@ -22,7 +22,9 @@ export async function login(formData: FormData) {
     return { error: error.message }
   }
 
-  redirect("/dashboard")
+  // Return success instead of server-side redirect so the browser
+  // processes the auth cookies before navigating to a protected route
+  return { success: true }
 }
 
 export async function signup(formData: FormData) {
@@ -75,7 +77,7 @@ export async function signup(formData: FormData) {
     return { error: "Account created but profile setup failed. Please try logging in." }
   }
 
-  redirect("/dashboard")
+  return { success: true }
 }
 
 export async function logout() {

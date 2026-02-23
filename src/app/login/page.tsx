@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Box } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import { login } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -23,11 +25,14 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget)
     const result = await login(formData)
 
-    // If we get here, the redirect didn't happen — there was an error
     if (result?.error) {
       setError(result.error)
+      setLoading(false)
+      return
     }
-    setLoading(false)
+
+    // Navigate client-side so the browser processes auth cookies first
+    router.push("/dashboard")
   }
 
   return (
