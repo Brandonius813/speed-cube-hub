@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { generateUniqueHandle } from "@/lib/actions/profiles"
 
 export async function login(formData: FormData) {
@@ -64,7 +65,10 @@ export async function signup(formData: FormData) {
   // Generate a unique handle — tries clean name first, adds numbers only if taken
   const handle = await generateUniqueHandle(`${firstName}${lastName}`, supabase)
 
-  const { error: profileError } = await supabase.from("profiles").insert({
+  // Use admin client to bypass RLS — after signUp with email confirmation,
+  // the user doesn't have an active session yet, so RLS would block the insert
+  const admin = createAdminClient()
+  const { error: profileError } = await admin.from("profiles").insert({
     id: data.user.id,
     display_name: displayName,
     handle,
