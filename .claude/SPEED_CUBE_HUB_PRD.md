@@ -107,7 +107,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ### Social Wave 2 — Engagement
 - [x] Likes/Kudos on feed sessions (tap to like, like count, who liked it)
-- [ ] Comments on feed sessions (text replies on activity items)
+- [x] Comments on feed sessions (text replies on activity items)
 - [ ] Notifications system (new follower, like, comment, PB alerts)
 - [ ] Notifications page at /notifications with unread badge in navbar
 
@@ -410,6 +410,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Social Wave 1: Updated navbar with Feed and Discover links
 - [x] Social Wave 1: Middleware updated (public profiles accessible to everyone, feed protected)
 - [x] Social Wave 2: Likes/Kudos on feed sessions (like button with optimistic UI, like count per session)
+- [x] Social Wave 2: Comments on feed sessions (expandable comment section, add/delete comments, lazy-loaded)
 
 ## Notes
 

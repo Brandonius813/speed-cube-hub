@@ -191,12 +191,12 @@ Created `likes` table (`003_create_likes.sql`) with RLS policies. Built `likeSes
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 2 server action files + 2 components + feed-item update |
 
-Create `comments` table (session_id + user_id + content). Build server actions: `addComment()`, `getComments()`, `deleteComment()`. Add comment count to feed items, expandable comment section below each session card. Comment input with submit button.
+Created `comments` table with RLS policies (migration `004_create_comments.sql`). Built server actions: `addComment()`, `getComments()`, `deleteComment()`, `getCommentCounts()` in `src/lib/actions/comments.ts`. Added `Comment` type to `src/lib/types.ts`. Built `CommentSection` component with lazy-load on expand, add/delete with optimistic count updates. Added comment button (speech bubble icon + count) to feed items next to the like button. Comments load oldest-first for natural conversation flow. **Note:** SQL must be run in Supabase dashboard.
 
 ---
 

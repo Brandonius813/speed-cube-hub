@@ -11,9 +11,11 @@ import type { FeedItem } from "@/lib/types"
 export function FeedContent({
   initialItems,
   initialCursor,
+  currentUserId,
 }: {
   initialItems: FeedItem[]
   initialCursor: string | null
+  currentUserId: string | null
 }) {
   const [items, setItems] = useState(initialItems)
   const [cursor, setCursor] = useState(initialCursor)
@@ -53,7 +55,7 @@ export function FeedContent({
   return (
     <div className="flex flex-col gap-4">
       {items.map((item) => (
-        <FeedItemCard key={item.id} item={item} />
+        <FeedItemCard key={item.id} item={item} currentUserId={currentUserId} />
       ))}
 
       {cursor && (

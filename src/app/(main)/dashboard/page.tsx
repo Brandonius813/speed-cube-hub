@@ -1,10 +1,15 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions, getSessionStats } from "@/lib/actions/sessions"
+import { getGoals, checkGoalProgress } from "@/lib/actions/goals"
 
 export default async function DashboardPage() {
-  const [sessionsResult, stats] = await Promise.all([
+  // Check for expired/achieved goals, then fetch everything in parallel
+  await checkGoalProgress()
+
+  const [sessionsResult, stats, goalsResult] = await Promise.all([
     getSessions(),
     getSessionStats(),
+    getGoals(),
   ])
 
   return (
@@ -21,6 +26,7 @@ export default async function DashboardPage() {
       <DashboardContent
         initialSessions={sessionsResult.data}
         initialStats={stats}
+        initialGoals={goalsResult.data}
       />
     </main>
   )

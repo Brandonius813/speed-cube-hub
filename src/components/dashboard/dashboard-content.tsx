@@ -4,25 +4,30 @@ import { useState, useMemo } from "react"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
 import { StatsCards } from "@/components/dashboard/stats-cards"
+import { StreakCard } from "@/components/dashboard/streak-card"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { EventPieChart } from "@/components/dashboard/event-pie-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { SessionLog } from "@/components/dashboard/session-log"
+import { GoalsSection } from "@/components/dashboard/goals-section"
 import { PBProgressChart } from "@/components/profile/pb-progress-chart"
-import type { Session } from "@/lib/types"
+import type { Session, Goal } from "@/lib/types"
 
 export function DashboardContent({
   initialSessions,
   initialStats,
+  initialGoals = [],
 }: {
   initialSessions: Session[]
   initialStats: {
     sessionsThisWeek: number
     totalMinutes: number
     currentStreak: number
+    longestStreak: number
     weeklyMinutes: number
     weeklyChange: number
   }
+  initialGoals?: Goal[]
 }) {
   const [selectedEvent, setSelectedEvent] = useState("all")
   const [selectedRange, setSelectedRange] = useState<DateRange>("30d")
@@ -56,6 +61,25 @@ export function DashboardContent({
     return result
   }, [initialSessions, selectedEvent, selectedRange, customRange])
 
+  // Compute current averages for each goal's event from session data
+  const goalAverages = useMemo(() => {
+    const averages: Record<string, number | null> = {}
+    const goalEvents = new Set(initialGoals.map((g) => g.event))
+    for (const eventId of goalEvents) {
+      const eventSessions = initialSessions
+        .filter((s) => s.event === eventId && s.avg_time != null)
+        .slice(0, 5)
+      if (eventSessions.length === 0) {
+        averages[eventId] = null
+      } else {
+        averages[eventId] =
+          eventSessions.reduce((sum, s) => sum + (s.avg_time ?? 0), 0) /
+          eventSessions.length
+      }
+    }
+    return averages
+  }, [initialSessions, initialGoals])
+
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <DashboardFilters
@@ -67,6 +91,11 @@ export function DashboardContent({
         onCustomRangeChange={setCustomRange}
       />
       <StatsCards stats={initialStats} />
+      <StreakCard
+        currentStreak={initialStats.currentStreak}
+        longestStreak={initialStats.longestStreak}
+      />
+      <GoalsSection initialGoals={initialGoals} goalAverages={goalAverages} />
       <PracticeHeatmap sessions={initialSessions} />
 
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
