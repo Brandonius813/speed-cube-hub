@@ -9,9 +9,11 @@ import { followUser, unfollowUser } from "@/lib/actions/follows"
 export function FollowButton({
   targetUserId,
   initialIsFollowing,
+  onFollowChange,
 }: {
   targetUserId: string
   initialIsFollowing: boolean
+  onFollowChange?: (isFollowing: boolean) => void
 }) {
   const router = useRouter()
   const [following, setFollowing] = useState(initialIsFollowing)
@@ -24,12 +26,14 @@ export function FollowButton({
       const result = await unfollowUser(targetUserId)
       if (result.success) {
         setFollowing(false)
+        onFollowChange?.(false)
         router.refresh()
       }
     } else {
       const result = await followUser(targetUserId)
       if (result.success) {
         setFollowing(true)
+        onFollowChange?.(true)
         router.refresh()
       }
     }

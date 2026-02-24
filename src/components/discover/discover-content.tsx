@@ -16,6 +16,7 @@ import {
 import { Search, MapPin } from "lucide-react"
 import { searchProfiles } from "@/lib/actions/profiles"
 import { WCA_EVENTS } from "@/lib/constants"
+import { FollowButton } from "@/components/profile/follow-button"
 import type { Profile } from "@/lib/types"
 
 const eventColors: Record<string, string> = {
@@ -45,11 +46,18 @@ type SortOption = "newest" | "name"
 export function DiscoverContent({
   initialProfiles,
   locations,
+  currentUserId,
+  initialFollowingIds,
 }: {
   initialProfiles: Profile[]
   locations: string[]
+  currentUserId: string | null
+  initialFollowingIds: string[]
 }) {
   const [profiles, setProfiles] = useState(initialProfiles)
+  const [followingIds, setFollowingIds] = useState<Set<string>>(
+    new Set(initialFollowingIds)
+  )
   const [query, setQuery] = useState("")
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
@@ -248,6 +256,32 @@ export function DiscoverContent({
                       </div>
                     )}
                   </div>
+
+                  {currentUserId && currentUserId !== profile.id && (
+                    <div
+                      className="shrink-0"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
+                    >
+                      <FollowButton
+                        targetUserId={profile.id}
+                        initialIsFollowing={followingIds.has(profile.id)}
+                        onFollowChange={(isNowFollowing) => {
+                          setFollowingIds((prev) => {
+                            const next = new Set(prev)
+                            if (isNowFollowing) {
+                              next.add(profile.id)
+                            } else {
+                              next.delete(profile.id)
+                            }
+                            return next
+                          })
+                        }}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </Link>
