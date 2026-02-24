@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getUnreadCount } from "@/lib/actions/notifications"
+import { getProfile } from "@/lib/actions/profiles"
 
 function getInitials(name: string): string {
   return name
@@ -175,8 +176,11 @@ export function Navbar() {
               type="button"
               onClick={async () => {
                 const supabase = getSupabaseClient()
-                await supabase.auth.signOut()
-                window.location.href = "/"
+                try {
+                  await supabase.auth.signOut()
+                } finally {
+                  window.location.href = "/"
+                }
               }}
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Log out"
