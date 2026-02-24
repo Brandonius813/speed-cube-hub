@@ -1,16 +1,41 @@
 import { LeaderboardsContent } from "@/components/leaderboards/leaderboards-content"
 import { getAllLeaderboards } from "@/lib/actions/leaderboards"
+import { getWcaCountries } from "@/lib/actions/sor-kinch"
+import { createClient } from "@/lib/supabase/server"
 
 export default async function LeaderboardsPage() {
-  // Fetch all 4 leaderboard categories in parallel so tab switching is instant
-  const initialData = await getAllLeaderboards()
+  // Fetch practice leaderboards, WCA countries, and user's WCA ID in parallel
+  const [initialData, countries, supabase] = await Promise.all([
+    getAllLeaderboards(),
+    getWcaCountries(),
+    createClient(),
+  ])
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get the user's WCA ID for "Find Me" on SOR/Kinch tabs
+  let userWcaId: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("wca_id")
+      .eq("id", user.id)
+      .single()
+    userWcaId = profile?.wca_id ?? null
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="mb-6 text-2xl font-bold text-foreground">
         Leaderboards
       </h1>
-      <LeaderboardsContent initialData={initialData} />
+      <LeaderboardsContent
+        initialData={initialData}
+        countries={countries}
+        userWcaId={userWcaId}
+      />
     </main>
   )
 }

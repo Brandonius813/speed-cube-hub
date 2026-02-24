@@ -96,9 +96,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Extract country from WCA profile for region filtering
+    const wcaCountryIso2 = meData.me?.country_iso2 ?? null
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ wca_id: wcaId })
+      .update({ wca_id: wcaId, country_id: wcaCountryIso2 })
       .eq("id", user.id)
 
     if (updateError) {

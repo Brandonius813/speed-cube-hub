@@ -19,6 +19,13 @@ import { getWcaResults } from "@/lib/actions/wca"
 import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 
+type SorKinchStats = {
+  sorRank: number | null
+  sorTotal: number | null
+  kinchScore: number | null
+  kinchRank: number | null
+} | null
+
 export function PublicProfileContent({
   profile,
   sessions,
@@ -30,6 +37,7 @@ export function PublicProfileContent({
   userBadges = [],
   allBadges = [],
   isAdmin = false,
+  sorKinchStats,
 }: {
   profile: Profile
   sessions: Session[]
@@ -41,6 +49,7 @@ export function PublicProfileContent({
   userBadges?: UserBadge[]
   allBadges?: Badge[]
   isAdmin?: boolean
+  sorKinchStats?: SorKinchStats
 }) {
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
@@ -72,7 +81,7 @@ export function PublicProfileContent({
         followerCount={followerCount}
         followingCount={followingCount}
       />
-      <ProfileStats sessions={sessions} />
+      <ProfileStats sessions={sessions} sorKinchStats={sorKinchStats} />
       {wcaLoading && <WcaResultsSkeleton />}
       {wcaData && (
         <WcaResults

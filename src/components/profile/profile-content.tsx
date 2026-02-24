@@ -29,6 +29,13 @@ const WCA_ERROR_MESSAGES: Record<string, string> = {
   unknown: "Something went wrong. Please try again.",
 }
 
+type SorKinchStats = {
+  sorRank: number | null
+  sorTotal: number | null
+  kinchScore: number | null
+  kinchRank: number | null
+} | null
+
 export function ProfileContent({
   profile,
   sessions,
@@ -36,6 +43,7 @@ export function ProfileContent({
   followingCount,
   userBadges = [],
   allBadges = [],
+  sorKinchStats,
 }: {
   profile: Profile
   sessions: Session[]
@@ -43,6 +51,7 @@ export function ProfileContent({
   followingCount?: number
   userBadges?: UserBadge[]
   allBadges?: Badge[]
+  sorKinchStats?: SorKinchStats
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -101,7 +110,7 @@ export function ProfileContent({
         followerCount={followerCount}
         followingCount={followingCount}
       />
-      <ProfileStats sessions={sessions} />
+      <ProfileStats sessions={sessions} sorKinchStats={sorKinchStats} />
 
       {wcaMessage && (
         <div

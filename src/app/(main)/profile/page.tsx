@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
 import { getFollowCounts } from "@/lib/actions/follows"
 import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
+import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
 
 export default async function ProfilePage() {
   const [profileResult, sessionsResult] = await Promise.all([
@@ -20,12 +21,16 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch follow counts, badges, and badge definitions in parallel
-  const [followCounts, badgesResult, badgeDefsResult] = await Promise.all([
-    getFollowCounts(profileResult.profile.id),
-    getUserBadges(profileResult.profile.id),
-    getBadgeDefinitions(),
-  ])
+  // Fetch follow counts, badges, badge definitions, and SOR/Kinch in parallel
+  const [followCounts, badgesResult, badgeDefsResult, sorKinchStats] =
+    await Promise.all([
+      getFollowCounts(profileResult.profile.id),
+      getUserBadges(profileResult.profile.id),
+      getBadgeDefinitions(),
+      profileResult.profile.wca_id
+        ? getUserSorKinchStats(profileResult.profile.wca_id)
+        : Promise.resolve(null),
+    ])
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -36,6 +41,7 @@ export default async function ProfilePage() {
         followingCount={followCounts.following}
         userBadges={badgesResult.data}
         allBadges={badgeDefsResult.data}
+        sorKinchStats={sorKinchStats}
       />
     </main>
   )

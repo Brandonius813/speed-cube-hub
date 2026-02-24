@@ -88,6 +88,12 @@ Each page uses a two-file pattern:
 - `src/components/clubs/` — Club components (clubs-content, club-detail-content, create-club-modal, edit-club-modal)
 - `src/lib/actions/personal-bests.ts` — Personal Bests system (getCurrentPBs, logNewPB, getPBHistory, deletePB)
 - `src/components/pbs/` — PBs page components (pbs-content, log-pb-modal, pb-history-modal)
+- `src/lib/actions/sor-kinch.ts` — SOR/Kinch server actions (getSorKinchLeaderboard, findUserInSorKinch, getUserSorKinchStats, getWcaCountries, getWcaContinents)
+- `src/components/leaderboards/leaderboard-shared.tsx` — Shared leaderboard presentational components (tables, cards, rank display)
+- `src/components/leaderboards/leaderboard-controls.tsx` — Leaderboard filter controls (category tabs, region filter, single/average toggle, Find Me)
+- `src/components/leaderboards/region-filter.tsx` — Reusable region filter dropdown (world/continent/country)
+- `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
+- `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 
 ### Path Alias
 

@@ -28,6 +28,7 @@ export type Profile = {
   cubes: ProfileCube[];
   links: ProfileLink[];
   accomplishments: ProfileAccomplishment[];
+  country_id: string | null;
   wca_event_order: string[] | null;
   pb_visible_types: string[] | null;
   created_at: string;

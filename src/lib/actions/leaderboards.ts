@@ -8,6 +8,8 @@ export type LeaderboardCategory =
   | "most_solves"
   | "longest_streak"
   | "most_practice_time"
+  | "sor"
+  | "kinch"
 
 export type LeaderboardPage = {
   entries: LeaderboardEntry[]

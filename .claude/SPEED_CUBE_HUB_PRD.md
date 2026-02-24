@@ -123,6 +123,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ### Social Wave 4 — Community & Discovery
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
+- [x] SOR & Kinch Rank Leaderboards (Sum of Ranks + Kinch scores for ALL WCA competitors globally, sourced from WCA database export synced weekly via GitHub Action; region filtering by world/continent/country; single/average toggle; "Find Me" for linked WCA IDs; SOR rank and Kinch score on user profiles)
 - [ ] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
@@ -418,6 +419,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Social Wave 3: Weekly/Monthly Challenges at /challenges (admin creates challenges, users join/leave, real-time progress from sessions, progress bars, active/past sections)
 - [x] Social Wave 3: Badges & Credentials on profiles (competition credentials with admin approval, sponsor badges self-reported, practice milestones auto-awarded after session creation)
 - [x] Social Wave 2: Notifications page at /notifications (notification cards with actor avatar, type-specific messages, relative timestamps, mark-as-read, mark-all-as-read, unread badge in navbar bell icon)
+- [x] SOR & Kinch Rank Leaderboards: WCA data import via weekly GitHub Action sync script (`scripts/sync-wca-rankings.mjs`), `wca_rankings` table (~200k rows), `wca_countries` reference table, SOR/Kinch tabs on /leaderboards with region filter (world/continent/country) + single/average toggle, "Find Me" for WCA-linked users, SOR rank + Kinch score on profile stats. WCA callback also saves `country_id` to profiles.
 
 ## Notes
 

@@ -1,18 +1,8 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import Link from "next/link"
-import { Trophy, Medal, Award, Loader2, MapPin, ArrowUp } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent } from "@/components/ui/card"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   getLeaderboard,
   getUserLeaderboardPosition,
@@ -21,161 +11,116 @@ import type {
   LeaderboardCategory,
   LeaderboardPage,
 } from "@/lib/actions/leaderboards"
+import {
+  getSorKinchLeaderboard,
+  findUserInSorKinch,
+} from "@/lib/actions/sor-kinch"
+import type {
+  SorKinchType,
+  WcaLeaderboardEntry,
+  WcaLeaderboardPage,
+  WcaCountry,
+} from "@/lib/actions/sor-kinch"
 import type { LeaderboardEntry } from "@/lib/types"
-import { WCA_EVENTS } from "@/lib/constants"
 import { getSupabaseClient } from "@/lib/supabase/client"
-
-const CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
-  { id: "most_solves", label: "Most Solves" },
-  { id: "fastest_avg", label: "Fastest Average" },
-  { id: "longest_streak", label: "Longest Streak" },
-  { id: "most_practice_time", label: "Most Practice Time" },
-]
+import {
+  PracticeLeaderboardTable,
+  PracticeLeaderboardCard,
+  WcaLeaderboardTable,
+  WcaLeaderboardCard,
+} from "@/components/leaderboards/leaderboard-shared"
+import type { RegionSelection } from "@/components/leaderboards/region-filter"
+import {
+  LeaderboardControls,
+  ALL_CATEGORIES,
+} from "@/components/leaderboards/leaderboard-controls"
 
 const STORAGE_KEY = "leaderboard-prefs"
+const DEFAULT_REGION: RegionSelection = { level: "world", label: "World" }
 
-function loadPrefs(): {
-  category: LeaderboardCategory
-  friendsOnly: boolean
-} {
-  if (typeof window === "undefined") {
-    return { category: "most_solves", friendsOnly: false }
-  }
+function isWcaCategory(cat: LeaderboardCategory) {
+  return cat === "sor" || cat === "kinch"
+}
+
+function loadPrefs(): { category: LeaderboardCategory; friendsOnly: boolean } {
+  if (typeof window === "undefined") return { category: "most_solves", friendsOnly: false }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      const validCats = CATEGORIES.map((c) => c.id)
-      if (validCats.includes(parsed.category)) {
-        return {
-          category: parsed.category,
-          friendsOnly: !!parsed.friendsOnly,
-        }
+      if (ALL_CATEGORIES.some((c) => c.id === parsed.category)) {
+        return { category: parsed.category, friendsOnly: !!parsed.friendsOnly }
       }
     }
-  } catch {
-    // Ignore parse errors
-  }
+  } catch { /* ignore */ }
   return { category: "most_solves", friendsOnly: false }
 }
 
 function savePrefs(category: LeaderboardCategory, friendsOnly: boolean) {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ category, friendsOnly })
-    )
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-}
-
-function formatTime(seconds: number): string {
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
-}
-
-function formatStatValue(
-  value: number,
-  category: LeaderboardCategory
-): string {
-  switch (category) {
-    case "fastest_avg":
-      return formatTime(value)
-    case "most_solves":
-      return value.toLocaleString()
-    case "longest_streak":
-      return `${value} day${value !== 1 ? "s" : ""}`
-    case "most_practice_time": {
-      const hours = Math.floor(value / 60)
-      const mins = value % 60
-      if (hours === 0) return `${mins}m`
-      if (mins === 0) return `${hours}h`
-      return `${hours}h ${mins}m`
-    }
-    default:
-      return String(value)
-  }
-}
-
-function RankDisplay({ rank }: { rank: number }) {
-  if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-400" />
-  if (rank === 2) return <Medal className="h-5 w-5 text-gray-300" />
-  if (rank === 3) return <Award className="h-5 w-5 text-amber-600" />
-  return (
-    <span className="font-mono text-sm text-muted-foreground">{rank}</span>
-  )
-}
-
-function getRankBg(rank: number): string {
-  if (rank === 1) return "bg-yellow-400/5 border-yellow-400/20"
-  if (rank === 2) return "bg-gray-300/5 border-gray-300/20"
-  if (rank === 3) return "bg-amber-600/5 border-amber-600/20"
-  return "border-border/50"
-}
-
-function getCacheKey(
-  category: LeaderboardCategory,
-  event: string,
-  friendsOnly: boolean
-): string {
-  const prefix = friendsOnly ? "following:" : ""
-  if (category === "fastest_avg") return `${prefix}fastest_avg:${event}`
-  return `${prefix}${category}`
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ category, friendsOnly })) }
+  catch { /* ignore */ }
 }
 
 export function LeaderboardsContent({
   initialData,
+  countries = [],
+  userWcaId,
 }: {
   initialData: Record<string, LeaderboardPage>
+  countries?: WcaCountry[]
+  userWcaId?: string | null
 }) {
-  const [cache, setCache] =
+  // Practice leaderboard state
+  const [practiceCache, setPracticeCache] =
     useState<Record<string, LeaderboardPage>>(initialData)
-  const [category, setCategory] =
-    useState<LeaderboardCategory>("most_solves")
+  const [category, setCategory] = useState<LeaderboardCategory>("most_solves")
   const [event, setEvent] = useState("333")
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [prefsLoaded, setPrefsLoaded] = useState(false)
 
+  // WCA leaderboard state
+  const [wcaCache, setWcaCache] =
+    useState<Record<string, WcaLeaderboardPage>>({})
+  const [sorKinchType, setSorKinchType] = useState<SorKinchType>("single")
+  const [region, setRegion] = useState<RegionSelection>(DEFAULT_REGION)
+
   // "Find Me" state
-  const [myRankData, setMyRankData] = useState<{
-    entries: LeaderboardEntry[]
-    userRank: number
-    totalCount: number
-  } | null>(null)
+  const [practiceMyRank, setPracticeMyRank] =
+    useState<{ entries: LeaderboardEntry[]; userRank: number; totalCount: number } | null>(null)
+  const [wcaMyRank, setWcaMyRank] =
+    useState<{ entries: WcaLeaderboardEntry[]; userRank: number; totalCount: number } | null>(null)
   const [viewingMyRank, setViewingMyRank] = useState(false)
   const [findMeNoData, setFindMeNoData] = useState(false)
   const [isFindingMe, startFindTransition] = useTransition()
 
-  const currentKey = getCacheKey(category, event, friendsOnly)
-  const currentPage = cache[currentKey]
+  const isWca = isWcaCategory(category)
 
-  const displayEntries =
-    viewingMyRank && myRankData
-      ? myRankData.entries
-      : currentPage?.entries ?? []
-  const totalCount =
-    viewingMyRank && myRankData
-      ? myRankData.totalCount
-      : currentPage?.totalCount ?? 0
-  const hasMore = !viewingMyRank && displayEntries.length < totalCount
+  // Cache keys
+  const practiceKey = (() => {
+    const prefix = friendsOnly ? "following:" : ""
+    if (category === "fastest_avg") return `${prefix}fastest_avg:${event}`
+    return `${prefix}${category}`
+  })()
 
-  // Restore saved preferences on mount (runs once, after hydration)
+  const wcaKey = `${category}:${sorKinchType}:${region.level}:${region.id ?? "all"}`
+
+  // Current data
+  const currentPracticePage = practiceCache[practiceKey]
+  const currentWcaPage = wcaCache[wcaKey]
+
+  const displayEntries = isWca
+    ? (viewingMyRank && wcaMyRank ? wcaMyRank.entries : currentWcaPage?.entries ?? [])
+    : (viewingMyRank && practiceMyRank ? practiceMyRank.entries : currentPracticePage?.entries ?? [])
+
+  const totalCount = isWca
+    ? (viewingMyRank && wcaMyRank ? wcaMyRank.totalCount : currentWcaPage?.totalCount ?? 0)
+    : (viewingMyRank && practiceMyRank ? practiceMyRank.totalCount : currentPracticePage?.totalCount ?? 0)
+
+  const hasMore = !viewingMyRank && displayEntries.length < totalCount &&
+    (isWca ? !!currentWcaPage : !!currentPracticePage)
+
   useEffect(() => {
     const prefs = loadPrefs()
     setCategory(prefs.category)
@@ -183,23 +128,15 @@ export function LeaderboardsContent({
     setPrefsLoaded(true)
   }, [])
 
-  // Save preferences whenever they change (skip the initial load)
-  useEffect(() => {
-    if (prefsLoaded) {
-      savePrefs(category, friendsOnly)
-    }
-  }, [category, friendsOnly, prefsLoaded])
+  useEffect(() => { if (prefsLoaded) savePrefs(category, friendsOnly) }, [category, friendsOnly, prefsLoaded])
 
   useEffect(() => {
-    const supabase = getSupabaseClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null)
-    })
+    getSupabaseClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null))
   }, [])
 
-  // Fetch only when the current key is missing from cache
+  // Fetch practice data when cache misses
   useEffect(() => {
-    if (cache[currentKey]) return
+    if (isWca || practiceCache[practiceKey]) return
     if (friendsOnly && !userId) return
 
     startTransition(async () => {
@@ -209,172 +146,153 @@ export function LeaderboardsContent({
         friendsOnly,
         userId ?? undefined
       )
-      setCache((prev) => ({ ...prev, [currentKey]: data }))
+      setPracticeCache((prev) => ({ ...prev, [practiceKey]: data }))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentKey, category, event, friendsOnly, userId])
+  }, [practiceKey, category, event, friendsOnly, userId, isWca])
 
-  // Reset "Find Me" when switching tabs
+  // Fetch WCA data when cache misses
   useEffect(() => {
-    setViewingMyRank(false)
-    setMyRankData(null)
-    setFindMeNoData(false)
-  }, [category, event, friendsOnly])
+    if (!isWca || wcaCache[wcaKey]) return
+
+    startTransition(async () => {
+      const data = await getSorKinchLeaderboard(
+        category as "sor" | "kinch",
+        sorKinchType,
+        { level: region.level, id: region.id }
+      )
+      setWcaCache((prev) => ({ ...prev, [wcaKey]: data }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wcaKey, category, sorKinchType, region, isWca])
+
+  useEffect(() => {
+    setViewingMyRank(false); setPracticeMyRank(null); setWcaMyRank(null); setFindMeNoData(false)
+  }, [category, event, friendsOnly, sorKinchType, region])
 
   const handleLoadMore = () => {
-    if (!currentPage || !hasMore) return
-    startTransition(async () => {
-      const data = await getLeaderboard(
-        category,
-        category === "fastest_avg" ? event : undefined,
-        friendsOnly,
-        userId ?? undefined,
-        currentPage.entries.length
-      )
-      setCache((prev) => ({
-        ...prev,
-        [currentKey]: {
-          entries: [...(prev[currentKey]?.entries ?? []), ...data.entries],
-          totalCount: data.totalCount,
-        },
-      }))
-    })
+    if (isWca) {
+      if (!currentWcaPage || !hasMore) return
+      startTransition(async () => {
+        const data = await getSorKinchLeaderboard(
+          category as "sor" | "kinch",
+          sorKinchType,
+          { level: region.level, id: region.id },
+          currentWcaPage.entries.length
+        )
+        setWcaCache((prev) => ({
+          ...prev,
+          [wcaKey]: {
+            entries: [...(prev[wcaKey]?.entries ?? []), ...data.entries],
+            totalCount: data.totalCount,
+          },
+        }))
+      })
+    } else {
+      if (!currentPracticePage || !hasMore) return
+      startTransition(async () => {
+        const data = await getLeaderboard(
+          category,
+          category === "fastest_avg" ? event : undefined,
+          friendsOnly,
+          userId ?? undefined,
+          currentPracticePage.entries.length
+        )
+        setPracticeCache((prev) => ({
+          ...prev,
+          [practiceKey]: {
+            entries: [...(prev[practiceKey]?.entries ?? []), ...data.entries],
+            totalCount: data.totalCount,
+          },
+        }))
+      })
+    }
   }
 
   const handleFindMe = () => {
-    if (!userId) return
-    startFindTransition(async () => {
-      const result = await getUserLeaderboardPosition(
-        category,
-        userId,
-        category === "fastest_avg" ? event : undefined,
-        friendsOnly
-      )
-      if (result) {
-        setMyRankData(result)
-        setViewingMyRank(true)
-        setFindMeNoData(false)
-      } else {
+    if (isWca) {
+      if (!userWcaId) {
         setFindMeNoData(true)
-        setViewingMyRank(false)
+        return
       }
-    })
+      startFindTransition(async () => {
+        const result = await findUserInSorKinch(
+          category as "sor" | "kinch",
+          sorKinchType,
+          userWcaId,
+          { level: region.level, id: region.id }
+        )
+        if (result) {
+          setWcaMyRank(result)
+          setViewingMyRank(true)
+          setFindMeNoData(false)
+        } else {
+          setFindMeNoData(true)
+          setViewingMyRank(false)
+        }
+      })
+    } else {
+      if (!userId) return
+      startFindTransition(async () => {
+        const result = await getUserLeaderboardPosition(
+          category,
+          userId,
+          category === "fastest_avg" ? event : undefined,
+          friendsOnly
+        )
+        if (result) {
+          setPracticeMyRank(result)
+          setViewingMyRank(true)
+          setFindMeNoData(false)
+        } else {
+          setFindMeNoData(true)
+          setViewingMyRank(false)
+        }
+      })
+    }
   }
 
-  const isLoading = isPending && !currentPage
+  const handleBackToTop = () => {
+    setViewingMyRank(false)
+    setPracticeMyRank(null)
+    setWcaMyRank(null)
+  }
+
+  const isLoading =
+    isPending && (isWca ? !currentWcaPage : !currentPracticePage)
+  const myRankData = isWca ? wcaMyRank : practiceMyRank
+  const canFindMe = isWca ? !!userWcaId : !!userId
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Controls */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-            {CATEGORIES.map((cat) => (
-              <Button
-                key={cat.id}
-                size="sm"
-                variant={category === cat.id ? "default" : "outline"}
-                className={`shrink-0 text-xs sm:text-sm ${
-                  category === cat.id
-                    ? "bg-primary text-primary-foreground"
-                    : "border-border/50 text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setCategory(cat.id)}
-              >
-                {cat.label}
-              </Button>
-            ))}
-          </div>
-
-          {userId && (
-            <div className="flex shrink-0 rounded-full bg-muted/50 p-0.5">
-              <button
-                type="button"
-                onClick={() => setFriendsOnly(false)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  !friendsOnly
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Global
-              </button>
-              <button
-                type="button"
-                onClick={() => setFriendsOnly(true)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  friendsOnly
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Following
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Second row: event selector + Find Me */}
-        <div className="flex items-center justify-between gap-3">
-          {category === "fastest_avg" ? (
-            <Select value={event} onValueChange={setEvent}>
-              <SelectTrigger className="h-9 w-[140px] border-border/50 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WCA_EVENTS.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <div />
-          )}
-
-          {userId && (
-            <div className="flex gap-2">
-              {viewingMyRank ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-border/50 text-xs"
-                  onClick={() => {
-                    setViewingMyRank(false)
-                    setMyRankData(null)
-                  }}
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                  Back to Top
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-border/50 text-xs"
-                  onClick={handleFindMe}
-                  disabled={isFindingMe}
-                >
-                  {isFindingMe ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <MapPin className="h-3.5 w-3.5" />
-                  )}
-                  Find Me
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <LeaderboardControls
+        category={category}
+        setCategory={setCategory}
+        isWca={isWca}
+        event={event}
+        setEvent={setEvent}
+        friendsOnly={friendsOnly}
+        setFriendsOnly={setFriendsOnly}
+        userId={userId}
+        sorKinchType={sorKinchType}
+        setSorKinchType={setSorKinchType}
+        region={region}
+        setRegion={setRegion}
+        countries={countries}
+        canFindMe={canFindMe}
+        viewingMyRank={viewingMyRank}
+        onFindMe={handleFindMe}
+        onBackToTop={handleBackToTop}
+        isFindingMe={isFindingMe}
+        userWcaId={userWcaId}
+      />
 
       {/* "Find Me" rank banner */}
       {viewingMyRank && myRankData && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-center text-sm">
           You are ranked{" "}
           <span className="font-mono font-bold text-primary">
-            #{myRankData.userRank}
+            #{myRankData.userRank.toLocaleString()}
           </span>{" "}
           out of{" "}
           <span className="font-mono font-semibold">
@@ -386,8 +304,9 @@ export function LeaderboardsContent({
 
       {findMeNoData && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-center text-sm text-amber-200">
-          You don&apos;t have any data for this category yet. Log some
-          sessions!
+          {isWca && !userWcaId
+            ? "Link your WCA account on your profile to find yourself in WCA leaderboards."
+            : "You don\u2019t have any data for this category yet."}
         </div>
       )}
 
@@ -399,24 +318,45 @@ export function LeaderboardsContent({
       ) : displayEntries.length === 0 ? (
         <div className="py-16 text-center">
           <p className="text-muted-foreground">
-            {friendsOnly
-              ? "No data from people you're following yet."
-              : "No leaderboard data yet. Start logging sessions!"}
+            {isWca
+              ? "No WCA ranking data available yet. Run the WCA sync to populate."
+              : friendsOnly
+                ? "No data from people you\u2019re following yet."
+                : "No leaderboard data yet. Start logging sessions!"}
           </p>
         </div>
+      ) : isWca ? (
+        <>
+          <div className="hidden sm:block">
+            <WcaLeaderboardTable
+              entries={displayEntries as WcaLeaderboardEntry[]}
+              category={category}
+              highlightWcaId={viewingMyRank ? userWcaId : null}
+            />
+          </div>
+          <div className="flex flex-col gap-2 sm:hidden">
+            {(displayEntries as WcaLeaderboardEntry[]).map((entry) => (
+              <WcaLeaderboardCard
+                key={entry.wca_id}
+                entry={entry}
+                category={category}
+                isHighlighted={viewingMyRank && entry.wca_id === userWcaId}
+              />
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="hidden sm:block">
-            <LeaderboardTable
-              entries={displayEntries}
+            <PracticeLeaderboardTable
+              entries={displayEntries as LeaderboardEntry[]}
               category={category}
               highlightUserId={viewingMyRank ? userId : null}
             />
           </div>
-
           <div className="flex flex-col gap-2 sm:hidden">
-            {displayEntries.map((entry) => (
-              <LeaderboardCard
+            {(displayEntries as LeaderboardEntry[]).map((entry) => (
+              <PracticeLeaderboardCard
                 key={entry.user_id}
                 entry={entry}
                 category={category}
@@ -424,171 +364,31 @@ export function LeaderboardsContent({
               />
             ))}
           </div>
-
-          {/* Pagination footer */}
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Showing {displayEntries.length} of{" "}
-              {totalCount.toLocaleString()}
-            </p>
-            {hasMore && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-border/50 text-xs"
-                onClick={handleLoadMore}
-                disabled={isPending}
-              >
-                {isPending && (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                )}
-                Load More
-              </Button>
-            )}
-          </div>
         </>
       )}
-    </div>
-  )
-}
 
-function LeaderboardTable({
-  entries,
-  category,
-  highlightUserId,
-}: {
-  entries: LeaderboardEntry[]
-  category: LeaderboardCategory
-  highlightUserId?: string | null
-}) {
-  return (
-    <Card className="border-border/50 bg-card">
-      <CardContent className="p-0">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
-              <th className="w-16 px-4 py-3 text-center">#</th>
-              <th className="px-4 py-3">Cuber</th>
-              <th className="px-4 py-3 text-right">
-                {category === "fastest_avg" && "Avg Time"}
-                {category === "most_solves" && "Total Solves"}
-                {category === "longest_streak" && "Streak"}
-                {category === "most_practice_time" && "Practice Time"}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => {
-              const isMe = highlightUserId === entry.user_id
-              return (
-                <tr
-                  key={entry.user_id}
-                  className={`border-b border-border/30 transition-colors last:border-b-0 hover:bg-white/[0.02] ${
-                    isMe
-                      ? "bg-primary/10 border-primary/30"
-                      : entry.rank <= 3
-                        ? getRankBg(entry.rank)
-                        : ""
-                  }`}
-                >
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center">
-                      <RankDisplay rank={entry.rank} />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/profile/${entry.handle}`}
-                      className="flex items-center gap-3 transition-colors hover:text-primary"
-                    >
-                      <Avatar className="h-8 w-8 border border-primary/20">
-                        {entry.avatar_url && (
-                          <AvatarImage
-                            src={entry.avatar_url}
-                            alt={entry.display_name}
-                          />
-                        )}
-                        <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                          {getInitials(entry.display_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">
-                          {entry.display_name}
-                        </span>
-                        {isMe && (
-                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                            YOU
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="font-mono text-sm font-semibold text-foreground">
-                      {formatStatValue(entry.stat_value, category)}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  )
-}
-
-function LeaderboardCard({
-  entry,
-  category,
-  isHighlighted,
-}: {
-  entry: LeaderboardEntry
-  category: LeaderboardCategory
-  isHighlighted?: boolean
-}) {
-  return (
-    <Link href={`/profile/${entry.handle}`}>
-      <Card
-        className={`transition-colors hover:border-primary/30 hover:bg-card/80 ${
-          isHighlighted
-            ? "bg-primary/10 border-primary/30"
-            : `${getRankBg(entry.rank)} bg-card`
-        }`}
-      >
-        <CardContent className="flex items-center gap-3 px-3 py-3">
-          <div className="flex w-8 shrink-0 items-center justify-center">
-            <RankDisplay rank={entry.rank} />
-          </div>
-          <Avatar className="h-9 w-9 shrink-0 border border-primary/20">
-            {entry.avatar_url && (
-              <AvatarImage
-                src={entry.avatar_url}
-                alt={entry.display_name}
-              />
-            )}
-            <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-              {getInitials(entry.display_name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium text-foreground">
-                {entry.display_name}
-              </p>
-              {isHighlighted && (
-                <span className="shrink-0 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  YOU
-                </span>
+      {/* Pagination footer */}
+      {displayEntries.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {displayEntries.length} of {totalCount.toLocaleString()}
+          </p>
+          {hasMore && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-border/50 text-xs"
+              onClick={handleLoadMore}
+              disabled={isPending}
+            >
+              {isPending && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               )}
-            </div>
-          </div>
-          <span className="shrink-0 font-mono text-sm font-semibold text-foreground">
-            {formatStatValue(entry.stat_value, category)}
-          </span>
-        </CardContent>
-      </Card>
-    </Link>
+              Load More
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
