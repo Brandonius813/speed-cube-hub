@@ -46,11 +46,12 @@ export async function getFeed(cursor?: string): Promise<{
   }
 
   // Query sessions from followed users + self, joined with profiles
-  let query = supabase
+  // Use admin client to avoid any RLS or foreign key hint issues
+  let query = admin
     .from("sessions")
     .select(`
       *,
-      profile:profiles!sessions_user_id_fkey(
+      profile:profiles(
         display_name,
         handle,
         avatar_url
@@ -67,6 +68,7 @@ export async function getFeed(cursor?: string): Promise<{
   const { data, error } = await query
 
   if (error) {
+    console.error("Feed sessions query error:", error)
     return { items: [], nextCursor: null, error: error.message }
   }
 
