@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink, Session } from "@/lib/types"
 
 export async function getProfile(): Promise<{
@@ -88,6 +89,71 @@ export async function updateProfile(fields: {
 
   revalidatePath("/profile")
   return { success: true }
+}
+
+const AVATAR_MAX_SIZE = 2 * 1024 * 1024 // 2MB
+const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+export async function uploadAvatar(
+  formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  const file = formData.get("avatar") as File | null
+  if (!file || file.size === 0) {
+    return { success: false, error: "No file provided." }
+  }
+
+  if (!AVATAR_ALLOWED_TYPES.includes(file.type)) {
+    return { success: false, error: "Only JPG, PNG, and WebP images are allowed." }
+  }
+
+  if (file.size > AVATAR_MAX_SIZE) {
+    return { success: false, error: "Image must be under 2MB." }
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
+  const filePath = `${user.id}/avatar.${ext}`
+
+  // Use admin client to bypass storage RLS
+  const admin = createAdminClient()
+
+  const { error: uploadError } = await admin.storage
+    .from("avatars")
+    .upload(filePath, file, { upsert: true })
+
+  if (uploadError) {
+    console.error("Avatar upload error:", uploadError)
+    return { success: false, error: "Failed to upload image. Please try again." }
+  }
+
+  const { data: urlData } = admin.storage
+    .from("avatars")
+    .getPublicUrl(filePath)
+
+  // Add cache-busting param so the browser loads the new image
+  const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
+  // Save the URL to the profile
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+    .eq("id", user.id)
+
+  if (updateError) {
+    return { success: false, error: "Image uploaded but failed to update profile." }
+  }
+
+  revalidatePath("/profile")
+  return { success: true, url: publicUrl }
 }
 
 const VALID_PLATFORMS = [

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
@@ -10,12 +10,23 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { updateProfile } from "@/lib/actions/profiles"
+import { Camera, X } from "lucide-react"
+import { updateProfile, uploadAvatar } from "@/lib/actions/profiles"
 import type { Profile } from "@/lib/types"
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
 
 export function EditProfileModal({
   profile,
@@ -27,20 +38,67 @@ export function EditProfileModal({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [bio, setBio] = useState(profile.bio ?? "")
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "")
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const currentAvatarUrl = removeAvatar ? null : (avatarPreview ?? profile.avatar_url)
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Only JPG, PNG, and WebP images are allowed.")
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be under 2MB.")
+      return
+    }
+
+    setError(null)
+    setAvatarFile(file)
+    setRemoveAvatar(false)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
+  function handleRemoveAvatar() {
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setRemoveAvatar(true)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
 
   async function handleSave() {
     setError(null)
     setSaving(true)
 
+    // Upload new avatar if a file was selected
+    let newAvatarUrl: string | null | undefined
+    if (avatarFile) {
+      const formData = new FormData()
+      formData.append("avatar", avatarFile)
+      const uploadResult = await uploadAvatar(formData)
+      if (!uploadResult.success) {
+        setError(uploadResult.error ?? "Failed to upload avatar.")
+        setSaving(false)
+        return
+      }
+      newAvatarUrl = uploadResult.url
+    } else if (removeAvatar) {
+      newAvatarUrl = null
+    }
+
     const result = await updateProfile({
       display_name: displayName,
       bio: bio || null,
-      avatar_url: avatarUrl || null,
+      ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
     })
 
     if (!result.success) {
@@ -65,6 +123,50 @@ export function EditProfileModal({
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
+          {/* Avatar upload */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-20 w-20 border-2 border-primary/30">
+                {currentAvatarUrl && (
+                  <AvatarImage src={currentAvatarUrl} alt={displayName} />
+                )}
+                <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
+                  {getInitials(displayName || "?")}
+                </AvatarFallback>
+              </Avatar>
+              {currentAvatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
+                  aria-label="Remove avatar"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="min-h-9 gap-1.5"
+            >
+              <Camera className="h-3.5 w-3.5" />
+              {currentAvatarUrl ? "Change Photo" : "Upload Photo"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              JPG, PNG, or WebP. Max 2MB.
+            </p>
+          </div>
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="edit-display-name">Display Name</Label>
             <Input
@@ -92,21 +194,6 @@ export function EditProfileModal({
               className="min-h-[80px] resize-none"
               maxLength={500}
               rows={3}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-avatar-url">
-              Avatar URL{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
-            </Label>
-            <Input
-              id="edit-avatar-url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://example.com/your-photo.jpg"
-              className="min-h-11"
-              type="url"
             />
           </div>
 
