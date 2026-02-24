@@ -9,12 +9,19 @@ export type LeaderboardCategory =
   | "longest_streak"
   | "most_practice_time"
 
-const LIMIT = 50
+export type LeaderboardPage = {
+  entries: LeaderboardEntry[]
+  totalCount: number
+}
+
+type RawResult = { user_id: string; stat_value: number }
+
+const PAGE_SIZE = 50
 const MIN_SESSIONS_FOR_AVG = 5
+const FIND_ME_WINDOW = 25
 
 /**
- * Get a list of user IDs that a given user follows (+ self).
- * Used for "friends only" filtering.
+ * Get user IDs that a given user follows (+ self).
  */
 async function getFriendUserIds(userId: string): Promise<string[]> {
   const admin = createAdminClient()
@@ -22,25 +29,21 @@ async function getFriendUserIds(userId: string): Promise<string[]> {
     .from("follows")
     .select("following_id")
     .eq("follower_id", userId)
-
   const ids = data?.map((row) => row.following_id) ?? []
-  // Include the user themselves
   ids.push(userId)
   return ids
 }
 
 /**
- * Attach profile info (display_name, handle, avatar_url) to raw leaderboard rows.
- * Takes an array of { user_id, stat_value } and returns ranked LeaderboardEntry[].
+ * Attach profile info to raw rows. rankOffset shifts rank numbers for pagination.
  */
 async function enrichWithProfiles(
-  rows: { user_id: string; stat_value: number }[]
+  rows: RawResult[],
+  rankOffset: number = 0
 ): Promise<LeaderboardEntry[]> {
   if (rows.length === 0) return []
-
   const admin = createAdminClient()
   const userIds = rows.map((r) => r.user_id)
-
   const { data: profiles } = await admin
     .from("profiles")
     .select("id, display_name, handle, avatar_url")
@@ -60,7 +63,7 @@ async function enrichWithProfiles(
   return rows.map((row, index) => {
     const profile = profileMap.get(row.user_id)
     return {
-      rank: index + 1,
+      rank: rankOffset + index + 1,
       user_id: row.user_id,
       display_name: profile?.display_name ?? "Unknown",
       handle: profile?.handle ?? "unknown",
@@ -70,33 +73,22 @@ async function enrichWithProfiles(
   })
 }
 
-/**
- * Fastest average time for a given event.
- * Groups sessions by user, requires at least MIN_SESSIONS_FOR_AVG sessions,
- * then averages their avg_time. Lower is better.
- */
-async function getFastestAvg(
+// --- Compute functions: return full sorted raw results ---
+
+async function computeFastestAvg(
   event: string,
   friendIds?: string[]
-): Promise<LeaderboardEntry[]> {
+): Promise<RawResult[]> {
   const admin = createAdminClient()
-
-  // Fetch all sessions for this event that have an avg_time
   let query = admin
     .from("sessions")
     .select("user_id, avg_time")
     .eq("event", event)
     .not("avg_time", "is", null)
-
-  if (friendIds) {
-    query = query.in("user_id", friendIds)
-  }
-
+  if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
-
   if (!data || data.length === 0) return []
 
-  // Group by user_id and calculate average of avg_time
   const userSessions = new Map<string, number[]>()
   for (const row of data) {
     const times = userSessions.get(row.user_id) ?? []
@@ -104,40 +96,26 @@ async function getFastestAvg(
     userSessions.set(row.user_id, times)
   }
 
-  // Filter to users with at least MIN_SESSIONS_FOR_AVG sessions, compute avg
-  const results: { user_id: string; stat_value: number }[] = []
+  const results: RawResult[] = []
   for (const [userId, times] of userSessions) {
     if (times.length < MIN_SESSIONS_FOR_AVG) continue
     const avg = times.reduce((a, b) => a + b, 0) / times.length
     results.push({ user_id: userId, stat_value: Math.round(avg * 100) / 100 })
   }
 
-  // Sort ascending (lower = better), limit to top 50
   results.sort((a, b) => a.stat_value - b.stat_value)
-  return enrichWithProfiles(results.slice(0, LIMIT))
+  return results
 }
 
-/**
- * Most total solves across all sessions.
- */
-async function getMostSolves(
+async function computeMostSolves(
   friendIds?: string[]
-): Promise<LeaderboardEntry[]> {
+): Promise<RawResult[]> {
   const admin = createAdminClient()
-
-  let query = admin
-    .from("sessions")
-    .select("user_id, num_solves")
-
-  if (friendIds) {
-    query = query.in("user_id", friendIds)
-  }
-
+  let query = admin.from("sessions").select("user_id, num_solves")
+  if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
-
   if (!data || data.length === 0) return []
 
-  // Group by user_id and sum num_solves
   const userSolves = new Map<string, number>()
   for (const row of data) {
     userSolves.set(
@@ -150,33 +128,19 @@ async function getMostSolves(
     user_id,
     stat_value: total,
   }))
-
-  // Sort descending (more = better)
   results.sort((a, b) => b.stat_value - a.stat_value)
-  return enrichWithProfiles(results.slice(0, LIMIT))
+  return results
 }
 
-/**
- * Longest streak (consecutive days with at least one session).
- */
-async function getLongestStreak(
+async function computeLongestStreak(
   friendIds?: string[]
-): Promise<LeaderboardEntry[]> {
+): Promise<RawResult[]> {
   const admin = createAdminClient()
-
-  let query = admin
-    .from("sessions")
-    .select("user_id, session_date")
-
-  if (friendIds) {
-    query = query.in("user_id", friendIds)
-  }
-
+  let query = admin.from("sessions").select("user_id, session_date")
+  if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
-
   if (!data || data.length === 0) return []
 
-  // Group by user and collect unique dates
   const userDates = new Map<string, Set<string>>()
   for (const row of data) {
     const dates = userDates.get(row.user_id) ?? new Set()
@@ -184,8 +148,7 @@ async function getLongestStreak(
     userDates.set(row.user_id, dates)
   }
 
-  // Calculate longest streak per user
-  const results: { user_id: string; stat_value: number }[] = []
+  const results: RawResult[] = []
   for (const [userId, dateSet] of userDates) {
     const sortedDates = Array.from(dateSet)
       .map((d) => new Date(d + "T00:00:00"))
@@ -193,7 +156,6 @@ async function getLongestStreak(
 
     let longestStreak = 1
     let currentStreak = 1
-
     for (let i = 1; i < sortedDates.length; i++) {
       const diff =
         (sortedDates[i].getTime() - sortedDates[i - 1].getTime()) /
@@ -205,37 +167,22 @@ async function getLongestStreak(
         currentStreak = 1
       }
     }
-
     results.push({ user_id: userId, stat_value: longestStreak })
   }
 
-  // Sort descending (longer streak = better)
   results.sort((a, b) => b.stat_value - a.stat_value)
-  return enrichWithProfiles(results.slice(0, LIMIT))
+  return results
 }
 
-/**
- * Most total practice time (sum of duration_minutes across all sessions).
- * Returns stat_value in minutes.
- */
-async function getMostPracticeTime(
+async function computeMostPracticeTime(
   friendIds?: string[]
-): Promise<LeaderboardEntry[]> {
+): Promise<RawResult[]> {
   const admin = createAdminClient()
-
-  let query = admin
-    .from("sessions")
-    .select("user_id, duration_minutes")
-
-  if (friendIds) {
-    query = query.in("user_id", friendIds)
-  }
-
+  let query = admin.from("sessions").select("user_id, duration_minutes")
+  if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
-
   if (!data || data.length === 0) return []
 
-  // Group by user_id and sum duration_minutes
   const userMinutes = new Map<string, number>()
   for (const row of data) {
     userMinutes.set(
@@ -248,42 +195,105 @@ async function getMostPracticeTime(
     user_id,
     stat_value: total,
   }))
-
-  // Sort descending (more time = better)
   results.sort((a, b) => b.stat_value - a.stat_value)
-  return enrichWithProfiles(results.slice(0, LIMIT))
+  return results
 }
 
+// --- Dispatcher ---
+
+async function computeRanking(
+  category: LeaderboardCategory,
+  event: string,
+  friendIds?: string[]
+): Promise<RawResult[]> {
+  switch (category) {
+    case "fastest_avg":
+      return computeFastestAvg(event, friendIds)
+    case "most_solves":
+      return computeMostSolves(friendIds)
+    case "longest_streak":
+      return computeLongestStreak(friendIds)
+    case "most_practice_time":
+      return computeMostPracticeTime(friendIds)
+    default:
+      return []
+  }
+}
+
+// --- Public API ---
+
 /**
- * Main entry point: fetch a leaderboard for a given category.
- *
- * @param category - Which leaderboard to fetch
- * @param event - Required for "fastest_avg" category (WCA event ID)
- * @param friendsOnly - If true, filter to only users the current user follows (+ self)
- * @param userId - The current user's ID (needed for friendsOnly filtering)
+ * Fetch a paginated leaderboard for a given category.
  */
 export async function getLeaderboard(
   category: LeaderboardCategory,
   event?: string,
   friendsOnly?: boolean,
-  userId?: string
-): Promise<LeaderboardEntry[]> {
-  // If friends-only, get the list of friend user IDs
+  userId?: string,
+  offset: number = 0,
+  limit: number = PAGE_SIZE
+): Promise<LeaderboardPage> {
   let friendIds: string[] | undefined
   if (friendsOnly && userId) {
     friendIds = await getFriendUserIds(userId)
   }
 
-  switch (category) {
-    case "fastest_avg":
-      return getFastestAvg(event ?? "333", friendIds)
-    case "most_solves":
-      return getMostSolves(friendIds)
-    case "longest_streak":
-      return getLongestStreak(friendIds)
-    case "most_practice_time":
-      return getMostPracticeTime(friendIds)
-    default:
-      return []
+  const results = await computeRanking(category, event ?? "333", friendIds)
+  const sliced = results.slice(offset, offset + limit)
+  const entries = await enrichWithProfiles(sliced, offset)
+
+  return { entries, totalCount: results.length }
+}
+
+/**
+ * Fetch all 4 leaderboard categories in parallel (for instant tab switching).
+ */
+export async function getAllLeaderboards(): Promise<
+  Record<string, LeaderboardPage>
+> {
+  const [mostSolves, fastestAvg, longestStreak, mostPracticeTime] =
+    await Promise.all([
+      getLeaderboard("most_solves"),
+      getLeaderboard("fastest_avg", "333"),
+      getLeaderboard("longest_streak"),
+      getLeaderboard("most_practice_time"),
+    ])
+
+  return {
+    most_solves: mostSolves,
+    "fastest_avg:333": fastestAvg,
+    longest_streak: longestStreak,
+    most_practice_time: mostPracticeTime,
   }
+}
+
+/**
+ * Find the user's rank and return surrounding entries (±25 people).
+ * Returns null if the user has no data for this category.
+ */
+export async function getUserLeaderboardPosition(
+  category: LeaderboardCategory,
+  userId: string,
+  event?: string,
+  friendsOnly?: boolean
+): Promise<{
+  entries: LeaderboardEntry[]
+  userRank: number
+  totalCount: number
+} | null> {
+  let friendIds: string[] | undefined
+  if (friendsOnly) {
+    friendIds = await getFriendUserIds(userId)
+  }
+
+  const results = await computeRanking(category, event ?? "333", friendIds)
+  const userIndex = results.findIndex((r) => r.user_id === userId)
+  if (userIndex === -1) return null
+
+  const start = Math.max(0, userIndex - FIND_ME_WINDOW)
+  const end = Math.min(results.length, userIndex + FIND_ME_WINDOW + 1)
+  const sliced = results.slice(start, end)
+  const entries = await enrichWithProfiles(sliced, start)
+
+  return { entries, userRank: userIndex + 1, totalCount: results.length }
 }
