@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Medal } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
+import { CubingIcon } from "@/components/shared/cubing-icon"
 import type { WcaPersonalRecords } from "@/lib/actions/wca"
 
 function formatWcaTime(centiseconds: number): string {
@@ -13,22 +14,6 @@ function formatWcaTime(centiseconds: number): string {
     return `${min}:${sec.padStart(5, "0")}`
   }
   return `${seconds.toFixed(2)}s`
-}
-
-const EVENT_COLORS: Record<string, string> = {
-  "333": "#EF4444",
-  "222": "#22D3EE",
-  "444": "#6366F1",
-  "555": "#F97316",
-  "666": "#A855F7",
-  "777": "#A855F7",
-  "333oh": "#EF4444",
-  "333bf": "#22D3EE",
-  minx: "#F97316",
-  pyram: "#A855F7",
-  clock: "#6366F1",
-  skewb: "#22D3EE",
-  sq1: "#EF4444",
 }
 
 function getEventLabel(eventId: string): string {
@@ -48,7 +33,6 @@ export function WcaResults({
       label: getEventLabel(eventId),
       single: records.single,
       average: records.average,
-      color: EVENT_COLORS[eventId] || "#6366F1",
     }))
     .sort((a, b) => {
       const aIdx = WCA_EVENTS.findIndex((e) => e.id === a.eventId)
@@ -81,10 +65,7 @@ export function WcaResults({
               className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4"
             >
               <div className="flex items-center gap-3">
-                <div
-                  className="h-3 w-3 rounded-sm"
-                  style={{ backgroundColor: event.color }}
-                />
+                <CubingIcon event={event.eventId} className="shrink-0 text-base text-muted-foreground" />
                 <span className="font-medium text-foreground">
                   {event.label}
                 </span>
