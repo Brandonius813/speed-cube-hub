@@ -89,8 +89,22 @@ export function FeedItem({ item }: { item: FeedItemType }) {
           </div>
         </div>
 
+        {/* Title — shown as a headline when provided */}
+        {item.title && (
+          <h3 className="mt-3 text-base font-semibold text-foreground">
+            {item.title}
+          </h3>
+        )}
+
+        {/* Description — shown below title */}
+        {item.notes && (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {item.notes}
+          </p>
+        )}
+
         {/* Session details */}
-        <div className="mt-4 rounded-lg border border-border/30 bg-secondary/30 p-3 sm:p-4">
+        <div className="mt-3 rounded-lg border border-border/30 bg-secondary/30 p-3 sm:p-4">
           <div className="mb-3 flex items-center gap-2">
             <EventBadge event={item.event} />
             <span className="text-xs text-muted-foreground">
@@ -128,12 +142,6 @@ export function FeedItem({ item }: { item: FeedItemType }) {
               </div>
             )}
           </div>
-
-          {item.notes && (
-            <p className="mt-3 border-t border-border/30 pt-3 text-sm leading-relaxed text-muted-foreground">
-              {item.notes}
-            </p>
-          )}
         </div>
       </CardContent>
     </Card>

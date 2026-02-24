@@ -49,7 +49,12 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
               key={session.id}
               className="flex items-center justify-between rounded-lg border border-border/30 bg-secondary/30 px-3 py-3"
             >
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                {session.title && (
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {session.title}
+                  </span>
+                )}
                 <div className="flex items-center gap-2">
                   <EventBadge event={session.event} />
                   <span className="text-xs text-muted-foreground">
@@ -107,7 +112,14 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     {formatDate(session.session_date)}
                   </td>
                   <td className="py-3">
-                    <EventBadge event={session.event} />
+                    <div className="flex flex-col gap-1">
+                      <EventBadge event={session.event} />
+                      {session.title && (
+                        <span className="max-w-[200px] truncate text-xs text-muted-foreground">
+                          {session.title}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 text-sm text-foreground">
                     {session.practice_type}
