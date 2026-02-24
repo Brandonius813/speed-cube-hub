@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import type { LeaderboardEntry } from "@/lib/types"
 
 export type LeaderboardCategory =
-  | "fastest_avg"
   | "most_solves"
   | "longest_streak"
   | "most_practice_time"
@@ -19,7 +18,6 @@ export type LeaderboardPage = {
 type RawResult = { user_id: string; stat_value: number }
 
 const PAGE_SIZE = 50
-const MIN_SESSIONS_FOR_AVG = 5
 const FIND_ME_WINDOW = 25
 
 /**
@@ -76,38 +74,6 @@ async function enrichWithProfiles(
 }
 
 // --- Compute functions: return full sorted raw results ---
-
-async function computeFastestAvg(
-  event: string,
-  friendIds?: string[]
-): Promise<RawResult[]> {
-  const admin = createAdminClient()
-  let query = admin
-    .from("sessions")
-    .select("user_id, avg_time")
-    .eq("event", event)
-    .not("avg_time", "is", null)
-  if (friendIds) query = query.in("user_id", friendIds)
-  const { data } = await query
-  if (!data || data.length === 0) return []
-
-  const userSessions = new Map<string, number[]>()
-  for (const row of data) {
-    const times = userSessions.get(row.user_id) ?? []
-    times.push(Number(row.avg_time))
-    userSessions.set(row.user_id, times)
-  }
-
-  const results: RawResult[] = []
-  for (const [userId, times] of userSessions) {
-    if (times.length < MIN_SESSIONS_FOR_AVG) continue
-    const avg = times.reduce((a, b) => a + b, 0) / times.length
-    results.push({ user_id: userId, stat_value: Math.round(avg * 100) / 100 })
-  }
-
-  results.sort((a, b) => a.stat_value - b.stat_value)
-  return results
-}
 
 async function computeMostSolves(
   friendIds?: string[]
@@ -205,12 +171,9 @@ async function computeMostPracticeTime(
 
 async function computeRanking(
   category: LeaderboardCategory,
-  event: string,
   friendIds?: string[]
 ): Promise<RawResult[]> {
   switch (category) {
-    case "fastest_avg":
-      return computeFastestAvg(event, friendIds)
     case "most_solves":
       return computeMostSolves(friendIds)
     case "longest_streak":
@@ -229,7 +192,6 @@ async function computeRanking(
  */
 export async function getLeaderboard(
   category: LeaderboardCategory,
-  event?: string,
   friendsOnly?: boolean,
   userId?: string,
   offset: number = 0,
@@ -240,7 +202,7 @@ export async function getLeaderboard(
     friendIds = await getFriendUserIds(userId)
   }
 
-  const results = await computeRanking(category, event ?? "333", friendIds)
+  const results = await computeRanking(category, friendIds)
   const sliced = results.slice(offset, offset + limit)
   const entries = await enrichWithProfiles(sliced, offset)
 
@@ -253,17 +215,15 @@ export async function getLeaderboard(
 export async function getAllLeaderboards(): Promise<
   Record<string, LeaderboardPage>
 > {
-  const [mostSolves, fastestAvg, longestStreak, mostPracticeTime] =
+  const [mostSolves, longestStreak, mostPracticeTime] =
     await Promise.all([
       getLeaderboard("most_solves"),
-      getLeaderboard("fastest_avg", "333"),
       getLeaderboard("longest_streak"),
       getLeaderboard("most_practice_time"),
     ])
 
   return {
     most_solves: mostSolves,
-    "fastest_avg:333": fastestAvg,
     longest_streak: longestStreak,
     most_practice_time: mostPracticeTime,
   }
@@ -276,7 +236,6 @@ export async function getAllLeaderboards(): Promise<
 export async function getUserLeaderboardPosition(
   category: LeaderboardCategory,
   userId: string,
-  event?: string,
   friendsOnly?: boolean
 ): Promise<{
   entries: LeaderboardEntry[]
@@ -288,7 +247,7 @@ export async function getUserLeaderboardPosition(
     friendIds = await getFriendUserIds(userId)
   }
 
-  const results = await computeRanking(category, event ?? "333", friendIds)
+  const results = await computeRanking(category, friendIds)
   const userIndex = results.findIndex((r) => r.user_id === userId)
   if (userIndex === -1) return null
 

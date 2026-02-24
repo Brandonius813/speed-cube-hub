@@ -31,8 +31,6 @@ export function formatStatValue(
   category: LeaderboardCategory
 ): string {
   switch (category) {
-    case "fastest_avg":
-      return formatTime(value)
     case "most_solves":
       return value.toLocaleString()
     case "longest_streak":
@@ -71,7 +69,6 @@ export function getRankBg(rank: number): string {
 
 function getColumnHeader(category: LeaderboardCategory): string {
   switch (category) {
-    case "fastest_avg": return "Avg Time"
     case "most_solves": return "Total Solves"
     case "longest_streak": return "Streak"
     case "most_practice_time": return "Practice Time"
