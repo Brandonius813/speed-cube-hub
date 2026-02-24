@@ -14,6 +14,7 @@ import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { WcaLink } from "@/components/profile/wca-link"
+import { AllroundingResults } from "@/components/profile/allrounding-results"
 import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { getWcaResults } from "@/lib/actions/wca"
@@ -29,12 +30,9 @@ const WCA_ERROR_MESSAGES: Record<string, string> = {
   unknown: "Something went wrong. Please try again.",
 }
 
-type SorKinchStats = {
-  sorRank: number | null
-  sorTotal: number | null
-  kinchScore: number | null
-  kinchRank: number | null
-} | null
+import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
+
+type SorKinchStats = UserSorKinchStats | null
 
 export function ProfileContent({
   profile,
@@ -147,6 +145,7 @@ export function ProfileContent({
           customEventOrder={profile.wca_event_order}
         />
       )}
+      {sorKinchStats && <AllroundingResults stats={sorKinchStats} />}
       <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
       <PBProgressChart sessions={sessions} />
       <YtdStats sessions={sessions} />

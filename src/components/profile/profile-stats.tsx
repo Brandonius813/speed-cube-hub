@@ -4,12 +4,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
 import { formatDuration } from "@/lib/utils"
 
-type SorKinchStats = {
-  sorRank: number | null
-  sorTotal: number | null
-  kinchScore: number | null
-  kinchRank: number | null
-} | null
+import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
+
+type SorKinchStats = UserSorKinchStats | null
 
 export function ProfileStats({
   sessions,
@@ -37,18 +34,18 @@ export function ProfileStats({
   ]
 
   // Add SOR rank if available
-  if (sorKinchStats?.sorRank != null) {
+  if (sorKinchStats?.sorSingleRank != null) {
     stats.push({
       label: "SOR Rank",
-      value: `#${sorKinchStats.sorRank.toLocaleString()}`,
+      value: `#${sorKinchStats.sorSingleRank.toLocaleString()}`,
     })
   }
 
   // Add Kinch score if available
-  if (sorKinchStats?.kinchScore != null) {
+  if (sorKinchStats?.kinchSingleScore != null) {
     stats.push({
       label: "Kinch Score",
-      value: sorKinchStats.kinchScore.toFixed(2),
+      value: sorKinchStats.kinchSingleScore.toFixed(2),
     })
   }
 
