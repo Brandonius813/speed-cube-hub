@@ -14,10 +14,22 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Box, Plus, Pencil, Trash2 } from "lucide-react"
+import {
+  Box,
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react"
 import { updateProfileCubes } from "@/lib/actions/profiles"
 import type { ProfileCube } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
+import { CubingIcon } from "@/components/shared/cubing-icon"
+
+const PREVIEW_COUNT = 3
 
 export function MainCubes({
   cubes: initial,
@@ -35,6 +47,10 @@ export function MainCubes({
   const [event, setEvent] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
+
+  const visibleItems = expanded ? items : items.slice(0, PREVIEW_COUNT)
+  const hiddenCount = items.length - PREVIEW_COUNT
 
   function openAdd() {
     setEditIndex(null)
@@ -105,6 +121,25 @@ export function MainCubes({
     setSaving(false)
   }
 
+  async function handleMove(index: number, direction: "up" | "down") {
+    const swapIndex = direction === "up" ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= items.length) return
+
+    const updated = [...items]
+    ;[updated[index], updated[swapIndex]] = [updated[swapIndex], updated[index]]
+
+    // Optimistically update UI
+    setItems(updated)
+
+    const result = await updateProfileCubes(updated)
+    if (!result.success) {
+      // Revert on failure
+      setItems(items)
+    } else {
+      router.refresh()
+    }
+  }
+
   function getEventLabel(eventId: string): string {
     return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
   }
@@ -140,47 +175,86 @@ export function MainCubes({
               No cubes added yet. Add your main puzzles!
             </p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((cube, i) => (
-                <div
-                  key={i}
-                  className="group flex items-start gap-3 rounded-lg border border-border/50 bg-secondary/50 p-4"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-mono text-sm font-bold text-primary">
-                    {getEventLabel(cube.event).replace("x", "")}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {visibleItems.map((cube, i) => (
+                  <div
+                    key={i}
+                    className="group flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/50 p-4"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <CubingIcon
+                        event={cube.event}
+                        className="text-lg text-primary"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-foreground">
                         {cube.name}
                       </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {cube.setup || getEventLabel(cube.event)}
+                      </p>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {cube.setup || getEventLabel(cube.event)}
-                    </p>
+                    {isOwner && (
+                      <div className="flex shrink-0 gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                        <button
+                          onClick={() => handleMove(i, "up")}
+                          disabled={i === 0 || saving}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+                          aria-label="Move cube up"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleMove(i, "down")}
+                          disabled={i === items.length - 1 || saving}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+                          aria-label="Move cube down"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => openEdit(i)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                          aria-label="Edit cube"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(i)}
+                          disabled={saving}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                          aria-label="Delete cube"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {isOwner && (
-                    <div className="flex shrink-0 gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                      <button
-                        onClick={() => openEdit(i)}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-                        aria-label="Edit cube"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(i)}
-                        disabled={saving}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
-                        aria-label="Delete cube"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                ))}
+              </div>
+
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded(!expanded)}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                >
+                  {expanded ? (
+                    <>
+                      Show less
+                      <ChevronUp className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Show all {items.length} cubes
+                      <ChevronDown className="h-4 w-4" />
+                    </>
                   )}
-                </div>
-              ))}
-            </div>
+                </button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
