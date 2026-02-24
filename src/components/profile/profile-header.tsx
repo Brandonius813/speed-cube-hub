@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { MapPin, Pencil, Star } from "lucide-react"
+import { Eye, MapPin, Pencil, Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
+import Link from "next/link"
 import type { Profile } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
 
@@ -82,15 +83,28 @@ export function ProfileHeader({
               )}
             </div>
             {isOwner ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditOpen(true)}
-                className="min-h-9 gap-1.5 border-border/50"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Profile
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                  className="min-h-9 gap-1.5 border-border/50"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit Profile
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="min-h-9 gap-1.5 border-border/50"
+                >
+                  <Link href={`/profile/${profile.handle}`}>
+                    <Eye className="h-3.5 w-3.5" />
+                    View Public
+                  </Link>
+                </Button>
+              </div>
             ) : (
               followButton
             )}
