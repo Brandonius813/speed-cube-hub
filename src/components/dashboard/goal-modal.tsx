@@ -42,13 +42,15 @@ export function GoalModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Sync form fields when editingGoal changes (e.g., switching from "Add" to "Edit")
+  // Sync form fields every time the modal opens (handles both Add and Edit correctly)
   useEffect(() => {
-    setEvent(editingGoal?.event ?? "333")
-    setTargetAvg(editingGoal ? String(editingGoal.target_avg) : "")
-    setTargetDate(editingGoal?.target_date ?? "")
-    setError(null)
-  }, [editingGoal])
+    if (open) {
+      setEvent(editingGoal?.event ?? "333")
+      setTargetAvg(editingGoal ? String(editingGoal.target_avg) : "")
+      setTargetDate(editingGoal?.target_date ?? "")
+      setError(null)
+    }
+  }, [editingGoal, open])
 
   async function handleSave() {
     setError(null)
