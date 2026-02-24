@@ -343,12 +343,16 @@ export async function uploadAvatar(
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
   const filePath = `${user.id}/avatar.${ext}`
 
+  // Convert File to Buffer for reliable server-side upload
+  const arrayBuffer = await file.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+
   // Use admin client to bypass storage RLS
   const admin = createAdminClient()
 
   const { error: uploadError } = await admin.storage
     .from("avatars")
-    .upload(filePath, file, { upsert: true })
+    .upload(filePath, buffer, { upsert: true, contentType: file.type })
 
   if (uploadError) {
     console.error("Avatar upload error:", uploadError)
