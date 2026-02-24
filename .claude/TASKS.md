@@ -178,12 +178,12 @@ Added `getUpcomingCompetitions()` to WCA actions (public API, cached 1hr). Built
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-F |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 2 server action files + 1 component + feed-item update |
 
-Create `likes` table (session_id + user_id, unique constraint). Build server actions: `likeSession()`, `unlikeSession()`, `getLikeCount()`, `hasUserLiked()`. Add a heart/kudos button to each feed item card with like count. Optimistic UI update on tap.
+Created `likes` table (`003_create_likes.sql`) with RLS policies. Built `likeSession()`, `unlikeSession()`, `getSessionLikeInfo()` server actions in `src/lib/actions/likes.ts`. Added `LikeButton` component (`src/components/feed/like-button.tsx`) with optimistic UI using `useOptimistic`. Updated `FeedItem` type with `like_count` and `has_liked`. Updated `getFeed()` to enrich items with like data.
 
 ---
 
@@ -243,12 +243,12 @@ Create `goals` table (user_id, event, target_avg, target_date, status). Build se
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-G |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action + 1 component + dashboard update |
 
-Build server action to query avg_time grouped by week/month for a given event. Create a Recharts line chart showing average solve time trending down over time. Add to dashboard below the existing charts. Event selector to switch between puzzles. This is the #1 motivational chart — watching your times drop.
+Added `PBProgressChart` component to dashboard below pie/bar charts. Step-line chart shows running PB progression (best single + best avg) over time for each event. Event selector dropdown, custom tooltip with formatted times, reversed Y-axis (lower = better). Uses full session history (unfiltered by date range). No additional server action needed — computed client-side from existing session data.
 
 ---
 

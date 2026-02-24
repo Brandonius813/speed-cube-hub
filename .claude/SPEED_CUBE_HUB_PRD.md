@@ -106,14 +106,14 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Updated navbar with Feed and Discover links
 
 ### Social Wave 2 — Engagement
-- [ ] Likes/Kudos on feed sessions (tap to like, like count, who liked it)
+- [x] Likes/Kudos on feed sessions (tap to like, like count, who liked it)
 - [ ] Comments on feed sessions (text replies on activity items)
 - [ ] Notifications system (new follower, like, comment, PB alerts)
 - [ ] Notifications page at /notifications with unread badge in navbar
 
 ### Social Wave 3 — Motivation & Retention
 - [ ] Goals (set targets like "sub-20 on 3x3 by June", track progress toward them)
-- [ ] PB History / Progress Charts (trend lines showing avg time improving over weeks/months)
+- [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [ ] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [ ] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join)
 - [ ] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
@@ -409,6 +409,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Social Wave 1: Discover page at /discover (search cubers by name/handle, browse all users)
 - [x] Social Wave 1: Updated navbar with Feed and Discover links
 - [x] Social Wave 1: Middleware updated (public profiles accessible to everyone, feed protected)
+- [x] Social Wave 2: Likes/Kudos on feed sessions (like button with optimistic UI, like count per session)
 
 ## Notes
 
