@@ -119,7 +119,7 @@ export function ProfileHeader({
             )}
           </div>
           {profile.bio && (
-            <p className="mt-3 max-w-lg text-pretty text-sm leading-relaxed text-foreground/80">
+            <p className="mt-3 max-w-lg whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground/80">
               {profile.bio}
             </p>
           )}
