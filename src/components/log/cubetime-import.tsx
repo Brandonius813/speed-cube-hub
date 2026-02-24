@@ -53,8 +53,8 @@ export function CubeTimeImport() {
     setImportError(null);
 
     const name = file.name.toLowerCase();
-    if (!name.endsWith(".csv") && !name.endsWith(".txt")) {
-      setFileError("Please select a CSV or TXT file.");
+    if (!name.endsWith(".csv")) {
+      setFileError("Please select a CSV file.");
       return;
     }
 
@@ -218,7 +218,7 @@ export function CubeTimeImport() {
                   Drop your CubeTime export here or click to browse
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Accepts .csv and .txt files, max 5MB
+                  Accepts .csv files, max 5MB
                 </p>
               </div>
             </button>
@@ -226,7 +226,7 @@ export function CubeTimeImport() {
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,.txt"
+              accept=".csv"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileSelected(file);
