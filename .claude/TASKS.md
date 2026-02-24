@@ -217,12 +217,12 @@ Created `notifications` table (migration `006_create_notifications.sql`) with RL
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | T23 ✅ |
 | **Estimated scope** | 1 page + 1 content component + navbar update |
 
-Build `/notifications` page showing a list of notifications (icon + "Brandon liked your session" + timestamp). Mark as read on view. Add unread count badge (red dot or number) to the navbar bell icon. Mobile-friendly card layout.
+Built `/notifications` page with server component (fetches notifications) + `NotificationsContent` client component. Notification cards show actor avatar, type-specific icon + message (like/comment/follow/pb/badge), relative timestamps via date-fns. Unread notifications highlighted with primary left border + subtle background tint. "Mark all as read" button with optimistic UI. Clicking a notification marks it as read and links to relevant page. Empty state with bell icon. Added bell icon to navbar with red unread count badge (shows number, caps at 99+). Updated middleware to protect `/notifications` route.
 
 ---
 
@@ -283,9 +283,12 @@ Create `challenges` and `challenge_participants` tables. Build server actions: `
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migrations (2 tables) + 2 server action files + 3 components + profile update |
+
+Built `badges` and `user_badges` tables with RLS (migration `008_create_badges.sql`). Seeded 17 badge definitions across 3 categories. Server actions: `getBadgeDefinitions()`, `getUserBadges()`, `claimCompetitionBadge()`, `claimSponsorBadge()`, `removeBadge()`, `approveBadge()`, `checkAndAwardMilestones()` in `src/lib/actions/badges.ts`. Built `BadgesSection` component (grouped display by category with tier-based styling) and `ClaimBadgeModal` (competition + sponsor claim forms). Wired into both profile pages. Auto-award milestones triggered after session creation. **Note:** SQL must be run in Supabase dashboard.
 
 A dedicated badges section on every profile. Three badge categories:
 
