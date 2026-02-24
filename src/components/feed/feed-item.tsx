@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Clock, Layers, Timer } from "lucide-react"
+import { Clock, Layers, Timer, Zap } from "lucide-react"
 import type { FeedItem as FeedItemType } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
 import { formatDuration } from "@/lib/utils"
@@ -112,7 +112,7 @@ export function FeedItem({ item }: { item: FeedItemType }) {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             <div className="flex items-center gap-1.5 text-sm">
               <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="font-mono font-medium text-foreground">
@@ -129,6 +129,18 @@ export function FeedItem({ item }: { item: FeedItemType }) {
                 {formatDuration(item.duration_minutes)}
               </span>
             </div>
+
+            {item.best_time !== null && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <Zap className="h-3.5 w-3.5 shrink-0 text-accent" />
+                <span className="font-mono font-medium text-accent">
+                  {formatAvg(item.best_time)}
+                </span>
+                <span className="hidden text-muted-foreground sm:inline">
+                  best
+                </span>
+              </div>
+            )}
 
             {item.avg_time !== null && (
               <div className="flex items-center gap-1.5 text-sm">

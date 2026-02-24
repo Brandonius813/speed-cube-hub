@@ -75,6 +75,7 @@ export function CsvImport() {
       num_solves: r.parsed.num_solves!,
       duration_minutes: r.parsed.duration_minutes!,
       avg_time: r.parsed.avg_time,
+      best_time: r.parsed.best_time,
       notes: r.parsed.notes,
     }));
 

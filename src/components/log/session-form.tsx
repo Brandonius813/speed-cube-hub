@@ -57,6 +57,7 @@ export function SessionForm() {
     const numSolves = parseInt(formData.get("solves") as string, 10);
     const durationMinutes = parseDuration(formData.get("time") as string);
     const avgTimeStr = (formData.get("avg") as string)?.trim();
+    const bestTimeStr = (formData.get("best") as string)?.trim();
     const title = (formData.get("title") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
 
@@ -81,6 +82,7 @@ export function SessionForm() {
       num_solves: numSolves,
       duration_minutes: durationMinutes,
       avg_time: avgTimeStr ? parseFloat(avgTimeStr) : null,
+      best_time: bestTimeStr ? parseFloat(bestTimeStr) : null,
       title: title || null,
       notes: notes || null,
     });
@@ -212,6 +214,22 @@ export function SessionForm() {
                 name="avg"
                 type="text"
                 placeholder="12.34"
+                className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="best" className="text-foreground">
+                Best Single
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                id="best"
+                name="best"
+                type="text"
+                placeholder="10.52"
                 className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
               />
             </div>

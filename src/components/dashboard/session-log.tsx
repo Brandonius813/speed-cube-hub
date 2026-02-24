@@ -67,11 +67,21 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                   <span>{formatDuration(session.duration_minutes)}</span>
                 </div>
               </div>
-              <div className="shrink-0 text-right">
-                <div className="font-mono text-sm font-semibold text-foreground">
-                  {formatAvg(session.avg_time)}
+              <div className="flex shrink-0 gap-3 text-right">
+                {session.best_time !== null && (
+                  <div>
+                    <div className="font-mono text-sm font-semibold text-accent">
+                      {formatAvg(session.best_time)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">best</div>
+                  </div>
+                )}
+                <div>
+                  <div className="font-mono text-sm font-semibold text-foreground">
+                    {formatAvg(session.avg_time)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">avg</div>
                 </div>
-                <div className="text-[10px] text-muted-foreground">avg</div>
               </div>
             </div>
           ))}
@@ -98,7 +108,10 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                   Duration
                 </th>
                 <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                  Avg Time
+                  Best
+                </th>
+                <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
+                  Avg
                 </th>
               </tr>
             </thead>
@@ -129,6 +142,9 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                   </td>
                   <td className="py-3 text-right font-mono text-sm text-foreground">
                     {formatDuration(session.duration_minutes)}
+                  </td>
+                  <td className="py-3 text-right font-mono text-sm text-accent">
+                    {formatAvg(session.best_time)}
                   </td>
                   <td className="py-3 text-right font-mono text-sm text-foreground">
                     {formatAvg(session.avg_time)}

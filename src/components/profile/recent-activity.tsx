@@ -11,14 +11,14 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
-function formatAvg(avg: number | null): string {
-  if (avg === null) return ""
-  if (avg >= 60) {
-    const min = Math.floor(avg / 60)
-    const sec = (avg % 60).toFixed(2)
-    return `Avg: ${min}:${sec.padStart(5, "0")}`
+function formatTime(value: number | null, label: string): string {
+  if (value === null) return ""
+  if (value >= 60) {
+    const min = Math.floor(value / 60)
+    const sec = (value % 60).toFixed(2)
+    return `${label}: ${min}:${sec.padStart(5, "0")}`
   }
-  return `Avg: ${avg.toFixed(2)}s`
+  return `${label}: ${value.toFixed(2)}s`
 }
 
 export function RecentActivity({ sessions }: { sessions: Session[] }) {
@@ -51,8 +51,10 @@ export function RecentActivity({ sessions }: { sessions: Session[] }) {
       <CardContent>
         <div className="flex flex-col gap-4">
           {sessions.map((session) => {
-            const avgStr = formatAvg(session.avg_time)
-            const description = `${session.num_solves} solves in ${formatDuration(session.duration_minutes)}${avgStr ? `. ${avgStr}` : ""}`
+            const bestStr = formatTime(session.best_time, "Best")
+            const avgStr = formatTime(session.avg_time, "Avg")
+            const timeParts = [bestStr, avgStr].filter(Boolean).join(", ")
+            const description = `${session.num_solves} solves in ${formatDuration(session.duration_minutes)}${timeParts ? `. ${timeParts}` : ""}`
 
             return (
               <div

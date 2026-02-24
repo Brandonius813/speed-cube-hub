@@ -24,6 +24,11 @@ const HEADER_MAP: Record<string, string> = {
   average: "avg_time",
   "result average": "avg_time",
   avg: "avg_time",
+  best_time: "best_time",
+  "best time": "best_time",
+  best: "best_time",
+  "best single": "best_time",
+  single: "best_time",
   notes: "notes",
 };
 

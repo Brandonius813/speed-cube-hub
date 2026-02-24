@@ -5,6 +5,7 @@ import { ProfileStats } from "@/components/profile/profile-stats"
 import { MainCubes } from "@/components/profile/main-cubes"
 import { Accomplishments } from "@/components/profile/accomplishments"
 import { PBGrid } from "@/components/profile/pb-grid"
+import { PBProgressChart } from "@/components/profile/pb-progress-chart"
 import { YtdStats } from "@/components/profile/ytd-stats"
 import { LinksSponsors } from "@/components/profile/links-sponsors"
 import { RecentActivity } from "@/components/profile/recent-activity"
@@ -59,6 +60,7 @@ export function PublicProfileContent({
         />
       )}
       <PBGrid sessions={sessions} />
+      <PBProgressChart sessions={sessions} />
       <YtdStats sessions={sessions} />
       <MainCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
       <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner={isOwner} />

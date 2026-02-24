@@ -20,25 +20,36 @@ function formatTime(seconds: number): string {
 }
 
 export function PBGrid({ sessions }: { sessions: Session[] }) {
-  // Compute best averages per event from session data
-  const eventBests: Record<string, { bestAvg: number }> = {}
+  // Compute best singles and averages per event from session data
+  const eventBests: Record<string, { bestSingle: number | null; bestAvg: number | null }> = {}
 
   for (const session of sessions) {
-    if (session.avg_time === null) continue
-    const current = eventBests[session.event]
-    if (!current || session.avg_time < current.bestAvg) {
-      eventBests[session.event] = { bestAvg: session.avg_time }
+    const current = eventBests[session.event] ?? { bestSingle: null, bestAvg: null }
+
+    if (session.best_time !== null) {
+      if (current.bestSingle === null || session.best_time < current.bestSingle) {
+        current.bestSingle = session.best_time
+      }
     }
+
+    if (session.avg_time !== null) {
+      if (current.bestAvg === null || session.avg_time < current.bestAvg) {
+        current.bestAvg = session.avg_time
+      }
+    }
+
+    eventBests[session.event] = current
   }
 
   const pbs = Object.entries(eventBests)
+    .filter(([, data]) => data.bestSingle !== null || data.bestAvg !== null)
     .map(([event, data]) => ({
       event,
       label: getEventLabel(event),
+      bestSingle: data.bestSingle,
       bestAvg: data.bestAvg,
     }))
     .sort((a, b) => {
-      // Sort by event order in WCA_EVENTS
       const aIdx = WCA_EVENTS.findIndex((e) => e.id === a.event)
       const bIdx = WCA_EVENTS.findIndex((e) => e.id === b.event)
       return aIdx - bIdx
@@ -55,7 +66,7 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Log sessions with averages to see your PBs here.
+            Log sessions with times to see your PBs here.
           </p>
         </CardContent>
       </Card>
@@ -81,11 +92,23 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
                 <CubingIcon event={pb.event} className="shrink-0 text-base text-muted-foreground" />
                 <span className="truncate font-medium text-foreground">{pb.label}</span>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Best Avg</p>
-                <p className="font-mono text-sm font-semibold text-foreground">
-                  {formatTime(pb.bestAvg)}
-                </p>
+              <div className="flex gap-4 text-right">
+                {pb.bestSingle !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Single</p>
+                    <p className="font-mono text-sm font-semibold text-accent">
+                      {formatTime(pb.bestSingle)}
+                    </p>
+                  </div>
+                )}
+                {pb.bestAvg !== null && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Avg</p>
+                    <p className="font-mono text-sm font-semibold text-foreground">
+                      {formatTime(pb.bestAvg)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ))}

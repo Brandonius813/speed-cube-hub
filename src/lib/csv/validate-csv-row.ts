@@ -12,6 +12,7 @@ export type ParsedRow = {
     num_solves: number | null;
     duration_minutes: number | null;
     avg_time: number | null;
+    best_time: number | null;
     notes: string | null;
   };
   errors: string[];
@@ -89,6 +90,16 @@ export function validateCsvRow(
     }
   }
 
+  // Best time validation (optional)
+  const bestTimeRaw = (raw.best_time ?? "").trim();
+  let bestTime: number | null = null;
+  if (bestTimeRaw) {
+    bestTime = parseTime(bestTimeRaw);
+    if (bestTime === null) {
+      errors.push(`Invalid best time "${bestTimeRaw}"`);
+    }
+  }
+
   // Notes (optional, no validation needed)
   const notes = (raw.notes ?? "").trim() || null;
 
@@ -103,6 +114,7 @@ export function validateCsvRow(
       num_solves: numSolves,
       duration_minutes: durationMinutes,
       avg_time: avgTime,
+      best_time: bestTime,
       notes,
     },
     errors,

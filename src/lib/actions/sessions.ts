@@ -28,6 +28,7 @@ export async function createSession(data: {
   num_solves: number;
   duration_minutes: number;
   avg_time: number | null;
+  best_time: number | null;
   title: string | null;
   notes: string | null;
 }): Promise<{ error?: string }> {
@@ -49,6 +50,7 @@ export async function createSession(data: {
     num_solves: data.num_solves,
     duration_minutes: data.duration_minutes,
     avg_time: data.avg_time,
+    best_time: data.best_time,
     title: data.title || null,
     notes: data.notes || null,
   });
@@ -113,6 +115,7 @@ export async function createSessionsBulk(
     num_solves: number;
     duration_minutes: number;
     avg_time: number | null;
+    best_time: number | null;
     notes: string | null;
   }>
 ): Promise<{ inserted: number; error?: string }> {
@@ -142,6 +145,7 @@ export async function createSessionsBulk(
     num_solves: s.num_solves,
     duration_minutes: s.duration_minutes,
     avg_time: s.avg_time,
+    best_time: s.best_time,
     notes: s.notes || null,
   }));
 

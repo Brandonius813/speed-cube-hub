@@ -41,6 +41,7 @@ export type Session = {
   num_solves: number;
   duration_minutes: number;
   avg_time: number | null;
+  best_time: number | null;
   title: string | null;
   notes: string | null;
   created_at: string;
