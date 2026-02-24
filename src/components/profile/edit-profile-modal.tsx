@@ -41,6 +41,8 @@ export function EditProfileModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [bio, setBio] = useState(profile.bio ?? "")
+  const [location, setLocation] = useState(profile.location ?? "")
+  const [sponsor, setSponsor] = useState(profile.sponsor ?? "")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
@@ -98,6 +100,8 @@ export function EditProfileModal({
     const result = await updateProfile({
       display_name: displayName,
       bio: bio || null,
+      location: location || null,
+      sponsor: sponsor || null,
       ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
     })
 
@@ -194,6 +198,36 @@ export function EditProfileModal({
               className="min-h-[80px] resize-none"
               maxLength={500}
               rows={3}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-location">
+              Location{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="edit-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g., San Diego, CA"
+              className="min-h-11"
+              maxLength={100}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-sponsor">
+              Sponsor{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="edit-sponsor"
+              value={sponsor}
+              onChange={(e) => setSponsor(e.target.value)}
+              placeholder="e.g., GAN, MoYu, SpeedCubeShop"
+              className="min-h-11"
+              maxLength={100}
             />
           </div>
 

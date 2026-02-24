@@ -7,10 +7,12 @@ import { ProfileStats } from "@/components/profile/profile-stats"
 import { MainCubes } from "@/components/profile/main-cubes"
 import { Accomplishments } from "@/components/profile/accomplishments"
 import { PBGrid } from "@/components/profile/pb-grid"
+import { YtdStats } from "@/components/profile/ytd-stats"
 import { LinksSponsors } from "@/components/profile/links-sponsors"
 import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaLink } from "@/components/profile/wca-link"
+import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import type { Profile, Session } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 
@@ -97,10 +99,12 @@ export function ProfileContent({
           competitionCount={wcaData.competition_count}
         />
       )}
+      <PBGrid sessions={sessions} />
+      <YtdStats sessions={sessions} />
       <MainCubes cubes={profile.cubes ?? []} isOwner />
       <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner />
-      <PBGrid sessions={sessions} />
       <LinksSponsors links={profile.links} isOwner />
+      <PracticeHeatmap sessions={sessions} />
       <RecentActivity sessions={sessions.slice(0, 10)} />
     </div>
   )

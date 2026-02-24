@@ -22,6 +22,8 @@ export type Profile = {
   bio: string | null;
   avatar_url: string | null;
   wca_id: string | null;
+  location: string | null;
+  sponsor: string | null;
   events: string[];
   cubes: ProfileCube[];
   links: ProfileLink[];

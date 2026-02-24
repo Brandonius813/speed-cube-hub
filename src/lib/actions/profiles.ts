@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink, Session } from "@/lib/types"
+import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink } from "@/lib/types"
 
 export async function getProfile(): Promise<{
   profile: Profile | null
@@ -84,6 +84,8 @@ export async function updateProfile(fields: {
   display_name?: string
   bio?: string | null
   avatar_url?: string | null
+  location?: string | null
+  sponsor?: string | null
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -111,6 +113,20 @@ export async function updateProfile(fields: {
   if (fields.bio !== undefined && fields.bio !== null) {
     if (fields.bio.length > 500) {
       return { success: false, error: "Bio must be under 500 characters." }
+    }
+  }
+
+  // Validate location if provided
+  if (fields.location !== undefined && fields.location !== null) {
+    if (fields.location.length > 100) {
+      return { success: false, error: "Location must be under 100 characters." }
+    }
+  }
+
+  // Validate sponsor if provided
+  if (fields.sponsor !== undefined && fields.sponsor !== null) {
+    if (fields.sponsor.length > 100) {
+      return { success: false, error: "Sponsor must be under 100 characters." }
     }
   }
 
@@ -359,27 +375,3 @@ export async function updateProfileCubes(
   return { success: true }
 }
 
-export async function getRecentActivity(): Promise<Session[]> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return []
-
-  const { data, error } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("session_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(10)
-
-  if (error) {
-    console.error("Error fetching recent activity:", error)
-    return []
-  }
-
-  return data as Session[]
-}

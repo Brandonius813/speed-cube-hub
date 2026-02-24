@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Pencil } from "lucide-react"
+import { MapPin, Pencil, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import type { Profile } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
@@ -50,9 +51,23 @@ export function ProfileHeader({
         <div className="flex-1 text-center sm:text-left">
           <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {profile.display_name}
-              </h1>
+              <div className="flex flex-col items-center gap-1.5 sm:items-start">
+                <h1 className="text-2xl font-bold text-foreground">
+                  {profile.display_name}
+                </h1>
+                {profile.sponsor && (
+                  <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
+                    <Star className="h-3 w-3" />
+                    {profile.sponsor}
+                  </Badge>
+                )}
+                {profile.location && (
+                  <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {profile.location}
+                  </p>
+                )}
+              </div>
               {(followerCount !== undefined || followingCount !== undefined) && (
                 <div className="mt-1 flex items-center justify-center gap-4 text-sm text-muted-foreground sm:justify-start">
                   <span>
@@ -81,7 +96,7 @@ export function ProfileHeader({
             )}
           </div>
           {profile.bio && (
-            <p className="mt-2 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-lg text-pretty text-sm leading-relaxed text-foreground/80">
               {profile.bio}
             </p>
           )}
