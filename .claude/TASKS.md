@@ -170,23 +170,197 @@ Added `getUpcomingCompetitions()` to WCA actions (public API, cached 1hr). Built
 
 ---
 
+---
+
+## Phase 5 — Social Wave 2: Engagement
+
+### T21: Likes/Kudos on Feed Sessions
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migration + 2 server action files + 1 component + feed-item update |
+
+Create `likes` table (session_id + user_id, unique constraint). Build server actions: `likeSession()`, `unlikeSession()`, `getLikeCount()`, `hasUserLiked()`. Add a heart/kudos button to each feed item card with like count. Optimistic UI update on tap.
+
+---
+
+### T22: Comments on Feed Sessions
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migration + 2 server action files + 2 components + feed-item update |
+
+Create `comments` table (session_id + user_id + content). Build server actions: `addComment()`, `getComments()`, `deleteComment()`. Add comment count to feed items, expandable comment section below each session card. Comment input with submit button.
+
+---
+
+### T23: Notifications — Backend
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T21 ✅, T22 ✅ |
+| **Estimated scope** | SQL migration + 1 server action file |
+
+Create `notifications` table (user_id, type, actor_id, reference_id, read). Build server actions: `createNotification()`, `getNotifications()`, `markAsRead()`, `markAllAsRead()`, `getUnreadCount()`. Wire notification creation into like, comment, and follow actions (when someone likes your session, you get a notification).
+
+---
+
+### T24: Notifications — Page + Navbar Badge
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T23 ✅ |
+| **Estimated scope** | 1 page + 1 content component + navbar update |
+
+Build `/notifications` page showing a list of notifications (icon + "Brandon liked your session" + timestamp). Mark as read on view. Add unread count badge (red dot or number) to the navbar bell icon. Mobile-friendly card layout.
+
+---
+
+## Phase 6 — Social Wave 3: Motivation & Retention
+
+### T25: Goals System
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migration + 1 server action file + 2 components + dashboard update |
+
+Create `goals` table (user_id, event, target_avg, target_date, status). Build server actions: `createGoal()`, `getGoals()`, `updateGoalStatus()`. Add "Goals" section to dashboard — set a target (e.g., "sub-20 on 3x3 by June 2026"), see progress bar based on recent avg times vs. target. Auto-mark as achieved when target is hit.
+
+---
+
+### T26: PB History / Progress Charts
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action + 1 component + dashboard update |
+
+Build server action to query avg_time grouped by week/month for a given event. Create a Recharts line chart showing average solve time trending down over time. Add to dashboard below the existing charts. Event selector to switch between puzzles. This is the #1 motivational chart — watching your times drop.
+
+---
+
+### T27: Enhanced Streaks
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 component + profile update + dashboard update |
+
+Make streaks more prominent and gamified. Show current streak + longest streak on profile (visible to visitors). Add streak milestones (7 days, 30 days, 100 days) with visual badges. Streak fire icon animation when active. Update dashboard streak display to be more prominent.
+
+---
+
+### T28: Weekly/Monthly Challenges
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 1 page + 2 components |
+
+Create `challenges` and `challenge_participants` tables. Build server actions: `getChallenges()`, `joinChallenge()`, `getChallengeProgress()`. Build `/challenges` page listing active challenges (e.g., "Log 100 solves this week"). Each shows a progress bar. Users tap to join. Progress auto-calculated from their sessions during the challenge period. Admin can create challenges.
+
+---
+
+### T29: Milestones & Badges
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 1 component + profile update |
+
+Create `badges` and `user_badges` tables. Define initial badge set (e.g., "First 100 Solves", "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "Practiced All 17 Events", "First Competition Result"). Build auto-award logic that runs after session logging. Display earned badges on profile page as a grid of icons.
+
+---
+
+## Phase 7 — Social Wave 4: Community & Discovery
+
+### T30: Public Leaderboards
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action file + 1 page + 2 components |
+
+Build `/leaderboards` page with category tabs: Fastest Average (by event), Most Solves (all-time), Longest Streak, Most Practice Time. Each leaderboard shows rank, user avatar/name, stat value. Tap a user to visit their profile. Optional "Friends Only" toggle to filter to people you follow.
+
+---
+
+### T31: Clubs / Groups
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 2 pages + 3 components |
+
+Create `clubs` and `club_members` tables. Build server actions: `createClub()`, `getClubs()`, `joinClub()`, `leaveClub()`, `getClubMembers()`, `getClubFeed()`. Build `/clubs` page (browse/search clubs) and `/clubs/[id]` page (club detail with member list + shared activity feed from members). Owner/admin can edit club details.
+
+---
+
+### T32: Year in Review / Wrapped
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action + 1 page + 2 components |
+
+Build `/wrapped` page showing annual stats summary for the logged-in user. Sections: total solves, total practice hours, number of sessions, most-practiced event, biggest PB improvement, longest streak, events practiced, month-by-month breakdown. Fun visual design inspired by Spotify Wrapped. Shareable (ties into T33).
+
+---
+
+### T33: Share Cards
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 API route + 1 component + feed-item update |
+
+Generate shareable images (OG-image style) when a user hits a PB or completes a notable session. Use `@vercel/og` or HTML canvas to render a branded card with the user's name, event, time, and Speed Cube Hub branding. "Share" button on feed items and profile PBs that copies the image or opens share sheet on mobile.
+
+---
+
 ## Dependency Graph
 
 ```
-T10 (Login Fix)     — no deps
-T11 (WCA Fix)       — no deps
-T12 (Navbar/Footer) — no deps
-T13 (Dynamic Stats) — no deps
-T14 (Heatmap)       — no deps
-T15 (DB Schema)     — no deps
-T16 (Edit Profile)  — T15
-T17 (Accomplishments) — T15, T16
-T18 (Cubes)         — T15, T16
-T19 (Links)         — T15, T16
-T20 (Upcoming Comps) — T15
+Phases 1-4 (T10-T20) — ALL ✅ Done
+
+Phase 5 — Social Wave 2: Engagement
+T21 (Likes)          — no deps
+T22 (Comments)       — no deps
+T23 (Notifications)  — T21, T22
+T24 (Notif Page)     — T23
+
+Phase 6 — Social Wave 3: Motivation & Retention
+T25 (Goals)          — no deps
+T26 (PB Charts)      — no deps
+T27 (Streaks)        — no deps
+T28 (Challenges)     — no deps
+T29 (Badges)         — no deps
+
+Phase 7 — Social Wave 4: Community & Discovery
+T30 (Leaderboards)   — no deps
+T31 (Clubs)          — no deps
+T32 (Wrapped)        — no deps
+T33 (Share Cards)    — no deps
 ```
 
 **Max parallelism:**
-- Wave 1: T10, T11, T12, T13, T14, T15 (6 parallel)
-- Wave 2: T16, T20 (after T15)
-- Wave 3: T17, T18, T19 (after T16)
+- Phase 5 Wave A: T21, T22 (2 parallel)
+- Phase 5 Wave B: T23 (after T21 + T22) → T24 (after T23)
+- Phase 6: T25, T26, T27, T28, T29 (all 5 parallel — no deps on each other)
+- Phase 7: T30, T31, T32, T33 (all 4 parallel — no deps on each other)

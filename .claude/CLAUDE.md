@@ -116,6 +116,12 @@ See `.env.local.example` for required variables:
 /log                 → Log a practice session (form) [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
+/notifications       → Notification inbox [protected] — planned (Wave 2)
+/leaderboards        → Public leaderboards [public] — planned (Wave 4)
+/challenges          → Community challenges [protected] — planned (Wave 3)
+/clubs               → Browse/manage clubs [protected] — planned (Wave 4)
+/clubs/[id]          → Individual club page [public] — planned (Wave 4)
+/wrapped             → Year in Review [protected] — planned (Wave 4)
 ```
 
 Routes will be added as features are built. Keep this section updated.

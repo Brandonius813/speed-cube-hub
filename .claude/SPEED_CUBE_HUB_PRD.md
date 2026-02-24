@@ -96,27 +96,42 @@ Each practice session captures (based on the proven model from brandontruecubing
 | **Other** | Megaminx, Pyraminx, Clock, Skewb, Square-1 |
 | **Fewest Moves** | FMC |
 
-## Future Roadmap (Not MVP — Do Not Build Yet)
+## Roadmap — "Strava for Cubing"
 
-### Social Feed (Wave 1 Complete)
-- [x] Auto-posted sessions in activity feed (sessions from followed users appear at /feed)
-- [ ] Manual posts for sharing updates, PBs, competition recaps
+### Social Wave 1 — Foundation (Complete)
+- [x] Auto-posted sessions in activity feed at /feed
 - [x] Follow/following system (follow/unfollow, follower counts on profiles)
-- [x] Public profiles at /profile/[handle] (viewable by anyone)
+- [x] Public profiles at /profile/[handle]
 - [x] Discover page at /discover (search and browse cubers)
-- [ ] Kudos/reactions on feed items (Wave 2)
-- [ ] Comments on feed items (Wave 2)
-- [ ] Leaderboards (Wave 3)
-- [ ] Achievements/badges (Wave 3)
+- [x] Updated navbar with Feed and Discover links
 
-### Coaching Platform
+### Social Wave 2 — Engagement
+- [ ] Likes/Kudos on feed sessions (tap to like, like count, who liked it)
+- [ ] Comments on feed sessions (text replies on activity items)
+- [ ] Notifications system (new follower, like, comment, PB alerts)
+- [ ] Notifications page at /notifications with unread badge in navbar
+
+### Social Wave 3 — Motivation & Retention
+- [ ] Goals (set targets like "sub-20 on 3x3 by June", track progress toward them)
+- [ ] PB History / Progress Charts (trend lines showing avg time improving over weeks/months)
+- [ ] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
+- [ ] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join)
+- [ ] Milestones & Badges (auto-awarded: "First 1,000 solves", "7-day streak", "Practiced all 17 events", displayed on profile)
+
+### Social Wave 4 — Community & Discovery
+- [ ] Public Leaderboards (fastest averages, most solves, longest streaks — global + friends-only views)
+- [ ] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
+- [ ] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
+- [ ] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X)
+
+### Coaching Platform (Future)
 - Coach role with student management
 - Assign homework (e.g., "do 100 solves of 3x3 this week" or "practice F2L for 30 min daily")
 - Review student practice sessions and stats
 - Coaching notes per student (stored after each session/call)
 - Potential integration with cubing.gg's existing coaching workflows
 
-### Built-In Timer (Longer-Term)
+### Built-In Timer (Future)
 - Competition simulation mode and normal mode
 - Cloud save with easy sync
 - Stats sync directly to the practice tracker
@@ -124,7 +139,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - Bluetooth timer integration (e.g., GAN timers, StackMat)
 - Trainers and drills (like csTimer's extras), easy to pull up
 
-### Algorithm Learning System (Longer-Term)
+### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events
 - Track which alg sets you know fully
@@ -135,9 +150,142 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ## Database Schema
 
-> Document each table here as features are built.
+### Existing Tables
 
-*(No tables created yet)*
+**profiles** — User profile data
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | FK to auth.users |
+| display_name | text | Required |
+| handle | text (unique) | URL-safe username |
+| bio | text | Optional |
+| avatar_url | text | Supabase Storage URL |
+| wca_id | text | WCA account ID (OAuth verified) |
+| events | text[] | WCA events the user practices |
+| cubes | jsonb | Array of {name, setup, event} |
+| links | jsonb | Array of {platform, url, label} |
+| accomplishments | jsonb | Array of {title, date} |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto (trigger) |
+
+**sessions** — Practice session logs
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | References profiles(id) |
+| session_date | date | When practice happened |
+| event | text | WCA event code |
+| practice_type | text | Solves, Drill Algs, etc. |
+| num_solves | integer | Solve count |
+| duration_minutes | integer | Session length |
+| avg_time | numeric | Average solve time (decimal seconds) |
+| notes | text | Optional |
+| created_at | timestamptz | Auto (used for feed ordering) |
+
+**follows** — Social follow relationships
+| Column | Type | Notes |
+|--------|------|-------|
+| follower_id | uuid (FK) | User doing the following |
+| following_id | uuid (FK) | User being followed |
+| created_at | timestamptz | Auto |
+| Unique constraint on (follower_id, following_id) |
+
+### Planned Tables (built as features are implemented)
+
+**likes** — Kudos on feed sessions (Wave 2)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| session_id | uuid (FK) | Session being liked |
+| user_id | uuid (FK) | User who liked |
+| created_at | timestamptz | Auto |
+| Unique constraint on (session_id, user_id) |
+
+**comments** — Comments on feed sessions (Wave 2)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| session_id | uuid (FK) | Session being commented on |
+| user_id | uuid (FK) | Commenter |
+| content | text | Comment text |
+| created_at | timestamptz | Auto |
+
+**notifications** — In-app notifications (Wave 2)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | Who receives the notification |
+| type | text | "like", "comment", "follow", "pb", "badge" |
+| actor_id | uuid (FK) | Who triggered it (nullable for system notifications) |
+| reference_id | uuid | ID of the related session/comment/etc. |
+| read | boolean | Default false |
+| created_at | timestamptz | Auto |
+
+**goals** — User-set practice goals (Wave 3)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | Goal owner |
+| event | text | WCA event code |
+| target_avg | numeric | Target average time in seconds |
+| target_date | date | Deadline |
+| status | text | "active", "achieved", "expired" |
+| created_at | timestamptz | Auto |
+
+**challenges** — Community challenges (Wave 3)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| title | text | e.g. "100 Solves This Week" |
+| description | text | Details |
+| type | text | "solves", "time", "streak", "events" |
+| target_value | integer | Number to reach |
+| start_date | date | When it starts |
+| end_date | date | When it ends |
+| created_at | timestamptz | Auto |
+
+**challenge_participants** — Who joined a challenge (Wave 3)
+| Column | Type | Notes |
+|--------|------|-------|
+| challenge_id | uuid (FK) | The challenge |
+| user_id | uuid (FK) | The participant |
+| progress | integer | Current count toward target |
+| joined_at | timestamptz | Auto |
+
+**badges** — Achievement definitions (Wave 3)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| name | text | e.g. "First 1,000 Solves" |
+| description | text | What it means |
+| icon | text | Icon identifier or emoji |
+| criteria_type | text | "solves", "streak", "events", "sessions" |
+| criteria_value | integer | Threshold to earn it |
+
+**user_badges** — Badges earned by users (Wave 3)
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid (FK) | Who earned it |
+| badge_id | uuid (FK) | Which badge |
+| earned_at | timestamptz | When earned |
+
+**clubs** — Cubing clubs/groups (Wave 4)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| name | text | Club name |
+| description | text | About the club |
+| avatar_url | text | Club image |
+| created_by | uuid (FK) | Club creator |
+| created_at | timestamptz | Auto |
+
+**club_members** — Club membership (Wave 4)
+| Column | Type | Notes |
+|--------|------|-------|
+| club_id | uuid (FK) | The club |
+| user_id | uuid (FK) | The member |
+| role | text | "owner", "admin", "member" |
+| joined_at | timestamptz | Auto |
 
 ## Routes
 
@@ -151,6 +299,12 @@ Each practice session captures (based on the proven model from brandontruecubing
 /log                 → Log a practice session (form) [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
+/notifications       → Notification inbox (likes, comments, follows, PBs) [protected] — Wave 2
+/leaderboards        → Public leaderboards (fastest averages, most solves, streaks) [public] — Wave 4
+/challenges          → Community challenges (join, track progress) [protected] — Wave 3
+/clubs               → Browse and manage clubs [protected] — Wave 4
+/clubs/[id]          → Individual club page with members and activity [public] — Wave 4
+/wrapped             → Year in Review / annual stats summary [protected] — Wave 4
 ```
 
 ## Design Source
