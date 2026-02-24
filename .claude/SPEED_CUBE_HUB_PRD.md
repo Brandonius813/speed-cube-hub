@@ -114,7 +114,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 ### Social Wave 3 — Motivation & Retention
 - [ ] Goals (set targets like "sub-20 on 3x3 by June", track progress toward them)
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
-- [ ] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
+- [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [ ] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join)
 - [ ] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
   - **Competition credentials** (admin-verified): World Record Holder, Continental Record Holder, National Record Holder, World Champion, Continental Champion, National Champion, World Finalist, National Finalist. Each badge is dated by year. Current record holders get a prominent gold/highlighted badge; former holders get a visually distinct muted version.

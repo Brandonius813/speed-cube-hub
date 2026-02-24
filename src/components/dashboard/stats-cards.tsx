@@ -11,6 +11,7 @@ export function StatsCards({
     sessionsThisWeek: number
     totalMinutes: number
     currentStreak: number
+    longestStreak: number
     weeklyMinutes: number
     weeklyChange: number
   }

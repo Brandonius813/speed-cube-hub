@@ -170,6 +170,7 @@ export async function getSessionStats() {
       sessionsThisWeek: 0,
       totalMinutes: 0,
       currentStreak: 0,
+      longestStreak: 0,
       weeklyMinutes: 0,
       weeklyChange: 0,
     };
@@ -186,6 +187,7 @@ export async function getSessionStats() {
       sessionsThisWeek: 0,
       totalMinutes: 0,
       currentStreak: 0,
+      longestStreak: 0,
       weeklyMinutes: 0,
       weeklyChange: 0,
     };
@@ -243,10 +245,29 @@ export async function getSessionStats() {
     }
   }
 
+  // Calculate longest streak (all-time)
+  let longestStreak = 0;
+  if (uniqueDates.length > 0) {
+    let streak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prev = new Date(uniqueDates[i - 1] + "T00:00:00");
+      const curr = new Date(uniqueDates[i] + "T00:00:00");
+      const diffDays = (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000);
+      if (diffDays === 1) {
+        streak++;
+      } else {
+        longestStreak = Math.max(longestStreak, streak);
+        streak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, streak);
+  }
+
   return {
     sessionsThisWeek,
     totalMinutes,
     currentStreak,
+    longestStreak,
     weeklyMinutes,
     weeklyChange: sessionsThisWeek - lastWeekSessions,
   };

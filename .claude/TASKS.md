@@ -230,12 +230,12 @@ Build `/notifications` page showing a list of notifications (icon + "Brandon lik
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-G |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 1 server action file + 2 components + dashboard update |
 
-Create `goals` table (user_id, event, target_avg, target_date, status). Build server actions: `createGoal()`, `getGoals()`, `updateGoalStatus()`. Add "Goals" section to dashboard — set a target (e.g., "sub-20 on 3x3 by June 2026"), see progress bar based on recent avg times vs. target. Auto-mark as achieved when target is hit.
+Built `goals` table with RLS. Server actions: `createGoal()`, `getGoals()`, `updateGoal()`, `deleteGoal()`, `checkGoalProgress()`. Goals section on dashboard with progress bars, auto-achievement detection (last 5 sessions avg), auto-expiry on deadline. Create/edit modal with event picker and target date.
 
 ---
 
@@ -256,12 +256,12 @@ Added `PBProgressChart` component to dashboard below pie/bar charts. Step-line c
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-H |
 | **Dependencies** | None |
 | **Estimated scope** | 1 component + profile update + dashboard update |
 
-Make streaks more prominent and gamified. Show current streak + longest streak on profile (visible to visitors). Add streak milestones (7 days, 30 days, 100 days) with visual badges. Streak fire icon animation when active. Update dashboard streak display to be more prominent.
+Added `longestStreak` to `getSessionStats()`. Created `StreakCard` component on dashboard with animated fire icon, current streak (prominent), longest streak, and milestone badges (7d, 30d, 100d, 365d). Updated profile stats with streak banner showing current streak with fire animation, plus longest streak in the stats grid. Milestones light up in cyan when earned.
 
 ---
 
