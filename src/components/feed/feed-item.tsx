@@ -9,6 +9,7 @@ import type { FeedItem as FeedItemType } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
 import { LikeButton } from "@/components/feed/like-button"
 import { CommentSection } from "@/components/feed/comment-section"
+import { ShareButton } from "@/components/feed/share-button"
 import { formatDuration } from "@/lib/utils"
 
 function getInitials(name: string): string {
@@ -161,7 +162,7 @@ export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentU
           </div>
         </div>
 
-        {/* Actions: like + comment */}
+        {/* Actions: like + comment + share */}
         <div className="mt-3 flex items-center gap-1 -ml-2">
           <LikeButton
             sessionId={item.id}
@@ -177,6 +178,14 @@ export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentU
               <span className="font-mono text-xs">{commentCount}</span>
             )}
           </button>
+          <ShareButton
+            type="session"
+            name={profile.display_name}
+            handle={profile.handle}
+            event={item.event}
+            time={item.avg_time !== null ? String(item.avg_time) : null}
+            solves={String(item.num_solves)}
+          />
         </div>
 
         {/* Expandable comment section */}

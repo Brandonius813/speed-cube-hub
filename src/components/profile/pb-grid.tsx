@@ -5,6 +5,7 @@ import { Trophy } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
+import { ShareButton } from "@/components/feed/share-button"
 
 function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
@@ -19,7 +20,15 @@ function formatTime(seconds: number): string {
   return `${seconds.toFixed(2)}s`
 }
 
-export function PBGrid({ sessions }: { sessions: Session[] }) {
+export function PBGrid({
+  sessions,
+  displayName,
+  handle,
+}: {
+  sessions: Session[]
+  displayName?: string
+  handle?: string
+}) {
   // Compute best singles and averages per event from session data
   const eventBests: Record<string, { bestSingle: number | null; bestAvg: number | null }> = {}
 
@@ -92,22 +101,33 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
                 <CubingIcon event={pb.event} className="shrink-0 text-base text-muted-foreground" />
                 <span className="truncate font-medium text-foreground">{pb.label}</span>
               </div>
-              <div className="flex gap-4 text-right">
-                {pb.bestSingle !== null && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Single</p>
-                    <p className="font-mono text-sm font-semibold text-accent">
-                      {formatTime(pb.bestSingle)}
-                    </p>
-                  </div>
-                )}
-                {pb.bestAvg !== null && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Avg</p>
-                    <p className="font-mono text-sm font-semibold text-foreground">
-                      {formatTime(pb.bestAvg)}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-4 text-right">
+                  {pb.bestSingle !== null && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Single</p>
+                      <p className="font-mono text-sm font-semibold text-accent">
+                        {formatTime(pb.bestSingle)}
+                      </p>
+                    </div>
+                  )}
+                  {pb.bestAvg !== null && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Avg</p>
+                      <p className="font-mono text-sm font-semibold text-foreground">
+                        {formatTime(pb.bestAvg)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {displayName && handle && (
+                  <ShareButton
+                    type="pb"
+                    name={displayName}
+                    handle={handle}
+                    event={pb.event}
+                    time={pb.bestSingle !== null ? String(pb.bestSingle) : null}
+                  />
                 )}
               </div>
             </div>

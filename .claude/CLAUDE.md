@@ -82,6 +82,9 @@ Each page uses a two-file pattern:
 - `src/lib/actions/challenges.ts` — Challenges system (getChallenges, joinChallenge, leaveChallenge, getChallengeProgress, createChallenge)
 - `src/components/challenges/` — Challenge components (challenges-content, challenge-card, create-challenge-modal)
 - `src/components/notifications/` — Notifications components (notifications-content with mark-as-read, unread badge in navbar)
+- `src/lib/actions/clubs.ts` — Clubs queries (getClubs, getClub, getClubMembers, getClubFeed, getUserClubs)
+- `src/lib/actions/club-mutations.ts` — Clubs mutations (createClub, joinClub, leaveClub, updateClub, deleteClub)
+- `src/components/clubs/` — Club components (clubs-content, club-detail-content, create-club-modal, edit-club-modal)
 
 ### Path Alias
 
@@ -140,8 +143,8 @@ See `.env.local.example` for required variables:
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
-/clubs               → Browse/manage clubs [protected] — planned (Wave 4)
-/clubs/[id]          → Individual club page [public] — planned (Wave 4)
+/clubs               → Browse/search/create clubs, join/leave [protected]
+/clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
 /wrapped             → Year in Review [protected]
 ```
 

@@ -74,7 +74,7 @@ export function PublicProfileContent({
           wcaId={profile.wca_id}
         />
       )}
-      <PBGrid sessions={sessions} />
+      <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
       <PBProgressChart sessions={sessions} />
       <YtdStats sessions={sessions} />
       <MainCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
