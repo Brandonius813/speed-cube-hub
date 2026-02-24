@@ -31,11 +31,17 @@ There are no tests configured in this project yet.
 
 Every page is publicly viewable. Admin controls are conditionally rendered using `{isAdmin && ...}`.
 
+### Route Groups & Shared Layout
+
+- **`(main)` route group** — All pages that share Navbar + Footer live under `src/app/(main)/`. The shared layout (`src/app/(main)/layout.tsx`) renders Navbar and Footer once, so they persist across navigations without re-mounting.
+- **`loading.tsx`** — `src/app/(main)/loading.tsx` provides an instant skeleton screen during page transitions (shown while server data loads).
+- **Login/Signup** — Live outside the route group (`src/app/login/`, `src/app/signup/`) and have their own centered card layout without Navbar/Footer.
+
 ### Server Components + Client Components
 
 Each page uses a two-file pattern:
 
-1. **`page.tsx`** (server component) — Fetches data on the server via `Promise.all`, passes results as props. Marked `export const dynamic = "force-dynamic"` for fresh data on every request.
+1. **`page.tsx`** (server component) — Fetches data on the server via `Promise.all`, passes results as props. No `force-dynamic` — Next.js auto-detects dynamic pages based on cookie/auth usage.
 2. **`*-content.tsx`** (client component) — Receives initial data as props (no loading spinner), handles interactivity (filters, modals, admin controls). Auth check runs in a `useEffect` to determine `isAdmin` for showing edit/delete buttons.
 
 ### Server Actions vs Client-Side Supabase
@@ -46,6 +52,8 @@ Each page uses a two-file pattern:
 
 ### Key Files
 
+- `src/app/(main)/layout.tsx` — Shared layout with Navbar + Footer (persists across navigations)
+- `src/app/(main)/loading.tsx` — Skeleton loading screen during page transitions
 - `src/lib/utils.ts` — `cn()` (Tailwind class merge utility from Shadcn)
 - `src/lib/supabase/client.ts` — Browser-side Supabase singleton
 - `src/lib/supabase/server.ts` — Server-side Supabase client (uses cookies)
