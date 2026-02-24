@@ -204,7 +204,8 @@ Created `comments` table with RLS policies (migration `004_create_comments.sql`)
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T21 ✅, T22 ✅ |
 | **Estimated scope** | SQL migration + 1 server action file |
 
