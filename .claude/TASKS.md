@@ -191,7 +191,8 @@ Create `likes` table (session_id + user_id, unique constraint). Build server act
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 2 server action files + 2 components + feed-item update |
 
