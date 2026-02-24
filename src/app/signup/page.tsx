@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Box } from "lucide-react"
+import { Box, CheckCircle2, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,10 +11,10 @@ import { signup } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -31,8 +30,32 @@ export default function SignupPage() {
       return
     }
 
-    // Navigate client-side so the browser processes auth cookies first
-    router.push("/dashboard")
+    setSuccess(true)
+  }
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm border-border/50 bg-card">
+          <CardContent className="flex flex-col items-center gap-4 p-6 sm:p-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle2 className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Account created!</h1>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <p className="text-sm">Check your email to confirm your account.</p>
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+              Once confirmed, you can log in and start tracking your solves.
+            </p>
+            <Button asChild className="mt-2 min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <Link href="/login">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
