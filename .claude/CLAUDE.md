@@ -66,7 +66,8 @@ Each page uses a two-file pattern:
 - `src/lib/actions/comments.ts` — Comments system (addComment, getComments, deleteComment, getCommentCounts)
 - `src/lib/actions/goals.ts` — Goals system (createGoal, getGoals, updateGoal, deleteGoal, checkGoalProgress)
 - `src/lib/actions/notifications.ts` — Notifications system (createNotification, getNotifications, markAsRead, markAllAsRead, getUnreadCount)
-- `src/lib/actions/badges.ts` — Badges system (getBadgeDefinitions, getUserBadges, claimCompetitionBadge, claimSponsorBadge, removeBadge, approveBadge, checkAndAwardMilestones)
+- `src/lib/actions/badges.ts` — Badges system (getBadgeDefinitions, getUserBadges, claimCompetitionBadge, claimSponsorBadge, removeBadge, approveBadge, rejectBadge, getPendingBadgeClaims, checkAndAwardMilestones)
+- `src/components/admin/` — Admin components (badge-queue-content)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
@@ -149,6 +150,7 @@ See `.env.local.example` for required variables:
 /clubs               → Browse/search/create clubs, join/leave [protected]
 /clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
 /wrapped             → Year in Review [protected]
+/admin/badges        → Admin badge approval queue [admin only]
 ```
 
 Routes will be added as features are built. Keep this section updated.

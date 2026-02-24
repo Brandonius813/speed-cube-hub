@@ -144,10 +144,10 @@ export function Navbar() {
             <Link
               href="/dashboard"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Dashboard"
+              aria-label="Practice Stats"
             >
               <LayoutDashboard className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Dashboard</span>
+              <span className="hidden text-sm sm:inline">Practice Stats</span>
             </Link>
             {isAdmin && (
               <Link
