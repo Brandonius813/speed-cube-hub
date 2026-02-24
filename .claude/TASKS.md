@@ -230,7 +230,8 @@ Build `/notifications` page showing a list of notifications (icon + "Brandon lik
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-G |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 1 server action file + 2 components + dashboard update |
 
