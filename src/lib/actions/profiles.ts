@@ -54,19 +54,17 @@ export async function getProfileByHandle(handle: string): Promise<{
 
 export type SearchProfilesOptions = {
   event?: string
-  sortBy?: "newest" | "name" | "fastest"
-}
-
-export type SearchProfileResult = Profile & {
-  pb_time?: number | null
+  location?: string
+  sortBy?: "newest" | "name"
 }
 
 export async function searchProfiles(
   query: string,
   options?: SearchProfilesOptions
-): Promise<{ profiles: SearchProfileResult[]; error?: string }> {
+): Promise<{ profiles: Profile[]; error?: string }> {
   const supabase = await createClient()
   const event = options?.event
+  const location = options?.location
   const sortBy = options?.sortBy ?? "newest"
 
   const trimmed = query.trim()
@@ -74,16 +72,16 @@ export async function searchProfiles(
     return { profiles: [] }
   }
 
-  // "Fastest PB" sort — requires an event filter to know which PBs to look at
-  if (sortBy === "fastest" && event) {
-    return searchProfilesByPB(supabase, trimmed, event)
-  }
-
   let qb = supabase.from("profiles").select("*")
 
   // Filter by main event
   if (event) {
     qb = qb.eq("main_event", event)
+  }
+
+  // Filter by location (exact match on the location field)
+  if (location) {
+    qb = qb.eq("location", location)
   }
 
   // Text search across name, handle, and location
@@ -106,68 +104,35 @@ export async function searchProfiles(
   const { data, error } = await qb
 
   if (error) return { profiles: [], error: error.message }
-  return { profiles: (data as SearchProfileResult[]) || [] }
+  return { profiles: (data as Profile[]) || [] }
 }
 
 /**
- * Search profiles sorted by fastest current Single PB for a given event.
- * Two-step query: get ordered user IDs from personal_bests, then fetch profiles.
+ * Get all distinct locations that users have set on their profiles.
+ * Used for the location filter dropdown on Discover.
  */
-async function searchProfilesByPB(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  query: string,
-  event: string
-): Promise<{ profiles: SearchProfileResult[]; error?: string }> {
-  // Step 1: Get user_ids with their fastest Single PB for this event
-  const { data: pbRows, error: pbError } = await supabase
-    .from("personal_bests")
-    .select("user_id, time_seconds")
-    .eq("event", event)
-    .eq("pb_type", "Single")
-    .eq("is_current", true)
-    .order("time_seconds", { ascending: true })
-    .limit(100)
+export async function getDistinctLocations(): Promise<{
+  locations: string[]
+  error?: string
+}> {
+  const supabase = await createClient()
 
-  if (pbError) return { profiles: [], error: pbError.message }
-  if (!pbRows?.length) return { profiles: [] }
-
-  const userIds = pbRows.map((r) => r.user_id)
-  const pbMap = new Map(
-    pbRows.map((r) => [r.user_id, Number(r.time_seconds)])
-  )
-
-  // Step 2: Fetch those profiles
-  let qb = supabase
+  const { data, error } = await supabase
     .from("profiles")
-    .select("*")
-    .in("id", userIds)
+    .select("location")
+    .not("location", "is", null)
+    .order("location")
 
-  // Apply text search if present
-  if (query.length >= 2) {
-    const searchTerm = `%${query}%`
-    qb = qb.or(
-      `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
-    )
-  }
+  if (error) return { locations: [], error: error.message }
 
-  const { data, error } = await qb.limit(100)
+  // Deduplicate and filter empty
+  const unique = [...new Set(
+    (data || [])
+      .map((r) => r.location as string)
+      .filter(Boolean)
+  )]
 
-  if (error) return { profiles: [], error: error.message }
-  if (!data?.length) return { profiles: [] }
-
-  // Attach PB times and sort by fastest
-  const results: SearchProfileResult[] = data.map((p) => ({
-    ...(p as Profile),
-    pb_time: pbMap.get(p.id) ?? null,
-  }))
-
-  results.sort((a, b) => {
-    const aTime = a.pb_time ?? Infinity
-    const bTime = b.pb_time ?? Infinity
-    return aTime - bTime
-  })
-
-  return { profiles: results.slice(0, 20) }
+  return { locations: unique }
 }
 
 /**

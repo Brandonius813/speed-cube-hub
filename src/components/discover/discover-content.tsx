@@ -13,11 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, MapPin, Timer } from "lucide-react"
+import { Search, MapPin } from "lucide-react"
 import { searchProfiles } from "@/lib/actions/profiles"
-import type { SearchProfileResult } from "@/lib/actions/profiles"
 import { WCA_EVENTS } from "@/lib/constants"
-import { formatTime } from "@/components/leaderboards/leaderboard-shared"
+import type { Profile } from "@/lib/types"
 
 const eventColors: Record<string, string> = {
   "333": "border-chart-1/20 bg-chart-1/15 text-chart-1",
@@ -41,27 +40,35 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-type SortOption = "newest" | "name" | "fastest"
+type SortOption = "newest" | "name"
 
 export function DiscoverContent({
   initialProfiles,
+  locations,
 }: {
-  initialProfiles: SearchProfileResult[]
+  initialProfiles: Profile[]
+  locations: string[]
 }) {
   const [profiles, setProfiles] = useState(initialProfiles)
   const [query, setQuery] = useState("")
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>("newest")
   const [searching, setSearching] = useState(false)
 
-  // Debounce timer ref
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const doSearch = useCallback(
-    async (q: string, event: string | null, sort: SortOption) => {
+    async (
+      q: string,
+      event: string | null,
+      location: string | null,
+      sort: SortOption
+    ) => {
       setSearching(true)
       const result = await searchProfiles(q, {
         event: event ?? undefined,
+        location: location ?? undefined,
         sortBy: sort,
       })
       setProfiles(result.profiles)
@@ -74,22 +81,25 @@ export function DiscoverContent({
     setQuery(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      doSearch(value, selectedEvent, sortBy)
+      doSearch(value, selectedEvent, selectedLocation, sortBy)
     }, 300)
   }
 
   function handleEventChange(value: string) {
     const next = value === "all" ? null : value
     setSelectedEvent(next)
-    // If clearing event and sort was "fastest", fall back to "newest"
-    const nextSort = !next && sortBy === "fastest" ? "newest" : sortBy
-    if (nextSort !== sortBy) setSortBy(nextSort)
-    doSearch(query, next, nextSort)
+    doSearch(query, next, selectedLocation, sortBy)
+  }
+
+  function handleLocationChange(value: string) {
+    const next = value === "all" ? null : value
+    setSelectedLocation(next)
+    doSearch(query, selectedEvent, next, sortBy)
   }
 
   function handleSortChange(value: SortOption) {
     setSortBy(value)
-    doSearch(query, selectedEvent, value)
+    doSearch(query, selectedEvent, selectedLocation, value)
   }
 
   return (
@@ -106,36 +116,59 @@ export function DiscoverContent({
       </div>
 
       {/* Filters row */}
-      <div className="flex gap-2">
-        <Select
-          value={selectedEvent ?? "all"}
-          onValueChange={handleEventChange}
-        >
-          <SelectTrigger className="h-11 min-w-0 flex-1 border-border/50 text-sm">
-            <SelectValue placeholder="Main Event" />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            <SelectItem value="all">All Events</SelectItem>
-            {WCA_EVENTS.map((event) => (
-              <SelectItem key={event.id} value={event.id}>
-                {event.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Main Event</p>
+          <Select
+            value={selectedEvent ?? "all"}
+            onValueChange={handleEventChange}
+          >
+            <SelectTrigger className="h-11 w-full border-border/50 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              <SelectItem value="all">All</SelectItem>
+              {WCA_EVENTS.map((event) => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select value={sortBy} onValueChange={handleSortChange}>
-          <SelectTrigger className="h-11 w-[140px] shrink-0 border-border/50 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">Newest</SelectItem>
-            <SelectItem value="name">Name A-Z</SelectItem>
-            <SelectItem value="fastest" disabled={!selectedEvent}>
-              Fastest PB
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Location</p>
+          <Select
+            value={selectedLocation ?? "all"}
+            onValueChange={handleLocationChange}
+          >
+            <SelectTrigger className="h-11 w-full border-border/50 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              <SelectItem value="all">All</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc} value={loc}>
+                  {loc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Sort by</p>
+          <Select value={sortBy} onValueChange={handleSortChange}>
+            <SelectTrigger className="h-11 w-full border-border/50 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="name">Name A-Z</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Results */}
@@ -143,7 +176,7 @@ export function DiscoverContent({
         <p className="py-8 text-center text-sm text-muted-foreground">
           {searching
             ? "Searching..."
-            : query || selectedEvent
+            : query || selectedEvent || selectedLocation
               ? "No cubers found matching your filters."
               : "No cubers to show yet."}
         </p>
@@ -179,22 +212,12 @@ export function DiscoverContent({
                         </Badge>
                       )}
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      {profile.location && (
-                        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{profile.location}</span>
-                        </span>
-                      )}
-                      {profile.pb_time != null && (
-                        <span className="flex items-center gap-0.5 text-xs font-medium text-accent">
-                          <Timer className="h-3 w-3 shrink-0" />
-                          <span className="font-mono">
-                            {formatTime(profile.pb_time)}
-                          </span>
-                        </span>
-                      )}
-                    </div>
+                    {profile.location && (
+                      <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{profile.location}</span>
+                      </p>
+                    )}
                     {profile.bio && (
                       <p className="mt-0.5 truncate text-sm text-muted-foreground">
                         {profile.bio}
