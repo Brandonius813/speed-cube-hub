@@ -178,7 +178,8 @@ Added `getUpcomingCompetitions()` to WCA actions (public API, cached 1hr). Built
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-F |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 2 server action files + 1 component + feed-item update |
 
