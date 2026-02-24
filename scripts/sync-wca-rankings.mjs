@@ -415,6 +415,57 @@ async function uploadRankings(rankings) {
   log(`  Uploaded ${count.toLocaleString()} rankings`)
 }
 
+/**
+ * Delete stale rows from wca_rankings that are not in the current results.
+ * This removes people who only competed in deprecated events (magic, mmagic, etc.)
+ * and were added by an older version of the sync script.
+ */
+async function deleteStaleRankings(rankings) {
+  log("Cleaning up stale rankings...")
+  const validIds = new Set(rankings.map((r) => r.wca_id))
+
+  // Fetch all wca_ids currently in the table
+  let allExisting = []
+  let from = 0
+  const pageSize = 5000
+  while (true) {
+    const { data, error } = await supabase
+      .from("wca_rankings")
+      .select("wca_id")
+      .range(from, from + pageSize - 1)
+    if (error) {
+      console.error("Failed to fetch existing IDs:", error.message)
+      return
+    }
+    if (!data || data.length === 0) break
+    allExisting = allExisting.concat(data.map((r) => r.wca_id))
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+
+  const staleIds = allExisting.filter((id) => !validIds.has(id))
+  if (staleIds.length === 0) {
+    log("  No stale rows found")
+    return
+  }
+
+  log(`  Found ${staleIds.length.toLocaleString()} stale rows to delete`)
+
+  // Delete in batches
+  for (let i = 0; i < staleIds.length; i += BATCH_SIZE) {
+    const batch = staleIds.slice(i, i + BATCH_SIZE)
+    const { error } = await supabase
+      .from("wca_rankings")
+      .delete()
+      .in("wca_id", batch)
+    if (error) {
+      console.error(`Delete batch failed:`, error.message)
+    }
+  }
+
+  log(`  Deleted ${staleIds.length.toLocaleString()} stale rows`)
+}
+
 // ─── Cleanup ─────────────────────────────────────────────────────────
 
 function cleanup() {
@@ -442,6 +493,7 @@ async function main() {
 
     await uploadCountries(countries)
     await uploadRankings(rankings)
+    await deleteStaleRankings(rankings)
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
     log(`=== Sync Complete in ${elapsed}s ===`)
