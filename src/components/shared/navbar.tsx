@@ -2,24 +2,69 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Box, LogOut, LayoutDashboard, User, Rss, Search } from "lucide-react"
+import { Box, LogOut, LayoutDashboard, Rss, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
 
 export function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userProfile, setUserProfile] = useState<{
+    avatar_url: string | null
+    display_name: string
+  } | null>(null)
 
   useEffect(() => {
     const supabase = getSupabaseClient()
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       setIsLoggedIn(!!user)
-    })
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("avatar_url, display_name")
+          .eq("id", user.id)
+          .single()
+
+        if (profile) {
+          setUserProfile(profile)
+        }
+      }
+    }
+
+    loadUser()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session?.user)
+
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("avatar_url, display_name")
+          .eq("id", session.user.id)
+          .single()
+
+        if (profile) {
+          setUserProfile(profile)
+        }
+      } else {
+        setUserProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -63,11 +108,22 @@ export function Navbar() {
             </Link>
             <Link
               href="/profile"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors hover:opacity-80 sm:min-h-0 sm:min-w-0"
               aria-label="Profile"
             >
-              <User className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Profile</span>
+              <Avatar className="h-7 w-7 border border-border">
+                {userProfile?.avatar_url && (
+                  <AvatarImage
+                    src={userProfile.avatar_url}
+                    alt={userProfile.display_name}
+                  />
+                )}
+                <AvatarFallback className="text-[10px]">
+                  {userProfile
+                    ? getInitials(userProfile.display_name)
+                    : "?"}
+                </AvatarFallback>
+              </Avatar>
             </Link>
             <Link href="/log">
               <Button
