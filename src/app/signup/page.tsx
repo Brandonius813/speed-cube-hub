@@ -89,7 +89,7 @@ export default function SignupPage() {
             {googleLoading ? "Redirecting..." : "Sign up with Google"}
           </Button>
 
-          <div className="relative my-8">
+          <div className="relative my-10">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border/50" />
             </div>
