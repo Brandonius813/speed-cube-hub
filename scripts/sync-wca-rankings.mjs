@@ -31,7 +31,7 @@ const RANKED_EVENTS = [
   "333oh", "minx", "pyram", "clock", "skewb", "sq1", "333fm",
 ]
 
-const BATCH_SIZE = 1000
+const BATCH_SIZE = 500
 const TMP_DIR = join(process.cwd(), ".wca-sync-tmp")
 
 // ─── Supabase Client ─────────────────────────────────────────────────
@@ -76,15 +76,22 @@ async function parseTsv(filePath, handler) {
   return count
 }
 
-/** Batch upsert rows to Supabase table */
+/** Batch upsert rows to Supabase table with retry */
 async function batchUpsert(table, rows, conflictColumn = "wca_id") {
   let uploaded = 0
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE)
-    const { error } = await supabase.from(table).upsert(batch, { onConflict: conflictColumn })
-    if (error) {
-      console.error(`Upsert error on ${table} (batch ${i / BATCH_SIZE}):`, error.message)
-      throw error
+    let retries = 3
+    while (retries > 0) {
+      const { error } = await supabase.from(table).upsert(batch, { onConflict: conflictColumn })
+      if (!error) break
+      retries--
+      if (retries === 0) {
+        console.error(`Upsert failed on ${table} (batch ${Math.floor(i / BATCH_SIZE)}) after retries:`, error.message)
+        throw error
+      }
+      log(`  Retry batch ${Math.floor(i / BATCH_SIZE)} (${retries} left)...`)
+      await new Promise((r) => setTimeout(r, 2000))
     }
     uploaded += batch.length
     if (uploaded % 10000 === 0) log(`  ${table}: ${uploaded.toLocaleString()} rows uploaded`)
