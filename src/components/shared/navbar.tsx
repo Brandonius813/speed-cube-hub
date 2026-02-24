@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Box, LogOut, LayoutDashboard, Rss, Search } from "lucide-react"
+import { Bell, Box, LogOut, LayoutDashboard, Rss, Search, Trophy, Swords } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { getUnreadCount } from "@/lib/actions/notifications"
 
 function getInitials(name: string): string {
   return name
@@ -18,6 +19,7 @@ function getInitials(name: string): string {
 
 export function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [userProfile, setUserProfile] = useState<{
     avatar_url: string | null
     display_name: string
@@ -99,6 +101,22 @@ export function Navbar() {
               <span className="hidden text-sm sm:inline">Discover</span>
             </Link>
             <Link
+              href="/leaderboards"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Leaderboards"
+            >
+              <Trophy className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Leaderboards</span>
+            </Link>
+            <Link
+              href="/challenges"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Challenges"
+            >
+              <Swords className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Challenges</span>
+            </Link>
+            <Link
               href="/dashboard"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
               aria-label="Dashboard"
@@ -148,6 +166,14 @@ export function Navbar() {
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/leaderboards"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Leaderboards"
+            >
+              <Trophy className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Leaderboards</span>
+            </Link>
             <Link href="/login">
               <Button
                 size="sm"

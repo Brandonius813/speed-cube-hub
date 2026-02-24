@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 // Routes protected with sub-paths (e.g., /dashboard, /dashboard/*)
-const PROTECTED_ROUTES = ["/dashboard", "/log", "/feed"]
+const PROTECTED_ROUTES = ["/dashboard", "/log", "/feed", "/challenges"]
 
 // Routes protected only at the exact path (e.g., /profile but NOT /profile/handle)
 const PROTECTED_EXACT = ["/profile"]
