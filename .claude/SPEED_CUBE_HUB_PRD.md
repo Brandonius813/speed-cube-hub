@@ -116,7 +116,10 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [ ] PB History / Progress Charts (trend lines showing avg time improving over weeks/months)
 - [ ] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [ ] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join)
-- [ ] Milestones & Badges (auto-awarded: "First 1,000 solves", "7-day streak", "Practiced all 17 events", displayed on profile)
+- [ ] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
+  - **Competition credentials** (admin-verified): World Record Holder, Continental Record Holder, National Record Holder, World Champion, Continental Champion, National Champion, World Finalist, National Finalist. Each badge is dated by year. Current record holders get a prominent gold/highlighted badge; former holders get a visually distinct muted version.
+  - **Sponsor badge** (self-reported): If a user is sponsored, a visually impressive badge displays their sponsor name prominently. No admin approval needed.
+  - **Practice milestones** (auto-awarded): "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "Practiced All 17 Events", "100 Hours Practiced", etc. Awarded automatically when thresholds are met. Future: badges for algorithm sets mastered, practice hour milestones, and more.
 
 ### Social Wave 4 — Community & Discovery
 - [ ] Public Leaderboards (fastest averages, most solves, longest streaks — global + friends-only views)
@@ -252,22 +255,30 @@ Each practice session captures (based on the proven model from brandontruecubing
 | progress | integer | Current count toward target |
 | joined_at | timestamptz | Auto |
 
-**badges** — Achievement definitions (Wave 3)
+**badges** — Badge/credential definitions (Wave 3)
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid (PK) | Generated |
-| name | text | e.g. "First 1,000 Solves" |
+| name | text | e.g. "World Record Holder", "First 1,000 Solves", "Sponsored Athlete" |
 | description | text | What it means |
-| icon | text | Icon identifier or emoji |
-| criteria_type | text | "solves", "streak", "events", "sessions" |
-| criteria_value | integer | Threshold to earn it |
+| icon | text | Icon identifier, emoji, or image path |
+| category | text | "competition", "sponsor", "milestone" |
+| tier | text | Visual weight: "gold", "silver", "bronze", "standard" |
+| criteria_type | text | For auto-award milestones: "solves", "streak", "events", "hours" (null for manual) |
+| criteria_value | integer | Threshold for auto-award (null for manual) |
+| verification | text | "auto" (milestones), "self" (sponsor), "admin" (competition credentials) |
 
-**user_badges** — Badges earned by users (Wave 3)
+**user_badges** — Badges earned/claimed by users (Wave 3)
 | Column | Type | Notes |
 |--------|------|-------|
-| user_id | uuid (FK) | Who earned it |
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | Who has it |
 | badge_id | uuid (FK) | Which badge |
-| earned_at | timestamptz | When earned |
+| year | integer | Year achieved (nullable — milestones don't need a year) |
+| detail | text | Extra context: sponsor name, event name, country (nullable) |
+| is_current | boolean | For records: still holds it? (default false, visually distinct from former) |
+| verified | boolean | Admin-approved? (default true for auto/self, false until admin approves for competition) |
+| earned_at | timestamptz | When earned/claimed |
 
 **clubs** — Cubing clubs/groups (Wave 4)
 | Column | Type | Notes |

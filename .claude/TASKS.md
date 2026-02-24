@@ -272,15 +272,33 @@ Create `challenges` and `challenge_participants` tables. Build server actions: `
 
 ---
 
-### T29: Milestones & Badges
+### T29: Badges & Credentials System
 
 | | |
 |---|---|
 | **Status** | 🔲 Available |
 | **Dependencies** | None |
-| **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 1 component + profile update |
+| **Estimated scope** | SQL migrations (2 tables) + 2 server action files + 3 components + profile update |
 
-Create `badges` and `user_badges` tables. Define initial badge set (e.g., "First 100 Solves", "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "Practiced All 17 Events", "First Competition Result"). Build auto-award logic that runs after session logging. Display earned badges on profile page as a grid of icons.
+A dedicated badges section on every profile. Three badge categories:
+
+**1. Competition Credentials (admin-verified)**
+Pre-defined badge types: World Record Holder, Continental Record Holder, National Record Holder, World Champion, Continental Champion, National Champion, World Finalist, National Finalist. Users claim a credential (e.g., "National Record Holder — 3x3, 2024"), it shows as "pending" until an admin approves it. Current record holders get a gold/highlighted badge; former holders get a visually muted version (`is_current` flag). Each badge dated by year.
+
+**2. Sponsor Badge (self-reported)**
+Users enter their sponsor name and it displays as a visually impressive badge on their profile. No admin approval needed — takes effect immediately.
+
+**3. Practice Milestones (auto-awarded)**
+Initial set: "First 100 Solves", "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "100-Day Streak", "Practiced All 17 Events", "100 Hours Practiced". Auto-award logic runs after session logging. Future: badges for algorithm sets mastered, more hour/solve milestones.
+
+**Implementation:**
+- Create `badges` table (name, description, icon, category, tier, criteria_type, criteria_value, verification)
+- Create `user_badges` table (user_id, badge_id, year, detail, is_current, verified, earned_at)
+- Seed initial badge definitions
+- Build server actions: `claimBadge()`, `getUserBadges()`, `getPublicBadges()`, `approveBadge()` (admin), `checkAndAwardMilestones()` (auto)
+- Build `BadgesSection` component on profile (dedicated card/section with grid of earned badges)
+- Build `ClaimBadgeModal` for users to claim competition credentials or add sponsor
+- Build admin badge approval UI (admin-only)
 
 ---
 
