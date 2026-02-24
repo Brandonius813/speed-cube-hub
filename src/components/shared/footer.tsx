@@ -12,7 +12,7 @@ export function Footer() {
           Built by cubers, for cubers.
         </p>
         <p className="text-xs text-muted-foreground/60">
-          Brand True
+          Brandon True
         </p>
       </div>
     </footer>
