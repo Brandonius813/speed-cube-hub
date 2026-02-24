@@ -1,9 +1,19 @@
 "use server"
 
+import { Resend } from "resend"
 import { createClient } from "@/lib/supabase/server"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const VALID_CATEGORIES = ["bug", "feature", "general", "other"] as const
 type FeedbackCategory = (typeof VALID_CATEGORIES)[number]
+
+const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
+  bug: "Bug Report",
+  feature: "Feature Request",
+  general: "General Feedback",
+  other: "Other",
+}
 
 export async function submitFeedback(
   category: FeedbackCategory,
@@ -30,6 +40,13 @@ export async function submitFeedback(
     return { error: "Not authenticated" }
   }
 
+  // Get the user's profile for context in the email
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, handle")
+    .eq("id", user.id)
+    .single()
+
   const { error } = await supabase.from("feedback").insert({
     user_id: user.id,
     category,
@@ -40,6 +57,30 @@ export async function submitFeedback(
   if (error) {
     return { error: error.message }
   }
+
+  // Send email notification (don't block the response on failure)
+  const displayName = profile?.display_name ?? "Unknown User"
+  const handle = profile?.handle ? `@${profile.handle}` : ""
+
+  resend.emails
+    .send({
+      from: "Speed Cube Hub <feedback@speedcubehub.com>",
+      to: "brandon@speedcubehub.com",
+      subject: `[${CATEGORY_LABELS[category]}] Feedback from ${displayName}`,
+      text: [
+        `Category: ${CATEGORY_LABELS[category]}`,
+        `From: ${displayName} ${handle} (${user.email})`,
+        pageUrl ? `Page: ${pageUrl}` : null,
+        ``,
+        `Message:`,
+        trimmed,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    })
+    .catch(() => {
+      // Email failure shouldn't break feedback submission
+    })
 
   return { success: true }
 }
