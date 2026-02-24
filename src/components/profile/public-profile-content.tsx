@@ -53,15 +53,21 @@ export function PublicProfileContent({
 }) {
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
+  const [wcaError, setWcaError] = useState(false)
 
   // Fetch WCA data client-side so it doesn't block page load
   useEffect(() => {
     if (!profile.wca_id) return
 
-    getWcaResults(profile.wca_id).then((result) => {
-      setWcaData(result.data ?? null)
-      setWcaLoading(false)
-    })
+    getWcaResults(profile.wca_id)
+      .then((result) => {
+        setWcaData(result.data ?? null)
+        setWcaLoading(false)
+      })
+      .catch(() => {
+        setWcaLoading(false)
+        setWcaError(true)
+      })
   }, [profile.wca_id])
 
   const followButton =
@@ -83,6 +89,11 @@ export function PublicProfileContent({
       />
       <ProfileStats sessions={sessions} sorKinchStats={sorKinchStats} />
       {wcaLoading && <WcaResultsSkeleton />}
+      {wcaError && !wcaLoading && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          Failed to load WCA results. Please try refreshing the page.
+        </div>
+      )}
       {wcaData && (
         <WcaResults
           personalRecords={wcaData.personal_records}
