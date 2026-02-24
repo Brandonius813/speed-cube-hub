@@ -58,6 +58,7 @@ export function ProfileContent({
   const [wcaId, setWcaId] = useState(profile.wca_id)
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
+  const [wcaError, setWcaError] = useState(false)
   const [wcaMessage, setWcaMessage] = useState<{
     type: "success" | "error"
     text: string
@@ -72,10 +73,16 @@ export function ProfileContent({
     }
 
     setWcaLoading(true)
-    getWcaResults(wcaId).then((result) => {
-      setWcaData(result.data ?? null)
-      setWcaLoading(false)
-    })
+    setWcaError(false)
+    getWcaResults(wcaId)
+      .then((result) => {
+        setWcaData(result.data ?? null)
+        setWcaLoading(false)
+      })
+      .catch(() => {
+        setWcaLoading(false)
+        setWcaError(true)
+      })
   }, [wcaId])
 
   // Handle OAuth callback query params
@@ -126,6 +133,11 @@ export function ProfileContent({
 
       <WcaLink currentWcaId={wcaId} onUpdate={handleWcaUpdate} />
       {wcaLoading && <WcaResultsSkeleton />}
+      {wcaError && !wcaLoading && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          Failed to load WCA results. Please try refreshing the page.
+        </div>
+      )}
       {wcaData && (
         <WcaResults
           personalRecords={wcaData.personal_records}
