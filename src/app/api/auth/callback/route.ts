@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         id: user.id,
         display_name: fullName,
         handle,
-        avatar_url: user.user_metadata?.avatar_url || null,
+        avatar_url: null,
       })
     }
   }
