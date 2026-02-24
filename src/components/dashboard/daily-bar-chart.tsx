@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
+import { formatDuration } from "@/lib/utils"
 
 const EVENT_COLORS: Record<string, string> = {
   "333": "#EF4444",
@@ -45,7 +46,7 @@ function CustomTooltip({
               style={{ backgroundColor: entry.color }}
             />
             <span className="text-muted-foreground">
-              {entry.dataKey}: {entry.value}m
+              {entry.dataKey}: {formatDuration(entry.value)}
             </span>
           </div>
         ))}
@@ -138,7 +139,7 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
                 tick={{ fill: "#8B8BA3", fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `${v}m`}
+                tickFormatter={(v) => formatDuration(v)}
               />
               <Tooltip content={<CustomTooltip />} />
               {topEvents.map((eventId, i) => (

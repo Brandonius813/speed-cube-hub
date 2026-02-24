@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CircleCheck, CircleX } from "lucide-react";
 import type { ParsedRow } from "@/lib/csv/validate-csv-row";
+import { formatDuration } from "@/lib/utils";
 
 const MAX_PREVIEW_ROWS = 50;
 
@@ -101,7 +102,7 @@ function MobileCard({ row }: { row: ParsedRow }) {
             <span>{row.parsed.session_date ?? row.raw.date ?? "--"}</span>
             <span>{row.parsed.practice_type ?? row.raw.practice_type ?? "--"}</span>
             <span>{row.parsed.num_solves ?? row.raw.num_solves ?? "--"} solves</span>
-            <span>{row.parsed.duration_minutes ?? row.raw.duration_minutes ?? "--"}m</span>
+            <span>{row.parsed.duration_minutes != null ? formatDuration(row.parsed.duration_minutes) : `${row.raw.duration_minutes ?? "--"}m`}</span>
           </div>
         </div>
         {row.parsed.avg_time !== null && row.parsed.avg_time !== undefined && (
@@ -175,7 +176,7 @@ function DesktopRow({ row }: { row: ParsedRow }) {
         </td>
         <td className="py-3 pr-3 text-right font-mono text-sm text-foreground">
           {row.parsed.duration_minutes != null ? (
-            `${row.parsed.duration_minutes}m`
+            formatDuration(row.parsed.duration_minutes)
           ) : (
             <span className="text-destructive">
               {row.raw.duration_minutes || "--"}

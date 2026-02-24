@@ -28,6 +28,7 @@ export async function createSession(data: {
   num_solves: number;
   duration_minutes: number;
   avg_time: number | null;
+  title: string | null;
   notes: string | null;
 }): Promise<{ error?: string }> {
   const supabase = await createClient();
@@ -48,6 +49,7 @@ export async function createSession(data: {
     num_solves: data.num_solves,
     duration_minutes: data.duration_minutes,
     avg_time: data.avg_time,
+    title: data.title || null,
     notes: data.notes || null,
   });
 

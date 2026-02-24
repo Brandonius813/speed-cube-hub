@@ -2,11 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
-
-function formatHours(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h`
-}
+import { formatDuration } from "@/lib/utils"
 
 export function ProfileStats({ sessions }: { sessions: Session[] }) {
   const totalSessions = sessions.length
@@ -45,7 +41,7 @@ export function ProfileStats({ sessions }: { sessions: Session[] }) {
 
   const stats = [
     { label: "Total Sessions", value: String(totalSessions) },
-    { label: "Practice Hours", value: formatHours(totalMinutes) },
+    { label: "Practice Time", value: formatDuration(totalMinutes) },
     {
       label: "Current Streak",
       value: `${currentStreak} day${currentStreak !== 1 ? "s" : ""}`,

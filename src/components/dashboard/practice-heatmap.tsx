@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import type { Session } from "@/lib/types"
+import { formatDuration } from "@/lib/utils"
 
 const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""]
 const MONTH_LABELS = [
@@ -165,7 +166,7 @@ export function PracticeHeatmap({ sessions }: { sessions: Session[] }) {
                   })}
                   {" — "}
                   {hoveredDay.minutes > 0
-                    ? `${hoveredDay.minutes} min practiced`
+                    ? `${formatDuration(hoveredDay.minutes)} practiced`
                     : "No practice"}
                 </span>
               )}

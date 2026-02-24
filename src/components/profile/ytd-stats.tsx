@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarDays } from "lucide-react"
 import type { Session } from "@/lib/types"
+import { formatDuration } from "@/lib/utils"
 
 export function YtdStats({ sessions }: { sessions: Session[] }) {
   const currentYear = new Date().getFullYear()
@@ -17,11 +18,10 @@ export function YtdStats({ sessions }: { sessions: Session[] }) {
   const totalSessions = ytdSessions.length
   const totalMinutes = ytdSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalSolves = ytdSessions.reduce((sum, s) => sum + s.num_solves, 0)
-  const hours = Math.floor(totalMinutes / 60)
 
   const stats = [
     { label: "Sessions", value: String(totalSessions) },
-    { label: "Hours", value: `${hours}h` },
+    { label: "Time", value: formatDuration(totalMinutes) },
     { label: "Solves", value: totalSolves.toLocaleString() },
   ]
 

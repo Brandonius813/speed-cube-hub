@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
+import { formatDuration } from "@/lib/utils"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -51,7 +52,7 @@ export function RecentActivity({ sessions }: { sessions: Session[] }) {
         <div className="flex flex-col gap-4">
           {sessions.map((session) => {
             const avgStr = formatAvg(session.avg_time)
-            const description = `${session.num_solves} solves in ${session.duration_minutes} minutes${avgStr ? `. ${avgStr}` : ""}`
+            const description = `${session.num_solves} solves in ${formatDuration(session.duration_minutes)}${avgStr ? `. ${avgStr}` : ""}`
 
             return (
               <div

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
+import { formatDuration } from "@/lib/utils"
 
 function formatAvg(avg: number | null): string {
   if (avg === null) return "--"
@@ -58,7 +59,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>{formatDate(session.session_date)}</span>
                   <span>{session.num_solves} solves</span>
-                  <span>{session.duration_minutes}m</span>
+                  <span>{formatDuration(session.duration_minutes)}</span>
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -115,7 +116,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     {session.num_solves}
                   </td>
                   <td className="py-3 text-right font-mono text-sm text-foreground">
-                    {session.duration_minutes}m
+                    {formatDuration(session.duration_minutes)}
                   </td>
                   <td className="py-3 text-right font-mono text-sm text-foreground">
                     {formatAvg(session.avg_time)}

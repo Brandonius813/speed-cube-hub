@@ -2,13 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, Clock, Flame } from "lucide-react"
-
-function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours === 0) return `${mins}m`
-  return `${hours}h ${mins}m`
-}
+import { formatDuration } from "@/lib/utils"
 
 export function StatsCards({
   stats,
@@ -36,8 +30,8 @@ export function StatsCards({
     },
     {
       label: "Total Practice Time",
-      value: formatMinutes(stats.totalMinutes),
-      change: `${formatMinutes(stats.weeklyMinutes)} this week`,
+      value: formatDuration(stats.totalMinutes),
+      change: `${formatDuration(stats.weeklyMinutes)} this week`,
       icon: Clock,
       iconColor: "text-accent",
     },

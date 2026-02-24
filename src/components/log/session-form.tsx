@@ -16,6 +16,7 @@ import {
 import { CalendarDays, Check } from "lucide-react";
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants";
 import { createSession } from "@/lib/actions/sessions";
+import { parseDuration } from "@/lib/utils";
 
 const CUSTOM_VALUE = "__custom__";
 
@@ -54,8 +55,9 @@ export function SessionForm() {
 
     const sessionDate = formData.get("date") as string;
     const numSolves = parseInt(formData.get("solves") as string, 10);
-    const durationMinutes = parseInt(formData.get("time") as string, 10);
+    const durationMinutes = parseDuration(formData.get("time") as string);
     const avgTimeStr = (formData.get("avg") as string)?.trim();
+    const title = (formData.get("title") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
 
     // Resolve the final practice type — either the dropdown selection or the custom text
@@ -63,7 +65,11 @@ export function SessionForm() {
       practiceType === CUSTOM_VALUE ? customType.trim() : practiceType;
 
     if (!sessionDate || !event || !finalPracticeType || !numSolves || !durationMinutes) {
-      setError("Please fill in all required fields.");
+      setError(
+        !durationMinutes && (formData.get("time") as string)?.trim()
+          ? 'Invalid time format. Use minutes (e.g. "90") or h:mm (e.g. "1:30").'
+          : "Please fill in all required fields."
+      );
       setLoading(false);
       return;
     }
@@ -75,6 +81,7 @@ export function SessionForm() {
       num_solves: numSolves,
       duration_minutes: durationMinutes,
       avg_time: avgTimeStr ? parseFloat(avgTimeStr) : null,
+      title: title || null,
       notes: notes || null,
     });
 
@@ -177,14 +184,17 @@ export function SessionForm() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="time" className="text-foreground">
-                Time Practiced (minutes)
+                Time Practiced
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (e.g. 1:30 or 90)
+                </span>
               </Label>
               <Input
                 id="time"
                 name="time"
-                type="number"
-                placeholder="45"
-                min={1}
+                type="text"
+                inputMode="numeric"
+                placeholder="1:30 or 90"
                 required
                 className="min-h-11 border-border bg-secondary/50 text-foreground"
               />
@@ -208,10 +218,27 @@ export function SessionForm() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="notes" className="text-foreground">
-              Notes
+            <Label htmlFor="title" className="text-foreground">
+              Title
               <span className="ml-1 text-xs font-normal text-muted-foreground">
-                (optional)
+                (optional — shown as a headline in the feed)
+              </span>
+            </Label>
+            <Input
+              id="title"
+              name="title"
+              type="text"
+              placeholder='e.g. "Finally sub-15!" or "Comp prep grind"'
+              maxLength={100}
+              className="min-h-11 border-border bg-secondary/50 text-foreground"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="notes" className="text-foreground">
+              Description
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                (optional — tell your followers how it went)
               </span>
             </Label>
             <Textarea

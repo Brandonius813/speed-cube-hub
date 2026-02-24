@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Clock, Layers, Timer } from "lucide-react"
 import type { FeedItem as FeedItemType } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
+import { formatDuration } from "@/lib/utils"
 
 function getInitials(name: string): string {
   return name
@@ -111,10 +112,7 @@ export function FeedItem({ item }: { item: FeedItemType }) {
             <div className="flex items-center gap-1.5 text-sm">
               <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="font-mono font-medium text-foreground">
-                {item.duration_minutes}
-              </span>
-              <span className="hidden text-muted-foreground sm:inline">
-                min
+                {formatDuration(item.duration_minutes)}
               </span>
             </div>
 
