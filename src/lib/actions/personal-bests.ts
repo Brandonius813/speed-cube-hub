@@ -107,6 +107,111 @@ export async function logNewPB(fields: {
   return { success: true }
 }
 
+export async function bulkImportPBs(
+  entries: {
+    event: string
+    pb_type: string
+    time_seconds: number
+    date_achieved: string
+  }[]
+): Promise<{ success: boolean; imported: number; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, imported: 0, error: "Not authenticated" }
+  }
+
+  if (!entries.length) {
+    return { success: false, imported: 0, error: "No entries to import." }
+  }
+
+  // Validate all entries first
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]
+    if (!e.event) return { success: false, imported: 0, error: `Row ${i + 1}: Event is required.` }
+    if (!e.pb_type) return { success: false, imported: 0, error: `Row ${i + 1}: PB type is required.` }
+    if (!e.time_seconds || e.time_seconds <= 0) return { success: false, imported: 0, error: `Row ${i + 1}: Time must be positive.` }
+    if (!e.date_achieved) return { success: false, imported: 0, error: `Row ${i + 1}: Date is required.` }
+  }
+
+  // Fetch all current PBs for this user so we can handle is_current logic
+  const { data: currentPBs } = await supabase
+    .from("personal_bests")
+    .select("id, event, pb_type, time_seconds")
+    .eq("user_id", user.id)
+    .eq("is_current", true)
+
+  // Build a map of current PBs: "event|pb_type" → { id, time_seconds }
+  const currentMap = new Map<string, { id: string; time_seconds: number }>()
+  for (const pb of currentPBs || []) {
+    currentMap.set(`${pb.event}|${pb.pb_type}`, {
+      id: pb.id,
+      time_seconds: Number(pb.time_seconds),
+    })
+  }
+
+  // Sort entries by time ascending so we process fastest last
+  // (for duplicate event+type in same import, fastest wins is_current)
+  const sorted = [...entries].sort((a, b) => b.time_seconds - a.time_seconds)
+
+  // Track which event+type combos we've already set is_current for in this batch
+  const batchCurrentSet = new Map<string, number>()
+
+  const rows = sorted.map((e) => {
+    const key = `${e.event}|${e.pb_type}`
+    const existing = currentMap.get(key)
+
+    // Check against existing DB value AND any faster value from this batch
+    const dbTime = existing?.time_seconds ?? Infinity
+    const batchTime = batchCurrentSet.get(key) ?? Infinity
+    const bestSoFar = Math.min(dbTime, batchTime)
+
+    const isFastest = e.time_seconds < bestSoFar
+
+    if (isFastest) {
+      batchCurrentSet.set(key, e.time_seconds)
+    }
+
+    return {
+      user_id: user.id,
+      event: e.event,
+      pb_type: e.pb_type,
+      time_seconds: e.time_seconds,
+      date_achieved: e.date_achieved,
+      is_current: isFastest,
+    }
+  })
+
+  // Unmark old current PBs that are being beaten
+  const idsToUnmark: string[] = []
+  for (const [key] of batchCurrentSet) {
+    const existing = currentMap.get(key)
+    if (existing) idsToUnmark.push(existing.id)
+  }
+
+  if (idsToUnmark.length > 0) {
+    await supabase
+      .from("personal_bests")
+      .update({ is_current: false })
+      .in("id", idsToUnmark)
+      .eq("user_id", user.id)
+  }
+
+  // Insert all new PBs
+  const { error } = await supabase.from("personal_bests").insert(rows)
+
+  if (error) {
+    return { success: false, imported: 0, error: error.message }
+  }
+
+  revalidatePath("/pbs")
+  return { success: true, imported: rows.length }
+}
+
 export async function getPBHistory(
   event: string,
   pbType: string

@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Trophy } from "lucide-react"
+import { Plus, Trophy, Upload } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { getPBTypesForEvent } from "@/lib/constants"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import { LogPBModal } from "@/components/pbs/log-pb-modal"
+import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
 import { PBHistoryModal } from "@/components/pbs/pb-history-modal"
 import type { PBRecord } from "@/lib/types"
 
@@ -32,6 +33,7 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
     event?: string
     pbType?: string
   }>({})
+  const [showImportModal, setShowImportModal] = useState(false)
   const [historyModal, setHistoryModal] = useState<{
     event: string
     pbType: string
@@ -61,13 +63,21 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-center sm:justify-start">
+      <div className="flex justify-center sm:justify-start gap-2">
         <Button
           onClick={() => handleAddPB()}
           className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           Log New PB
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setShowImportModal(true)}
+          className="gap-2"
+        >
+          <Upload className="h-4 w-4" />
+          Bulk Import
         </Button>
       </div>
 
@@ -179,6 +189,15 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
         defaultPBType={logModalDefaults.pbType}
         onSaved={() => {
           setShowLogModal(false)
+          reloadPBs()
+        }}
+      />
+
+      <ImportPBsModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        onSaved={() => {
+          setShowImportModal(false)
           reloadPBs()
         }}
       />
