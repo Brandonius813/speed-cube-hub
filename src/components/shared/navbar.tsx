@@ -36,19 +36,19 @@ export function Navbar() {
       setIsLoggedIn(!!user)
 
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("avatar_url, display_name")
-          .eq("id", user.id)
-          .single()
+        const [profileResult, notifResult] = await Promise.all([
+          getProfile(),
+          getUnreadCount(),
+        ])
 
-        if (profile) {
-          setUserProfile(profile)
+        if (profileResult.profile) {
+          setUserProfile({
+            avatar_url: profileResult.profile.avatar_url,
+            display_name: profileResult.profile.display_name,
+          })
         }
 
-        // Fetch unread notification count
-        const { count } = await getUnreadCount()
-        setUnreadCount(count)
+        setUnreadCount(notifResult.count)
       }
     }
 
@@ -60,18 +60,19 @@ export function Navbar() {
       setIsLoggedIn(!!session?.user)
 
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("avatar_url, display_name")
-          .eq("id", session.user.id)
-          .single()
+        const [profileResult, notifResult] = await Promise.all([
+          getProfile(),
+          getUnreadCount(),
+        ])
 
-        if (profile) {
-          setUserProfile(profile)
+        if (profileResult.profile) {
+          setUserProfile({
+            avatar_url: profileResult.profile.avatar_url,
+            display_name: profileResult.profile.display_name,
+          })
         }
 
-        const { count } = await getUnreadCount()
-        setUnreadCount(count)
+        setUnreadCount(notifResult.count)
       } else {
         setUserProfile(null)
         setUnreadCount(0)
