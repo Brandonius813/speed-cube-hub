@@ -1,5 +1,6 @@
 "use server"
 
+import { unstable_cache } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export type SorKinchCategory = "sor" | "kinch"
@@ -85,8 +86,56 @@ function toEntry(
   }
 }
 
+/** Revalidation period for WCA data cache (12 hours — data only updates weekly) */
+const WCA_CACHE_TTL = 60 * 60 * 12
+
+/** Inner fetch logic for SOR/Kinch leaderboard (uncached). */
+async function fetchSorKinchLeaderboard(
+  category: SorKinchCategory,
+  type: SorKinchType,
+  region: Region,
+  offset: number,
+  limit: number
+): Promise<WcaLeaderboardPage> {
+  const admin = createAdminClient()
+
+  const isSor = category === "sor"
+  const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
+  const ascending = isSor // SOR: lower is better; Kinch: higher is better
+
+  // Run count + data queries in parallel (not sequentially)
+  let countQuery = admin
+    .from("wca_rankings")
+    .select("*", { count: "exact", head: true })
+    .not(column, "is", null)
+  countQuery = applyRegionFilter(countQuery, region)
+
+  let dataQuery = admin
+    .from("wca_rankings")
+    .select(`wca_id, name, country_id, ${column}`)
+    .not(column, "is", null)
+    .order(column, { ascending })
+    .range(offset, offset + limit - 1)
+  dataQuery = applyRegionFilter(dataQuery, region)
+
+  const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
+  const totalCount = countResult.count ?? 0
+
+  if (dataResult.error) {
+    console.error("SOR/Kinch leaderboard error:", dataResult.error.message)
+    return { entries: [], totalCount: 0 }
+  }
+
+  const entries = ((dataResult.data ?? []) as AnyRow[]).map((row, index) =>
+    toEntry(row, column, offset + index + 1)
+  )
+
+  return { entries, totalCount }
+}
+
 /**
- * Fetch a paginated SOR or Kinch leaderboard.
+ * Fetch a paginated SOR or Kinch leaderboard (cached for 12 hours).
+ * WCA data only updates weekly, so aggressive caching is safe.
  */
 export async function getSorKinchLeaderboard(
   category: SorKinchCategory,
@@ -96,40 +145,13 @@ export async function getSorKinchLeaderboard(
   limit: number = PAGE_SIZE
 ): Promise<WcaLeaderboardPage> {
   try {
-    const admin = createAdminClient()
-
-    const isSor = category === "sor"
-    const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
-    const ascending = isSor // SOR: lower is better; Kinch: higher is better
-
-    // Run count + data queries in parallel (not sequentially)
-    let countQuery = admin
-      .from("wca_rankings")
-      .select("*", { count: "exact", head: true })
-      .not(column, "is", null)
-    countQuery = applyRegionFilter(countQuery, region)
-
-    let dataQuery = admin
-      .from("wca_rankings")
-      .select(`wca_id, name, country_id, ${column}`)
-      .not(column, "is", null)
-      .order(column, { ascending })
-      .range(offset, offset + limit - 1)
-    dataQuery = applyRegionFilter(dataQuery, region)
-
-    const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
-    const totalCount = countResult.count ?? 0
-
-    if (dataResult.error) {
-      console.error("SOR/Kinch leaderboard error:", dataResult.error.message)
-      return { entries: [], totalCount: 0 }
-    }
-
-    const entries = ((dataResult.data ?? []) as AnyRow[]).map((row, index) =>
-      toEntry(row, column, offset + index + 1)
+    const cacheKey = `sor-kinch:${category}:${type}:${region.level}:${region.id ?? "all"}:${offset}:${limit}`
+    const cached = unstable_cache(
+      () => fetchSorKinchLeaderboard(category, type, region, offset, limit),
+      [cacheKey],
+      { revalidate: WCA_CACHE_TTL, tags: ["wca-rankings"] }
     )
-
-    return { entries, totalCount }
+    return await cached()
   } catch (err) {
     console.error("SOR/Kinch leaderboard unexpected error:", err)
     return { entries: [], totalCount: 0 }
@@ -268,21 +290,25 @@ export async function getUserSorKinchStats(wcaId: string): Promise<{
 }
 
 /**
- * Get all countries for the region filter dropdown.
+ * Get all countries for the region filter dropdown (cached — countries never change).
  */
-export async function getWcaCountries(): Promise<WcaCountry[]> {
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from("wca_countries")
-    .select("id, name, continent_id")
-    .order("name")
+export const getWcaCountries = unstable_cache(
+  async (): Promise<WcaCountry[]> => {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from("wca_countries")
+      .select("id, name, continent_id")
+      .order("name")
 
-  return ((data ?? []) as AnyRow[]).map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    continent_id: row.continent_id as string,
-  }))
-}
+    return ((data ?? []) as AnyRow[]).map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+      continent_id: row.continent_id as string,
+    }))
+  },
+  ["wca-countries"],
+  { revalidate: 60 * 60 * 24 * 7 } // 1 week — countries never change
+)
 
 /**
  * Get unique continents.
