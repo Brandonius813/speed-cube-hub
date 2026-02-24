@@ -124,12 +124,12 @@ async function downloadExport() {
     })
   } catch { /* ignore */ }
 
-  // Map logical names to possible file names (v1 and v2 formats)
+  // Map logical names to possible file names (v1, v2, and bare formats)
   const FILE_MAP = {
-    persons: ["WCA_export_Persons.tsv", "persons.tsv"],
-    ranksSingle: ["WCA_export_RanksSingle.tsv", "ranks_single.tsv"],
-    ranksAverage: ["WCA_export_RanksAverage.tsv", "ranks_average.tsv"],
-    countries: ["WCA_export_Countries.tsv", "countries.tsv"],
+    persons: ["WCA_export_Persons.tsv", "WCA_export_persons.tsv", "persons.tsv"],
+    ranksSingle: ["WCA_export_RanksSingle.tsv", "WCA_export_ranks_single.tsv", "ranks_single.tsv"],
+    ranksAverage: ["WCA_export_RanksAverage.tsv", "WCA_export_ranks_average.tsv", "ranks_average.tsv"],
+    countries: ["WCA_export_Countries.tsv", "WCA_export_countries.tsv", "countries.tsv"],
   }
 
   // Find actual file paths
