@@ -14,9 +14,23 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { Trophy, Plus, Pencil, Trash2, Calendar } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { updateProfileAccomplishments } from "@/lib/actions/profiles"
 import type { ProfileAccomplishment } from "@/lib/types"
+
+/** Format a date string for display using the user's browser locale */
+function formatDisplayDate(dateStr: string): string {
+  const parsed = new Date(dateStr + "T00:00:00")
+  if (isNaN(parsed.getTime())) return dateStr // Fallback for old free-text dates
+  return parsed.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
 
 export function Accomplishments({
   accomplishments: initial,
@@ -30,14 +44,15 @@ export function Accomplishments({
   const [editOpen, setEditOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [title, setTitle] = useState("")
-  const [date, setDate] = useState("")
+  const [date, setDate] = useState<Date | undefined>(undefined)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function openAdd() {
     setEditIndex(null)
     setTitle("")
-    setDate("")
+    setDate(undefined)
     setError(null)
     setEditOpen(true)
   }
@@ -45,7 +60,9 @@ export function Accomplishments({
   function openEdit(index: number) {
     setEditIndex(index)
     setTitle(items[index].title)
-    setDate(items[index].date ?? "")
+    // Parse stored date string back to Date object
+    const stored = items[index].date
+    setDate(stored ? new Date(stored) : undefined)
     setError(null)
     setEditOpen(true)
   }
@@ -61,7 +78,7 @@ export function Accomplishments({
     const updated = [...items]
     const entry: ProfileAccomplishment = {
       title: title.trim(),
-      date: date || null,
+      date: date ? date.toISOString().split("T")[0] : null,
     }
 
     if (editIndex !== null) {
@@ -142,7 +159,7 @@ export function Accomplishments({
                     {item.date && (
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        {item.date}
+                        {formatDisplayDate(item.date)}
                       </p>
                     )}
                   </div>
@@ -197,18 +214,57 @@ export function Accomplishments({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="acc-date">
+              <Label>
                 Date{" "}
                 <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
-              <Input
-                id="acc-date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                placeholder="e.g., March 2024"
-                className="min-h-11"
-                maxLength={50}
-              />
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "min-h-11 w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {date
+                      ? date.toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarPicker
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => {
+                      setDate(d)
+                      setCalendarOpen(false)
+                    }}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={date}
+                    captionLayout="dropdown"
+                    fromYear={1990}
+                    toYear={new Date().getFullYear()}
+                  />
+                  {date && (
+                    <div className="border-t border-border px-3 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => setDate(undefined)}
+                      >
+                        Clear date
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
