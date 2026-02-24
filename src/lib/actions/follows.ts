@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function followUser(
   followingId: string
@@ -67,14 +68,15 @@ export async function unfollowUser(
 export async function getFollowCounts(
   userId: string
 ): Promise<{ followers: number; following: number }> {
-  const supabase = await createClient()
+  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
+  const admin = createAdminClient()
 
   const [followersResult, followingResult] = await Promise.all([
-    supabase
+    admin
       .from("follows")
       .select("*", { count: "exact", head: true })
       .eq("following_id", userId),
-    supabase
+    admin
       .from("follows")
       .select("*", { count: "exact", head: true })
       .eq("follower_id", userId),
@@ -97,7 +99,9 @@ export async function isFollowing(
 
   if (!user) return false
 
-  const { data } = await supabase
+  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
+  const admin = createAdminClient()
+  const { data } = await admin
     .from("follows")
     .select("follower_id")
     .eq("follower_id", user.id)
@@ -105,4 +109,51 @@ export async function isFollowing(
     .single()
 
   return !!data
+}
+
+export type FollowListUser = {
+  id: string
+  display_name: string
+  handle: string
+  avatar_url: string | null
+}
+
+/** Get the list of users who follow a given user */
+export async function getFollowers(
+  userId: string
+): Promise<FollowListUser[]> {
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("follows")
+    .select("follower_id, profiles!follows_follower_id_fkey(id, display_name, handle, avatar_url)")
+    .eq("following_id", userId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return []
+
+  return data.map((row) => {
+    const p = row.profiles as unknown as FollowListUser
+    return { id: p.id, display_name: p.display_name, handle: p.handle, avatar_url: p.avatar_url }
+  })
+}
+
+/** Get the list of users that a given user follows */
+export async function getFollowing(
+  userId: string
+): Promise<FollowListUser[]> {
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("follows")
+    .select("following_id, profiles!follows_following_id_fkey(id, display_name, handle, avatar_url)")
+    .eq("follower_id", userId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return []
+
+  return data.map((row) => {
+    const p = row.profiles as unknown as FollowListUser
+    return { id: p.id, display_name: p.display_name, handle: p.handle, avatar_url: p.avatar_url }
+  })
 }

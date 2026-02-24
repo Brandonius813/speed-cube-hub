@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { getCommentCounts } from "@/lib/actions/comments"
 import type { FeedItem } from "@/lib/types"
@@ -24,7 +25,9 @@ export async function getFeed(cursor?: string): Promise<{
   }
 
   // Get the IDs of people the current user follows
-  const { data: followData, error: followError } = await supabase
+  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
+  const admin = createAdminClient()
+  const { data: followData, error: followError } = await admin
     .from("follows")
     .select("following_id")
     .eq("follower_id", user.id)
