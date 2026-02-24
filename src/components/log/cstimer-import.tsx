@@ -10,12 +10,13 @@ import {
   AlertTriangle,
   RotateCcw,
 } from "lucide-react";
-import { WCA_EVENTS } from "@/lib/constants";
+import { WCA_EVENTS, DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants";
 import {
   parseCsTimerCsv,
   type CsTimerParsedSession,
 } from "@/lib/cstimer/parse-cstimer";
 import { createSessionsBulk } from "@/lib/actions/sessions";
+import { formatDuration } from "@/lib/utils";
 import { CsTimerPreviewTable } from "./cstimer-preview-table";
 
 type ImportState = "idle" | "previewing" | "importing" | "complete";
@@ -25,11 +26,19 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB — csTimer exports can be large
 export function CsTimerImport() {
   const [state, setState] = useState<ImportState>("idle");
   const [event, setEvent] = useState("333");
+  const [secondsPerSolve, setSecondsPerSolve] = useState(
+    DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30
+  );
   const [sessions, setSessions] = useState<CsTimerParsedSession[]>([]);
   const [totalSolves, setTotalSolves] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedCount, setImportedCount] = useState(0);
+
+  function handleEventChange(newEvent: string) {
+    setEvent(newEvent);
+    setSecondsPerSolve(DEFAULT_SECONDS_PER_SOLVE[newEvent] ?? 30);
+  }
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -76,7 +85,7 @@ export function CsTimerImport() {
       event,
       practice_type: "Solves",
       num_solves: s.num_solves,
-      duration_minutes: s.duration_minutes,
+      duration_minutes: Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60)),
       avg_time: s.avg_time,
       best_time: s.best_time,
       notes: s.num_dnf > 0 ? `${s.num_dnf} DNF${s.num_dnf !== 1 ? "s" : ""} (csTimer import)` : "csTimer import",
@@ -133,7 +142,7 @@ export function CsTimerImport() {
               <select
                 id="cstimer-event"
                 value={event}
-                onChange={(e) => setEvent(e.target.value)}
+                onChange={(e) => handleEventChange(e.target.value)}
                 className="h-10 w-full max-w-xs rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary"
               >
                 {WCA_EVENTS.map((e) => (
@@ -145,6 +154,35 @@ export function CsTimerImport() {
               <p className="text-xs text-muted-foreground">
                 csTimer exports don&apos;t include the puzzle type &mdash;
                 select which event these solves are for.
+              </p>
+            </div>
+
+            {/* Time per solve */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="cstimer-sps"
+                className="text-sm font-medium text-foreground"
+              >
+                Time per solve
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="cstimer-sps"
+                  type="number"
+                  min={1}
+                  max={7200}
+                  value={secondsPerSolve}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val >= 1) setSecondsPerSolve(val);
+                  }}
+                  className="h-10 w-24 rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary font-mono"
+                />
+                <span className="text-sm text-muted-foreground">seconds</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Includes inspection, scrambling, and rest. Adjust to match your
+                pace.
               </p>
             </div>
 
@@ -186,7 +224,17 @@ export function CsTimerImport() {
               <Check className="h-4 w-4 shrink-0 text-green-500" />
               <p className="text-sm text-green-500">
                 Found {totalSolves} solve{totalSolves !== 1 ? "s" : ""} across{" "}
-                {sessions.length} day{sessions.length !== 1 ? "s" : ""} ({eventLabel})
+                {sessions.length} day{sessions.length !== 1 ? "s" : ""} ({eventLabel}
+                {" "}&mdash;{" "}
+                {formatDuration(
+                  sessions.reduce(
+                    (sum, s) =>
+                      sum +
+                      Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60)),
+                    0
+                  )
+                )}{" "}
+                estimated)
               </p>
             </div>
 
@@ -207,7 +255,7 @@ export function CsTimerImport() {
               <p className="text-sm text-destructive">{importError}</p>
             )}
 
-            <CsTimerPreviewTable sessions={sessions} />
+            <CsTimerPreviewTable sessions={sessions} secondsPerSolve={secondsPerSolve} />
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">

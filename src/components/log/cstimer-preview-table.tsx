@@ -5,15 +5,27 @@ import { formatDuration } from "@/lib/utils";
 
 type CsTimerPreviewTableProps = {
   sessions: CsTimerParsedSession[];
+  secondsPerSolve: number;
 };
 
-export function CsTimerPreviewTable({ sessions }: CsTimerPreviewTableProps) {
+function getDuration(numSolves: number, secondsPerSolve: number) {
+  return Math.max(1, Math.ceil((numSolves * secondsPerSolve) / 60));
+}
+
+export function CsTimerPreviewTable({
+  sessions,
+  secondsPerSolve,
+}: CsTimerPreviewTableProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Mobile card layout */}
       <div className="flex flex-col gap-2 sm:hidden">
         {sessions.map((s) => (
-          <MobileCard key={s.session_date} session={s} />
+          <MobileCard
+            key={s.session_date}
+            session={s}
+            secondsPerSolve={secondsPerSolve}
+          />
         ))}
       </div>
 
@@ -44,7 +56,11 @@ export function CsTimerPreviewTable({ sessions }: CsTimerPreviewTableProps) {
           </thead>
           <tbody>
             {sessions.map((s) => (
-              <DesktopRow key={s.session_date} session={s} />
+              <DesktopRow
+                key={s.session_date}
+                session={s}
+                secondsPerSolve={secondsPerSolve}
+              />
             ))}
           </tbody>
         </table>
@@ -53,7 +69,15 @@ export function CsTimerPreviewTable({ sessions }: CsTimerPreviewTableProps) {
   );
 }
 
-function MobileCard({ session }: { session: CsTimerParsedSession }) {
+function MobileCard({
+  session,
+  secondsPerSolve,
+}: {
+  session: CsTimerParsedSession;
+  secondsPerSolve: number;
+}) {
+  const duration = getDuration(session.num_solves, secondsPerSolve);
+
   return (
     <div className="rounded-lg border border-border/30 bg-secondary/30 px-3 py-3">
       <div className="flex items-start justify-between gap-2">
@@ -68,7 +92,7 @@ function MobileCard({ session }: { session: CsTimerParsedSession }) {
                 {session.num_dnf} DNF{session.num_dnf !== 1 ? "s" : ""}
               </span>
             )}
-            <span>{formatDuration(session.duration_minutes)}</span>
+            <span>{formatDuration(duration)}</span>
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -90,7 +114,15 @@ function MobileCard({ session }: { session: CsTimerParsedSession }) {
   );
 }
 
-function DesktopRow({ session }: { session: CsTimerParsedSession }) {
+function DesktopRow({
+  session,
+  secondsPerSolve,
+}: {
+  session: CsTimerParsedSession;
+  secondsPerSolve: number;
+}) {
+  const duration = getDuration(session.num_solves, secondsPerSolve);
+
   return (
     <tr className="border-b border-border/30 last:border-0 hover:bg-secondary/30">
       <td className="py-3 pr-3 text-sm text-foreground">
@@ -115,7 +147,7 @@ function DesktopRow({ session }: { session: CsTimerParsedSession }) {
           : "--"}
       </td>
       <td className="py-3 text-right font-mono text-sm text-foreground">
-        {formatDuration(session.duration_minutes)}
+        {formatDuration(duration)}
       </td>
     </tr>
   );
