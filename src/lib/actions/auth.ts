@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { generateUniqueHandle } from "@/lib/actions/profiles"
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string
@@ -60,12 +61,8 @@ export async function signup(formData: FormData) {
   }
 
   // Create the profile row
-  // Generate a handle from the name (lowercase, no spaces, add random suffix)
-  const baseHandle = `${firstName}${lastName}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 20)
-  const handle = `${baseHandle}${Math.floor(Math.random() * 1000)}`
+  // Generate a unique handle — tries clean name first, adds numbers only if taken
+  const handle = await generateUniqueHandle(`${firstName}${lastName}`, supabase)
 
   const { error: profileError } = await supabase.from("profiles").insert({
     id: data.user.id,

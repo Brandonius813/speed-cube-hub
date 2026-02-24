@@ -59,11 +59,33 @@ export async function GET(request: NextRequest) {
         user.email?.split("@")[0] ||
         "User"
 
+      // Try the clean name first, only add numbers if already taken
       const baseHandle = fullName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
-        .slice(0, 20)
-      const handle = `${baseHandle}${Math.floor(Math.random() * 1000)}`
+        .slice(0, 30)
+
+      let handle = baseHandle
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("handle", baseHandle)
+        .single()
+
+      if (existing) {
+        for (let i = 1; i <= 999; i++) {
+          const candidate = `${baseHandle.slice(0, 26)}${i}`
+          const { data } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("handle", candidate)
+            .single()
+          if (!data) {
+            handle = candidate
+            break
+          }
+        }
+      }
 
       await supabase.from("profiles").insert({
         id: user.id,

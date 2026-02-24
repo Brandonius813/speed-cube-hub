@@ -40,6 +40,7 @@ export function EditProfileModal({
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
+  const [handle, setHandle] = useState(profile.handle)
   const [bio, setBio] = useState(profile.bio ?? "")
   const [location, setLocation] = useState(profile.location ?? "")
   const [sponsor, setSponsor] = useState(profile.sponsor ?? "")
@@ -99,6 +100,7 @@ export function EditProfileModal({
 
     const result = await updateProfile({
       display_name: displayName,
+      ...(handle !== profile.handle ? { handle } : {}),
       bio: bio || null,
       location: location || null,
       sponsor: sponsor || null,
@@ -181,6 +183,26 @@ export function EditProfileModal({
               className="min-h-11"
               maxLength={100}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-handle">Username</Label>
+            <div className="flex items-center gap-0">
+              <span className="flex min-h-11 items-center rounded-l-md border border-r-0 border-border/50 bg-secondary px-3 text-sm text-muted-foreground">
+                speedcubehub.com/profile/
+              </span>
+              <Input
+                id="edit-handle"
+                value={handle}
+                onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                placeholder="brandontrue"
+                className="min-h-11 rounded-l-none"
+                maxLength={30}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Letters, numbers, hyphens, and underscores only. This is your public profile URL.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

@@ -80,8 +80,71 @@ export async function searchProfiles(
   return { profiles: (data as Profile[]) || [] }
 }
 
+/**
+ * Generate a unique handle from a name.
+ * Tries the clean name first (e.g. "brandontrue"), then adds incrementing
+ * numbers (brandontrue1, brandontrue2, ...) until one is available.
+ */
+export async function generateUniqueHandle(
+  name: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string> {
+  const baseHandle = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 30)
+
+  // Try the clean name first
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", baseHandle)
+    .single()
+
+  if (!existing) return baseHandle
+
+  // If taken, try adding incrementing numbers
+  for (let i = 1; i <= 999; i++) {
+    const candidate = `${baseHandle.slice(0, 26)}${i}`
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("handle", candidate)
+      .single()
+
+    if (!data) return candidate
+  }
+
+  // Fallback (extremely unlikely)
+  return `${baseHandle.slice(0, 20)}${Date.now()}`
+}
+
+export async function checkHandleAvailable(
+  handle: string
+): Promise<{ available: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { available: false, error: "Not authenticated" }
+  }
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", handle)
+    .neq("id", user.id)
+    .single()
+
+  return { available: !data }
+}
+
 export async function updateProfile(fields: {
   display_name?: string
+  handle?: string
   bio?: string | null
   avatar_url?: string | null
   location?: string | null
@@ -107,6 +170,32 @@ export async function updateProfile(fields: {
       return { success: false, error: "Display name must be under 100 characters." }
     }
     fields.display_name = name
+  }
+
+  // Validate handle if provided
+  if (fields.handle !== undefined) {
+    const handle = fields.handle.trim().toLowerCase()
+    if (!handle || handle.length < 3) {
+      return { success: false, error: "Username must be at least 3 characters." }
+    }
+    if (handle.length > 30) {
+      return { success: false, error: "Username must be under 30 characters." }
+    }
+    if (!/^[a-z0-9][a-z0-9_-]*[a-z0-9]$/.test(handle)) {
+      return { success: false, error: "Username can only contain lowercase letters, numbers, hyphens, and underscores. Must start and end with a letter or number." }
+    }
+    // Check uniqueness
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("handle", handle)
+      .neq("id", user.id)
+      .single()
+
+    if (existing) {
+      return { success: false, error: "That username is already taken." }
+    }
+    fields.handle = handle
   }
 
   // Validate bio if provided
@@ -152,6 +241,9 @@ export async function updateProfile(fields: {
   }
 
   revalidatePath("/profile")
+  if (fields.handle) {
+    revalidatePath(`/profile/${fields.handle}`)
+  }
   return { success: true }
 }
 
