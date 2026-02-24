@@ -158,6 +158,17 @@ function parseSolveTime(raw: string): number | null {
   // Strip trailing "+" for +2 penalty (time already includes the penalty)
   const cleaned = trimmed.replace(/\+$/, "");
 
+  // Handle m:ss.cc format (e.g. "2:34.56" → 154.56 seconds)
+  const colonMatch = cleaned.match(/^(\d+):(\d+(?:\.\d+)?)$/);
+  if (colonMatch) {
+    const minutes = parseInt(colonMatch[1], 10);
+    const seconds = parseFloat(colonMatch[2]);
+    if (isNaN(minutes) || isNaN(seconds)) return null;
+    const total = minutes * 60 + seconds;
+    if (total <= 0) return null;
+    return Math.round(total * 100) / 100;
+  }
+
   const num = parseFloat(cleaned);
   if (isNaN(num) || num <= 0) return null;
 
