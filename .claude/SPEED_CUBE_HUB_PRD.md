@@ -112,7 +112,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [ ] Notifications page at /notifications with unread badge in navbar
 
 ### Social Wave 3 — Motivation & Retention
-- [ ] Goals (set targets like "sub-20 on 3x3 by June", track progress toward them)
+- [x] Goals (set targets like "sub-20 on 3x3 by June", track progress with visual bars, auto-detect achievement)
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [ ] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join)
@@ -411,6 +411,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Social Wave 1: Middleware updated (public profiles accessible to everyone, feed protected)
 - [x] Social Wave 2: Likes/Kudos on feed sessions (like button with optimistic UI, like count per session)
 - [x] Social Wave 2: Comments on feed sessions (expandable comment section, add/delete comments, lazy-loaded)
+- [x] Social Wave 3: Goals system on dashboard (create/edit/delete goals, progress bars, auto-achievement, auto-expiry)
 
 ## Notes
 
