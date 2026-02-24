@@ -3,18 +3,26 @@
 import { useState } from "react"
 import { format } from "date-fns"
 import type { DateRange as DayPickerDateRange } from "react-day-picker"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { CalendarDays, Filter } from "lucide-react"
+import { CalendarDays } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
-import { EventBadge } from "@/components/shared/event-badge"
+import { CubingIcon } from "@/components/shared/cubing-icon"
 
 const dateRanges = [
   { label: "7 days", value: "7d" as const },
@@ -29,6 +37,8 @@ export type CustomDateRange = {
   from: Date
   to: Date
 }
+
+const EVENT_CATEGORIES = ["NxN", "Blindfolded", "One-Handed", "Other", "Fewest Moves"] as const
 
 export function DashboardFilters({
   selectedEvent,
@@ -50,14 +60,8 @@ export function DashboardFilters({
     customRange ? { from: customRange.from, to: customRange.to } : undefined
   )
 
-  const filterEvents = [
-    { id: "all", label: "All Events" },
-    ...WCA_EVENTS,
-  ]
-
   const handleCalendarSelect = (range: DayPickerDateRange | undefined) => {
     setPendingRange(range)
-    // Auto-apply when both dates are selected
     if (range?.from && range?.to) {
       onCustomRangeChange({ from: range.from, to: range.to })
       onRangeChange("custom")
@@ -72,46 +76,38 @@ export function DashboardFilters({
   return (
     <Card className="border-border/50 bg-card">
       <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4 shrink-0" />
-            <span className="shrink-0">Event</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {filterEvents.map((event) =>
-              event.id === "all" ? (
-                <Badge
-                  key={event.id}
-                  variant="outline"
-                  className={`min-h-[44px] cursor-pointer px-3 transition-all ${
-                    selectedEvent === "all"
-                      ? "bg-foreground text-background"
-                      : "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
-                  }`}
-                  onClick={() => onEventChange("all")}
-                >
-                  All Events
-                </Badge>
+        <Select value={selectedEvent} onValueChange={onEventChange}>
+          <SelectTrigger className="min-h-11 w-full sm:w-[200px]">
+            <SelectValue>
+              {selectedEvent === "all" ? (
+                "All Events"
               ) : (
-                <div
-                  key={event.id}
-                  className="cursor-pointer"
-                  onClick={() => onEventChange(event.id)}
-                >
-                  <EventBadge
-                    event={event.id}
-                    selected={selectedEvent === event.id}
-                    className={`min-h-[44px] px-3 transition-all ${
-                      selectedEvent !== event.id
-                        ? "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
-                        : ""
-                    }`}
-                  />
-                </div>
+                <>
+                  <CubingIcon event={selectedEvent} className="text-[0.85em]" />
+                  {WCA_EVENTS.find((e) => e.id === selectedEvent)?.label ?? selectedEvent}
+                </>
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Events</SelectItem>
+            {EVENT_CATEGORIES.map((category) => {
+              const events = WCA_EVENTS.filter((e) => e.category === category)
+              if (events.length === 0) return null
+              return (
+                <SelectGroup key={category}>
+                  <SelectLabel>{category}</SelectLabel>
+                  {events.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      <CubingIcon event={event.id} className="text-[0.85em]" />
+                      {event.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               )
-            )}
-          </div>
-        </div>
+            })}
+          </SelectContent>
+        </Select>
 
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
