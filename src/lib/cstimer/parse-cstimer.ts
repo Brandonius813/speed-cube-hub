@@ -15,7 +15,6 @@ export type CsTimerParsedSession = {
   session_date: string; // YYYY-MM-DD
   num_solves: number;
   num_dnf: number;
-  duration_minutes: number;
   avg_time: number | null; // null if all DNFs
   best_time: number | null; // null if all DNFs
 };
@@ -23,7 +22,6 @@ export type CsTimerParsedSession = {
 type ParsedSolve = {
   time: number | null; // null = DNF
   date: string; // YYYY-MM-DD
-  timestamp: Date;
 };
 
 export function parseCsTimerCsv(text: string): {
@@ -81,14 +79,8 @@ export function parseCsTimerCsv(text: string): {
     }
 
     const dateStr = dateMatch[1];
-    const timestamp = new Date(rawDate.replace(" ", "T"));
 
-    if (isNaN(timestamp.getTime())) {
-      errors.push(`Row ${i + 1}: could not parse timestamp "${rawDate}"`);
-      continue;
-    }
-
-    solves.push({ time, date: dateStr, timestamp });
+    solves.push({ time, date: dateStr });
   }
 
   if (solves.length === 0) {
@@ -122,11 +114,6 @@ export function parseCsTimerCsv(text: string): {
 
     const numDnf = daySolves.length - validTimes.length;
 
-    // Duration: difference between first and last solve timestamp
-    const timestamps = daySolves.map((s) => s.timestamp.getTime()).sort((a, b) => a - b);
-    const durationMs = timestamps[timestamps.length - 1] - timestamps[0];
-    const durationMinutes = Math.max(1, Math.ceil(durationMs / 60000));
-
     // Averages
     const avgTime =
       validTimes.length > 0
@@ -145,7 +132,6 @@ export function parseCsTimerCsv(text: string): {
       session_date: date,
       num_solves: daySolves.length,
       num_dnf: numDnf,
-      duration_minutes: durationMinutes,
       avg_time: avgTime,
       best_time: bestTime,
     });

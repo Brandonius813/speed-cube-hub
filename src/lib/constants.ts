@@ -98,3 +98,28 @@ const EVENT_PB_TYPES: Record<string, string[]> = {
 export function getPBTypesForEvent(eventId: string): string[] {
   return EVENT_PB_TYPES[eventId] ?? DEFAULT_PB_TYPES
 }
+
+/**
+ * Default total seconds per solve for csTimer imports.
+ * Includes inspection, scrambling, picking up the cube, and rest between solves.
+ * Roughly 2-3x the actual solve time. Users can adjust before importing.
+ */
+export const DEFAULT_SECONDS_PER_SOLVE: Record<string, number> = {
+  "222": 15,
+  "333": 30,
+  "444": 75,
+  "555": 120,
+  "666": 195,
+  "777": 270,
+  "333bf": 120,
+  "444bf": 360,
+  "555bf": 600,
+  "333mbf": 600,
+  "333oh": 40,
+  minx: 120,
+  pyram: 20,
+  clock: 25,
+  skewb: 20,
+  sq1: 45,
+  "333fm": 3600,
+}
