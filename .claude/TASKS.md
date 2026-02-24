@@ -256,7 +256,8 @@ Build server action to query avg_time grouped by week/month for a given event. C
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-H |
 | **Dependencies** | None |
 | **Estimated scope** | 1 component + profile update + dashboard update |
 

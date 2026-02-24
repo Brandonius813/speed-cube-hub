@@ -182,6 +182,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | num_solves | integer | Solve count |
 | duration_minutes | integer | Session length |
 | avg_time | numeric | Average solve time (decimal seconds) |
+| best_time | numeric | Best single solve time (decimal seconds) |
 | notes | text | Optional |
 | created_at | timestamptz | Auto (used for feed ordering) |
 
