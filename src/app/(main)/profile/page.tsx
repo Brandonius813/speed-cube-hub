@@ -1,7 +1,6 @@
 import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
-import { getWcaResults } from "@/lib/actions/wca"
 import { getFollowCounts } from "@/lib/actions/follows"
 
 export default async function ProfilePage() {
@@ -20,20 +19,14 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch WCA results and follow counts in parallel
-  const [wcaResult, followCounts] = await Promise.all([
-    profileResult.profile.wca_id
-      ? getWcaResults(profileResult.profile.wca_id)
-      : Promise.resolve(null),
-    getFollowCounts(profileResult.profile.id),
-  ])
+  // Fetch follow counts (WCA is now fetched client-side)
+  const followCounts = await getFollowCounts(profileResult.profile.id)
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <ProfileContent
         profile={profileResult.profile}
         sessions={sessionsResult.data}
-        wcaData={wcaResult?.data ?? null}
         followerCount={followCounts.followers}
         followingCount={followCounts.following}
       />
