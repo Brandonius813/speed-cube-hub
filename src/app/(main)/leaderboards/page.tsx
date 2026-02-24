@@ -14,3 +14,6 @@ export default async function LeaderboardsPage() {
     </main>
   )
 }
+
+// Always fetch fresh data — leaderboards change whenever anyone logs a session
+export const dynamic = "force-dynamic"

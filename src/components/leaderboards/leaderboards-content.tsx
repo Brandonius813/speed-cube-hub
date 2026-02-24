@@ -32,6 +32,44 @@ const CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
   { id: "most_practice_time", label: "Most Practice Time" },
 ]
 
+const STORAGE_KEY = "leaderboard-prefs"
+
+function loadPrefs(): {
+  category: LeaderboardCategory
+  friendsOnly: boolean
+} {
+  if (typeof window === "undefined") {
+    return { category: "most_solves", friendsOnly: false }
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const validCats = CATEGORIES.map((c) => c.id)
+      if (validCats.includes(parsed.category)) {
+        return {
+          category: parsed.category,
+          friendsOnly: !!parsed.friendsOnly,
+        }
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { category: "most_solves", friendsOnly: false }
+}
+
+function savePrefs(category: LeaderboardCategory, friendsOnly: boolean) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ category, friendsOnly })
+    )
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -112,6 +150,7 @@ export function LeaderboardsContent({
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
 
   // "Find Me" state
   const [myRankData, setMyRankData] = useState<{
@@ -135,6 +174,21 @@ export function LeaderboardsContent({
       ? myRankData.totalCount
       : currentPage?.totalCount ?? 0
   const hasMore = !viewingMyRank && displayEntries.length < totalCount
+
+  // Restore saved preferences on mount (runs once, after hydration)
+  useEffect(() => {
+    const prefs = loadPrefs()
+    setCategory(prefs.category)
+    setFriendsOnly(prefs.friendsOnly)
+    setPrefsLoaded(true)
+  }, [])
+
+  // Save preferences whenever they change (skip the initial load)
+  useEffect(() => {
+    if (prefsLoaded) {
+      savePrefs(category, friendsOnly)
+    }
+  }, [category, friendsOnly, prefsLoaded])
 
   useEffect(() => {
     const supabase = getSupabaseClient()
