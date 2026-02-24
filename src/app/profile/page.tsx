@@ -4,6 +4,7 @@ import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
 import { getWcaResults } from "@/lib/actions/wca"
+import { getFollowCounts } from "@/lib/actions/follows"
 
 export const dynamic = "force-dynamic"
 
@@ -27,10 +28,13 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch WCA results if user has a WCA ID linked
-  const wcaResult = profileResult.profile.wca_id
-    ? await getWcaResults(profileResult.profile.wca_id)
-    : null
+  // Fetch WCA results and follow counts in parallel
+  const [wcaResult, followCounts] = await Promise.all([
+    profileResult.profile.wca_id
+      ? getWcaResults(profileResult.profile.wca_id)
+      : Promise.resolve(null),
+    getFollowCounts(profileResult.profile.id),
+  ])
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,6 +44,8 @@ export default async function ProfilePage() {
           profile={profileResult.profile}
           sessions={sessionsResult.data}
           wcaData={wcaResult?.data ?? null}
+          followerCount={followCounts.followers}
+          followingCount={followCounts.following}
         />
       </main>
       <Footer />

@@ -3,6 +3,24 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Session } from "@/lib/types";
 
+export async function getSessionsByUserId(
+  userId: string
+): Promise<{ data: Session[]; error?: string }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("session_date", { ascending: false });
+
+  if (error) {
+    return { data: [], error: error.message };
+  }
+
+  return { data: (data as Session[]) || [] };
+}
+
 export async function createSession(data: {
   session_date: string;
   event: string;

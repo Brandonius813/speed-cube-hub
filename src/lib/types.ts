@@ -42,3 +42,11 @@ export type Session = {
   notes: string | null;
   created_at: string;
 };
+
+export type FeedItem = Session & {
+  profile: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
+};

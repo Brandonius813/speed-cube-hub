@@ -27,10 +27,14 @@ export function ProfileContent({
   profile,
   sessions,
   wcaData,
+  followerCount,
+  followingCount,
 }: {
   profile: Profile
   sessions: Session[]
   wcaData: WcaPersonResult | null
+  followerCount?: number
+  followingCount?: number
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -66,7 +70,12 @@ export function ProfileContent({
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
-      <ProfileHeader profile={profile} isOwner />
+      <ProfileHeader
+        profile={profile}
+        isOwner
+        followerCount={followerCount}
+        followingCount={followingCount}
+      />
       <ProfileStats sessions={sessions} />
 
       {wcaMessage && (

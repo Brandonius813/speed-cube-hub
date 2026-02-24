@@ -32,6 +32,54 @@ export async function getProfile(): Promise<{
   return { profile: data as Profile }
 }
 
+export async function getProfileByHandle(handle: string): Promise<{
+  profile: Profile | null
+  error?: string
+}> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("handle", handle)
+    .single()
+
+  if (error) {
+    return { profile: null, error: error.message }
+  }
+
+  return { profile: data as Profile }
+}
+
+export async function searchProfiles(
+  query: string
+): Promise<{ profiles: Profile[]; error?: string }> {
+  const supabase = await createClient()
+
+  if (!query.trim()) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20)
+
+    if (error) return { profiles: [], error: error.message }
+    return { profiles: (data as Profile[]) || [] }
+  }
+
+  const searchTerm = `%${query.trim()}%`
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .or(`display_name.ilike.${searchTerm},handle.ilike.${searchTerm}`)
+    .order("display_name")
+    .limit(20)
+
+  if (error) return { profiles: [], error: error.message }
+  return { profiles: (data as Profile[]) || [] }
+}
+
 export async function updateProfile(fields: {
   display_name?: string
   bio?: string | null

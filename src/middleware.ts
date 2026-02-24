@@ -1,7 +1,11 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-const PROTECTED_ROUTES = ["/dashboard", "/log", "/profile"]
+// Routes protected with sub-paths (e.g., /dashboard, /dashboard/*)
+const PROTECTED_ROUTES = ["/dashboard", "/log", "/feed"]
+
+// Routes protected only at the exact path (e.g., /profile but NOT /profile/handle)
+const PROTECTED_EXACT = ["/profile"]
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -37,19 +41,18 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Redirect unauthenticated users away from protected routes
-  // Use exact match or match with trailing slash to avoid
-  // "/log" accidentally matching "/login"
   const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  )
+  const isProtected =
+    PROTECTED_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route + "/")
+    ) ||
+    PROTECTED_EXACT.some((route) => pathname === route)
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     const redirectResponse = NextResponse.redirect(url)
     // Carry any cookies the Supabase client set (e.g., clearing stale sessions)
-    // Pass the full cookie object to preserve options (path, httpOnly, secure, etc.)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie)
     })

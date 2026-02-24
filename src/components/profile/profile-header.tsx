@@ -34,9 +34,15 @@ function getInitials(name: string): string {
 export function ProfileHeader({
   profile,
   isOwner = false,
+  followButton,
+  followerCount,
+  followingCount,
 }: {
   profile: Profile
   isOwner?: boolean
+  followButton?: React.ReactNode
+  followerCount?: number
+  followingCount?: number
 }) {
   const [editOpen, setEditOpen] = useState(false)
 
@@ -61,8 +67,20 @@ export function ProfileHeader({
               <h1 className="text-2xl font-bold text-foreground">
                 {profile.display_name}
               </h1>
+              {(followerCount !== undefined || followingCount !== undefined) && (
+                <div className="mt-1 flex items-center justify-center gap-4 text-sm text-muted-foreground sm:justify-start">
+                  <span>
+                    <span className="font-semibold text-foreground">{followerCount ?? 0}</span>{" "}
+                    {followerCount === 1 ? "follower" : "followers"}
+                  </span>
+                  <span>
+                    <span className="font-semibold text-foreground">{followingCount ?? 0}</span>{" "}
+                    following
+                  </span>
+                </div>
+              )}
             </div>
-            {isOwner && (
+            {isOwner ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -72,6 +90,8 @@ export function ProfileHeader({
                 <Pencil className="h-3.5 w-3.5" />
                 Edit Profile
               </Button>
+            ) : (
+              followButton
             )}
           </div>
           {profile.bio && (

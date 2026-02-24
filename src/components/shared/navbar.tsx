@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Box, LogOut, LayoutDashboard, User } from "lucide-react"
+import { Box, LogOut, LayoutDashboard, User, Rss, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { logout } from "@/lib/actions/auth"
@@ -38,6 +38,22 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
+            <Link
+              href="/feed"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Feed"
+            >
+              <Rss className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Feed</span>
+            </Link>
+            <Link
+              href="/discover"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Discover"
+            >
+              <Search className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">Discover</span>
+            </Link>
             <Link
               href="/dashboard"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
