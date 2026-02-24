@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, MapPin, X, Timer } from "lucide-react"
+import { Search, MapPin, Timer } from "lucide-react"
 import { searchProfiles } from "@/lib/actions/profiles"
 import type { SearchProfileResult } from "@/lib/actions/profiles"
 import { WCA_EVENTS } from "@/lib/constants"
@@ -78,18 +78,13 @@ export function DiscoverContent({
     }, 300)
   }
 
-  function handleEventFilter(eventId: string) {
-    const next = selectedEvent === eventId ? null : eventId
+  function handleEventChange(value: string) {
+    const next = value === "all" ? null : value
     setSelectedEvent(next)
-    doSearch(query, next, sortBy)
-  }
-
-  function clearEventFilter() {
-    setSelectedEvent(null)
-    // If sort was "fastest", fall back to "newest" since fastest needs an event
-    const nextSort = sortBy === "fastest" ? "newest" : sortBy
-    setSortBy(nextSort)
-    doSearch(query, null, nextSort)
+    // If clearing event and sort was "fastest", fall back to "newest"
+    const nextSort = !next && sortBy === "fastest" ? "newest" : sortBy
+    if (nextSort !== sortBy) setSortBy(nextSort)
+    doSearch(query, next, nextSort)
   }
 
   function handleSortChange(value: SortOption) {
@@ -99,17 +94,36 @@ export function DiscoverContent({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search + Sort row */}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, handle, or location..."
+          value={query}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="min-h-11 pl-10"
+        />
+      </div>
+
+      {/* Filters row */}
       <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, handle, or location..."
-            value={query}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="min-h-11 pl-10"
-          />
-        </div>
+        <Select
+          value={selectedEvent ?? "all"}
+          onValueChange={handleEventChange}
+        >
+          <SelectTrigger className="h-11 min-w-0 flex-1 border-border/50 text-sm">
+            <SelectValue placeholder="Main Event" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px]">
+            <SelectItem value="all">All Events</SelectItem>
+            {WCA_EVENTS.map((event) => (
+              <SelectItem key={event.id} value={event.id}>
+                {event.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={sortBy} onValueChange={handleSortChange}>
           <SelectTrigger className="h-11 w-[140px] shrink-0 border-border/50 text-sm">
             <SelectValue />
@@ -123,42 +137,6 @@ export function DiscoverContent({
           </SelectContent>
         </Select>
       </div>
-
-      {/* Event filter pills */}
-      <div className="flex flex-wrap gap-1.5">
-        {WCA_EVENTS.map((event) => {
-          const isActive = selectedEvent === event.id
-          return (
-            <button
-              key={event.id}
-              onClick={() => handleEventFilter(event.id)}
-              className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors ${
-                isActive
-                  ? "border-primary bg-primary/20 text-primary"
-                  : "border-border/50 bg-secondary/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-              }`}
-            >
-              {event.label}
-            </button>
-          )
-        })}
-        {selectedEvent && (
-          <button
-            onClick={clearEventFilter}
-            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
-          >
-            <X className="h-3 w-3" />
-            Clear
-          </button>
-        )}
-      </div>
-
-      {/* Hint when fastest sort needs event */}
-      {sortBy === "fastest" && !selectedEvent && (
-        <p className="text-center text-xs text-muted-foreground">
-          Select an event above to sort by fastest PB.
-        </p>
-      )}
 
       {/* Results */}
       {profiles.length === 0 ? (

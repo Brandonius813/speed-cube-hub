@@ -81,9 +81,9 @@ export async function searchProfiles(
 
   let qb = supabase.from("profiles").select("*")
 
-  // Event filter — Supabase `cs` checks if the array contains the value
+  // Filter by main event
   if (event) {
-    qb = qb.contains("events", [event])
+    qb = qb.eq("main_event", event)
   }
 
   // Text search across name, handle, and location
