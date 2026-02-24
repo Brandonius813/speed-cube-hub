@@ -32,7 +32,7 @@ const HEADER_MAP: Record<string, string> = {
   notes: "notes",
 };
 
-const REQUIRED_FIELDS = ["date", "event", "practice_type", "num_solves", "duration_minutes"];
+const REQUIRED_FIELDS = ["date", "event", "practice_type", "duration_minutes"];
 
 export type CsvParseResult = {
   rows: Record<string, string>[];
@@ -69,7 +69,7 @@ export function parseCsv(text: string): CsvParseResult {
   if (missingFields.length > 0) {
     return {
       rows: [],
-      errors: [`Missing required columns: ${missingFields.join(", ")}. Expected: date, event, practice_type, num_solves, duration_minutes`],
+      errors: [`Missing required columns: ${missingFields.join(", ")}. Expected: date, event, practice_type, duration_minutes`],
     };
   }
 

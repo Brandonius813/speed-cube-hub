@@ -26,7 +26,7 @@ export function ProfileStats({
   )
 
   const totalSolves = sessions.reduce(
-    (sum, s) => sum + s.num_solves,
+    (sum, s) => sum + (s.num_solves ?? 0),
     0
   )
 

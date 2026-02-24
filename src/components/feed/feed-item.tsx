@@ -119,15 +119,17 @@ export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentU
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <div className="flex items-center gap-1.5 text-sm">
-              <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="font-mono font-medium text-foreground">
-                {item.num_solves}
-              </span>
-              <span className="hidden text-muted-foreground sm:inline">
-                solves
-              </span>
-            </div>
+            {item.num_solves !== null && item.num_solves > 0 && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="font-mono font-medium text-foreground">
+                  {item.num_solves}
+                </span>
+                <span className="hidden text-muted-foreground sm:inline">
+                  solves
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-1.5 text-sm">
               <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -184,7 +186,7 @@ export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentU
             handle={profile.handle}
             event={item.event}
             time={item.avg_time !== null ? String(item.avg_time) : null}
-            solves={String(item.num_solves)}
+            solves={item.num_solves ? String(item.num_solves) : null}
           />
         </div>
 

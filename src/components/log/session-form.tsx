@@ -66,7 +66,7 @@ export function SessionForm() {
 
     const sessionDate = formData.get("date") as string;
     const solvesRaw = (formData.get("solves") as string)?.trim();
-    const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : 0;
+    const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : null;
     const durationMinutes = parseDuration(formData.get("time") as string);
     const avgTimeStr = (formData.get("avg") as string)?.trim();
     const bestTimeStr = (formData.get("best") as string)?.trim();

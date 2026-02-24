@@ -54,7 +54,8 @@ export function RecentActivity({ sessions }: { sessions: Session[] }) {
             const bestStr = formatTime(session.best_time, "Best")
             const avgStr = formatTime(session.avg_time, "Avg")
             const timeParts = [bestStr, avgStr].filter(Boolean).join(", ")
-            const description = `${session.num_solves} solves in ${formatDuration(session.duration_minutes)}${timeParts ? `. ${timeParts}` : ""}`
+            const solvesStr = session.num_solves ? `${session.num_solves} solves in ` : ""
+            const description = `${solvesStr}${formatDuration(session.duration_minutes)}${timeParts ? `. ${timeParts}` : ""}`
 
             return (
               <div

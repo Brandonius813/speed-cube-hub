@@ -26,7 +26,7 @@ export async function createSession(data: {
   session_date: string;
   event: string;
   practice_type: string;
-  num_solves: number;
+  num_solves: number | null;
   duration_minutes: number;
   avg_time: number | null;
   best_time: number | null;
@@ -118,7 +118,7 @@ export async function createSessionsBulk(
     session_date: string;
     event: string;
     practice_type: string;
-    num_solves: number;
+    num_solves: number | null;
     duration_minutes: number;
     avg_time: number | null;
     best_time: number | null;
@@ -170,7 +170,7 @@ export async function updateSession(
     session_date: string;
     event: string;
     practice_type: string;
-    num_solves: number;
+    num_solves: number | null;
     duration_minutes: number;
     avg_time: number | null;
     best_time: number | null;
