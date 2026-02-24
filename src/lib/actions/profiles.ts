@@ -366,17 +366,9 @@ export async function uploadAvatar(
   // Add cache-busting param so the browser loads the new image
   const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
-  // Save the URL to the profile
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
-    .eq("id", user.id)
-
-  if (updateError) {
-    return { success: false, error: "Image uploaded but failed to update profile." }
-  }
-
-  revalidatePath("/profile")
+  // Return the URL — the caller (updateProfile) handles saving it to the DB.
+  // This avoids a partial-success state where the file uploads but the DB update
+  // fails, leaving the old avatar_url orphaned.
   return { success: true, url: publicUrl }
 }
 
