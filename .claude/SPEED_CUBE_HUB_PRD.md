@@ -70,7 +70,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | **Average solve time** | Average time per solve (decimal seconds, e.g. 10.32) |
 | **Notes** | Optional free-text notes about the session |
 
-### Stats Dashboard
+### Practice Stats
 
 - **Practice streaks** — current streak and longest streak (consecutive days practiced)
 - **Event breakdown** — cumulative time and solve counts by puzzle type
@@ -359,7 +359,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 /                    → Landing page (hero, features, social proof)
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
-/dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
+/practice-stats      → Practice stats (filters, charts, session log) [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /profile/[handle]    → Public profile for any user [public]
 /log                 → Log a practice session (form) [protected]
@@ -386,7 +386,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | Page | v0 File | Key Components |
 |------|---------|----------------|
 | **Landing** | `app/page.tsx` | Navbar, Hero, Features (3-col grid), SocialProof, Footer |
-| **Dashboard** | `app/dashboard/page.tsx` | Filters (event badges + date range), StatsCards (3), EventPieChart, DailyBarChart, SessionLog (table/card) |
+| **Practice Stats** | `app/practice-stats/page.tsx` | Filters (event badges + date range), StatsCards (3), EventPieChart, DailyBarChart, SessionLog (table/card) |
 | **Profile** | `app/profile/page.tsx` | ProfileHeader, ProfileStats, MainCubes, PBGrid, LinksSponsors, RecentActivity (timeline) |
 | **Log Session** | `app/log/page.tsx` | SessionForm (date, event, type, solves, time, avg, notes) |
 
@@ -444,7 +444,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Landing page (Hero with gradient glow, Features with visual mockups, SocialProof stats)
 - [x] Auth system (Login, Signup, Logout server actions + pages + middleware + auth-aware Navbar)
 - [x] Log Session page (form with validation, createSession server action, success state)
-- [x] Dashboard page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
+- [x] Practice Stats page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
 - [x] Profile page (header, stats, main cubes, PB grid, links/sponsors, recent activity timeline)
 - [x] WCA API integration (fetch official results, display on profile, link/unlink WCA ID)
 - [x] WCA OAuth verification (users sign in through WCA to prove they own their WCA ID)

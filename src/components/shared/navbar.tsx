@@ -143,7 +143,7 @@ export function Navbar() {
               <span className="hidden text-sm sm:inline">PBs</span>
             </Link>
             <Link
-              href="/dashboard"
+              href="/practice-stats"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
               aria-label="Practice Stats"
             >

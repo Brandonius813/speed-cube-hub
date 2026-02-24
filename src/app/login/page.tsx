@@ -32,7 +32,7 @@ export default function LoginPage() {
     }
 
     // Navigate client-side so the browser processes auth cookies first
-    router.push("/dashboard")
+    router.push("/practice-stats")
   }
 
   return (
