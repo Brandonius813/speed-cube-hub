@@ -7,7 +7,7 @@ const PROTECTED_ROUTES = ["/dashboard", "/log", "/feed", "/challenges", "/notifi
 // Routes protected only at the exact path (e.g., /profile but NOT /profile/handle)
 const PROTECTED_EXACT = ["/profile"]
 
-export async function middleware(request: NextRequest) {
+export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -21,24 +21,28 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
           )
           supabaseResponse = NextResponse.next({
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           )
         },
       },
-    }
+    },
   )
 
-  // Refresh the auth session — this is required for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Do not run code between createServerClient and supabase.auth.getClaims().
+  // A simple mistake could make it very hard to debug issues with users being
+  // randomly logged out.
+
+  // getClaims() validates the JWT locally (no network request) and refreshes
+  // expired tokens. This is faster and more reliable than getUser().
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims
 
   // Redirect unauthenticated users away from protected routes
   const pathname = request.nextUrl.pathname
@@ -59,11 +63,12 @@ export async function middleware(request: NextRequest) {
     return redirectResponse
   }
 
-  return supabaseResponse
-}
+  // IMPORTANT: You *must* return the supabaseResponse object as it is.
+  // If you're creating a new response object, make sure to:
+  // 1. Pass the request in it: NextResponse.next({ request })
+  // 2. Copy over the cookies: newResponse.cookies.setAll(supabaseResponse.cookies.getAll())
+  // If this is not done, the browser and server can go out of sync and
+  // terminate the user's session prematurely.
 
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.*|apple-icon.*|api/auth/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  return supabaseResponse
 }
