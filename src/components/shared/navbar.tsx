@@ -89,6 +89,15 @@ export function Navbar() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Re-fetch unread count when notifications are marked as read
+  useEffect(() => {
+    function handleUpdate() {
+      getUnreadCount().then((result) => setUnreadCount(result.count))
+    }
+    window.addEventListener("notifications-updated", handleUpdate)
+    return () => window.removeEventListener("notifications-updated", handleUpdate)
+  }, [])
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">

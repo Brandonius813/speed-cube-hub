@@ -86,6 +86,8 @@ export function NotificationsContent({
       prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     )
     await markAsRead(notificationId)
+    // Tell the navbar to update its badge count
+    window.dispatchEvent(new Event("notifications-updated"))
   }
 
   async function handleMarkAllAsRead() {
@@ -94,6 +96,8 @@ export function NotificationsContent({
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
     await markAllAsRead()
     setMarkingAll(false)
+    // Tell the navbar to update its badge count
+    window.dispatchEvent(new Event("notifications-updated"))
   }
 
   if (notifications.length === 0) {
