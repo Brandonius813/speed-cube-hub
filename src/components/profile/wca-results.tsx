@@ -37,10 +37,11 @@ function formatWcaTime(
   eventId: string,
   type: "single" | "average"
 ): string {
-  // FMC: single = moves, average = centimoves
+  // FMC: single = moves (integer), average = centimoves (e.g. 2733 = 27.33)
   if (eventId === "333fm") {
-    if (type === "single") return `${value} moves`
-    return `${(value / 100).toFixed(2)} moves`
+    if (type === "single") return `${value}`
+    const mean = parseFloat((value / 100).toFixed(2))
+    return `${mean}`
   }
   // MBLD: special encoding
   if (eventId === "333mbf" || eventId === "333mbo") {
@@ -61,7 +62,7 @@ function formatMbld(value: number, eventId: string): string {
     const solved = Math.floor(value / 10000000) % 100
     const attempted = Math.floor(value / 100000) % 100
     const timeSeconds = value % 100000
-    return `${solved}/${attempted} ${formatMbldTime(timeSeconds)}`
+    return `${solved}/${attempted} in ${formatMbldTime(timeSeconds)}`
   }
   // New format: 0DDTTTTTMM
   const dd = Math.floor(value / 10000000)
@@ -70,7 +71,10 @@ function formatMbld(value: number, eventId: string): string {
   const difference = 99 - dd
   const solved = difference + mm
   const attempted = solved + mm
-  return `${solved}/${attempted} ${formatMbldTime(ttttt)}`
+  if (ttttt === 99999) {
+    return `${solved}/${attempted}`
+  }
+  return `${solved}/${attempted} in ${formatMbldTime(ttttt)}`
 }
 
 function formatMbldTime(seconds: number): string {
