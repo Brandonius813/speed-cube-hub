@@ -77,7 +77,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{formatDate(session.session_date)}</span>
-                    <span>{session.num_solves} solves</span>
+                    {session.num_solves !== null && session.num_solves > 0 && <span>{session.num_solves} solves</span>}
                     <span>{formatDuration(session.duration_minutes)}</span>
                   </div>
                 </div>
@@ -163,7 +163,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                       {session.practice_type}
                     </td>
                     <td className="py-3 text-right font-mono text-sm text-foreground">
-                      {session.num_solves}
+                      {session.num_solves ?? "—"}
                     </td>
                     <td className="py-3 text-right font-mono text-sm text-foreground">
                       {formatDuration(session.duration_minutes)}

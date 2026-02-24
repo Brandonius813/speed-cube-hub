@@ -112,7 +112,8 @@ export function EditSessionModal({
     const formData = new FormData(form)
 
     const sessionDate = formData.get("date") as string
-    const numSolves = parseInt(formData.get("solves") as string, 10)
+    const solvesRaw = (formData.get("solves") as string)?.trim()
+    const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : null
     const durationMinutes = parseDuration(formData.get("time") as string)
     const avgTimeStr = (formData.get("avg") as string)?.trim()
     const bestTimeStr = (formData.get("best") as string)?.trim()
@@ -122,7 +123,7 @@ export function EditSessionModal({
     const finalPracticeType =
       practiceType === CUSTOM_VALUE ? customType.trim() : practiceType
 
-    if (!sessionDate || !event || !finalPracticeType || !numSolves || !durationMinutes) {
+    if (!sessionDate || !event || !finalPracticeType || !durationMinutes) {
       setError(
         !durationMinutes && (formData.get("time") as string)?.trim()
           ? 'Invalid time format. Use minutes (e.g. "90") or h:mm (e.g. "1:30").'
@@ -237,14 +238,18 @@ export function EditSessionModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-solves">Number of Solves</Label>
+              <Label htmlFor="edit-solves">
+                Number of Solves
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
               <Input
                 id="edit-solves"
                 name="solves"
                 type="number"
-                defaultValue={session.num_solves}
-                min={1}
-                required
+                defaultValue={session.num_solves ?? ""}
+                min={0}
                 className="min-h-11 border-border bg-secondary/50"
               />
             </div>

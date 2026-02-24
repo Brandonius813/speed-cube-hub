@@ -348,7 +348,7 @@ export async function checkAndAwardMilestones(
 
   // Calculate stats
   const totalSolves = sessions.reduce(
-    (sum: number, s: { num_solves: number }) => sum + s.num_solves,
+    (sum: number, s: { num_solves: number | null }) => sum + (s.num_solves ?? 0),
     0
   );
 

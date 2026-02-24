@@ -17,7 +17,7 @@ export function YtdStats({ sessions }: { sessions: Session[] }) {
 
   const totalSessions = ytdSessions.length
   const totalMinutes = ytdSessions.reduce((sum, s) => sum + s.duration_minutes, 0)
-  const totalSolves = ytdSessions.reduce((sum, s) => sum + s.num_solves, 0)
+  const totalSolves = ytdSessions.reduce((sum, s) => sum + (s.num_solves ?? 0), 0)
 
   const stats = [
     { label: "Sessions", value: String(totalSessions) },

@@ -64,11 +64,12 @@ export function validateCsvRow(
     errors.push(`Practice type cannot be empty`);
   }
 
-  // Num solves validation
-  const numSolves = parsePositiveInt(raw.num_solves ?? "");
-  if (numSolves === null) {
+  // Num solves validation (optional — null if empty)
+  const numSolvesRaw = (raw.num_solves ?? "").trim();
+  const numSolves = numSolvesRaw ? parsePositiveInt(numSolvesRaw) : null;
+  if (numSolvesRaw && numSolves === null) {
     errors.push(
-      `Number of solves must be a positive whole number, got "${raw.num_solves || "(empty)"}"`
+      `Number of solves must be a positive whole number, got "${raw.num_solves}"`
     );
   }
 
