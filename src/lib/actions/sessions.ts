@@ -123,7 +123,8 @@ export async function createSessionsBulk(
     avg_time: number | null;
     best_time: number | null;
     notes: string | null;
-  }>
+  }>,
+  options?: { source?: string }
 ): Promise<{ inserted: number; error?: string }> {
   const supabase = await createClient();
 
@@ -143,17 +144,41 @@ export async function createSessionsBulk(
     return { inserted: 0, error: "Maximum 500 sessions per import." };
   }
 
-  const rows = sessions.map((s) => ({
-    user_id: user.id,
-    session_date: s.session_date,
-    event: s.event,
-    practice_type: s.practice_type,
-    num_solves: s.num_solves,
-    duration_minutes: s.duration_minutes,
-    avg_time: s.avg_time,
-    best_time: s.best_time,
-    notes: s.notes || null,
-  }));
+  const source = options?.source;
+  const hideFromFeed = !!source && sessions.length > 1;
+
+  // Find the most recent session to be the "representative" in the feed.
+  // All other imported sessions are hidden from the feed so they don't
+  // flood followers' timelines.
+  let representativeIdx = 0;
+  if (hideFromFeed) {
+    for (let i = 1; i < sessions.length; i++) {
+      if (sessions[i].session_date > sessions[representativeIdx].session_date) {
+        representativeIdx = i;
+      }
+    }
+  }
+
+  const rows = sessions.map((s, i) => {
+    const isRepresentative = hideFromFeed && i === representativeIdx;
+    return {
+      user_id: user.id,
+      session_date: s.session_date,
+      event: s.event,
+      practice_type: s.practice_type,
+      num_solves: s.num_solves,
+      duration_minutes: s.duration_minutes,
+      avg_time: s.avg_time,
+      best_time: s.best_time,
+      notes: s.notes || null,
+      ...(hideFromFeed ? { feed_visible: i === representativeIdx } : {}),
+      ...(isRepresentative
+        ? {
+            title: `Imported ${sessions.length} session${sessions.length !== 1 ? "s" : ""} from ${source}`,
+          }
+        : {}),
+    };
+  });
 
   const { error } = await supabase.from("sessions").insert(rows);
 
