@@ -2,22 +2,13 @@
 
 import { Loader2, MapPin, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { LeaderboardCategory } from "@/lib/actions/leaderboards"
 import type { SorKinchType, WcaCountry } from "@/lib/actions/sor-kinch"
-import { WCA_EVENTS } from "@/lib/constants"
 import { RegionFilter } from "@/components/leaderboards/region-filter"
 import type { RegionSelection } from "@/components/leaderboards/region-filter"
 
 const PRACTICE_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
   { id: "most_solves", label: "Most Solves" },
-  { id: "fastest_avg", label: "Fastest Avg" },
   { id: "longest_streak", label: "Streak" },
   { id: "most_practice_time", label: "Practice Time" },
 ]
@@ -33,8 +24,6 @@ export function LeaderboardControls({
   category,
   setCategory,
   isWca,
-  event,
-  setEvent,
   friendsOnly,
   setFriendsOnly,
   userId,
@@ -53,8 +42,6 @@ export function LeaderboardControls({
   category: LeaderboardCategory
   setCategory: (cat: LeaderboardCategory) => void
   isWca: boolean
-  event: string
-  setEvent: (e: string) => void
   friendsOnly: boolean
   setFriendsOnly: (f: boolean) => void
   userId: string | null
@@ -122,21 +109,6 @@ export function LeaderboardControls({
       {/* Second row: filters + Find Me */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {category === "fastest_avg" && (
-            <Select value={event} onValueChange={setEvent}>
-              <SelectTrigger className="h-9 w-[140px] border-border/50 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WCA_EVENTS.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
           {isWca && (
             <>
               <RegionFilter
@@ -171,7 +143,7 @@ export function LeaderboardControls({
             </>
           )}
 
-          {!isWca && category !== "fastest_avg" && <div />}
+          {!isWca && <div />}
         </div>
 
         {(canFindMe || isWca) && (

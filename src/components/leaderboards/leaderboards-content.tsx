@@ -76,7 +76,6 @@ export function LeaderboardsContent({
   const [practiceCache, setPracticeCache] =
     useState<Record<string, LeaderboardPage>>(initialData)
   const [category, setCategory] = useState<LeaderboardCategory>("most_solves")
-  const [event, setEvent] = useState("333")
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -100,11 +99,7 @@ export function LeaderboardsContent({
   const isWca = isWcaCategory(category)
 
   // Cache keys
-  const practiceKey = (() => {
-    const prefix = friendsOnly ? "following:" : ""
-    if (category === "fastest_avg") return `${prefix}fastest_avg:${event}`
-    return `${prefix}${category}`
-  })()
+  const practiceKey = `${friendsOnly ? "following:" : ""}${category}`
 
   const wcaKey = `${category}:${sorKinchType}:${region.level}:${region.id ?? "all"}`
 
@@ -144,14 +139,13 @@ export function LeaderboardsContent({
     startTransition(async () => {
       const data = await getLeaderboard(
         category,
-        category === "fastest_avg" ? event : undefined,
         friendsOnly,
         userId ?? undefined
       )
       setPracticeCache((prev) => ({ ...prev, [practiceKey]: data }))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [practiceKey, category, event, friendsOnly, userId, isWca])
+  }, [practiceKey, category, friendsOnly, userId, isWca])
 
   // Fetch WCA data when cache misses
   useEffect(() => {
@@ -170,7 +164,7 @@ export function LeaderboardsContent({
 
   useEffect(() => {
     setViewingMyRank(false); setPracticeMyRank(null); setWcaMyRank(null); setFindMeNoData(false)
-  }, [category, event, friendsOnly, sorKinchType, region])
+  }, [category, friendsOnly, sorKinchType, region])
 
   const handleLoadMore = () => {
     if (isWca) {
@@ -195,7 +189,6 @@ export function LeaderboardsContent({
       startTransition(async () => {
         const data = await getLeaderboard(
           category,
-          category === "fastest_avg" ? event : undefined,
           friendsOnly,
           userId ?? undefined,
           currentPracticePage.entries.length
@@ -239,7 +232,6 @@ export function LeaderboardsContent({
         const result = await getUserLeaderboardPosition(
           category,
           userId,
-          category === "fastest_avg" ? event : undefined,
           friendsOnly
         )
         if (result) {
@@ -271,8 +263,6 @@ export function LeaderboardsContent({
         category={category}
         setCategory={setCategory}
         isWca={isWca}
-        event={event}
-        setEvent={setEvent}
         friendsOnly={friendsOnly}
         setFriendsOnly={setFriendsOnly}
         userId={userId}
