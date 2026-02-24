@@ -296,8 +296,7 @@ export async function updateProfileCubes(
     .update({
       cubes: cubes.map((c) => ({
         name: c.name.trim(),
-        brand: c.brand.trim(),
-        model: c.model.trim(),
+        setup: c.setup.trim(),
         event: c.event.trim(),
       })),
       updated_at: new Date().toISOString(),

@@ -1,7 +1,6 @@
 export type ProfileCube = {
   name: string;
-  brand: string;
-  model: string;
+  setup: string;
   event: string;
 };
 

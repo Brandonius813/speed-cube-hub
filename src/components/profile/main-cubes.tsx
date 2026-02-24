@@ -31,8 +31,7 @@ export function MainCubes({
   const [editOpen, setEditOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [name, setName] = useState("")
-  const [brand, setBrand] = useState("")
-  const [model, setModel] = useState("")
+  const [setup, setSetup] = useState("")
   const [event, setEvent] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +39,7 @@ export function MainCubes({
   function openAdd() {
     setEditIndex(null)
     setName("")
-    setBrand("")
-    setModel("")
+    setSetup("")
     setEvent("333")
     setError(null)
     setEditOpen(true)
@@ -51,8 +49,7 @@ export function MainCubes({
     const cube = items[index]
     setEditIndex(index)
     setName(cube.name)
-    setBrand(cube.brand)
-    setModel(cube.model)
+    setSetup(cube.setup ?? "")
     setEvent(cube.event)
     setError(null)
     setEditOpen(true)
@@ -73,8 +70,7 @@ export function MainCubes({
     const updated = [...items]
     const entry: ProfileCube = {
       name: name.trim(),
-      brand: brand.trim(),
-      model: model.trim(),
+      setup: setup.trim(),
       event: event.trim(),
     }
 
@@ -160,8 +156,7 @@ export function MainCubes({
                       </p>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {[cube.brand, cube.model].filter(Boolean).join(" · ") ||
-                        getEventLabel(cube.event)}
+                      {cube.setup || getEventLabel(cube.event)}
                     </p>
                   </div>
                   {isOwner && (
@@ -230,35 +225,19 @@ export function MainCubes({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="cube-brand">
-                  Brand{" "}
-                  <span className="font-normal text-muted-foreground">(optional)</span>
-                </Label>
-                <Input
-                  id="cube-brand"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="e.g., GAN"
-                  className="min-h-11"
-                  maxLength={100}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="cube-model">
-                  Details{" "}
-                  <span className="font-normal text-muted-foreground">(optional)</span>
-                </Label>
-                <Input
-                  id="cube-model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g., UV Coated"
-                  className="min-h-11"
-                  maxLength={100}
-                />
-              </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="cube-setup">
+                Setup{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="cube-setup"
+                value={setup}
+                onChange={(e) => setSetup(e.target.value)}
+                placeholder="e.g., UV Coated, Spring 4, Tight tensions"
+                className="min-h-11"
+                maxLength={200}
+              />
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
