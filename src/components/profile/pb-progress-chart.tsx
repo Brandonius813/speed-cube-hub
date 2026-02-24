@@ -211,7 +211,6 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => formatTime(v)}
-                  reversed
                   domain={["dataMin", "dataMax"]}
                 />
                 <Tooltip content={<CustomTooltip />} />
