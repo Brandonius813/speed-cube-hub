@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,7 @@ export function EditProfileModal({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [handle, setHandle] = useState(profile.handle)
@@ -115,7 +116,13 @@ export function EditProfileModal({
 
     setSaving(false)
     onOpenChange(false)
-    router.refresh()
+
+    // If handle changed and we're on a handle-based URL, redirect to the new handle
+    if (handle !== profile.handle && pathname.startsWith("/profile/")) {
+      router.replace(`/profile/${handle}`)
+    } else {
+      router.refresh()
+    }
   }
 
   return (
