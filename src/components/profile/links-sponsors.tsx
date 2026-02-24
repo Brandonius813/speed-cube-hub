@@ -217,21 +217,23 @@ export function LinksSponsors({
                 key={index}
                 className="group flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/50 p-3"
               >
-                <PlatformIcon platform={link.platform} />
                 <a
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="min-w-0 flex-1"
+                  className="flex min-w-0 flex-1 items-center gap-3"
                 >
-                  <p className="text-sm font-medium text-foreground">
-                    {link.label}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {getPlatformLabel(link.platform)}
-                  </p>
+                  <PlatformIcon platform={link.platform} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {link.label}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {getPlatformLabel(link.platform)}
+                    </p>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 </a>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 {isOwner && (
                   <div className="flex gap-1">
                     <button
