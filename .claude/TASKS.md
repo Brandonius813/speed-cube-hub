@@ -352,7 +352,8 @@ Build `/wrapped` page showing annual stats summary for the logged-in user. Secti
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | 1 API route + 1 component + feed-item update |
 
