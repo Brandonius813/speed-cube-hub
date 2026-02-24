@@ -2,9 +2,17 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, ChevronUp, ExternalLink, Medal } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Medal,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
+import { updateWcaEventOrder } from "@/lib/actions/profiles"
 import type { WcaPersonalRecords, WcaRecord } from "@/lib/actions/wca"
 
 /** Legacy/retired WCA events that can still appear in profiles */
@@ -17,7 +25,7 @@ const LEGACY_EVENT_LABELS: Record<string, string> = {
 
 const PREVIEW_COUNT = 2
 
-type SortMode = "default" | "rank" | "time"
+type SortMode = "default" | "custom" | "rank" | "time"
 type RankType = "world" | "national" | "continental"
 
 const RANK_LABEL: Record<RankType, string> = {
@@ -115,14 +123,23 @@ export function WcaResults({
   personalRecords,
   competitionCount,
   wcaId,
+  isOwner = false,
+  customEventOrder,
 }: {
   personalRecords: WcaPersonalRecords
   competitionCount: number
   wcaId?: string | null
+  isOwner?: boolean
+  customEventOrder?: string[] | null
 }) {
   const [expanded, setExpanded] = useState(false)
-  const [sortBy, setSortBy] = useState<SortMode>("default")
+  const [sortBy, setSortBy] = useState<SortMode>(
+    customEventOrder && customEventOrder.length > 0 ? "custom" : "default"
+  )
   const [rankType, setRankType] = useState<RankType>("world")
+  const [customOrder, setCustomOrder] = useState<string[]>(
+    customEventOrder ?? []
+  )
 
   const events: ProcessedEvent[] = Object.entries(personalRecords).map(
     ([eventId, records]) => ({
@@ -134,6 +151,20 @@ export function WcaResults({
   )
 
   const sortedEvents = [...events].sort((a, b) => {
+    if (sortBy === "custom" && customOrder.length > 0) {
+      const aIdx = customOrder.indexOf(a.eventId)
+      const bIdx = customOrder.indexOf(b.eventId)
+      // Events not in custom order go to the end, in default WCA order
+      const aPos =
+        aIdx !== -1
+          ? aIdx
+          : 1000 + (WCA_EVENTS.findIndex((e) => e.id === a.eventId) ?? 999)
+      const bPos =
+        bIdx !== -1
+          ? bIdx
+          : 1000 + (WCA_EVENTS.findIndex((e) => e.id === b.eventId) ?? 999)
+      return aPos - bPos
+    }
     if (sortBy === "default") {
       const aIdx = WCA_EVENTS.findIndex((e) => e.id === a.eventId)
       const bIdx = WCA_EVENTS.findIndex((e) => e.id === b.eventId)
@@ -155,6 +186,44 @@ export function WcaResults({
     ? sortedEvents
     : sortedEvents.slice(0, PREVIEW_COUNT)
   const hiddenCount = sortedEvents.length - PREVIEW_COUNT
+
+  async function handleMove(eventId: string, direction: "up" | "down") {
+    // Build the current order from sortedEvents if no custom order yet
+    const currentOrder =
+      customOrder.length > 0
+        ? [...customOrder]
+        : sortedEvents.map((e) => e.eventId)
+
+    const idx = currentOrder.indexOf(eventId)
+    if (idx === -1) return
+
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= currentOrder.length) return
+
+    ;[currentOrder[idx], currentOrder[swapIdx]] = [
+      currentOrder[swapIdx],
+      currentOrder[idx],
+    ]
+
+    // Optimistically update
+    setCustomOrder(currentOrder)
+
+    const result = await updateWcaEventOrder(currentOrder)
+    if (!result.success) {
+      // Revert on failure
+      setCustomOrder(customOrder)
+    }
+  }
+
+  function handleSortChange(mode: SortMode) {
+    setSortBy(mode)
+    // When switching to custom for the first time, initialize from current sort
+    if (mode === "custom" && customOrder.length === 0) {
+      const initialOrder = sortedEvents.map((e) => e.eventId)
+      setCustomOrder(initialOrder)
+      updateWcaEventOrder(initialOrder)
+    }
+  }
 
   if (events.length === 0) return null
 
@@ -193,11 +262,16 @@ export function WcaResults({
             <SegmentedToggle
               options={[
                 { value: "default", label: "Default" },
+                ...(isOwner
+                  ? [{ value: "custom", label: "Custom" }]
+                  : customOrder.length > 0
+                    ? [{ value: "custom", label: "Custom" }]
+                    : []),
                 { value: "rank", label: "Rank" },
                 { value: "time", label: "Time" },
               ]}
               value={sortBy}
-              onChange={(v) => setSortBy(v as SortMode)}
+              onChange={(v) => handleSortChange(v as SortMode)}
             />
           </div>
 
@@ -223,6 +297,13 @@ export function WcaResults({
               key={event.eventId}
               event={event}
               rankType={rankType}
+              showReorder={isOwner && sortBy === "custom"}
+              isFirst={sortedEvents[0]?.eventId === event.eventId}
+              isLast={
+                sortedEvents[sortedEvents.length - 1]?.eventId ===
+                event.eventId
+              }
+              onMove={(dir) => handleMove(event.eventId, dir)}
             />
           ))}
         </div>
@@ -286,9 +367,17 @@ function SegmentedToggle({
 function EventCard({
   event,
   rankType,
+  showReorder = false,
+  isFirst = false,
+  isLast = false,
+  onMove,
 }: {
   event: ProcessedEvent
   rankType: RankType
+  showReorder?: boolean
+  isFirst?: boolean
+  isLast?: boolean
+  onMove?: (direction: "up" | "down") => void
 }) {
   const singleRank = getRankValue(event.single, rankType)
   const avgRank = getRankValue(event.average, rankType)
@@ -297,6 +386,26 @@ function EventCard({
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4">
       <div className="flex items-center gap-3">
+        {showReorder && (
+          <div className="flex flex-col gap-0.5">
+            <button
+              onClick={() => onMove?.("up")}
+              disabled={isFirst}
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+              aria-label="Move event up"
+            >
+              <ArrowUp className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => onMove?.("down")}
+              disabled={isLast}
+              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+              aria-label="Move event down"
+            >
+              <ArrowDown className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         <CubingIcon
           event={event.eventId}
           className="shrink-0 text-base text-muted-foreground"

@@ -122,6 +122,8 @@ export function ProfileContent({
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
           wcaId={wcaId}
+          isOwner
+          customEventOrder={profile.wca_event_order}
         />
       )}
       <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />

@@ -28,6 +28,7 @@ export type Profile = {
   cubes: ProfileCube[];
   links: ProfileLink[];
   accomplishments: ProfileAccomplishment[];
+  wca_event_order: string[] | null;
   created_at: string;
   updated_at: string;
 };

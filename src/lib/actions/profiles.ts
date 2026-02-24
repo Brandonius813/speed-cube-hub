@@ -467,3 +467,36 @@ export async function updateProfileCubes(
   return { success: true }
 }
 
+export async function updateWcaEventOrder(
+  order: string[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  if (order.length > 50) {
+    return { success: false, error: "Too many events." }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      wca_event_order: order,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/profile")
+  return { success: true }
+}
+
