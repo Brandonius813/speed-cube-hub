@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select"
 import { WCA_EVENTS, getPBTypesForEvent } from "@/lib/constants"
 import { bulkImportPBs } from "@/lib/actions/personal-bests"
-import { Plus, Trash2, FileSpreadsheet, LayoutList } from "lucide-react"
+import { Plus, Trash2, FileSpreadsheet, LayoutList, Download } from "lucide-react"
 
 // ── Types ──
 
@@ -562,10 +562,18 @@ export function ImportPBsModal({
         {mode === "csv" && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Paste CSV or upload a file. Columns: Event, PB Type, Time, Date (optional).
-                </p>
+              <p className="text-sm text-muted-foreground">
+                Paste CSV or upload a file. Columns: Event, PB Type, Time, Date (optional).
+              </p>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/pb-import-template.csv"
+                  download="pb-import-template.csv"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium transition hover:bg-secondary min-h-11 sm:min-h-9"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Template
+                </a>
                 <div>
                   <input
                     ref={fileInputRef}
