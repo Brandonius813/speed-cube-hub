@@ -13,10 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, MapPin, X } from "lucide-react"
+import { Search, MapPin, X, Timer } from "lucide-react"
 import { searchProfiles } from "@/lib/actions/profiles"
+import type { SearchProfileResult } from "@/lib/actions/profiles"
 import { WCA_EVENTS } from "@/lib/constants"
-import type { Profile } from "@/lib/types"
+import { formatTime } from "@/components/leaderboards/leaderboard-shared"
 
 const eventColors: Record<string, string> = {
   "333": "border-chart-1/20 bg-chart-1/15 text-chart-1",
@@ -40,12 +41,12 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-type SortOption = "newest" | "name"
+type SortOption = "newest" | "name" | "fastest"
 
 export function DiscoverContent({
   initialProfiles,
 }: {
-  initialProfiles: Profile[]
+  initialProfiles: SearchProfileResult[]
 }) {
   const [profiles, setProfiles] = useState(initialProfiles)
   const [query, setQuery] = useState("")
@@ -85,7 +86,10 @@ export function DiscoverContent({
 
   function clearEventFilter() {
     setSelectedEvent(null)
-    doSearch(query, null, sortBy)
+    // If sort was "fastest", fall back to "newest" since fastest needs an event
+    const nextSort = sortBy === "fastest" ? "newest" : sortBy
+    setSortBy(nextSort)
+    doSearch(query, null, nextSort)
   }
 
   function handleSortChange(value: SortOption) {
@@ -107,12 +111,15 @@ export function DiscoverContent({
           />
         </div>
         <Select value={sortBy} onValueChange={handleSortChange}>
-          <SelectTrigger className="h-11 w-[130px] shrink-0 border-border/50 text-sm">
+          <SelectTrigger className="h-11 w-[140px] shrink-0 border-border/50 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="newest">Newest</SelectItem>
             <SelectItem value="name">Name A-Z</SelectItem>
+            <SelectItem value="fastest" disabled={!selectedEvent}>
+              Fastest PB
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -146,6 +153,13 @@ export function DiscoverContent({
         )}
       </div>
 
+      {/* Hint when fastest sort needs event */}
+      {sortBy === "fastest" && !selectedEvent && (
+        <p className="text-center text-xs text-muted-foreground">
+          Select an event above to sort by fastest PB.
+        </p>
+      )}
+
       {/* Results */}
       {profiles.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
@@ -178,20 +192,31 @@ export function DiscoverContent({
                       <p className="truncate font-semibold text-foreground">
                         {profile.display_name}
                       </p>
+                      {profile.main_event && (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-accent/20 bg-accent/10 text-xs text-accent"
+                        >
+                          {getEventLabel(profile.main_event)}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
                       {profile.location && (
-                        <span className="hidden items-center gap-0.5 text-xs text-muted-foreground sm:inline-flex">
-                          <MapPin className="h-3 w-3" />
-                          {profile.location}
+                        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{profile.location}</span>
+                        </span>
+                      )}
+                      {profile.pb_time != null && (
+                        <span className="flex items-center gap-0.5 text-xs font-medium text-accent">
+                          <Timer className="h-3 w-3 shrink-0" />
+                          <span className="font-mono">
+                            {formatTime(profile.pb_time)}
+                          </span>
                         </span>
                       )}
                     </div>
-                    {/* Mobile location */}
-                    {profile.location && (
-                      <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground sm:hidden">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{profile.location}</span>
-                      </p>
-                    )}
                     {profile.bio && (
                       <p className="mt-0.5 truncate text-sm text-muted-foreground">
                         {profile.bio}

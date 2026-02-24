@@ -59,6 +59,9 @@ export function ProfileHeader({
                 <h1 className="text-2xl font-bold text-foreground">
                   {profile.display_name}
                 </h1>
+                {profile.main_event && (
+                  <EventBadge event={profile.main_event} className="border-accent/30 bg-accent/10 text-accent" />
+                )}
                 {profile.sponsor && (
                   <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
                     <Star className="h-3 w-3" />

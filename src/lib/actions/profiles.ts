@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink } from "@/lib/types"
+import { WCA_EVENTS } from "@/lib/constants"
 
 export async function getProfile(): Promise<{
   profile: Profile | null
@@ -51,16 +52,32 @@ export async function getProfileByHandle(handle: string): Promise<{
   return { profile: data as Profile }
 }
 
+export type SearchProfilesOptions = {
+  event?: string
+  sortBy?: "newest" | "name" | "fastest"
+}
+
+export type SearchProfileResult = Profile & {
+  pb_time?: number | null
+}
+
 export async function searchProfiles(
   query: string,
-  options?: {
-    event?: string
-    sortBy?: "newest" | "name"
-  }
-): Promise<{ profiles: Profile[]; error?: string }> {
+  options?: SearchProfilesOptions
+): Promise<{ profiles: SearchProfileResult[]; error?: string }> {
   const supabase = await createClient()
   const event = options?.event
   const sortBy = options?.sortBy ?? "newest"
+
+  const trimmed = query.trim()
+  if (trimmed.length === 1) {
+    return { profiles: [] }
+  }
+
+  // "Fastest PB" sort — requires an event filter to know which PBs to look at
+  if (sortBy === "fastest" && event) {
+    return searchProfilesByPB(supabase, trimmed, event)
+  }
 
   let qb = supabase.from("profiles").select("*")
 
@@ -70,15 +87,11 @@ export async function searchProfiles(
   }
 
   // Text search across name, handle, and location
-  const trimmed = query.trim()
   if (trimmed.length >= 2) {
     const searchTerm = `%${trimmed}%`
     qb = qb.or(
       `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
     )
-  } else if (trimmed.length === 1) {
-    // Need at least 2 chars to search
-    return { profiles: [] }
   }
 
   // Sort
@@ -93,7 +106,68 @@ export async function searchProfiles(
   const { data, error } = await qb
 
   if (error) return { profiles: [], error: error.message }
-  return { profiles: (data as Profile[]) || [] }
+  return { profiles: (data as SearchProfileResult[]) || [] }
+}
+
+/**
+ * Search profiles sorted by fastest current Single PB for a given event.
+ * Two-step query: get ordered user IDs from personal_bests, then fetch profiles.
+ */
+async function searchProfilesByPB(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  query: string,
+  event: string
+): Promise<{ profiles: SearchProfileResult[]; error?: string }> {
+  // Step 1: Get user_ids with their fastest Single PB for this event
+  const { data: pbRows, error: pbError } = await supabase
+    .from("personal_bests")
+    .select("user_id, time_seconds")
+    .eq("event", event)
+    .eq("pb_type", "Single")
+    .eq("is_current", true)
+    .order("time_seconds", { ascending: true })
+    .limit(100)
+
+  if (pbError) return { profiles: [], error: pbError.message }
+  if (!pbRows?.length) return { profiles: [] }
+
+  const userIds = pbRows.map((r) => r.user_id)
+  const pbMap = new Map(
+    pbRows.map((r) => [r.user_id, Number(r.time_seconds)])
+  )
+
+  // Step 2: Fetch those profiles
+  let qb = supabase
+    .from("profiles")
+    .select("*")
+    .in("id", userIds)
+
+  // Apply text search if present
+  if (query.length >= 2) {
+    const searchTerm = `%${query}%`
+    qb = qb.or(
+      `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
+    )
+  }
+
+  const { data, error } = await qb.limit(100)
+
+  if (error) return { profiles: [], error: error.message }
+  if (!data?.length) return { profiles: [] }
+
+  // Attach PB times and sort by fastest
+  const results: SearchProfileResult[] = data.map((p) => ({
+    ...(p as Profile),
+    pb_time: pbMap.get(p.id) ?? null,
+  }))
+
+  results.sort((a, b) => {
+    const aTime = a.pb_time ?? Infinity
+    const bTime = b.pb_time ?? Infinity
+    return aTime - bTime
+  })
+
+  return { profiles: results.slice(0, 20) }
 }
 
 /**
@@ -165,6 +239,7 @@ export async function updateProfile(fields: {
   avatar_url?: string | null
   location?: string | null
   sponsor?: string | null
+  main_event?: string | null
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -232,6 +307,14 @@ export async function updateProfile(fields: {
   if (fields.sponsor !== undefined && fields.sponsor !== null) {
     if (fields.sponsor.length > 100) {
       return { success: false, error: "Sponsor must be under 100 characters." }
+    }
+  }
+
+  // Validate main_event if provided
+  if (fields.main_event !== undefined && fields.main_event !== null) {
+    const validIds = WCA_EVENTS.map((e) => e.id) as string[]
+    if (!validIds.includes(fields.main_event)) {
+      return { success: false, error: "Invalid main event." }
     }
   }
 

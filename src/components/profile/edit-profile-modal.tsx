@@ -15,8 +15,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Camera, X } from "lucide-react"
 import { updateProfile, uploadAvatar } from "@/lib/actions/profiles"
+import { WCA_EVENTS } from "@/lib/constants"
 import type { Profile } from "@/lib/types"
 
 function getInitials(name: string): string {
@@ -45,6 +53,7 @@ export function EditProfileModal({
   const [bio, setBio] = useState(profile.bio ?? "")
   const [location, setLocation] = useState(profile.location ?? "")
   const [sponsor, setSponsor] = useState(profile.sponsor ?? "")
+  const [mainEvent, setMainEvent] = useState(profile.main_event ?? "")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
@@ -105,6 +114,7 @@ export function EditProfileModal({
       bio: bio || null,
       location: location || null,
       sponsor: sponsor || null,
+      main_event: mainEvent || null,
       ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
     })
 
@@ -228,6 +238,32 @@ export function EditProfileModal({
               maxLength={500}
               rows={3}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-main-event">
+              Main Event{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Select
+              value={mainEvent || "none"}
+              onValueChange={(v) => setMainEvent(v === "none" ? "" : v)}
+            >
+              <SelectTrigger id="edit-main-event" className="min-h-11 border-border/50 text-sm">
+                <SelectValue placeholder="Select your main event" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="none">None</SelectItem>
+                {WCA_EVENTS.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The event you compete in or practice the most.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
