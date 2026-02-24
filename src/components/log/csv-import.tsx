@@ -79,7 +79,7 @@ export function CsvImport() {
       notes: r.parsed.notes,
     }));
 
-    const result = await createSessionsBulk(sessionsToImport);
+    const result = await createSessionsBulk(sessionsToImport, { source: "CSV" });
 
     if (result.error) {
       setImportError(result.error);

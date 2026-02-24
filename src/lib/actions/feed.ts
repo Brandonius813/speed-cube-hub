@@ -58,6 +58,7 @@ export async function getFeed(cursor?: string): Promise<{
       )
     `)
     .in("user_id", feedUserIds)
+    .not("feed_visible", "is", false)
     .order("created_at", { ascending: false })
     .limit(FEED_PAGE_SIZE + 1)
 

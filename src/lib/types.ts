@@ -48,6 +48,7 @@ export type Session = {
   best_time: number | null;
   title: string | null;
   notes: string | null;
+  feed_visible?: boolean;
   created_at: string;
 };
 

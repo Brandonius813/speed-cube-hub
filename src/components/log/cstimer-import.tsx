@@ -96,7 +96,7 @@ export function CsTimerImport() {
       notes: s.num_dnf > 0 ? `${s.num_dnf} DNF${s.num_dnf !== 1 ? "s" : ""} (csTimer import)` : "csTimer import",
     }));
 
-    const result = await createSessionsBulk(rows);
+    const result = await createSessionsBulk(rows, { source: "csTimer" });
 
     if (result.error) {
       setImportError(result.error);
