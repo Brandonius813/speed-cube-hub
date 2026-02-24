@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createNotification } from "@/lib/actions/notifications"
 
 export async function followUser(
   followingId: string
@@ -33,6 +34,9 @@ export async function followUser(
     }
     return { success: false, error: error.message }
   }
+
+  // Notify the followed user (self-follow is already blocked above)
+  await createNotification(followingId, "follow", user.id)
 
   revalidatePath("/feed")
   return { success: true }

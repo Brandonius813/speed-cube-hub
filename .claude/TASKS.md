@@ -204,12 +204,12 @@ Created `comments` table with RLS policies (migration `004_create_comments.sql`)
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | T21 ✅, T22 ✅ |
 | **Estimated scope** | SQL migration + 1 server action file |
 
-Create `notifications` table (user_id, type, actor_id, reference_id, read). Build server actions: `createNotification()`, `getNotifications()`, `markAsRead()`, `markAllAsRead()`, `getUnreadCount()`. Wire notification creation into like, comment, and follow actions (when someone likes your session, you get a notification).
+Created `notifications` table (migration `006_create_notifications.sql`) with RLS policies (users can SELECT and UPDATE their own notifications only). Built server actions in `src/lib/actions/notifications.ts`: `createNotification()`, `getNotifications()`, `markAsRead()`, `markAllAsRead()`, `getUnreadCount()`. Added `Notification` type to `src/lib/types.ts`. Wired notification creation into `likeSession()` (likes.ts), `addComment()` (comments.ts), and `followUser()` (follows.ts) — each creates a notification for the target user, skipping self-notifications. **Note:** SQL must be run in Supabase dashboard.
 
 ---
 

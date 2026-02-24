@@ -81,3 +81,99 @@ export type Comment = {
     avatar_url: string | null;
   };
 };
+
+export type LeaderboardEntry = {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  handle: string;
+  avatar_url: string | null;
+  stat_value: number;
+};
+
+export type WrappedStats = {
+  year: number;
+  totalSolves: number;
+  totalHours: number;
+  totalSessions: number;
+  mostPracticedEvent: string | null;
+  biggestPBImprovement: { event: string; improvement: number } | null;
+  longestStreak: number;
+  eventsPracticed: number;
+  monthlyBreakdown: { month: string; solves: number; hours: number }[];
+  topEvents: { event: string; solves: number; hours: number }[];
+};
+
+export type Badge = {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  category: "competition" | "sponsor" | "milestone";
+  tier: "gold" | "silver" | "bronze" | "standard";
+  criteria_type: string | null;
+  criteria_value: number | null;
+  verification: "auto" | "self" | "admin";
+};
+
+export type UserBadge = {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  year: number | null;
+  detail: string | null;
+  is_current: boolean;
+  verified: boolean;
+  earned_at: string;
+  badge: Badge;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: "like" | "comment" | "follow" | "pb" | "badge";
+  actor_id: string | null;
+  reference_id: string | null;
+  read: boolean;
+  created_at: string;
+  actor?: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
+};
+
+export type Club = {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  created_by: string;
+  created_at: string;
+  member_count: number;
+  is_member: boolean;
+  user_role?: string | null;
+};
+
+export type ClubMember = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  avatar_url: string | null;
+  role: string;
+  joined_at: string;
+};
+
+export type Challenge = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "solves" | "time" | "streak" | "events";
+  target_value: number;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  participant_count: number;
+  has_joined: boolean;
+  user_progress?: number;
+};

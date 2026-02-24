@@ -65,13 +65,16 @@ Each page uses a two-file pattern:
 - `src/lib/actions/likes.ts` — Like/unlike system (likeSession, unlikeSession, getSessionLikeInfo)
 - `src/lib/actions/comments.ts` — Comments system (addComment, getComments, deleteComment, getCommentCounts)
 - `src/lib/actions/goals.ts` — Goals system (createGoal, getGoals, updateGoal, deleteGoal, checkGoalProgress)
+- `src/lib/actions/notifications.ts` — Notifications system (createNotification, getNotifications, markAsRead, markAllAsRead, getUnreadCount)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
 - `src/components/shared/` — Shared app components (navbar, etc.)
 - `src/components/profile/` — Profile page components (header, stats, WCA results, follow button, follow list modal, etc.)
 - `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, following-sidebar)
+- `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components
+- `src/components/leaderboards/` — Leaderboard components (leaderboards-content)
 
 ### Path Alias
 
@@ -128,7 +131,7 @@ See `.env.local.example` for required variables:
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox [protected] — planned (Wave 2)
-/leaderboards        → Public leaderboards [public] — planned (Wave 4)
+/leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
 /challenges          → Community challenges [protected] — planned (Wave 3)
 /clubs               → Browse/manage clubs [protected] — planned (Wave 4)
 /clubs/[id]          → Individual club page [public] — planned (Wave 4)

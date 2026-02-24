@@ -1,6 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { createNotification } from "@/lib/actions/notifications"
 import type { Comment } from "@/lib/types"
 
 /**
@@ -45,6 +47,18 @@ export async function addComment(
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Notify the session owner (don't notify if you comment on your own session)
+  const admin = createAdminClient()
+  const { data: session } = await admin
+    .from("sessions")
+    .select("user_id")
+    .eq("id", sessionId)
+    .single()
+
+  if (session && session.user_id !== user.id) {
+    await createNotification(session.user_id, "comment", user.id, sessionId)
   }
 
   return { comment: data as Comment }

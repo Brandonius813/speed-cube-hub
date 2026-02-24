@@ -1,6 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { createNotification } from "@/lib/actions/notifications"
 
 export async function likeSession(
   sessionId: string
@@ -26,6 +28,18 @@ export async function likeSession(
       return { success: true }
     }
     return { success: false, error: error.message }
+  }
+
+  // Notify the session owner (don't notify if you liked your own session)
+  const admin = createAdminClient()
+  const { data: session } = await admin
+    .from("sessions")
+    .select("user_id")
+    .eq("id", sessionId)
+    .single()
+
+  if (session && session.user_id !== user.id) {
+    await createNotification(session.user_id, "like", user.id, sessionId)
   }
 
   return { success: true }
