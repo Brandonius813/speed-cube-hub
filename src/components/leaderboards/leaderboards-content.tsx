@@ -126,59 +126,59 @@ export function LeaderboardsContent({
   return (
     <div className="flex flex-col gap-6">
       {/* Controls bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        {/* Category tabs — horizontal scroll on mobile */}
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-          {CATEGORIES.map((cat) => (
-            <Button
-              key={cat.id}
-              size="sm"
-              variant={category === cat.id ? "default" : "outline"}
-              className={`shrink-0 text-xs sm:text-sm ${
-                category === cat.id
-                  ? "bg-primary text-primary-foreground"
-                  : "border-border/50 text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setCategory(cat.id)}
-            >
-              {cat.label}
-            </Button>
-          ))}
-        </div>
+      <div className="flex flex-col gap-3">
+        {/* Top row: category tabs + following toggle */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Category tabs — horizontal scroll on mobile */}
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+            {CATEGORIES.map((cat) => (
+              <Button
+                key={cat.id}
+                size="sm"
+                variant={category === cat.id ? "default" : "outline"}
+                className={`shrink-0 text-xs sm:text-sm ${
+                  category === cat.id
+                    ? "bg-primary text-primary-foreground"
+                    : "border-border/50 text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setCategory(cat.id)}
+              >
+                {cat.label}
+              </Button>
+            ))}
+          </div>
 
-        <div className="flex items-center gap-3">
-          {/* Event selector (only visible for "Fastest Average") */}
-          {category === "fastest_avg" && (
-            <Select value={event} onValueChange={setEvent}>
-              <SelectTrigger className="h-9 w-[140px] border-border/50 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WCA_EVENTS.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Friends-only toggle (only if logged in) */}
+          {/* Following toggle (only if logged in) — right-aligned, distinct style */}
           {userId && (
-            <Button
-              size="sm"
-              variant={friendsOnly ? "default" : "outline"}
-              className={`shrink-0 text-xs sm:text-sm ${
-                friendsOnly
-                  ? "bg-primary text-primary-foreground"
-                  : "border-border/50 text-muted-foreground hover:text-foreground"
-              }`}
+            <button
+              type="button"
               onClick={() => setFriendsOnly(!friendsOnly)}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                friendsOnly
+                  ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
             >
-              {friendsOnly ? "Friends" : "Global"}
-            </Button>
+              {friendsOnly ? "Following" : "Global"}
+            </button>
           )}
         </div>
+
+        {/* Event selector (only visible for "Fastest Average") */}
+        {category === "fastest_avg" && (
+          <Select value={event} onValueChange={setEvent}>
+            <SelectTrigger className="h-9 w-[140px] border-border/50 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WCA_EVENTS.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Loading state */}
@@ -190,7 +190,7 @@ export function LeaderboardsContent({
         <div className="py-16 text-center">
           <p className="text-muted-foreground">
             {friendsOnly
-              ? "No data from people you follow yet."
+              ? "No data from people you're following yet."
               : "No leaderboard data yet. Start logging sessions!"}
           </p>
         </div>
