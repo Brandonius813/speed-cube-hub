@@ -2,15 +2,39 @@ import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions, getSessionStats } from "@/lib/actions/sessions"
 import { getGoals, checkGoalProgress } from "@/lib/actions/goals"
 
-export default async function DashboardPage() {
-  // Check for expired/achieved goals, then fetch everything in parallel
-  await checkGoalProgress()
+const defaultStats = {
+  sessionsThisWeek: 0,
+  totalMinutes: 0,
+  currentStreak: 0,
+  longestStreak: 0,
+  weeklyMinutes: 0,
+  weeklyChange: 0,
+}
 
-  const [sessionsResult, stats, goalsResult] = await Promise.all([
-    getSessions(),
-    getSessionStats(),
-    getGoals(),
-  ])
+export default async function DashboardPage() {
+  // Check for expired/achieved goals (non-blocking — don't let this crash the page)
+  try {
+    await checkGoalProgress()
+  } catch (err) {
+    console.error("[Dashboard] checkGoalProgress failed:", err)
+  }
+
+  let sessions: Awaited<ReturnType<typeof getSessions>>["data"] = []
+  let stats = defaultStats
+  let goals: Awaited<ReturnType<typeof getGoals>>["data"] = []
+
+  try {
+    const [sessionsResult, statsResult, goalsResult] = await Promise.all([
+      getSessions(),
+      getSessionStats(),
+      getGoals(),
+    ])
+    sessions = sessionsResult.data
+    stats = statsResult
+    goals = goalsResult.data
+  } catch (err) {
+    console.error("[Dashboard] Data fetch failed:", err)
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -24,9 +48,9 @@ export default async function DashboardPage() {
       </div>
 
       <DashboardContent
-        initialSessions={sessionsResult.data}
+        initialSessions={sessions}
         initialStats={stats}
-        initialGoals={goalsResult.data}
+        initialGoals={goals}
       />
     </main>
   )
