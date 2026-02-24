@@ -40,9 +40,9 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm border-border/50 bg-card">
         <CardContent className="p-6 sm:p-8">
           <div className="mb-6 flex flex-col items-center gap-2">
-            <Link href="/" className="flex items-center gap-1.5">
-              <Box className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-foreground">SpeedCubeHub</span>
+            <Link href="/" className="flex items-center gap-2">
+              <Box className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold text-foreground">SpeedCubeHub</span>
             </Link>
             <h1 className="text-xl font-bold text-foreground">Create your account</h1>
             <p className="text-sm text-muted-foreground">Start tracking your cubing progress</p>
@@ -89,7 +89,7 @@ export default function SignupPage() {
             {googleLoading ? "Redirecting..." : "Sign up with Google"}
           </Button>
 
-          <div className="relative">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border/50" />
             </div>
