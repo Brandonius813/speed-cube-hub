@@ -29,3 +29,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-wca-rankings.mjs
+
+      - name: Bust leaderboard cache
+        run: |
+          curl -sf -X POST https://www.speedcubehub.com/api/revalidate-wca \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
