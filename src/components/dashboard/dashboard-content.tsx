@@ -8,6 +8,7 @@ import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { EventPieChart } from "@/components/dashboard/event-pie-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { SessionLog } from "@/components/dashboard/session-log"
+import { PBProgressChart } from "@/components/profile/pb-progress-chart"
 import type { Session } from "@/lib/types"
 
 export function DashboardContent({
@@ -72,6 +73,8 @@ export function DashboardContent({
         <EventPieChart sessions={filteredSessions} />
         <DailyBarChart sessions={filteredSessions} />
       </div>
+
+      <PBProgressChart sessions={initialSessions} />
 
       <SessionLog sessions={filteredSessions} />
     </div>
