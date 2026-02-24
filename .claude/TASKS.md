@@ -314,7 +314,8 @@ Initial set: "First 100 Solves", "First 1,000 Solves", "7-Day Streak", "30-Day S
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file + 1 page + 2 components |
 
