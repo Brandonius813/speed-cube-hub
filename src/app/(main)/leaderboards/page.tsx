@@ -1,15 +1,18 @@
 import { LeaderboardsContent } from "@/components/leaderboards/leaderboards-content"
 import { getAllLeaderboards } from "@/lib/actions/leaderboards"
-import { getWcaCountries } from "@/lib/actions/sor-kinch"
+import { getWcaCountries, getSorKinchLeaderboard } from "@/lib/actions/sor-kinch"
+import type { WcaLeaderboardPage } from "@/lib/actions/sor-kinch"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function LeaderboardsPage() {
   const supabase = await createClient()
 
-  // Fetch practice leaderboards, WCA countries, and user info in parallel
-  const [initialData, countries, { data: { user } }] = await Promise.all([
+  // Fetch practice leaderboards, WCA data, and user info all in parallel
+  const [initialData, countries, sorSingleData, kinchSingleData, { data: { user } }] = await Promise.all([
     getAllLeaderboards(),
     getWcaCountries().catch(() => []),
+    getSorKinchLeaderboard("sor", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
+    getSorKinchLeaderboard("kinch", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
     supabase.auth.getUser(),
   ])
 
@@ -31,6 +34,10 @@ export default async function LeaderboardsPage() {
       </h1>
       <LeaderboardsContent
         initialData={initialData}
+        initialWcaData={{
+          "sor:single:world:all": sorSingleData,
+          "kinch:single:world:all": kinchSingleData,
+        }}
         countries={countries}
         userWcaId={userWcaId}
       />

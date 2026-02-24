@@ -102,31 +102,30 @@ export async function getSorKinchLeaderboard(
     const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
     const ascending = isSor // SOR: lower is better; Kinch: higher is better
 
-    // Count query
+    // Run count + data queries in parallel (not sequentially)
     let countQuery = admin
       .from("wca_rankings")
       .select("*", { count: "exact", head: true })
       .not(column, "is", null)
     countQuery = applyRegionFilter(countQuery, region)
-    const { count } = await countQuery
-    const totalCount = count ?? 0
 
-    // Data query — select all columns, let JS pick the right one
     let dataQuery = admin
       .from("wca_rankings")
-      .select("*")
+      .select(`wca_id, name, country_id, ${column}`)
       .not(column, "is", null)
       .order(column, { ascending })
       .range(offset, offset + limit - 1)
     dataQuery = applyRegionFilter(dataQuery, region)
 
-    const { data, error } = await dataQuery
-    if (error) {
-      console.error("SOR/Kinch leaderboard error:", error.message)
+    const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
+    const totalCount = countResult.count ?? 0
+
+    if (dataResult.error) {
+      console.error("SOR/Kinch leaderboard error:", dataResult.error.message)
       return { entries: [], totalCount: 0 }
     }
 
-    const entries = ((data ?? []) as AnyRow[]).map((row, index) =>
+    const entries = ((dataResult.data ?? []) as AnyRow[]).map((row, index) =>
       toEntry(row, column, offset + index + 1)
     )
 
@@ -157,10 +156,10 @@ export async function findUserInSorKinch(
   const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
   const ascending = isSor
 
-  // Get the user's row
+  // Get the user's row (only need wca_id + the relevant column)
   const { data: userData } = await admin
     .from("wca_rankings")
-    .select("*")
+    .select(`wca_id, name, country_id, ${column}`)
     .eq("wca_id", wcaId)
     .single()
 
@@ -169,28 +168,27 @@ export async function findUserInSorKinch(
 
   const userScore = Number(row[column])
 
-  // Count how many people rank better
+  // Run rank + total count queries in parallel
   let rankQuery = admin
     .from("wca_rankings")
     .select("*", { count: "exact", head: true })
     .not(column, "is", null)
-
   if (ascending) {
     rankQuery = rankQuery.lt(column, userScore)
   } else {
     rankQuery = rankQuery.gt(column, userScore)
   }
   rankQuery = applyRegionFilter(rankQuery, region)
-  const { count: betterCount } = await rankQuery
-  const userRank = (betterCount ?? 0) + 1
 
-  // Get total count
   let totalQuery = admin
     .from("wca_rankings")
     .select("*", { count: "exact", head: true })
     .not(column, "is", null)
   totalQuery = applyRegionFilter(totalQuery, region)
-  const { count: totalCount } = await totalQuery
+
+  const [rankResult, totalResult] = await Promise.all([rankQuery, totalQuery])
+  const userRank = (rankResult.count ?? 0) + 1
+  const totalCount = totalResult.count ?? 0
 
   // Fetch surrounding entries
   const start = Math.max(0, userRank - FIND_ME_WINDOW - 1)
@@ -198,7 +196,7 @@ export async function findUserInSorKinch(
 
   let surroundingQuery = admin
     .from("wca_rankings")
-    .select("*")
+    .select(`wca_id, name, country_id, ${column}`)
     .not(column, "is", null)
     .order(column, { ascending })
     .range(start, start + windowSize - 1)
@@ -210,7 +208,7 @@ export async function findUserInSorKinch(
     toEntry(r, column, start + index + 1)
   )
 
-  return { entries, userRank, totalCount: totalCount ?? 0 }
+  return { entries, userRank, totalCount }
 }
 
 /**
@@ -227,7 +225,7 @@ export async function getUserSorKinchStats(wcaId: string): Promise<{
 
   const { data } = await admin
     .from("wca_rankings")
-    .select("*")
+    .select("wca_id, sor_single, kinch_single")
     .eq("wca_id", wcaId)
     .single()
 
@@ -237,27 +235,29 @@ export async function getUserSorKinchStats(wcaId: string): Promise<{
   const sorValue = row.sor_single != null ? Number(row.sor_single) : null
   const kinchValue = row.kinch_single != null ? Number(row.kinch_single) : null
 
-  // Get SOR rank (count of people with lower SOR + 1)
-  let sorRank: number | null = null
-  if (sorValue != null) {
-    const { count } = await admin
-      .from("wca_rankings")
-      .select("*", { count: "exact", head: true })
-      .lt("sor_single", sorValue)
-      .not("sor_single", "is", null)
-    sorRank = (count ?? 0) + 1
-  }
+  // Run both rank queries in parallel
+  const sorRankPromise = sorValue != null
+    ? admin
+        .from("wca_rankings")
+        .select("*", { count: "exact", head: true })
+        .lt("sor_single", sorValue)
+        .not("sor_single", "is", null)
+    : null
 
-  // Get Kinch rank (count of people with higher Kinch + 1)
-  let kinchRank: number | null = null
-  if (kinchValue != null) {
-    const { count } = await admin
-      .from("wca_rankings")
-      .select("*", { count: "exact", head: true })
-      .gt("kinch_single", kinchValue)
-      .not("kinch_single", "is", null)
-    kinchRank = (count ?? 0) + 1
-  }
+  const kinchRankPromise = kinchValue != null
+    ? admin
+        .from("wca_rankings")
+        .select("*", { count: "exact", head: true })
+        .gt("kinch_single", kinchValue)
+        .not("kinch_single", "is", null)
+    : null
+
+  const [sorResult, kinchResult] = await Promise.all([
+    sorRankPromise ?? Promise.resolve({ count: null }),
+    kinchRankPromise ?? Promise.resolve({ count: null }),
+  ])
+  const sorRank = sorResult.count != null ? sorResult.count + 1 : null
+  const kinchRank = kinchResult.count != null ? kinchResult.count + 1 : null
 
   return {
     sorRank,
@@ -274,7 +274,7 @@ export async function getWcaCountries(): Promise<WcaCountry[]> {
   const admin = createAdminClient()
   const { data } = await admin
     .from("wca_countries")
-    .select("*")
+    .select("id, name, continent_id")
     .order("name")
 
   return ((data ?? []) as AnyRow[]).map((row) => ({

@@ -63,10 +63,12 @@ function savePrefs(category: LeaderboardCategory, friendsOnly: boolean) {
 
 export function LeaderboardsContent({
   initialData,
+  initialWcaData = {},
   countries = [],
   userWcaId,
 }: {
   initialData: Record<string, LeaderboardPage>
+  initialWcaData?: Record<string, WcaLeaderboardPage>
   countries?: WcaCountry[]
   userWcaId?: string | null
 }) {
@@ -80,9 +82,9 @@ export function LeaderboardsContent({
   const [isPending, startTransition] = useTransition()
   const [prefsLoaded, setPrefsLoaded] = useState(false)
 
-  // WCA leaderboard state
+  // WCA leaderboard state — seeded with server-fetched data
   const [wcaCache, setWcaCache] =
-    useState<Record<string, WcaLeaderboardPage>>({})
+    useState<Record<string, WcaLeaderboardPage>>(initialWcaData)
   const [sorKinchType, setSorKinchType] = useState<SorKinchType>("single")
   const [region, setRegion] = useState<RegionSelection>(DEFAULT_REGION)
 
