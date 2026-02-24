@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Target, Plus, Trash2, Pencil, Trophy, Clock, CalendarX2 } from "lucide-react"
 import { GoalModal } from "@/components/dashboard/goal-modal"
-import { deleteGoal } from "@/lib/actions/goals"
+import { deleteGoal, getGoals } from "@/lib/actions/goals"
 import { WCA_EVENTS } from "@/lib/constants"
 import type { Goal } from "@/lib/types"
 
@@ -201,14 +201,19 @@ export function GoalsSection({
   const activeGoals = goals.filter((g) => g.status === "active")
   const pastGoals = goals.filter((g) => g.status !== "active")
 
-  function handleSaved() {
-    setModalOpen(false)
-    setEditingGoal(null)
-    router.refresh()
+  async function refreshGoals() {
+    const result = await getGoals()
+    if (result.data) setGoals(result.data)
   }
 
-  function handleDeleted() {
-    router.refresh()
+  async function handleSaved() {
+    setModalOpen(false)
+    setEditingGoal(null)
+    await refreshGoals()
+  }
+
+  async function handleDeleted() {
+    await refreshGoals()
   }
 
   return (
