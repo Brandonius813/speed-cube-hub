@@ -2,6 +2,7 @@ import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
 import { getFollowCounts } from "@/lib/actions/follows"
+import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
 
 export default async function ProfilePage() {
   const [profileResult, sessionsResult] = await Promise.all([
@@ -19,8 +20,12 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch follow counts (WCA is now fetched client-side)
-  const followCounts = await getFollowCounts(profileResult.profile.id)
+  // Fetch follow counts, badges, and badge definitions in parallel
+  const [followCounts, badgesResult, badgeDefsResult] = await Promise.all([
+    getFollowCounts(profileResult.profile.id),
+    getUserBadges(profileResult.profile.id),
+    getBadgeDefinitions(),
+  ])
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -29,6 +34,8 @@ export default async function ProfilePage() {
         sessions={sessionsResult.data}
         followerCount={followCounts.followers}
         followingCount={followCounts.following}
+        userBadges={badgesResult.data}
+        allBadges={badgeDefsResult.data}
       />
     </main>
   )

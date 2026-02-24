@@ -13,9 +13,10 @@ import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { FollowButton } from "@/components/profile/follow-button"
+import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { getWcaResults } from "@/lib/actions/wca"
-import type { Profile, Session } from "@/lib/types"
+import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 
 export function PublicProfileContent({
@@ -26,6 +27,9 @@ export function PublicProfileContent({
   isFollowing,
   followerCount,
   followingCount,
+  userBadges = [],
+  allBadges = [],
+  isAdmin = false,
 }: {
   profile: Profile
   sessions: Session[]
@@ -34,6 +38,9 @@ export function PublicProfileContent({
   isFollowing: boolean
   followerCount: number
   followingCount: number
+  userBadges?: UserBadge[]
+  allBadges?: Badge[]
+  isAdmin?: boolean
 }) {
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
@@ -79,6 +86,12 @@ export function PublicProfileContent({
       <YtdStats sessions={sessions} />
       <MainCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
       <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner={isOwner} />
+      <BadgesSection
+        userBadges={userBadges}
+        allBadges={allBadges}
+        isOwner={isOwner}
+        isAdmin={isAdmin}
+      />
       <LinksSponsors links={profile.links} isOwner={isOwner} />
       <PracticeHeatmap sessions={sessions} />
       <RecentActivity sessions={sessions.slice(0, 10)} />

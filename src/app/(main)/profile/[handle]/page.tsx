@@ -3,6 +3,7 @@ import { PublicProfileContent } from "@/components/profile/public-profile-conten
 import { getProfileByHandle } from "@/lib/actions/profiles"
 import { getSessionsByUserId } from "@/lib/actions/sessions"
 import { getFollowCounts, isFollowing } from "@/lib/actions/follows"
+import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function PublicProfilePage({
@@ -28,11 +29,13 @@ export default async function PublicProfilePage({
   const isOwner = user?.id === profile.id
 
   // Fetch remaining data in parallel (WCA is now fetched client-side)
-  const [sessionsResult, followCounts, viewerIsFollowing] =
+  const [sessionsResult, followCounts, viewerIsFollowing, badgesResult, badgeDefsResult] =
     await Promise.all([
       getSessionsByUserId(profile.id),
       getFollowCounts(profile.id),
       user && !isOwner ? isFollowing(profile.id) : Promise.resolve(false),
+      getUserBadges(profile.id),
+      isOwner ? getBadgeDefinitions() : Promise.resolve({ data: [] }),
     ])
 
   return (
@@ -45,6 +48,9 @@ export default async function PublicProfilePage({
         isFollowing={viewerIsFollowing}
         followerCount={followCounts.followers}
         followingCount={followCounts.following}
+        userBadges={badgesResult.data}
+        allBadges={badgeDefsResult.data}
+        isAdmin={user?.id === process.env.ADMIN_USER_ID}
       />
     </main>
   )

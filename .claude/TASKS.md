@@ -331,12 +331,12 @@ Built `/leaderboards` page with 4 category tabs (Fastest Average, Most Solves, L
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 2 pages + 3 components |
 
-Create `clubs` and `club_members` tables. Build server actions: `createClub()`, `getClubs()`, `joinClub()`, `leaveClub()`, `getClubMembers()`, `getClubFeed()`. Build `/clubs` page (browse/search clubs) and `/clubs/[id]` page (club detail with member list + shared activity feed from members). Owner/admin can edit club details.
+Built `clubs` and `club_members` tables (migration `009_create_clubs.sql`) with RLS policies. Server actions split into `src/lib/actions/clubs.ts` (queries: getClubs, getClub, getClubMembers, getClubFeed, getUserClubs) and `src/lib/actions/club-mutations.ts` (mutations: createClub, joinClub, leaveClub, updateClub, deleteClub). Built `/clubs` page with search, create modal, join/leave buttons. Built `/clubs/[id]` detail page with activity tab (reusing FeedItem), members tab (with role badges: Owner gold, Admin primary, Member muted), edit/delete for owners/admins. Added Club and ClubMember types to `src/lib/types.ts`. **Note:** SQL must be run in Supabase dashboard.
 
 ---
 

@@ -14,9 +14,10 @@ import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { WcaLink } from "@/components/profile/wca-link"
+import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { getWcaResults } from "@/lib/actions/wca"
-import type { Profile, Session } from "@/lib/types"
+import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 
 const WCA_ERROR_MESSAGES: Record<string, string> = {
@@ -33,11 +34,15 @@ export function ProfileContent({
   sessions,
   followerCount,
   followingCount,
+  userBadges = [],
+  allBadges = [],
 }: {
   profile: Profile
   sessions: Session[]
   followerCount?: number
   followingCount?: number
+  userBadges?: UserBadge[]
+  allBadges?: Badge[]
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -124,6 +129,12 @@ export function ProfileContent({
       <YtdStats sessions={sessions} />
       <MainCubes cubes={profile.cubes ?? []} isOwner />
       <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner />
+      <BadgesSection
+        userBadges={userBadges}
+        allBadges={allBadges}
+        isOwner
+        isAdmin={false}
+      />
       <LinksSponsors links={profile.links} isOwner />
       <PracticeHeatmap sessions={sessions} />
       <RecentActivity sessions={sessions.slice(0, 10)} />
