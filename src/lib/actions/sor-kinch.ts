@@ -233,59 +233,97 @@ export async function findUserInSorKinch(
   return { entries, userRank, totalCount }
 }
 
+export type UserSorKinchStats = {
+  sorSingleRank: number | null
+  sorSingleValue: number | null
+  sorSingleTotal: number | null
+  sorAverageRank: number | null
+  sorAverageValue: number | null
+  sorAverageTotal: number | null
+  kinchSingleScore: number | null
+  kinchSingleRank: number | null
+  kinchSingleTotal: number | null
+  kinchAverageScore: number | null
+  kinchAverageRank: number | null
+  kinchAverageTotal: number | null
+}
+
 /**
  * Get SOR rank and Kinch score for a specific WCA ID (for profile display).
+ * Returns single + average for both SOR and Kinch, plus total competitor
+ * counts so the UI can compute percentiles.
  */
-export async function getUserSorKinchStats(wcaId: string): Promise<{
-  sorRank: number | null
-  sorTotal: number | null
-  kinchScore: number | null
-  kinchRank: number | null
-} | null> {
+export async function getUserSorKinchStats(
+  wcaId: string
+): Promise<UserSorKinchStats | null> {
   if (!wcaId) return null
   const admin = createAdminClient()
 
   const { data } = await admin
     .from("wca_rankings")
-    .select("wca_id, sor_single, kinch_single")
+    .select("wca_id, sor_single, sor_average, kinch_single, kinch_average")
     .eq("wca_id", wcaId)
     .single()
 
   const row = data as AnyRow | null
   if (!row) return null
 
-  const sorValue = row.sor_single != null ? Number(row.sor_single) : null
-  const kinchValue = row.kinch_single != null ? Number(row.kinch_single) : null
+  const sorSingle = row.sor_single != null ? Number(row.sor_single) : null
+  const sorAverage = row.sor_average != null ? Number(row.sor_average) : null
+  const kinchSingle = row.kinch_single != null ? Number(row.kinch_single) : null
+  const kinchAverage = row.kinch_average != null ? Number(row.kinch_average) : null
 
-  // Run both rank queries in parallel
-  const sorRankPromise = sorValue != null
-    ? admin
-        .from("wca_rankings")
-        .select("*", { count: "exact", head: true })
-        .lt("sor_single", sorValue)
-        .not("sor_single", "is", null)
-    : null
-
-  const kinchRankPromise = kinchValue != null
-    ? admin
-        .from("wca_rankings")
-        .select("*", { count: "exact", head: true })
-        .gt("kinch_single", kinchValue)
-        .not("kinch_single", "is", null)
-    : null
-
-  const [sorResult, kinchResult] = await Promise.all([
-    sorRankPromise ?? Promise.resolve({ count: null }),
-    kinchRankPromise ?? Promise.resolve({ count: null }),
+  // Build rank + total count queries in parallel for all 4 metrics
+  // SOR: lower is better → count people with LESS than this value
+  // Kinch: higher is better → count people with MORE than this value
+  const queries = await Promise.all([
+    // SOR single rank
+    sorSingle != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_single", sorSingle).not("sor_single", "is", null)
+      : Promise.resolve({ count: null }),
+    // SOR single total
+    sorSingle != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_single", "is", null)
+      : Promise.resolve({ count: null }),
+    // SOR average rank
+    sorAverage != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_average", sorAverage).not("sor_average", "is", null)
+      : Promise.resolve({ count: null }),
+    // SOR average total
+    sorAverage != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_average", "is", null)
+      : Promise.resolve({ count: null }),
+    // Kinch single rank
+    kinchSingle != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).gt("kinch_single", kinchSingle).not("kinch_single", "is", null)
+      : Promise.resolve({ count: null }),
+    // Kinch single total
+    kinchSingle != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("kinch_single", "is", null)
+      : Promise.resolve({ count: null }),
+    // Kinch average rank
+    kinchAverage != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).gt("kinch_average", kinchAverage).not("kinch_average", "is", null)
+      : Promise.resolve({ count: null }),
+    // Kinch average total
+    kinchAverage != null
+      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("kinch_average", "is", null)
+      : Promise.resolve({ count: null }),
   ])
-  const sorRank = sorResult.count != null ? sorResult.count + 1 : null
-  const kinchRank = kinchResult.count != null ? kinchResult.count + 1 : null
 
   return {
-    sorRank,
-    sorTotal: sorValue,
-    kinchScore: kinchValue,
-    kinchRank,
+    sorSingleRank: queries[0].count != null ? queries[0].count + 1 : null,
+    sorSingleValue: sorSingle,
+    sorSingleTotal: queries[1].count,
+    sorAverageRank: queries[2].count != null ? queries[2].count + 1 : null,
+    sorAverageValue: sorAverage,
+    sorAverageTotal: queries[3].count,
+    kinchSingleScore: kinchSingle,
+    kinchSingleRank: queries[4].count != null ? queries[4].count + 1 : null,
+    kinchSingleTotal: queries[5].count,
+    kinchAverageScore: kinchAverage,
+    kinchAverageRank: queries[6].count != null ? queries[6].count + 1 : null,
+    kinchAverageTotal: queries[7].count,
   }
 }
 

@@ -13,18 +13,16 @@ import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { FollowButton } from "@/components/profile/follow-button"
+import { AllroundingResults } from "@/components/profile/allrounding-results"
 import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
 import { getWcaResults } from "@/lib/actions/wca"
 import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 
-type SorKinchStats = {
-  sorRank: number | null
-  sorTotal: number | null
-  kinchScore: number | null
-  kinchRank: number | null
-} | null
+import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
+
+type SorKinchStats = UserSorKinchStats | null
 
 export function PublicProfileContent({
   profile,
@@ -103,6 +101,7 @@ export function PublicProfileContent({
           customEventOrder={profile.wca_event_order}
         />
       )}
+      {sorKinchStats && <AllroundingResults stats={sorKinchStats} />}
       <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
       <PBProgressChart sessions={sessions} />
       <YtdStats sessions={sessions} />
