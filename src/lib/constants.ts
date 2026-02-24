@@ -12,7 +12,7 @@ export const WCA_EVENTS = [
   { id: "555bf", label: "5x5 BLD", category: "Blindfolded" },
   { id: "333mbf", label: "Multi-BLD", category: "Blindfolded" },
   // One-Handed
-  { id: "333oh", label: "3x3 OH", category: "One-Handed" },
+  { id: "333oh", label: "OH", category: "One-Handed" },
   // Other
   { id: "minx", label: "Megaminx", category: "Other" },
   { id: "pyram", label: "Pyraminx", category: "Other" },
@@ -70,4 +70,31 @@ const EVENT_SPECIFIC_PRACTICE_TYPES: Record<string, string[]> = {
 export function getPracticeTypesForEvent(eventId: string): string[] {
   const specific = EVENT_SPECIFIC_PRACTICE_TYPES[eventId] ?? []
   return [...COMMON_PRACTICE_TYPES, ...specific]
+}
+
+/**
+ * PB types available per event.
+ * Most events use Single + averages. BLD/FMC use Single + Mo3.
+ * 6x6/7x7 use Mo3 instead of Ao5 (WCA format).
+ */
+const DEFAULT_PB_TYPES = ["Single", "Ao5", "Ao12", "Ao50", "Ao100"]
+
+const EVENT_PB_TYPES: Record<string, string[]> = {
+  "333": ["Single", "Ao5", "Ao12", "Ao50", "Ao100", "Ao200", "Ao1000"],
+  "444": ["Single", "Ao5", "Ao12", "Ao25", "Ao50", "Ao100"],
+  "555": ["Single", "Ao5", "Ao12", "Ao25", "Ao50", "Ao100"],
+  "666": ["Single", "Mo3", "Ao12", "Ao50", "Ao100"],
+  "777": ["Single", "Mo3", "Ao12", "Ao50", "Ao100"],
+  "333bf": ["Single", "Mo3"],
+  "444bf": ["Single", "Mo3"],
+  "555bf": ["Single", "Mo3"],
+  "333mbf": ["Single"],
+  "333fm": ["Single", "Mo3"],
+}
+
+/**
+ * Returns the PB types available for a given event.
+ */
+export function getPBTypesForEvent(eventId: string): string[] {
+  return EVENT_PB_TYPES[eventId] ?? DEFAULT_PB_TYPES
 }
