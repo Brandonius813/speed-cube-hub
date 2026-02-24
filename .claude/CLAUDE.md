@@ -59,6 +59,10 @@ Each page uses a two-file pattern:
 - `src/lib/supabase/server.ts` — Server-side Supabase client (uses cookies)
 - `src/lib/supabase/admin.ts` — Service-role client (bypasses RLS)
 - `src/lib/actions/` — Server actions directory
+- `src/lib/actions/auth.ts` — Auth actions (login, signup, checkIsAdmin)
+- `src/lib/actions/sessions.ts` — Session CRUD (getSessionsByUserId, createSession, createSessionsBulk, updateSession, deleteSession, getSessionStats)
+- `src/lib/actions/profiles.ts` — Profile CRUD (getProfile, getProfileByHandle, searchProfiles, updateProfile, uploadAvatar, updateProfileLinks)
+- `src/lib/actions/stats.ts` — Global stats (getGlobalStats for landing page)
 - `src/lib/actions/wca.ts` — WCA API integration (fetch results, unlink WCA ID)
 - `src/lib/actions/follows.ts` — Follow/unfollow system (followUser, unfollowUser, getFollowCounts, isFollowing, getFollowers, getFollowing)
 - `src/lib/actions/feed.ts` — Activity feed (getFeed with cursor-based pagination, enriched with like/comment counts)
@@ -94,6 +98,9 @@ Each page uses a two-file pattern:
 - `src/components/leaderboards/region-filter.tsx` — Reusable region filter dropdown (world/continent/country)
 - `src/lib/actions/feedback.ts` — Feedback submission (submitFeedback — saves to feedback table, requires auth)
 - `src/components/shared/feedback-modal.tsx` — Feedback modal (category picker + message, shown in footer)
+- `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
+- `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
+- `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 

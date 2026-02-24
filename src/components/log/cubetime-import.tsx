@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Timer,
+  Smartphone,
   Upload,
   Check,
   AlertTriangle,
@@ -12,18 +12,18 @@ import {
 } from "lucide-react";
 import { WCA_EVENTS, DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants";
 import {
-  parseCsTimerCsv,
-  type CsTimerParsedSession,
-} from "@/lib/cstimer/parse-cstimer";
+  parseCubeTimeCsv,
+  type CubeTimeParsedSession,
+} from "@/lib/cubetime/parse-cubetime";
 import { createSessionsBulk } from "@/lib/actions/sessions";
 import { formatDuration, formatSolveTime, parseSolveTime } from "@/lib/utils";
 import { CsTimerPreviewTable } from "./cstimer-preview-table";
 
 type ImportState = "idle" | "previewing" | "importing" | "complete";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB — csTimer exports can be large
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export function CsTimerImport() {
+export function CubeTimeImport() {
   const [state, setState] = useState<ImportState>("idle");
   const [event, setEvent] = useState("333");
   const [secondsPerSolve, setSecondsPerSolve] = useState(
@@ -32,7 +32,7 @@ export function CsTimerImport() {
   const [timePerSolveInput, setTimePerSolveInput] = useState(
     formatSolveTime(DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30)
   );
-  const [sessions, setSessions] = useState<CsTimerParsedSession[]>([]);
+  const [sessions, setSessions] = useState<CubeTimeParsedSession[]>([]);
   const [totalSolves, setTotalSolves] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -52,10 +52,9 @@ export function CsTimerImport() {
     setFileError(null);
     setImportError(null);
 
-    // Validate file type
     const name = file.name.toLowerCase();
-    if (!name.endsWith(".csv")) {
-      setFileError("Please select a CSV file exported from csTimer.");
+    if (!name.endsWith(".csv") && !name.endsWith(".txt")) {
+      setFileError("Please select a CSV or TXT file.");
       return;
     }
 
@@ -65,7 +64,7 @@ export function CsTimerImport() {
     }
 
     const text = await file.text();
-    const result = parseCsTimerCsv(text);
+    const result = parseCubeTimeCsv(text);
 
     if (result.sessions.length === 0) {
       setFileError(
@@ -93,10 +92,10 @@ export function CsTimerImport() {
       duration_minutes: Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60)),
       avg_time: s.avg_time,
       best_time: s.best_time,
-      notes: s.num_dnf > 0 ? `${s.num_dnf} DNF${s.num_dnf !== 1 ? "s" : ""} (csTimer import)` : "csTimer import",
+      notes: s.num_dnf > 0 ? `${s.num_dnf} DNF${s.num_dnf !== 1 ? "s" : ""} (CubeTime import)` : "CubeTime import",
     }));
 
-    const result = await createSessionsBulk(rows, { source: "csTimer" });
+    const result = await createSessionsBulk(rows, { source: "CubeTime" });
 
     if (result.error) {
       setImportError(result.error);
@@ -124,28 +123,28 @@ export function CsTimerImport() {
     <Card className="border-border/50 bg-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
-          <Timer className="h-5 w-5 text-primary" />
-          Import from csTimer
+          <Smartphone className="h-5 w-5 text-primary" />
+          Import from CubeTime
         </CardTitle>
       </CardHeader>
       <CardContent>
         {state === "idle" && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Export your solves from csTimer (Options &rarr; Export &rarr;
+              Export your solves from CubeTime (Settings &rarr; Export &rarr;
               Export as CSV) and upload the file here.
             </p>
 
             {/* Event picker */}
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="cstimer-event"
+                htmlFor="cubetime-event"
                 className="text-sm font-medium text-foreground"
               >
                 Event
               </label>
               <select
-                id="cstimer-event"
+                id="cubetime-event"
                 value={event}
                 onChange={(e) => handleEventChange(e.target.value)}
                 className="h-10 w-full max-w-xs rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary"
@@ -157,21 +156,20 @@ export function CsTimerImport() {
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                csTimer exports don&apos;t include the puzzle type &mdash;
-                select which event these solves are for.
+                Select which event these solves are for.
               </p>
             </div>
 
             {/* Time per solve */}
             <div className="flex flex-col gap-1.5">
               <label
-                htmlFor="cstimer-sps"
+                htmlFor="cubetime-sps"
                 className="text-sm font-medium text-foreground"
               >
                 Time per solve
               </label>
               <input
-                id="cstimer-sps"
+                id="cubetime-sps"
                 type="text"
                 value={timePerSolveInput}
                 onChange={(e) => {
@@ -189,9 +187,9 @@ export function CsTimerImport() {
             </div>
 
             {/* Drop zone */}
-            <DropZone
-              isDragging={isDragging}
-              inputRef={inputRef}
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault();
                 setIsDragging(true);
@@ -206,11 +204,35 @@ export function CsTimerImport() {
                 const file = e.dataTransfer.files[0];
                 if (file) handleFileSelected(file);
               }}
-              onInputChange={(e) => {
+              className={`flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-4 py-8 transition-colors ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border/50 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50"
+              }`}
+            >
+              <Upload
+                className={`h-8 w-8 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
+              />
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">
+                  Drop your CubeTime export here or click to browse
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Accepts .csv and .txt files, max 5MB
+                </p>
+              </div>
+            </button>
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,.txt"
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileSelected(file);
                 e.target.value = "";
               }}
+              className="hidden"
             />
 
             {fileError && (
@@ -296,7 +318,7 @@ export function CsTimerImport() {
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Successfully imported {importedCount} session
-                {importedCount !== 1 ? "s" : ""} from csTimer.
+                {importedCount !== 1 ? "s" : ""} from CubeTime.
               </p>
             </div>
             <Button
@@ -311,58 +333,5 @@ export function CsTimerImport() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function DropZone({
-  isDragging,
-  inputRef,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onInputChange,
-}: {
-  isDragging: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        className={`flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-4 py-8 transition-colors ${
-          isDragging
-            ? "border-primary bg-primary/5"
-            : "border-border/50 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50"
-        }`}
-      >
-        <Upload
-          className={`h-8 w-8 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
-        />
-        <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
-            Drop your csTimer export here or click to browse
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Accepts .csv files, max 5MB
-          </p>
-        </div>
-      </button>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".csv"
-        onChange={onInputChange}
-        className="hidden"
-      />
-    </>
   );
 }

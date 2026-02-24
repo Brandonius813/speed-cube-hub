@@ -1,17 +1,17 @@
 /**
- * Parses a csTimer CSV export (semicolon-delimited) and groups individual
+ * Parses a CubeTime (iOS timer app) CSV export and groups individual
  * solves into per-day session summaries for import into Speed Cube Hub.
  *
- * csTimer export format:
- *   No.;Time;Comment;Scramble;Date;P.1
- *   1;10.26;;L F2 U' B2...;2026-02-03 07:59:41;10.26
- *   3;13.30+;;D2 R' D2...;2026-02-03 08:03:24;11.30
+ * CubeTime export format (comma-delimited):
+ *   Time,Comment,Scramble,Date
+ *   9.632094025611877,"",D U2 B2 L2...,2024-12-12 20:39:49 +0000
  *
- * Time column:  "10.26" (normal), "13.30+" (+2 penalty), "DNF(12.34)" or "DNF" (did not finish)
- * P.1 column:   base time without penalty (not used — we read Time directly)
+ * Time column:  Raw decimal seconds (e.g., 9.632094025611877)
+ *               May also contain "DNF" for did-not-finish solves
+ * Date column:  ISO-ish format with timezone offset (2024-12-12 20:39:49 +0000)
  */
 
-export type CsTimerParsedSession = {
+export type CubeTimeParsedSession = {
   session_date: string; // YYYY-MM-DD
   num_solves: number;
   num_dnf: number;
@@ -24,8 +24,8 @@ type ParsedSolve = {
   date: string; // YYYY-MM-DD
 };
 
-export function parseCsTimerCsv(text: string): {
-  sessions: CsTimerParsedSession[];
+export function parseCubeTimeCsv(text: string): {
+  sessions: CubeTimeParsedSession[];
   totalSolves: number;
   errors: string[];
 } {
@@ -40,9 +40,8 @@ export function parseCsTimerCsv(text: string): {
     return { sessions: [], totalSolves: 0, errors: ["The file is empty."] };
   }
 
-  // Validate header row
-  const headerLine = lines[0];
-  const headers = headerLine.split(";").map((h) => h.trim().toLowerCase());
+  // Parse header row
+  const headers = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
 
   const timeIdx = headers.indexOf("time");
   const dateIdx = headers.indexOf("date");
@@ -52,35 +51,38 @@ export function parseCsTimerCsv(text: string): {
       sessions: [],
       totalSolves: 0,
       errors: [
-        'This doesn\'t look like a csTimer export. Expected "Time" and "Date" columns separated by semicolons.',
+        'This doesn\'t look like a CubeTime export. Expected "Time" and "Date" columns.',
       ],
     };
   }
 
-  // Parse each solve row
+  // Parse each solve row.
+  // Time is always the first field, Date is always the last field.
+  // We use first/last instead of header indices for data rows because
+  // the Scramble column can contain unquoted commas (e.g., Square-1
+  // notation like "(0,2)") which would shift field indices.
   const solves: ParsedSolve[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const fields = splitSemicolonLine(lines[i]);
+    const fields = splitCsvLine(lines[i]);
+    if (fields.length < 2) continue;
 
-    const rawTime = (fields[timeIdx] ?? "").trim();
-    const rawDate = (fields[dateIdx] ?? "").trim();
+    const rawTime = fields[0].trim();
+    const rawDate = fields[fields.length - 1].trim();
 
     if (!rawTime || !rawDate) continue;
 
     // Parse time
     const time = parseSolveTime(rawTime);
 
-    // Parse date
+    // Parse date — format: "2024-12-12 20:39:49 +0000"
     const dateMatch = rawDate.match(/^(\d{4}-\d{2}-\d{2})/);
     if (!dateMatch) {
       errors.push(`Row ${i + 1}: invalid date "${rawDate}"`);
       continue;
     }
 
-    const dateStr = dateMatch[1];
-
-    solves.push({ time, date: dateStr });
+    solves.push({ time, date: dateMatch[1] });
   }
 
   if (solves.length === 0) {
@@ -103,7 +105,7 @@ export function parseCsTimerCsv(text: string): {
   }
 
   // Build session summaries, sorted by date ascending
-  const sessions: CsTimerParsedSession[] = [];
+  const sessions: CubeTimeParsedSession[] = [];
   const sortedDates = [...grouped.keys()].sort();
 
   for (const date of sortedDates) {
@@ -114,7 +116,6 @@ export function parseCsTimerCsv(text: string): {
 
     const numDnf = daySolves.length - validTimes.length;
 
-    // Averages
     const avgTime =
       validTimes.length > 0
         ? Math.round(
@@ -141,44 +142,36 @@ export function parseCsTimerCsv(text: string): {
 }
 
 /**
- * Parses a csTimer time value.
- * - "10.26"       → 10.26
- * - "13.30+"      → 13.30  (+2 penalty already included)
- * - "DNF(12.34)"  → null   (DNF)
- * - "DNF"         → null   (DNF)
+ * Parses a CubeTime time value.
+ * - "9.632094025611877" → 9.63  (rounded to centiseconds)
+ * - "DNF"               → null
+ * - empty/invalid       → null
  */
 function parseSolveTime(raw: string): number | null {
   const trimmed = raw.trim();
 
-  // DNF — could be "DNF" or "DNF(12.34)"
-  if (trimmed.toUpperCase().startsWith("DNF")) {
+  if (trimmed.toUpperCase() === "DNF" || trimmed.toUpperCase().startsWith("DNF")) {
     return null;
   }
 
-  // Strip trailing "+" for +2 penalty (time already includes the penalty)
-  const cleaned = trimmed.replace(/\+$/, "");
-
-  // Handle m:ss.cc format (e.g. "2:34.56" → 154.56 seconds)
-  const colonMatch = cleaned.match(/^(\d+):(\d+(?:\.\d+)?)$/);
-  if (colonMatch) {
-    const minutes = parseInt(colonMatch[1], 10);
-    const seconds = parseFloat(colonMatch[2]);
-    if (isNaN(minutes) || isNaN(seconds)) return null;
-    const total = minutes * 60 + seconds;
-    if (total <= 0) return null;
-    return Math.round(total * 100) / 100;
-  }
-
-  const num = parseFloat(cleaned);
+  const num = parseFloat(trimmed);
   if (isNaN(num) || num <= 0) return null;
 
   return Math.round(num * 100) / 100;
 }
 
 /**
- * Splits a semicolon-delimited line, respecting quoted fields.
+ * Splits a comma-delimited CSV line, respecting quoted fields.
+ * CubeTime wraps the Comment field in quotes and the Scramble field
+ * can contain commas that are NOT inside quotes — but fortunately the
+ * column order is fixed (Time, Comment, Scramble, Date) and the Date
+ * column is always at the end with a recognizable format.
+ *
+ * Strategy: parse Time and Comment normally (they won't have unquoted
+ * commas), then grab Date from the end, and everything in between is
+ * the Scramble.
  */
-function splitSemicolonLine(line: string): string[] {
+function splitCsvLine(line: string): string[] {
   const fields: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -200,7 +193,7 @@ function splitSemicolonLine(line: string): string[] {
     } else {
       if (char === '"') {
         inQuotes = true;
-      } else if (char === ";") {
+      } else if (char === ",") {
         fields.push(current);
         current = "";
       } else {
