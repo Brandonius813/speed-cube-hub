@@ -60,7 +60,7 @@ Each page uses a two-file pattern:
 - `src/lib/supabase/admin.ts` — Service-role client (bypasses RLS)
 - `src/lib/actions/` — Server actions directory
 - `src/lib/actions/wca.ts` — WCA API integration (fetch results, unlink WCA ID)
-- `src/lib/actions/follows.ts` — Follow/unfollow system (followUser, unfollowUser, getFollowCounts, isFollowing)
+- `src/lib/actions/follows.ts` — Follow/unfollow system (followUser, unfollowUser, getFollowCounts, isFollowing, getFollowers, getFollowing)
 - `src/lib/actions/feed.ts` — Activity feed (getFeed with cursor-based pagination, enriched with like/comment counts)
 - `src/lib/actions/likes.ts` — Like/unlike system (likeSession, unlikeSession, getSessionLikeInfo)
 - `src/lib/actions/comments.ts` — Comments system (addComment, getComments, deleteComment, getCommentCounts)
@@ -69,8 +69,8 @@ Each page uses a two-file pattern:
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
 - `src/components/shared/` — Shared app components (navbar, etc.)
-- `src/components/profile/` — Profile page components (header, stats, WCA results, follow button, etc.)
-- `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button)
+- `src/components/profile/` — Profile page components (header, stats, WCA results, follow button, follow list modal, etc.)
+- `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, following-sidebar)
 - `src/components/discover/` — Discover/search cubers components
 
 ### Path Alias

@@ -100,7 +100,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ### Social Wave 1 — Foundation (Complete)
 - [x] Auto-posted sessions in activity feed at /feed
-- [x] Follow/following system (follow/unfollow, follower counts on profiles)
+- [x] Follow/following system (follow/unfollow, follower counts on profiles, clickable follower/following lists, feed sidebar)
 - [x] Public profiles at /profile/[handle]
 - [x] Discover page at /discover (search and browse cubers)
 - [x] Updated navbar with Feed and Discover links
