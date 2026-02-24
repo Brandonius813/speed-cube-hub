@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell, Box, LogOut, LayoutDashboard, Rss, Search, Trophy, Swords } from "lucide-react"
+import { Bell, Box, LogOut, LayoutDashboard, Rss, Search, Trophy, Swords, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
@@ -159,7 +159,7 @@ export function Navbar() {
                 <AvatarFallback className="text-[10px]">
                   {userProfile
                     ? getInitials(userProfile.display_name)
-                    : "?"}
+                    : <User className="h-3.5 w-3.5 text-muted-foreground" />}
                 </AvatarFallback>
               </Avatar>
             </Link>
