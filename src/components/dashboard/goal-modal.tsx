@@ -32,7 +32,7 @@ export function GoalModal({
   open: boolean
   onOpenChange: (open: boolean) => void
   editingGoal: Goal | null
-  onSaved: () => void
+  onSaved: (goal: Goal, mode: "created" | "updated") => void
 }) {
   const [event, setEvent] = useState(editingGoal?.event ?? "333")
   const [targetAvg, setTargetAvg] = useState(
@@ -71,26 +71,27 @@ export function GoalModal({
         target_avg: avgNum,
         target_date: targetDate,
       })
-      if (!result.success) {
+      if (!result.success || !result.data) {
         setError(result.error ?? "Something went wrong.")
         setSaving(false)
         return
       }
+      setSaving(false)
+      onSaved(result.data, "updated")
     } else {
       const result = await createGoal({
         event,
         target_avg: avgNum,
         target_date: targetDate,
       })
-      if (!result.success) {
+      if (!result.success || !result.data) {
         setError(result.error ?? "Something went wrong.")
         setSaving(false)
         return
       }
+      setSaving(false)
+      onSaved(result.data, "created")
     }
-
-    setSaving(false)
-    onSaved()
   }
 
   return (
