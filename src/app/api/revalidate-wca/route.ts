@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  revalidateTag("wca-rankings", { expire: 0 })
+  revalidateTag("wca-rankings")
 
   return NextResponse.json({ revalidated: true })
 }
