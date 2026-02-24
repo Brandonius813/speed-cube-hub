@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Badge, UserBadge } from "@/lib/types";
+import type { Badge, UserBadge, PendingBadgeClaim } from "@/lib/types";
 
 /**
  * Get all badge definitions.
@@ -232,6 +232,69 @@ export async function approveBadge(
     .from("user_badges")
     .update({ verified: true })
     .eq("id", userBadgeId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Admin only: get all pending (unverified) badge claims with user profile info.
+ */
+export async function getPendingBadgeClaims(): Promise<{
+  data: PendingBadgeClaim[];
+  error?: string;
+}> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.id !== process.env.ADMIN_USER_ID) {
+    return { data: [], error: "Not authorized" };
+  }
+
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("user_badges")
+    .select("*, badge:badges(*), profile:profiles(display_name, handle, avatar_url)")
+    .eq("verified", false)
+    .order("earned_at", { ascending: true });
+
+  if (error) {
+    return { data: [], error: error.message };
+  }
+
+  return { data: (data as PendingBadgeClaim[]) || [] };
+}
+
+/**
+ * Admin only: reject (delete) a badge claim.
+ */
+export async function rejectBadge(
+  userBadgeId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.id !== process.env.ADMIN_USER_ID) {
+    return { success: false, error: "Not authorized" };
+  }
+
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("user_badges")
+    .delete()
+    .eq("id", userBadgeId)
+    .eq("verified", false);
 
   if (error) {
     return { success: false, error: error.message };

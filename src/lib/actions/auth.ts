@@ -81,6 +81,14 @@ export async function signup(formData: FormData) {
   return { success: true }
 }
 
+export async function checkIsAdmin(): Promise<boolean> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return !!user && user.id === process.env.ADMIN_USER_ID
+}
+
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()

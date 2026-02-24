@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell, Box, LogOut, LayoutDashboard, Medal, Rss, Search, Trophy, Swords, User } from "lucide-react"
+import { Bell, Box, LogOut, LayoutDashboard, Medal, Rss, Search, Shield, Trophy, Swords, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getUnreadCount } from "@/lib/actions/notifications"
 import { getProfile } from "@/lib/actions/profiles"
-import { logout } from "@/lib/actions/auth"
+import { logout, checkIsAdmin } from "@/lib/actions/auth"
 
 function getInitials(name: string): string {
   return name
@@ -21,6 +21,7 @@ function getInitials(name: string): string {
 
 export function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [userProfile, setUserProfile] = useState<{
     avatar_url: string | null
@@ -37,9 +38,10 @@ export function Navbar() {
       setIsLoggedIn(!!user)
 
       if (user) {
-        const [profileResult, notifResult] = await Promise.all([
+        const [profileResult, notifResult, adminResult] = await Promise.all([
           getProfile(),
           getUnreadCount(),
+          checkIsAdmin(),
         ])
 
         if (profileResult.profile) {
@@ -50,6 +52,7 @@ export function Navbar() {
         }
 
         setUnreadCount(notifResult.count)
+        setIsAdmin(adminResult)
       }
     }
 
@@ -61,9 +64,10 @@ export function Navbar() {
       setIsLoggedIn(!!session?.user)
 
       if (session?.user) {
-        const [profileResult, notifResult] = await Promise.all([
+        const [profileResult, notifResult, adminResult] = await Promise.all([
           getProfile(),
           getUnreadCount(),
+          checkIsAdmin(),
         ])
 
         if (profileResult.profile) {
@@ -74,9 +78,11 @@ export function Navbar() {
         }
 
         setUnreadCount(notifResult.count)
+        setIsAdmin(adminResult)
       } else {
         setUserProfile(null)
         setUnreadCount(0)
+        setIsAdmin(false)
       }
     })
 
@@ -143,6 +149,15 @@ export function Navbar() {
               <LayoutDashboard className="h-4 w-4 sm:hidden" />
               <span className="hidden text-sm sm:inline">Dashboard</span>
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin/badges"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-yellow-400 transition-colors hover:text-yellow-300 sm:min-h-0 sm:min-w-0"
+                aria-label="Admin"
+              >
+                <Shield className="h-4 w-4" />
+              </Link>
+            )}
             <Link
               href="/notifications"
               className="relative flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"

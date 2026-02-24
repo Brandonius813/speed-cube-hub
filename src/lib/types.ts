@@ -176,6 +176,23 @@ export type PBRecord = {
   created_at: string
 }
 
+export type PendingBadgeClaim = {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  year: number | null;
+  detail: string | null;
+  is_current: boolean;
+  verified: boolean;
+  earned_at: string;
+  badge: Badge;
+  profile: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
+};
+
 export type Challenge = {
   id: string;
   title: string;
