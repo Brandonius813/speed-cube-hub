@@ -124,7 +124,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 ### Social Wave 4 — Community & Discovery
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
 - [x] SOR & Kinch Rank Leaderboards (Sum of Ranks + Kinch scores for ALL WCA competitors globally, sourced from WCA database export synced weekly via GitHub Action; region filtering by world/continent/country; single/average toggle; "Find Me" for linked WCA IDs; SOR rank and Kinch score on user profiles)
-- [ ] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
+- [x] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
@@ -167,8 +167,13 @@ Each practice session captures (based on the proven model from brandontruecubing
 | bio | text | Optional |
 | avatar_url | text | Supabase Storage URL |
 | wca_id | text | WCA account ID (OAuth verified) |
+| location | text | User location (nullable) |
+| sponsor | text | Sponsor name (nullable) |
+| country_id | text | WCA country ID (set via WCA OAuth callback, nullable) |
 | events | text[] | WCA events the user practices |
 | main_event | text | Primary/main WCA event (nullable) |
+| wca_event_order | text[] | Custom event display ordering on profile (nullable) |
+| pb_visible_types | text[] | Which PB types to show on profile (nullable) |
 | cubes | jsonb | Array of {name, setup, event} |
 | links | jsonb | Array of {platform, url, label} |
 | accomplishments | jsonb | Array of {title, date} |
@@ -187,7 +192,9 @@ Each practice session captures (based on the proven model from brandontruecubing
 | duration_minutes | integer | Session length |
 | avg_time | numeric | Average solve time (decimal seconds) |
 | best_time | numeric | Best single solve time (decimal seconds) |
+| title | text | Session title (nullable, used for bulk import summaries) |
 | notes | text | Optional |
+| feed_visible | boolean | Whether to show in feed (default true, false for bulk-imported sessions) |
 | created_at | timestamptz | Auto (used for feed ordering) |
 
 **follows** — Social follow relationships
@@ -198,7 +205,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | created_at | timestamptz | Auto |
 | Unique constraint on (follower_id, following_id) |
 
-### Planned Tables (built as features are implemented)
+### Feature Tables
 
 **likes** — Kudos on feed sessions (Wave 2)
 | Column | Type | Notes |
@@ -238,6 +245,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | target_avg | numeric | Target average time in seconds |
 | target_date | date | Deadline |
 | status | text | "active", "achieved", "expired" |
+| achieved_at | timestamptz | When goal was achieved (nullable) |
 | created_at | timestamptz | Auto |
 
 **challenges** — Community challenges (Wave 3)
@@ -313,6 +321,38 @@ Each practice session captures (based on the proven model from brandontruecubing
 | page_url | text | Page they submitted from (nullable) |
 | created_at | timestamptz | Auto |
 
+**personal_bests** — Manually logged PB records
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | Who owns the PB |
+| event | text | WCA event code |
+| pb_type | text | "single", "ao5", "ao12", etc. |
+| time_seconds | numeric | PB time in decimal seconds |
+| date_achieved | date | When the PB was set |
+| is_current | boolean | Whether this is the current PB for this event+type |
+| notes | text | Optional notes |
+| created_at | timestamptz | Auto |
+
+**wca_rankings** — SOR/Kinch leaderboard data (synced weekly from WCA export)
+| Column | Type | Notes |
+|--------|------|-------|
+| wca_id | text (PK) | WCA competitor ID |
+| name | text | Competitor name |
+| country_id | text | WCA country code |
+| continent_id | text | WCA continent code |
+| sor_single | integer | Sum of Ranks (single) |
+| sor_average | integer | Sum of Ranks (average) |
+| kinch_score | numeric | Kinch score |
+| updated_at | timestamptz | Last sync time |
+
+**wca_countries** — Reference table for WCA countries/continents
+| Column | Type | Notes |
+|--------|------|-------|
+| id | text (PK) | WCA country code |
+| name | text | Country name |
+| continent_id | text | WCA continent code |
+
 ## Routes
 
 ```
@@ -326,12 +366,15 @@ Each practice session captures (based on the proven model from brandontruecubing
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
-/leaderboards        → Public leaderboards (fastest averages, most solves, streaks) [public] — Wave 4
+/leaderboards        → Public leaderboards (fastest averages, most solves, streaks, SOR/Kinch) [public]
 /pbs                 → Personal Bests management (log, view history, delete) [protected]
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
-/clubs               → Browse and manage clubs [protected] — Wave 4
-/clubs/[id]          → Individual club page with members and activity [public] — Wave 4
-/wrapped             → Year in Review / annual stats summary [protected] — Wave 4
+/clubs               → Browse/search/create clubs, join/leave [protected]
+/clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
+/wrapped             → Year in Review / annual stats summary [protected]
+/admin/badges        → Admin badge approval queue [admin only]
+/privacy             → Privacy Policy [public]
+/terms               → Terms of Service [public]
 ```
 
 ## Design Source

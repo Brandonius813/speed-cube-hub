@@ -271,11 +271,12 @@ Added `longestStreak` to `getSessionStats()`. Created `StreakCard` component on 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 1 page + 2 components |
 
-Create `challenges` and `challenge_participants` tables. Build server actions: `getChallenges()`, `joinChallenge()`, `getChallengeProgress()`. Build `/challenges` page listing active challenges (e.g., "Log 100 solves this week"). Each shows a progress bar. Users tap to join. Progress auto-calculated from their sessions during the challenge period. Admin can create challenges.
+Built `challenges` and `challenge_participants` tables with RLS. Server actions in `src/lib/actions/challenges.ts`: `getChallenges()`, `joinChallenge()`, `leaveChallenge()`, `getChallengeProgress()`, `createChallenge()`. Built `/challenges` page with active/past sections, progress bars, join/leave buttons. Admin can create challenges via modal.
 
 ---
 
