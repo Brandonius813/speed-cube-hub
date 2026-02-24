@@ -15,9 +15,9 @@ import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { FollowButton } from "@/components/profile/follow-button"
 import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
-import { getWcaResults } from "@/lib/actions/wca"
+import { getWcaResults, getWorldRecords } from "@/lib/actions/wca"
 import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
-import type { WcaPersonResult } from "@/lib/actions/wca"
+import type { WcaPersonResult, WcaWorldRecords } from "@/lib/actions/wca"
 
 export function PublicProfileContent({
   profile,
@@ -43,16 +43,20 @@ export function PublicProfileContent({
   isAdmin?: boolean
 }) {
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
+  const [wcaWorldRecords, setWcaWorldRecords] = useState<WcaWorldRecords | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
 
   // Fetch WCA data client-side so it doesn't block page load
   useEffect(() => {
     if (!profile.wca_id) return
 
-    getWcaResults(profile.wca_id).then((result) => {
-      setWcaData(result.data ?? null)
-      setWcaLoading(false)
-    })
+    Promise.all([getWcaResults(profile.wca_id), getWorldRecords()]).then(
+      ([result, records]) => {
+        setWcaData(result.data ?? null)
+        setWcaWorldRecords(records.data ?? null)
+        setWcaLoading(false)
+      }
+    )
   }, [profile.wca_id])
 
   const followButton =
@@ -79,6 +83,7 @@ export function PublicProfileContent({
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
           wcaId={profile.wca_id}
+          worldRecords={wcaWorldRecords}
         />
       )}
       <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />

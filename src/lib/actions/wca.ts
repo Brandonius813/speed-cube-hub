@@ -117,6 +117,34 @@ export async function getUpcomingCompetitions(
   }
 }
 
+/** World record times per event: { eventId: { single?: number, average?: number } } in centiseconds */
+export type WcaWorldRecords = Record<
+  string,
+  { single?: number; average?: number }
+>
+
+/** Fetch current WCA world records for all events */
+export async function getWorldRecords(): Promise<{
+  data: WcaWorldRecords | null
+  error?: string
+}> {
+  try {
+    const res = await fetch(
+      "https://www.worldcubeassociation.org/api/v0/records",
+      { next: { revalidate: 86400 } } // cache for 24 hours
+    )
+
+    if (!res.ok) {
+      return { data: null, error: "Failed to fetch world records" }
+    }
+
+    const json = await res.json()
+    return { data: json.world_records ?? null }
+  } catch {
+    return { data: null, error: "Failed to connect to WCA API" }
+  }
+}
+
 /** Remove the WCA ID from the current user's profile */
 export async function unlinkWcaId(): Promise<{ error?: string }> {
   const supabase = await createClient()
