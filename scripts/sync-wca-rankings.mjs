@@ -116,40 +116,48 @@ async function downloadExport() {
   log(`Downloaded ${(existsSync(zipPath) ? "successfully" : "FAILED")}`)
 
   log("Extracting needed TSV files...")
-  // Extract only the files we need
-  const neededFiles = [
-    "WCA_export_Persons.tsv",
-    "WCA_export_RanksSingle.tsv",
-    "WCA_export_RanksAverage.tsv",
-    "WCA_export_Countries.tsv",
-  ]
 
-  for (const f of neededFiles) {
-    try {
-      execSync(`unzip -o -j "${zipPath}" "*/${f}" "${f}" -d "${TMP_DIR}" 2>/dev/null || true`, {
-        stdio: "pipe",
-      })
-    } catch {
-      // File might be at root level or nested — try both patterns
-    }
+  // Extract everything — v2 format may use different file names
+  try {
+    execSync(`unzip -o -j "${zipPath}" "*.tsv" -d "${TMP_DIR}" 2>/dev/null || true`, {
+      stdio: "pipe",
+    })
+  } catch { /* ignore */ }
+
+  // Map logical names to possible file names (v1 and v2 formats)
+  const FILE_MAP = {
+    persons: ["WCA_export_Persons.tsv", "persons.tsv"],
+    ranksSingle: ["WCA_export_RanksSingle.tsv", "ranks_single.tsv"],
+    ranksAverage: ["WCA_export_RanksAverage.tsv", "ranks_average.tsv"],
+    countries: ["WCA_export_Countries.tsv", "countries.tsv"],
   }
 
-  // Verify files exist
-  for (const f of neededFiles) {
-    if (!existsSync(join(TMP_DIR, f))) {
-      throw new Error(`Failed to extract ${f} from the WCA export`)
+  // Find actual file paths
+  const resolvedFiles = {}
+  for (const [key, candidates] of Object.entries(FILE_MAP)) {
+    const found = candidates.find((f) => existsSync(join(TMP_DIR, f)))
+    if (!found) {
+      // List what was actually extracted to help debug
+      try {
+        const listing = execSync(`ls -la "${TMP_DIR}"`, { encoding: "utf-8" })
+        log(`Directory listing:\n${listing}`)
+      } catch { /* ignore */ }
+      throw new Error(`Could not find ${key} file. Tried: ${candidates.join(", ")}`)
     }
+    resolvedFiles[key] = join(TMP_DIR, found)
+    log(`  Found ${key}: ${found}`)
   }
 
   log("Extraction complete")
+  return resolvedFiles
 }
 
 // ─── Parse WCA Data ──────────────────────────────────────────────────
 
-async function parseCountries() {
+async function parseCountries(filePath) {
   log("Parsing Countries...")
   const countries = new Map()
-  const count = await parseTsv(join(TMP_DIR, "WCA_export_Countries.tsv"), (row) => {
+  const count = await parseTsv(filePath, (row) => {
     // Handle both v1 (camelCase) and v2 (snake_case) column names
     const id = row.id ?? row.countryId ?? row.country_id
     const name = row.name
@@ -162,10 +170,10 @@ async function parseCountries() {
   return countries
 }
 
-async function parsePersons() {
+async function parsePersons(filePath) {
   log("Parsing Persons...")
   const persons = new Map()
-  const count = await parseTsv(join(TMP_DIR, "WCA_export_Persons.tsv"), (row) => {
+  const count = await parseTsv(filePath, (row) => {
     const id = row.id ?? row.wca_id ?? row.personId
     const subId = parseInt(row.subid ?? row.subId ?? row.sub_id ?? "1", 10)
     const name = row.name
@@ -180,14 +188,12 @@ async function parsePersons() {
   return persons
 }
 
-async function parseRanks(filename) {
-  log(`Parsing ${filename}...`)
-  // Map<personId, Map<eventId, { best, worldRank, continentRank, countryRank }>>
+async function parseRanks(filePath) {
+  log(`Parsing ${filePath}...`)
   const personRanks = new Map()
-  // Map<eventId, number> — world record (minimum best) per event
   const worldRecords = new Map()
 
-  const count = await parseTsv(join(TMP_DIR, filename), (row) => {
+  const count = await parseTsv(filePath, (row) => {
     const personId = row.personId ?? row.person_id
     const eventId = row.eventId ?? row.event_id
     const best = parseInt(row.best, 10)
@@ -355,12 +361,12 @@ async function main() {
   log("=== WCA Rankings Sync Started ===")
 
   try {
-    await downloadExport()
+    const files = await downloadExport()
 
-    const countries = await parseCountries()
-    const persons = await parsePersons()
-    const singleData = await parseRanks("WCA_export_RanksSingle.tsv")
-    const averageData = await parseRanks("WCA_export_RanksAverage.tsv")
+    const countries = await parseCountries(files.countries)
+    const persons = await parsePersons(files.persons)
+    const singleData = await parseRanks(files.ranksSingle)
+    const averageData = await parseRanks(files.ranksAverage)
 
     const rankings = computeRankings(persons, countries, singleData, averageData)
 
