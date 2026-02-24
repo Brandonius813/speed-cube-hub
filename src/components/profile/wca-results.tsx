@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronDown, ChevronUp, ExternalLink, Medal } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
-import type { WcaPersonalRecords, WcaRecord, WcaWorldRecords } from "@/lib/actions/wca"
+import type { WcaPersonalRecords, WcaRecord } from "@/lib/actions/wca"
 
 /** Legacy/retired WCA events that can still appear in profiles */
 const LEGACY_EVENT_LABELS: Record<string, string> = {
@@ -111,12 +111,10 @@ export function WcaResults({
   personalRecords,
   competitionCount,
   wcaId,
-  worldRecords,
 }: {
   personalRecords: WcaPersonalRecords
   competitionCount: number
   wcaId?: string | null
-  worldRecords?: WcaWorldRecords | null
 }) {
   const [expanded, setExpanded] = useState(false)
   const [sortBy, setSortBy] = useState<SortMode>("default")
@@ -221,7 +219,6 @@ export function WcaResults({
               key={event.eventId}
               event={event}
               rankType={rankType}
-              worldRecords={worldRecords}
             />
           ))}
         </div>
@@ -281,20 +278,17 @@ function SegmentedToggle({
   )
 }
 
-/** Single event card showing times + rank + WR */
+/** Single event card showing times + rank */
 function EventCard({
   event,
   rankType,
-  worldRecords,
 }: {
   event: ProcessedEvent
   rankType: RankType
-  worldRecords?: WcaWorldRecords | null
 }) {
   const singleRank = getRankValue(event.single, rankType)
   const avgRank = getRankValue(event.average, rankType)
   const label = RANK_LABEL[rankType]
-  const wr = worldRecords?.[event.eventId]
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4">
@@ -317,11 +311,6 @@ function EventCard({
                 {label} #{singleRank.toLocaleString()}
               </p>
             )}
-            {wr?.single != null && (
-              <p className="font-mono text-[10px] text-yellow-500">
-                WR {formatWcaTime(wr.single, event.eventId, "single")}
-              </p>
-            )}
           </div>
         )}
         {event.average && (
@@ -333,11 +322,6 @@ function EventCard({
             {avgRank != null && (
               <p className="font-mono text-[10px] text-muted-foreground">
                 {label} #{avgRank.toLocaleString()}
-              </p>
-            )}
-            {wr?.average != null && (
-              <p className="font-mono text-[10px] text-yellow-500">
-                WR {formatWcaTime(wr.average, event.eventId, "average")}
               </p>
             )}
           </div>

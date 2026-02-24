@@ -16,9 +16,9 @@ import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { WcaLink } from "@/components/profile/wca-link"
 import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
-import { getWcaResults, getWorldRecords } from "@/lib/actions/wca"
+import { getWcaResults } from "@/lib/actions/wca"
 import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
-import type { WcaPersonResult, WcaWorldRecords } from "@/lib/actions/wca"
+import type { WcaPersonResult } from "@/lib/actions/wca"
 
 const WCA_ERROR_MESSAGES: Record<string, string> = {
   denied: "WCA authorization was cancelled.",
@@ -48,7 +48,6 @@ export function ProfileContent({
   const searchParams = useSearchParams()
   const [wcaId, setWcaId] = useState(profile.wca_id)
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
-  const [wcaWorldRecords, setWcaWorldRecords] = useState<WcaWorldRecords | null>(null)
   const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
   const [wcaMessage, setWcaMessage] = useState<{
     type: "success" | "error"
@@ -64,13 +63,10 @@ export function ProfileContent({
     }
 
     setWcaLoading(true)
-    Promise.all([getWcaResults(wcaId), getWorldRecords()]).then(
-      ([result, records]) => {
-        setWcaData(result.data ?? null)
-        setWcaWorldRecords(records.data ?? null)
-        setWcaLoading(false)
-      }
-    )
+    getWcaResults(wcaId).then((result) => {
+      setWcaData(result.data ?? null)
+      setWcaLoading(false)
+    })
   }, [wcaId])
 
   // Handle OAuth callback query params
@@ -126,7 +122,6 @@ export function ProfileContent({
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
           wcaId={wcaId}
-          worldRecords={wcaWorldRecords}
         />
       )}
       <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
