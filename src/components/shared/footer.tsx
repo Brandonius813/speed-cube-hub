@@ -1,4 +1,5 @@
 import { Box } from "lucide-react"
+import { FeedbackModal } from "@/components/shared/feedback-modal"
 
 export function Footer() {
   return (
@@ -8,6 +9,7 @@ export function Footer() {
           <Box className="h-4 w-4" />
           <span className="text-sm">Speed Cube Hub</span>
         </div>
+        <FeedbackModal />
         <p className="text-sm text-muted-foreground">
           Built by cubers, for cubers.
         </p>

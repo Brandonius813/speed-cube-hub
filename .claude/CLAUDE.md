@@ -92,6 +92,8 @@ Each page uses a two-file pattern:
 - `src/components/leaderboards/leaderboard-shared.tsx` — Shared leaderboard presentational components (tables, cards, rank display)
 - `src/components/leaderboards/leaderboard-controls.tsx` — Leaderboard filter controls (category tabs, region filter, single/average toggle, Find Me)
 - `src/components/leaderboards/region-filter.tsx` — Reusable region filter dropdown (world/continent/country)
+- `src/lib/actions/feedback.ts` — Feedback submission (submitFeedback — saves to feedback table, requires auth)
+- `src/components/shared/feedback-modal.tsx` — Feedback modal (category picker + message, shown in footer)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 

@@ -128,6 +128,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
+- [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
 
 ### Coaching Platform (Future)
 - Coach role with student management
@@ -167,6 +168,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 | avatar_url | text | Supabase Storage URL |
 | wca_id | text | WCA account ID (OAuth verified) |
 | events | text[] | WCA events the user practices |
+| main_event | text | Primary/main WCA event (nullable) |
 | cubes | jsonb | Array of {name, setup, event} |
 | links | jsonb | Array of {platform, url, label} |
 | accomplishments | jsonb | Array of {title, date} |
@@ -300,6 +302,16 @@ Each practice session captures (based on the proven model from brandontruecubing
 | user_id | uuid (FK) | The member |
 | role | text | "owner", "admin", "member" |
 | joined_at | timestamptz | Auto |
+
+**feedback** — User feedback submissions
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | Who submitted |
+| category | text | "bug", "feature", "general", "other" |
+| message | text | Max 1000 chars |
+| page_url | text | Page they submitted from (nullable) |
+| created_at | timestamptz | Auto |
 
 ## Routes
 
