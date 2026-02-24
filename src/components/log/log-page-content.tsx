@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, FileSpreadsheet } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, Timer } from "lucide-react";
 import { SessionForm } from "./session-form";
 import { CsvImport } from "./csv-import";
+import { CsTimerImport } from "./cstimer-import";
 
-type Mode = "single" | "import";
+type Mode = "single" | "import" | "cstimer";
 
 export function LogPageContent() {
   const [mode, setMode] = useState<Mode>("single");
@@ -44,10 +45,22 @@ export function LogPageContent() {
           <FileSpreadsheet className="h-4 w-4" />
           Import CSV
         </Button>
+        <Button
+          type="button"
+          variant={mode === "cstimer" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setMode("cstimer")}
+          className="gap-2"
+        >
+          <Timer className="h-4 w-4" />
+          csTimer
+        </Button>
       </div>
 
       {/* Content */}
-      {mode === "single" ? <SessionForm /> : <CsvImport />}
+      {mode === "single" && <SessionForm />}
+      {mode === "import" && <CsvImport />}
+      {mode === "cstimer" && <CsTimerImport />}
     </div>
   );
 }
