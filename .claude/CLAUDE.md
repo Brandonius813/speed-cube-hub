@@ -52,11 +52,15 @@ Each page uses a two-file pattern:
 - `src/lib/supabase/admin.ts` — Service-role client (bypasses RLS)
 - `src/lib/actions/` — Server actions directory
 - `src/lib/actions/wca.ts` — WCA API integration (fetch results, unlink WCA ID)
+- `src/lib/actions/follows.ts` — Follow/unfollow system (followUser, unfollowUser, getFollowCounts, isFollowing)
+- `src/lib/actions/feed.ts` — Activity feed (getFeed with cursor-based pagination)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
 - `src/components/shared/` — Shared app components (navbar, etc.)
-- `src/components/profile/` — Profile page components (header, stats, WCA results, etc.)
+- `src/components/profile/` — Profile page components (header, stats, WCA results, follow button, etc.)
+- `src/components/feed/` — Activity feed components (feed-content, feed-item)
+- `src/components/discover/` — Discover/search cubers components
 
 ### Path Alias
 
@@ -107,8 +111,11 @@ See `.env.local.example` for required variables:
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
 /dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
-/profile             → User profile (header, stats, cubes, PBs, links, activity) [protected]
+/profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
+/profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
+/feed                → Activity feed (sessions from followed users) [protected]
+/discover            → Search and browse cubers [public]
 ```
 
 Routes will be added as features are built. Keep this section updated.

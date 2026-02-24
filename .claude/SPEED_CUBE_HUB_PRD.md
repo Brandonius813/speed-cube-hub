@@ -98,12 +98,16 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ## Future Roadmap (Not MVP — Do Not Build Yet)
 
-### Social Feed
-- Auto-posted sessions when a user finishes practice (like Strava activities)
-- Manual posts for sharing updates, PBs, competition recaps
-- Follow/following system
-- Likes and comments
-- Motivation and accountability features
+### Social Feed (Wave 1 Complete)
+- [x] Auto-posted sessions in activity feed (sessions from followed users appear at /feed)
+- [ ] Manual posts for sharing updates, PBs, competition recaps
+- [x] Follow/following system (follow/unfollow, follower counts on profiles)
+- [x] Public profiles at /profile/[handle] (viewable by anyone)
+- [x] Discover page at /discover (search and browse cubers)
+- [ ] Kudos/reactions on feed items (Wave 2)
+- [ ] Comments on feed items (Wave 2)
+- [ ] Leaderboards (Wave 3)
+- [ ] Achievements/badges (Wave 3)
 
 ### Coaching Platform
 - Coach role with student management
@@ -142,8 +146,11 @@ Each practice session captures (based on the proven model from brandontruecubing
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
 /dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
-/profile             → User profile (header, stats, cubes, PBs, WCA results, activity) [protected]
+/profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
+/profile/[handle]    → Public profile for any user [public]
 /log                 → Log a practice session (form) [protected]
+/feed                → Activity feed (sessions from followed users) [protected]
+/discover            → Search and browse cubers [public]
 ```
 
 ## Design Source
@@ -229,6 +236,13 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Editable main cubes section on profile (add/edit/delete from cubes JSONB)
 - [x] Notable accomplishments section on profile (add/edit/delete milestones)
 - [x] Editable social links on profile (YouTube, IG, TikTok, X, Discord, WCA, website)
+- [x] Avatar file upload (replaces URL input, uploads to Supabase Storage avatars bucket)
+- [x] Social Wave 1: Public profiles at /profile/[handle] (viewable by anyone, reuses existing profile components)
+- [x] Social Wave 1: Follow/unfollow system (follows table, follow button, follower/following counts on profiles)
+- [x] Social Wave 1: Activity feed at /feed (sessions from followed users, cursor-based pagination)
+- [x] Social Wave 1: Discover page at /discover (search cubers by name/handle, browse all users)
+- [x] Social Wave 1: Updated navbar with Feed and Discover links
+- [x] Social Wave 1: Middleware updated (public profiles accessible to everyone, feed protected)
 
 ## Notes
 
