@@ -20,6 +20,13 @@ import { parseDuration } from "@/lib/utils";
 
 const CUSTOM_VALUE = "__custom__";
 
+/** Practice types where number of solves and times are the main focus */
+const SOLVE_BASED_TYPES = ["Solves", "Slow Solves", "Comp Sim"];
+
+function isSolveBased(practiceType: string): boolean {
+  return SOLVE_BASED_TYPES.includes(practiceType);
+}
+
 export function SessionForm() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,6 +36,10 @@ export function SessionForm() {
   const [customType, setCustomType] = useState("");
 
   const practiceTypes = useMemo(() => getPracticeTypesForEvent(event), [event]);
+
+  // Determine the resolved practice type for dynamic field display
+  const resolvedType = practiceType === CUSTOM_VALUE ? customType.trim() : practiceType;
+  const solveBased = isSolveBased(resolvedType);
 
   function handleEventChange(newEvent: string) {
     setEvent(newEvent);
@@ -54,7 +65,8 @@ export function SessionForm() {
     const formData = new FormData(form);
 
     const sessionDate = formData.get("date") as string;
-    const numSolves = parseInt(formData.get("solves") as string, 10);
+    const solvesRaw = (formData.get("solves") as string)?.trim();
+    const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : 0;
     const durationMinutes = parseDuration(formData.get("time") as string);
     const avgTimeStr = (formData.get("avg") as string)?.trim();
     const bestTimeStr = (formData.get("best") as string)?.trim();
@@ -65,12 +77,20 @@ export function SessionForm() {
     const finalPracticeType =
       practiceType === CUSTOM_VALUE ? customType.trim() : practiceType;
 
-    if (!sessionDate || !event || !finalPracticeType || !numSolves || !durationMinutes) {
+    const solvesRequired = isSolveBased(finalPracticeType);
+
+    if (!sessionDate || !event || !finalPracticeType || !durationMinutes) {
       setError(
         !durationMinutes && (formData.get("time") as string)?.trim()
           ? 'Invalid time format. Use minutes (e.g. "90") or h:mm (e.g. "1:30").'
           : "Please fill in all required fields."
       );
+      setLoading(false);
+      return;
+    }
+
+    if (solvesRequired && !numSolves) {
+      setError("Number of solves is required for this practice type.");
       setLoading(false);
       return;
     }
@@ -172,21 +192,26 @@ export function SessionForm() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="solves" className="text-foreground">
                 Number of Solves
+                {!solveBased && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                )}
               </Label>
               <Input
                 id="solves"
                 name="solves"
                 type="number"
-                placeholder="50"
-                min={1}
-                required
+                placeholder={solveBased ? "50" : "0"}
+                min={0}
+                required={solveBased}
                 className="min-h-11 border-border bg-secondary/50 text-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="time" className="text-foreground">
-                Time Practiced
+                Practice Duration (min)
                 <span className="ml-1 text-xs font-normal text-muted-foreground">
                   (e.g. 1:30 or 90)
                 </span>
@@ -202,37 +227,41 @@ export function SessionForm() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="avg" className="text-foreground">
-                Result Average
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                id="avg"
-                name="avg"
-                type="text"
-                placeholder="12.34"
-                className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
-              />
-            </div>
+            {solveBased && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="avg" className="text-foreground">
+                    Result Average
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="avg"
+                    name="avg"
+                    type="text"
+                    placeholder="12.34"
+                    className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="best" className="text-foreground">
-                Best Single
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                id="best"
-                name="best"
-                type="text"
-                placeholder="10.52"
-                className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
-              />
-            </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="best" className="text-foreground">
+                    Best Single
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="best"
+                    name="best"
+                    type="text"
+                    placeholder="10.52"
+                    className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
