@@ -159,6 +159,8 @@ See `.env.local.example` for required variables:
 /clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
 /wrapped             → Year in Review [protected]
 /admin/badges        → Admin badge approval queue [admin only]
+/privacy             → Privacy Policy [public]
+/terms               → Terms of Service [public]
 ```
 
 Routes will be added as features are built. Keep this section updated.
