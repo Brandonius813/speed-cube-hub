@@ -1,6 +1,5 @@
 "use server"
 
-import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { generateUniqueHandle } from "@/lib/actions/profiles"
@@ -89,8 +88,3 @@ export async function checkIsAdmin(): Promise<boolean> {
   return !!user && user.id === process.env.ADMIN_USER_ID
 }
 
-export async function logout() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  redirect("/")
-}

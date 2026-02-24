@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getUnreadCount } from "@/lib/actions/notifications"
 import { getProfile } from "@/lib/actions/profiles"
-import { logout, checkIsAdmin } from "@/lib/actions/auth"
+import { checkIsAdmin } from "@/lib/actions/auth"
 
 function getInitials(name: string): string {
   return name
@@ -206,15 +206,18 @@ export function Navbar() {
                 Log Session
               </Button>
             </Link>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={async () => {
+                const supabase = getSupabaseClient()
+                await supabase.auth.signOut()
+                window.location.href = "/"
+              }}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
