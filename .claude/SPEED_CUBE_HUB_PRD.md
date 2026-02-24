@@ -108,15 +108,15 @@ Each practice session captures (based on the proven model from brandontruecubing
 ### Social Wave 2 — Engagement
 - [x] Likes/Kudos on feed sessions (tap to like, like count, who liked it)
 - [x] Comments on feed sessions (text replies on activity items)
-- [ ] Notifications system (new follower, like, comment, PB alerts)
-- [ ] Notifications page at /notifications with unread badge in navbar
+- [x] Notifications system (new follower, like, comment, PB alerts)
+- [x] Notifications page at /notifications with unread badge in navbar
 
 ### Social Wave 3 — Motivation & Retention
 - [x] Goals (set targets like "sub-20 on 3x3 by June", track progress with visual bars, auto-detect achievement)
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [x] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join, progress calculated from real sessions)
-- [ ] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
+- [x] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
   - **Competition credentials** (admin-verified): World Record Holder, Continental Record Holder, National Record Holder, World Champion, Continental Champion, National Champion, World Finalist, National Finalist. Each badge is dated by year. Current record holders get a prominent gold/highlighted badge; former holders get a visually distinct muted version.
   - **Sponsor badge** (self-reported): If a user is sponsored, a visually impressive badge displays their sponsor name prominently. No admin approval needed.
   - **Practice milestones** (auto-awarded): "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "Practiced All 17 Events", "100 Hours Practiced", etc. Awarded automatically when thresholds are met. Future: badges for algorithm sets mastered, practice hour milestones, and more.
@@ -125,7 +125,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
 - [ ] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
-- [ ] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X)
+- [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 
 ### Coaching Platform (Future)
 - Coach role with student management
@@ -311,7 +311,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 /log                 → Log a practice session (form) [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
-/notifications       → Notification inbox (likes, comments, follows, PBs) [protected] — Wave 2
+/notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest averages, most solves, streaks) [public] — Wave 4
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
 /clubs               → Browse and manage clubs [protected] — Wave 4
@@ -414,6 +414,8 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Social Wave 3: Goals system on dashboard (create/edit/delete goals, progress bars, auto-achievement, auto-expiry)
 - [x] Social Wave 4: Public Leaderboards at /leaderboards (4 categories: fastest avg, most solves, longest streak, most practice time; event selector for fastest avg; friends-only toggle; top-3 medal styling; mobile cards + desktop table)
 - [x] Social Wave 3: Weekly/Monthly Challenges at /challenges (admin creates challenges, users join/leave, real-time progress from sessions, progress bars, active/past sections)
+- [x] Social Wave 3: Badges & Credentials on profiles (competition credentials with admin approval, sponsor badges self-reported, practice milestones auto-awarded after session creation)
+- [x] Social Wave 2: Notifications page at /notifications (notification cards with actor avatar, type-specific messages, relative timestamps, mark-as-read, mark-all-as-read, unread badge in navbar bell icon)
 
 ## Notes
 

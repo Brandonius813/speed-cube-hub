@@ -44,6 +44,10 @@ export function Navbar() {
         if (profile) {
           setUserProfile(profile)
         }
+
+        // Fetch unread notification count
+        const { count } = await getUnreadCount()
+        setUnreadCount(count)
       }
     }
 
@@ -64,8 +68,12 @@ export function Navbar() {
         if (profile) {
           setUserProfile(profile)
         }
+
+        const { count } = await getUnreadCount()
+        setUnreadCount(count)
       } else {
         setUserProfile(null)
+        setUnreadCount(0)
       }
     })
 
@@ -123,6 +131,18 @@ export function Navbar() {
             >
               <LayoutDashboard className="h-4 w-4 sm:hidden" />
               <span className="hidden text-sm sm:inline">Dashboard</span>
+            </Link>
+            <Link
+              href="/notifications"
+              className="relative flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white sm:-right-1.5 sm:-top-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/profile"

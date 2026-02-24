@@ -217,7 +217,8 @@ Created `notifications` table (migration `006_create_notifications.sql`) with RL
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | T23 ✅ |
 | **Estimated scope** | 1 page + 1 content component + navbar update |
 
@@ -314,12 +315,12 @@ Initial set: "First 100 Solves", "First 1,000 Solves", "7-Day Streak", "30-Day S
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file + 1 page + 2 components |
 
-Build `/leaderboards` page with category tabs: Fastest Average (by event), Most Solves (all-time), Longest Streak, Most Practice Time. Each leaderboard shows rank, user avatar/name, stat value. Tap a user to visit their profile. Optional "Friends Only" toggle to filter to people you follow.
+Built `/leaderboards` page with 4 category tabs (Fastest Average, Most Solves, Longest Streak, Most Practice Time). Event selector for Fastest Average. Friends-only toggle for logged-in users. Desktop table + mobile card layout. Top-3 gold/silver/bronze styling. Server actions in `src/lib/actions/leaderboards.ts` using admin client. Added Leaderboards link to navbar for all users.
 
 ---
 
@@ -352,12 +353,12 @@ Build `/wrapped` page showing annual stats summary for the logged-in user. Secti
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | 1 API route + 1 component + feed-item update |
 
-Generate shareable images (OG-image style) when a user hits a PB or completes a notable session. Use `@vercel/og` or HTML canvas to render a branded card with the user's name, event, time, and Speed Cube Hub branding. "Share" button on feed items and profile PBs that copies the image or opens share sheet on mobile.
+Built OG image API route at `src/app/api/og/route.tsx` using `@vercel/og` (edge runtime). Accepts query params: `type` (session/pb), `name`, `event`, `time`, `solves`, `handle`. Generates 1200x630 branded dark-theme image with user info, event, stat, and SpeedCubeHub branding. Built `ShareButton` component (`src/components/feed/share-button.tsx`) with Web Share API (mobile) and clipboard fallback (desktop). Added share button to feed items (next to like/comment) and profile PB grid rows.
 
 ---
 
