@@ -14,16 +14,7 @@ import {
 } from "@/components/ui/popover"
 import { CalendarDays, Filter } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
-
-const eventColorMap: Record<string, string> = {
-  all: "bg-foreground text-background",
-  "333": "bg-chart-1/15 text-chart-1 border-chart-1/30",
-  "444": "bg-primary/15 text-primary border-primary/30",
-  "555": "bg-chart-3/15 text-chart-3 border-chart-3/30",
-  "222": "bg-accent/15 text-accent border-accent/30",
-  pyram: "bg-chart-5/15 text-chart-5 border-chart-5/30",
-  minx: "bg-chart-4/15 text-chart-4 border-chart-4/30",
-}
+import { EventBadge } from "@/components/shared/event-badge"
 
 const dateRanges = [
   { label: "7 days", value: "7d" as const },
@@ -87,20 +78,38 @@ export function DashboardFilters({
             <span className="shrink-0">Event</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {filterEvents.map((event) => (
-              <Badge
-                key={event.id}
-                variant="outline"
-                className={`min-h-[44px] cursor-pointer px-3 transition-all ${
-                  selectedEvent === event.id
-                    ? eventColorMap[event.id] || "bg-foreground text-background"
-                    : "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
-                }`}
-                onClick={() => onEventChange(event.id)}
-              >
-                {event.label}
-              </Badge>
-            ))}
+            {filterEvents.map((event) =>
+              event.id === "all" ? (
+                <Badge
+                  key={event.id}
+                  variant="outline"
+                  className={`min-h-[44px] cursor-pointer px-3 transition-all ${
+                    selectedEvent === "all"
+                      ? "bg-foreground text-background"
+                      : "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                  }`}
+                  onClick={() => onEventChange("all")}
+                >
+                  All Events
+                </Badge>
+              ) : (
+                <div
+                  key={event.id}
+                  className="cursor-pointer"
+                  onClick={() => onEventChange(event.id)}
+                >
+                  <EventBadge
+                    event={event.id}
+                    selected={selectedEvent === event.id}
+                    className={`min-h-[44px] px-3 transition-all ${
+                      selectedEvent !== event.id
+                        ? "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                        : ""
+                    }`}
+                  />
+                </div>
+              )
+            )}
           </div>
         </div>
 

@@ -4,15 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
-
-const EVENT_COLORS: Record<string, string> = {
-  "333": "#EF4444",
-  "444": "#6366F1",
-  "555": "#F97316",
-  "222": "#22D3EE",
-  minx: "#A855F7",
-  pyram: "#A855F7",
-}
+import { CubingIcon } from "@/components/shared/cubing-icon"
 
 function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
@@ -44,7 +36,6 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
       event,
       label: getEventLabel(event),
       bestAvg: data.bestAvg,
-      color: EVENT_COLORS[event] || "#6366F1",
     }))
     .sort((a, b) => {
       // Sort by event order in WCA_EVENTS
@@ -87,10 +78,7 @@ export function PBGrid({ sessions }: { sessions: Session[] }) {
               className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div
-                  className="h-3 w-3 shrink-0 rounded-sm"
-                  style={{ backgroundColor: pb.color }}
-                />
+                <CubingIcon event={pb.event} className="shrink-0 text-base text-muted-foreground" />
                 <span className="truncate font-medium text-foreground">{pb.label}</span>
               </div>
               <div className="text-right">

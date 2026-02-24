@@ -1,22 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import type { Session } from "@/lib/types"
-import { WCA_EVENTS } from "@/lib/constants"
-
-const eventColors: Record<string, string> = {
-  "333": "bg-chart-1/15 text-chart-1 border-chart-1/20",
-  "444": "bg-primary/15 text-primary border-primary/20",
-  "555": "bg-chart-3/15 text-chart-3 border-chart-3/20",
-  "222": "bg-accent/15 text-accent border-accent/20",
-  pyram: "bg-chart-5/15 text-chart-5 border-chart-5/20",
-  minx: "bg-chart-4/15 text-chart-4 border-chart-4/20",
-}
-
-function getEventLabel(eventId: string): string {
-  return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
-}
+import { EventBadge } from "@/components/shared/event-badge"
 
 function formatAvg(avg: number | null): string {
   if (avg === null) return "--"
@@ -64,12 +50,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
             >
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={eventColors[session.event] || ""}
-                  >
-                    {getEventLabel(session.event)}
-                  </Badge>
+                  <EventBadge event={session.event} />
                   <span className="text-xs text-muted-foreground">
                     {session.practice_type}
                   </span>
@@ -125,12 +106,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     {formatDate(session.session_date)}
                   </td>
                   <td className="py-3">
-                    <Badge
-                      variant="outline"
-                      className={eventColors[session.event] || ""}
-                    >
-                      {getEventLabel(session.event)}
-                    </Badge>
+                    <EventBadge event={session.event} />
                   </td>
                   <td className="py-3 text-sm text-foreground">
                     {session.practice_type}
