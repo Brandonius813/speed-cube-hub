@@ -6,8 +6,9 @@
  * Downloads the official WCA database export, computes Sum of Ranks (SOR)
  * and Kinch Rank for every WCA competitor, and upserts results into Supabase.
  *
- * SOR = sum of a cuber's world/continent/country rank in each event they've
- * competed in. Lower is better. Simple as that.
+ * SOR = sum of a cuber's rank in each event. If they haven't competed in an
+ * event, they get last place (the worst rank anyone has in that event).
+ * Lower is better.
  *
  * Usage:
  *   node scripts/sync-wca-rankings.mjs
@@ -237,6 +238,47 @@ async function parseRanks(filePath) {
   return { personRanks, worldRecords }
 }
 
+// ─── Compute last-place ranks per event ─────────────────────────────
+
+function computeLastPlaceRanks(personRanks, persons, countries, events) {
+  // For each event, find the worst (highest) world/continent/country rank
+  const maxWorld = new Map()       // eventId → worst world rank
+  const maxContinent = new Map()   // "continentId|eventId" → worst continent rank
+  const maxCountry = new Map()     // "countryId|eventId" → worst country rank
+
+  const eventSet = new Set(events)
+
+  for (const [personId, eventsMap] of personRanks) {
+    const person = persons.get(personId)
+    if (!person) continue
+
+    const countryId = person.country_id
+    const continentId = countries.get(countryId)?.continent_id ?? ""
+
+    for (const [eventId, r] of eventsMap) {
+      if (!eventSet.has(eventId)) continue
+
+      if (r.worldRank > (maxWorld.get(eventId) ?? 0)) {
+        maxWorld.set(eventId, r.worldRank)
+      }
+      if (continentId && r.continentRank > 0) {
+        const key = `${continentId}|${eventId}`
+        if (r.continentRank > (maxContinent.get(key) ?? 0)) {
+          maxContinent.set(key, r.continentRank)
+        }
+      }
+      if (countryId && r.countryRank > 0) {
+        const key = `${countryId}|${eventId}`
+        if (r.countryRank > (maxCountry.get(key) ?? 0)) {
+          maxCountry.set(key, r.countryRank)
+        }
+      }
+    }
+  }
+
+  return { maxWorld, maxContinent, maxCountry }
+}
+
 // ─── Compute SOR & Kinch ────────────────────────────────────────────
 
 function computeRankings(persons, countries, singleData, averageData) {
@@ -244,9 +286,12 @@ function computeRankings(persons, countries, singleData, averageData) {
   const { personRanks: singleRanks, worldRecords: singleWRs } = singleData
   const { personRanks: averageRanks, worldRecords: averageWRs } = averageData
 
-  const results = []
+  // Find the worst rank in each event (used as "last place" for missing events)
+  log("  Finding last-place ranks per event...")
+  const singleLast = computeLastPlaceRanks(singleRanks, persons, countries, SINGLE_EVENTS)
+  const averageLast = computeLastPlaceRanks(averageRanks, persons, countries, AVERAGE_EVENTS)
 
-  // Collect all unique person IDs from both single and average ranks
+  const results = []
   const allPersonIds = new Set([...singleRanks.keys(), ...averageRanks.keys()])
 
   for (const personId of allPersonIds) {
@@ -260,51 +305,45 @@ function computeRankings(persons, countries, singleData, averageData) {
     const singleEvents = singleRanks.get(personId)
     const averageEvents = averageRanks.get(personId)
 
-    // ── SOR Single: sum world/continent/country ranks for each event ─
-    let sorSingle = null
-    let sorSingleCr = null
-    let sorSingleNr = null
+    // ── SOR Single: 17 events. Missing events = last place. ─────────
+    let sorSingle = 0
+    let sorSingleCr = 0
+    let sorSingleNr = 0
     let singleEventCount = 0
 
-    if (singleEvents) {
-      let sumWorld = 0, sumContinent = 0, sumCountry = 0
-      for (const eventId of SINGLE_EVENTS) {
-        const r = singleEvents.get(eventId)
-        if (r) {
-          sumWorld += r.worldRank
-          sumContinent += r.continentRank
-          sumCountry += r.countryRank
-          singleEventCount++
-        }
-      }
-      if (singleEventCount > 0) {
-        sorSingle = sumWorld
-        sorSingleCr = sumContinent
-        sorSingleNr = sumCountry
+    for (const eventId of SINGLE_EVENTS) {
+      const r = singleEvents?.get(eventId)
+      if (r && r.worldRank > 0) {
+        // Cuber has a result — use their actual rank
+        sorSingle += r.worldRank
+        sorSingleCr += r.continentRank > 0 ? r.continentRank : (singleLast.maxContinent.get(`${continentId}|${eventId}`) ?? r.worldRank)
+        sorSingleNr += r.countryRank > 0 ? r.countryRank : (singleLast.maxCountry.get(`${countryId}|${eventId}`) ?? r.worldRank)
+        singleEventCount++
+      } else {
+        // Never competed — last place
+        sorSingle += singleLast.maxWorld.get(eventId) ?? 0
+        sorSingleCr += singleLast.maxContinent.get(`${continentId}|${eventId}`) ?? singleLast.maxWorld.get(eventId) ?? 0
+        sorSingleNr += singleLast.maxCountry.get(`${countryId}|${eventId}`) ?? singleLast.maxWorld.get(eventId) ?? 0
       }
     }
 
-    // ── SOR Average: same thing, 16 events (no 333mbf) ──────────────
-    let sorAverage = null
-    let sorAverageCr = null
-    let sorAverageNr = null
+    // ── SOR Average: 16 events. Same logic. ─────────────────────────
+    let sorAverage = 0
+    let sorAverageCr = 0
+    let sorAverageNr = 0
     let averageEventCount = 0
 
-    if (averageEvents) {
-      let sumWorld = 0, sumContinent = 0, sumCountry = 0
-      for (const eventId of AVERAGE_EVENTS) {
-        const r = averageEvents.get(eventId)
-        if (r) {
-          sumWorld += r.worldRank
-          sumContinent += r.continentRank
-          sumCountry += r.countryRank
-          averageEventCount++
-        }
-      }
-      if (averageEventCount > 0) {
-        sorAverage = sumWorld
-        sorAverageCr = sumContinent
-        sorAverageNr = sumCountry
+    for (const eventId of AVERAGE_EVENTS) {
+      const r = averageEvents?.get(eventId)
+      if (r && r.worldRank > 0) {
+        sorAverage += r.worldRank
+        sorAverageCr += r.continentRank > 0 ? r.continentRank : (averageLast.maxContinent.get(`${continentId}|${eventId}`) ?? r.worldRank)
+        sorAverageNr += r.countryRank > 0 ? r.countryRank : (averageLast.maxCountry.get(`${countryId}|${eventId}`) ?? r.worldRank)
+        averageEventCount++
+      } else {
+        sorAverage += averageLast.maxWorld.get(eventId) ?? 0
+        sorAverageCr += averageLast.maxContinent.get(`${continentId}|${eventId}`) ?? averageLast.maxWorld.get(eventId) ?? 0
+        sorAverageNr += averageLast.maxCountry.get(`${countryId}|${eventId}`) ?? averageLast.maxWorld.get(eventId) ?? 0
       }
     }
 
