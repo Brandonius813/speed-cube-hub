@@ -29,16 +29,16 @@ export function DashboardContent({
   }
   initialGoals?: Goal[]
 }) {
-  const [selectedEvent, setSelectedEvent] = useState("all")
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([])
   const [selectedRange, setSelectedRange] = useState<DateRange>("30d")
   const [customRange, setCustomRange] = useState<CustomDateRange | null>(null)
 
   const filteredSessions = useMemo(() => {
     let result = initialSessions
 
-    // Filter by event
-    if (selectedEvent !== "all") {
-      result = result.filter((s) => s.event === selectedEvent)
+    // Filter by events (empty array = all events)
+    if (selectedEvents.length > 0) {
+      result = result.filter((s) => selectedEvents.includes(s.event))
     }
 
     // Filter by date range
@@ -59,7 +59,7 @@ export function DashboardContent({
     }
 
     return result
-  }, [initialSessions, selectedEvent, selectedRange, customRange])
+  }, [initialSessions, selectedEvents, selectedRange, customRange])
 
   // Compute current averages for each goal's event from session data
   const goalAverages = useMemo(() => {
@@ -83,10 +83,10 @@ export function DashboardContent({
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <DashboardFilters
-        selectedEvent={selectedEvent}
+        selectedEvents={selectedEvents}
         selectedRange={selectedRange}
         customRange={customRange}
-        onEventChange={setSelectedEvent}
+        onEventsChange={setSelectedEvents}
         onRangeChange={setSelectedRange}
         onCustomRangeChange={setCustomRange}
       />
