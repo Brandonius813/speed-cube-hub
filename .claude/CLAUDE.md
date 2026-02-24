@@ -64,6 +64,7 @@ Each page uses a two-file pattern:
 - `src/lib/actions/feed.ts` — Activity feed (getFeed with cursor-based pagination, enriched with like/comment counts)
 - `src/lib/actions/likes.ts` — Like/unlike system (likeSession, unlikeSession, getSessionLikeInfo)
 - `src/lib/actions/comments.ts` — Comments system (addComment, getComments, deleteComment, getCommentCounts)
+- `src/lib/actions/goals.ts` — Goals system (createGoal, getGoals, updateGoal, deleteGoal, checkGoalProgress)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
 - `src/components/ui/` — Shadcn/ui components
