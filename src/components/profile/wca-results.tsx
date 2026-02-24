@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Medal } from "lucide-react"
+import { ExternalLink, Medal } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import type { WcaPersonalRecords } from "@/lib/actions/wca"
@@ -23,9 +23,11 @@ function getEventLabel(eventId: string): string {
 export function WcaResults({
   personalRecords,
   competitionCount,
+  wcaId,
 }: {
   personalRecords: WcaPersonalRecords
   competitionCount: number
+  wcaId?: string | null
 }) {
   const events = Object.entries(personalRecords)
     .map(([eventId, records]) => ({
@@ -52,9 +54,22 @@ export function WcaResults({
             <Medal className="h-5 w-5 text-accent" />
             Official WCA Results
           </CardTitle>
-          <span className="text-xs text-muted-foreground">
-            {competitionCount} comp{competitionCount !== 1 ? "s" : ""}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {competitionCount} comp{competitionCount !== 1 ? "s" : ""}
+            </span>
+            {wcaId && (
+              <a
+                href={`https://www.worldcubeassociation.org/persons/${wcaId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-11 items-center gap-1.5 rounded-md border border-border/50 bg-secondary/50 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                WCA Profile
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

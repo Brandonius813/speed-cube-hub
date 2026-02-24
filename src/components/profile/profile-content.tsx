@@ -97,6 +97,7 @@ export function ProfileContent({
         <WcaResults
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
+          wcaId={wcaId}
         />
       )}
       <PBGrid sessions={sessions} />
