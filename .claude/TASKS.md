@@ -242,7 +242,8 @@ Create `goals` table (user_id, event, target_avg, target_date, status). Build se
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-G |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action + 1 component + dashboard update |
 
