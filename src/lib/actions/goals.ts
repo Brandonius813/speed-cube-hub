@@ -78,7 +78,7 @@ export async function createGoal(fields: {
     return { success: false, error: error.message }
   }
 
-  safeRevalidate("/dashboard")
+  safeRevalidate("/practice-stats")
   return { success: true, data: data as Goal }
 }
 
@@ -117,7 +117,7 @@ export async function updateGoal(
     return { success: false, error: error.message }
   }
 
-  safeRevalidate("/dashboard")
+  safeRevalidate("/practice-stats")
   return { success: true, data: data as Goal }
 }
 
@@ -144,7 +144,7 @@ export async function deleteGoal(
     return { success: false, error: error.message }
   }
 
-  safeRevalidate("/dashboard")
+  safeRevalidate("/practice-stats")
   return { success: true }
 }
 
@@ -210,7 +210,7 @@ export async function checkGoalProgress(): Promise<void> {
     }
   }
 
-  safeRevalidate("/dashboard")
+  safeRevalidate("/practice-stats")
 }
 
 /**

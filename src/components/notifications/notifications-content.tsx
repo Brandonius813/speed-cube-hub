@@ -61,7 +61,7 @@ function getNotificationLink(notification: Notification): string | null {
       // Could link to the specific session in the feed in the future
       return "/feed"
     case "pb":
-      return "/dashboard"
+      return "/practice-stats"
     case "badge":
       return "/profile"
     default:

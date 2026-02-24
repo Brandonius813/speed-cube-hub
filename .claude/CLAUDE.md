@@ -152,7 +152,7 @@ See `.env.local.example` for required variables:
 /                    → Landing page (hero, features, social proof)
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
-/dashboard           → Practice stats dashboard (filters, charts, session log) [protected]
+/practice-stats      → Practice stats (filters, charts, session log) [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
 /profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
