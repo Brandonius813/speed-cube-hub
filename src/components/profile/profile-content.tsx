@@ -12,8 +12,7 @@ import { RecentActivity } from "@/components/profile/recent-activity"
 import { WcaResults } from "@/components/profile/wca-results"
 import { WcaLink } from "@/components/profile/wca-link"
 import type { Profile, Session } from "@/lib/types"
-import { UpcomingCompetitions } from "@/components/profile/upcoming-competitions"
-import type { WcaPersonResult, WcaCompetition } from "@/lib/actions/wca"
+import type { WcaPersonResult } from "@/lib/actions/wca"
 
 const WCA_ERROR_MESSAGES: Record<string, string> = {
   denied: "WCA authorization was cancelled.",
@@ -28,12 +27,10 @@ export function ProfileContent({
   profile,
   sessions,
   wcaData,
-  upcomingCompetitions = [],
 }: {
   profile: Profile
   sessions: Session[]
   wcaData: WcaPersonResult | null
-  upcomingCompetitions?: WcaCompetition[]
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -90,9 +87,6 @@ export function ProfileContent({
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
         />
-      )}
-      {upcomingCompetitions.length > 0 && (
-        <UpcomingCompetitions competitions={upcomingCompetitions} />
       )}
       <MainCubes cubes={profile.cubes ?? []} isOwner />
       <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner />

@@ -36,12 +36,9 @@ export function DashboardFilters({
   onEventChange: (event: string) => void
   onRangeChange: (range: DateRange) => void
 }) {
-  // Show only the most common events for filter badges
   const filterEvents = [
     { id: "all", label: "All Events" },
-    ...WCA_EVENTS.filter((e) =>
-      ["333", "444", "555", "222", "pyram", "minx"].includes(e.id)
-    ),
+    ...WCA_EVENTS,
   ]
 
   return (

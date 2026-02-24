@@ -61,7 +61,6 @@ export function ProfileHeader({
               <h1 className="text-2xl font-bold text-foreground">
                 {profile.display_name}
               </h1>
-              <p className="text-muted-foreground">@{profile.handle}</p>
             </div>
             {isOwner && (
               <Button
