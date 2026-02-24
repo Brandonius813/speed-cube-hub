@@ -4,6 +4,19 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Goal } from "@/lib/types"
 
+/**
+ * Safe wrapper: only call revalidatePath when running inside a server action
+ * (mutation context). Calling revalidatePath during a server component render
+ * throws in Next.js 16+. This helper catches that error silently.
+ */
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path)
+  } catch {
+    // Called during render — not a mutation context. Ignore safely.
+  }
+}
+
 export async function getGoals(): Promise<{ data: Goal[]; error?: string }> {
   const supabase = await createClient()
 
@@ -65,7 +78,7 @@ export async function createGoal(fields: {
     return { success: false, error: error.message }
   }
 
-  revalidatePath("/dashboard")
+  safeRevalidate("/dashboard")
   return { success: true }
 }
 
@@ -102,7 +115,7 @@ export async function updateGoal(
     return { success: false, error: error.message }
   }
 
-  revalidatePath("/dashboard")
+  safeRevalidate("/dashboard")
   return { success: true }
 }
 
@@ -129,7 +142,7 @@ export async function deleteGoal(
     return { success: false, error: error.message }
   }
 
-  revalidatePath("/dashboard")
+  safeRevalidate("/dashboard")
   return { success: true }
 }
 
@@ -195,7 +208,7 @@ export async function checkGoalProgress(): Promise<void> {
     }
   }
 
-  revalidatePath("/dashboard")
+  safeRevalidate("/dashboard")
 }
 
 /**
