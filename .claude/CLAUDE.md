@@ -75,6 +75,10 @@ Each page uses a two-file pattern:
 - `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components
 - `src/components/leaderboards/` — Leaderboard components (leaderboards-content)
+- `src/lib/actions/wrapped.ts` — Year in Review stats (getWrappedStats)
+- `src/components/wrapped/` — Year in Review (Wrapped) components (wrapped-content)
+- `src/lib/actions/challenges.ts` — Challenges system (getChallenges, joinChallenge, leaveChallenge, getChallengeProgress, createChallenge)
+- `src/components/challenges/` — Challenge components (challenges-content, challenge-card, create-challenge-modal)
 
 ### Path Alias
 
@@ -132,10 +136,10 @@ See `.env.local.example` for required variables:
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox [protected] — planned (Wave 2)
 /leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
-/challenges          → Community challenges [protected] — planned (Wave 3)
+/challenges          → Community challenges (join, track progress, admin creates) [protected]
 /clubs               → Browse/manage clubs [protected] — planned (Wave 4)
 /clubs/[id]          → Individual club page [public] — planned (Wave 4)
-/wrapped             → Year in Review [protected] — planned (Wave 4)
+/wrapped             → Year in Review [protected]
 ```
 
 Routes will be added as features are built. Keep this section updated.

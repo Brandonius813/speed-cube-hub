@@ -340,7 +340,7 @@ Create `clubs` and `club_members` tables. Build server actions: `createClub()`, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action + 1 page + 2 components |
 
