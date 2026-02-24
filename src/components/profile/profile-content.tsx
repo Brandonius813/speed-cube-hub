@@ -115,7 +115,7 @@ export function ProfileContent({
         followerCount={followerCount}
         followingCount={followingCount}
       />
-      <ProfileStats sessions={sessions} sorKinchStats={sorKinchStats} />
+      <ProfileStats sessions={sessions} />
 
       {wcaMessage && (
         <div
