@@ -52,29 +52,45 @@ export async function getProfileByHandle(handle: string): Promise<{
 }
 
 export async function searchProfiles(
-  query: string
+  query: string,
+  options?: {
+    event?: string
+    sortBy?: "newest" | "name"
+  }
 ): Promise<{ profiles: Profile[]; error?: string }> {
   const supabase = await createClient()
+  const event = options?.event
+  const sortBy = options?.sortBy ?? "newest"
 
-  if (!query.trim()) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20)
+  let qb = supabase.from("profiles").select("*")
 
-    if (error) return { profiles: [], error: error.message }
-    return { profiles: (data as Profile[]) || [] }
+  // Event filter — Supabase `cs` checks if the array contains the value
+  if (event) {
+    qb = qb.contains("events", [event])
   }
 
-  const searchTerm = `%${query.trim()}%`
+  // Text search across name, handle, and location
+  const trimmed = query.trim()
+  if (trimmed.length >= 2) {
+    const searchTerm = `%${trimmed}%`
+    qb = qb.or(
+      `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
+    )
+  } else if (trimmed.length === 1) {
+    // Need at least 2 chars to search
+    return { profiles: [] }
+  }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .or(`display_name.ilike.${searchTerm},handle.ilike.${searchTerm}`)
-    .order("display_name")
-    .limit(20)
+  // Sort
+  if (sortBy === "name") {
+    qb = qb.order("display_name", { ascending: true })
+  } else {
+    qb = qb.order("created_at", { ascending: false })
+  }
+
+  qb = qb.limit(20)
+
+  const { data, error } = await qb
 
   if (error) return { profiles: [], error: error.message }
   return { profiles: (data as Profile[]) || [] }
