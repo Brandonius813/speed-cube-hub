@@ -34,3 +34,40 @@ export const PRACTICE_TYPES = [
 ] as const
 
 export type PracticeType = (typeof PRACTICE_TYPES)[number]
+
+/**
+ * Common practice types shown for every event.
+ */
+const COMMON_PRACTICE_TYPES = ["Solves", "Slow Solves", "Comp Sim"]
+
+/**
+ * Event-specific practice types shown in addition to the common ones.
+ */
+const EVENT_SPECIFIC_PRACTICE_TYPES: Record<string, string[]> = {
+  "222": ["Drill CLL", "Drill EG", "Drill Ortega"],
+  "333": ["Drill OLL", "Drill PLL", "Drill F2L", "Cross Practice"],
+  "444": ["Drill Parity", "Yau Practice"],
+  "555": ["Reduction Practice"],
+  "666": ["Reduction Practice"],
+  "777": ["Reduction Practice"],
+  "333bf": ["Memo Practice", "Execution Practice"],
+  "444bf": ["Memo Practice", "Execution Practice"],
+  "555bf": ["Memo Practice", "Execution Practice"],
+  "333mbf": ["Memo Practice", "Execution Practice"],
+  "333oh": ["Drill OLL", "Drill PLL", "Drill F2L"],
+  minx: ["Drill Last Layer"],
+  pyram: ["Drill L4E", "Drill Tips"],
+  clock: [],
+  skewb: ["Drill Algs"],
+  sq1: ["Drill Cubeshape", "Drill Parity"],
+  "333fm": ["Practice Insertions"],
+}
+
+/**
+ * Returns the full list of practice types for a given event.
+ * Common types first, then event-specific ones.
+ */
+export function getPracticeTypesForEvent(eventId: string): string[] {
+  const specific = EVENT_SPECIFIC_PRACTICE_TYPES[eventId] ?? []
+  return [...COMMON_PRACTICE_TYPES, ...specific]
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarDays, Check } from "lucide-react";
-import { WCA_EVENTS, PRACTICE_TYPES } from "@/lib/constants";
+import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants";
 import { createSession } from "@/lib/actions/sessions";
+
+const CUSTOM_VALUE = "__custom__";
 
 export function SessionForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -23,6 +25,24 @@ export function SessionForm() {
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState("333");
   const [practiceType, setPracticeType] = useState("Solves");
+  const [customType, setCustomType] = useState("");
+
+  const practiceTypes = useMemo(() => getPracticeTypesForEvent(event), [event]);
+
+  function handleEventChange(newEvent: string) {
+    setEvent(newEvent);
+    // Reset practice type to "Solves" when changing events,
+    // since the old selection might not exist for the new event
+    setPracticeType("Solves");
+    setCustomType("");
+  }
+
+  function handlePracticeTypeChange(value: string) {
+    setPracticeType(value);
+    if (value !== CUSTOM_VALUE) {
+      setCustomType("");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,7 +58,11 @@ export function SessionForm() {
     const avgTimeStr = (formData.get("avg") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
 
-    if (!sessionDate || !event || !practiceType || !numSolves || !durationMinutes) {
+    // Resolve the final practice type — either the dropdown selection or the custom text
+    const finalPracticeType =
+      practiceType === CUSTOM_VALUE ? customType.trim() : practiceType;
+
+    if (!sessionDate || !event || !finalPracticeType || !numSolves || !durationMinutes) {
       setError("Please fill in all required fields.");
       setLoading(false);
       return;
@@ -47,7 +71,7 @@ export function SessionForm() {
     const result = await createSession({
       session_date: sessionDate,
       event,
-      practice_type: practiceType,
+      practice_type: finalPracticeType,
       num_solves: numSolves,
       duration_minutes: durationMinutes,
       avg_time: avgTimeStr ? parseFloat(avgTimeStr) : null,
@@ -65,6 +89,7 @@ export function SessionForm() {
     form.reset();
     setEvent("333");
     setPracticeType("Solves");
+    setCustomType("");
     setTimeout(() => setSubmitted(false), 2000);
   }
 
@@ -95,7 +120,7 @@ export function SessionForm() {
 
             <div className="flex flex-col gap-2">
               <Label className="text-foreground">Event</Label>
-              <Select value={event} onValueChange={setEvent}>
+              <Select value={event} onValueChange={handleEventChange}>
                 <SelectTrigger className="min-h-11 w-full border-border bg-secondary/50 text-foreground">
                   <SelectValue placeholder="Select event" />
                 </SelectTrigger>
@@ -111,18 +136,28 @@ export function SessionForm() {
 
             <div className="flex flex-col gap-2">
               <Label className="text-foreground">Practice Type</Label>
-              <Select value={practiceType} onValueChange={setPracticeType}>
+              <Select value={practiceType} onValueChange={handlePracticeTypeChange}>
                 <SelectTrigger className="min-h-11 w-full border-border bg-secondary/50 text-foreground">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent className="border-border bg-card">
-                  {PRACTICE_TYPES.map((t) => (
+                  {practiceTypes.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM_VALUE}>Custom...</SelectItem>
                 </SelectContent>
               </Select>
+              {practiceType === CUSTOM_VALUE && (
+                <Input
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  placeholder="Enter custom practice type"
+                  className="min-h-11 border-border bg-secondary/50 text-foreground"
+                  autoFocus
+                />
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
