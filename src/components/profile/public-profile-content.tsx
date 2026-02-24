@@ -85,7 +85,7 @@ export function PublicProfileContent({
         followerCount={followerCount}
         followingCount={followingCount}
       />
-      <ProfileStats sessions={sessions} sorKinchStats={sorKinchStats} />
+      <ProfileStats sessions={sessions} />
       {wcaLoading && <WcaResultsSkeleton />}
       {wcaError && !wcaLoading && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
