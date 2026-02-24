@@ -1,0 +1,20 @@
+import { PBsContent } from "@/components/pbs/pbs-content"
+import { getCurrentPBs } from "@/lib/actions/personal-bests"
+
+export default async function PBsPage() {
+  const { data: currentPBs } = await getCurrentPBs()
+
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+          Personal Bests
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Track your PB history across all events. Click any time to see its full history.
+        </p>
+      </div>
+      <PBsContent initialPBs={currentPBs} />
+    </main>
+  )
+}

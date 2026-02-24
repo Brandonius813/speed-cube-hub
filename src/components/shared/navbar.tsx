@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell, Box, LogOut, LayoutDashboard, Rss, Search, Trophy, Swords, User } from "lucide-react"
+import { Bell, Box, LogOut, LayoutDashboard, Medal, Rss, Search, Trophy, Swords, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
@@ -126,6 +126,14 @@ export function Navbar() {
             >
               <Swords className="h-4 w-4 sm:hidden" />
               <span className="hidden text-sm sm:inline">Challenges</span>
+            </Link>
+            <Link
+              href="/pbs"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
+              aria-label="Personal Bests"
+            >
+              <Medal className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-sm sm:inline">PBs</span>
             </Link>
             <Link
               href="/dashboard"

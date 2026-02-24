@@ -126,6 +126,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [ ] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
+- [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
 
 ### Coaching Platform (Future)
 - Coach role with student management
@@ -313,6 +314,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest averages, most solves, streaks) [public] — Wave 4
+/pbs                 → Personal Bests management (log, view history, delete) [protected]
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
 /clubs               → Browse and manage clubs [protected] — Wave 4
 /clubs/[id]          → Individual club page with members and activity [public] — Wave 4

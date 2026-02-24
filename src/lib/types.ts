@@ -164,6 +164,18 @@ export type ClubMember = {
   joined_at: string;
 };
 
+export type PBRecord = {
+  id: string
+  user_id: string
+  event: string
+  pb_type: string
+  time_seconds: number
+  date_achieved: string
+  is_current: boolean
+  notes: string | null
+  created_at: string
+}
+
 export type Challenge = {
   id: string;
   title: string;

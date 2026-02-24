@@ -85,6 +85,8 @@ Each page uses a two-file pattern:
 - `src/lib/actions/clubs.ts` — Clubs queries (getClubs, getClub, getClubMembers, getClubFeed, getUserClubs)
 - `src/lib/actions/club-mutations.ts` — Clubs mutations (createClub, joinClub, leaveClub, updateClub, deleteClub)
 - `src/components/clubs/` — Club components (clubs-content, club-detail-content, create-club-modal, edit-club-modal)
+- `src/lib/actions/personal-bests.ts` — Personal Bests system (getCurrentPBs, logNewPB, getPBHistory, deletePB)
+- `src/components/pbs/` — PBs page components (pbs-content, log-pb-modal, pb-history-modal)
 
 ### Path Alias
 
@@ -143,6 +145,7 @@ See `.env.local.example` for required variables:
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
+/pbs                 → Personal Bests management (log, view history, delete) [protected]
 /clubs               → Browse/search/create clubs, join/leave [protected]
 /clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
 /wrapped             → Year in Review [protected]
