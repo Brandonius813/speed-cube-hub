@@ -53,4 +53,31 @@ export type FeedItem = Session & {
     handle: string;
     avatar_url: string | null;
   };
+  like_count: number;
+  has_liked: boolean;
+  comment_count: number;
+};
+
+export type Goal = {
+  id: string;
+  user_id: string;
+  event: string;
+  target_avg: number;
+  target_date: string;
+  status: "active" | "achieved" | "expired";
+  achieved_at: string | null;
+  created_at: string;
+};
+
+export type Comment = {
+  id: string;
+  session_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
 };

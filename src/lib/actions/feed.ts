@@ -1,6 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { getSessionLikeInfo } from "@/lib/actions/likes"
+import { getCommentCounts } from "@/lib/actions/comments"
 import type { FeedItem } from "@/lib/types"
 
 const FEED_PAGE_SIZE = 20
@@ -8,6 +10,7 @@ const FEED_PAGE_SIZE = 20
 export async function getFeed(cursor?: string): Promise<{
   items: FeedItem[]
   nextCursor: string | null
+  currentUserId?: string
   error?: string
 }> {
   const supabase = await createClient()
@@ -65,8 +68,22 @@ export async function getFeed(cursor?: string): Promise<{
   }
 
   const hasMore = (data?.length ?? 0) > FEED_PAGE_SIZE
-  const items = (data?.slice(0, FEED_PAGE_SIZE) ?? []) as FeedItem[]
-  const nextCursor = hasMore ? items[items.length - 1]?.created_at : null
+  const rawItems = data?.slice(0, FEED_PAGE_SIZE) ?? []
+  const nextCursor = hasMore ? rawItems[rawItems.length - 1]?.created_at : null
 
-  return { items, nextCursor }
+  // Enrich items with like + comment data
+  const sessionIds = rawItems.map((s: { id: string }) => s.id)
+  const [likeInfo, commentCounts] = await Promise.all([
+    getSessionLikeInfo(sessionIds, user.id),
+    getCommentCounts(sessionIds),
+  ])
+
+  const items: FeedItem[] = rawItems.map((s: Record<string, unknown>) => ({
+    ...s,
+    like_count: likeInfo.get(s.id as string)?.count ?? 0,
+    has_liked: likeInfo.get(s.id as string)?.hasLiked ?? false,
+    comment_count: commentCounts[s.id as string] ?? 0,
+  })) as FeedItem[]
+
+  return { items, nextCursor, currentUserId: user.id }
 }

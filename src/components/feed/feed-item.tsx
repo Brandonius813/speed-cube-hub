@@ -1,11 +1,14 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Clock, Layers, Timer, Zap } from "lucide-react"
+import { Clock, Layers, Timer, Zap, MessageCircle } from "lucide-react"
 import type { FeedItem as FeedItemType } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
+import { LikeButton } from "@/components/feed/like-button"
+import { CommentSection } from "@/components/feed/comment-section"
 import { formatDuration } from "@/lib/utils"
 
 function getInitials(name: string): string {
@@ -48,8 +51,10 @@ function formatAvg(avg: number | null): string {
   return `${avg.toFixed(2)}s`
 }
 
-export function FeedItem({ item }: { item: FeedItemType }) {
+export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentUserId: string | null }) {
   const profile = item.profile
+  const [showComments, setShowComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(item.comment_count)
 
   return (
     <Card className="border-border/50 bg-card">
@@ -155,6 +160,35 @@ export function FeedItem({ item }: { item: FeedItemType }) {
             )}
           </div>
         </div>
+
+        {/* Actions: like + comment */}
+        <div className="mt-3 flex items-center gap-1 -ml-2">
+          <LikeButton
+            sessionId={item.id}
+            initialCount={item.like_count}
+            initialHasLiked={item.has_liked}
+          />
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {commentCount > 0 && (
+              <span className="font-mono text-xs">{commentCount}</span>
+            )}
+          </button>
+        </div>
+
+        {/* Expandable comment section */}
+        {showComments && (
+          <div className="mt-3 border-t border-border/30 pt-3">
+            <CommentSection
+              sessionId={item.id}
+              currentUserId={currentUserId}
+              onCommentCountChange={(delta) => setCommentCount((prev) => prev + delta)}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   )
