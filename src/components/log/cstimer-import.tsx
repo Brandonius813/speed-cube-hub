@@ -16,7 +16,7 @@ import {
   type CsTimerParsedSession,
 } from "@/lib/cstimer/parse-cstimer";
 import { createSessionsBulk } from "@/lib/actions/sessions";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatSolveTime, parseSolveTime } from "@/lib/utils";
 import { CsTimerPreviewTable } from "./cstimer-preview-table";
 
 type ImportState = "idle" | "previewing" | "importing" | "complete";
@@ -29,6 +29,9 @@ export function CsTimerImport() {
   const [secondsPerSolve, setSecondsPerSolve] = useState(
     DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30
   );
+  const [timePerSolveInput, setTimePerSolveInput] = useState(
+    formatSolveTime(DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30)
+  );
   const [sessions, setSessions] = useState<CsTimerParsedSession[]>([]);
   const [totalSolves, setTotalSolves] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -37,7 +40,9 @@ export function CsTimerImport() {
 
   function handleEventChange(newEvent: string) {
     setEvent(newEvent);
-    setSecondsPerSolve(DEFAULT_SECONDS_PER_SOLVE[newEvent] ?? 30);
+    const defaultSec = DEFAULT_SECONDS_PER_SOLVE[newEvent] ?? 30;
+    setSecondsPerSolve(defaultSec);
+    setTimePerSolveInput(formatSolveTime(defaultSec));
   }
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -165,24 +170,21 @@ export function CsTimerImport() {
               >
                 Time per solve
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="cstimer-sps"
-                  type="number"
-                  min={1}
-                  max={7200}
-                  value={secondsPerSolve}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val) && val >= 1) setSecondsPerSolve(val);
-                  }}
-                  className="h-10 w-24 rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary font-mono"
-                />
-                <span className="text-sm text-muted-foreground">seconds</span>
-              </div>
+              <input
+                id="cstimer-sps"
+                type="text"
+                value={timePerSolveInput}
+                onChange={(e) => {
+                  setTimePerSolveInput(e.target.value);
+                  const parsed = parseSolveTime(e.target.value);
+                  if (parsed !== null) setSecondsPerSolve(parsed);
+                }}
+                placeholder="0:30 or 30.00"
+                className="h-10 w-32 rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary font-mono"
+              />
               <p className="text-xs text-muted-foreground">
-                Includes inspection, scrambling, and rest. Adjust to match your
-                pace.
+                Includes inspection, scrambling, and rest. Use m:ss or seconds
+                format.
               </p>
             </div>
 

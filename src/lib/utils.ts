@@ -19,6 +19,42 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
+ * Format a solve time (in decimal seconds) to standard cubing notation.
+ * - Under 60s: "12.34"
+ * - 60s+: "1:30.00"
+ */
+export function formatSolveTime(seconds: number): string {
+  if (seconds < 60) return seconds.toFixed(2)
+  const min = Math.floor(seconds / 60)
+  const sec = (seconds % 60).toFixed(2)
+  return `${min}:${sec.padStart(5, "0")}`
+}
+
+/**
+ * Parse a solve time string back to decimal seconds.
+ * Accepts "12.34" → 12.34, "1:30.00" → 90, "1:30" → 90.
+ * Returns null if the input is empty or invalid.
+ */
+export function parseSolveTime(input: string): number | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  if (trimmed.includes(":")) {
+    const parts = trimmed.split(":")
+    if (parts.length !== 2) return null
+    const min = parseInt(parts[0], 10)
+    const sec = parseFloat(parts[1])
+    if (isNaN(min) || isNaN(sec) || min < 0 || sec < 0 || sec >= 60) return null
+    const total = min * 60 + sec
+    return total > 0 ? total : null
+  }
+
+  const num = parseFloat(trimmed)
+  if (isNaN(num) || num <= 0) return null
+  return num
+}
+
+/**
  * Parse a duration string into total minutes.
  * Accepts "1:30" (h:mm) → 90, or "90" (plain minutes) → 90.
  * Returns null if the input is invalid.

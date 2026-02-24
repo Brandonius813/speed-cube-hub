@@ -1,7 +1,7 @@
 "use client";
 
 import type { CsTimerParsedSession } from "@/lib/cstimer/parse-cstimer";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatSolveTime } from "@/lib/utils";
 
 type CsTimerPreviewTableProps = {
   sessions: CsTimerParsedSession[];
@@ -98,14 +98,14 @@ function MobileCard({
         <div className="shrink-0 text-right">
           {session.avg_time !== null ? (
             <div className="font-mono text-sm font-semibold text-foreground">
-              {session.avg_time.toFixed(2)}s
+              {formatSolveTime(session.avg_time)}
             </div>
           ) : (
             <div className="text-xs text-muted-foreground">All DNF</div>
           )}
           {session.best_time !== null && (
             <div className="font-mono text-xs text-muted-foreground">
-              Best: {session.best_time.toFixed(2)}s
+              Best: {formatSolveTime(session.best_time)}
             </div>
           )}
         </div>
@@ -139,12 +139,10 @@ function DesktopRow({
         )}
       </td>
       <td className="py-3 pr-3 text-right font-mono text-sm text-foreground">
-        {session.avg_time !== null ? `${session.avg_time.toFixed(2)}s` : "--"}
+        {session.avg_time !== null ? formatSolveTime(session.avg_time) : "--"}
       </td>
       <td className="py-3 pr-3 text-right font-mono text-sm text-foreground">
-        {session.best_time !== null
-          ? `${session.best_time.toFixed(2)}s`
-          : "--"}
+        {session.best_time !== null ? formatSolveTime(session.best_time) : "--"}
       </td>
       <td className="py-3 text-right font-mono text-sm text-foreground">
         {formatDuration(duration)}
