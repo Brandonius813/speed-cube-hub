@@ -85,6 +85,55 @@ export async function getSessions(filters?: {
   return { data: (data as Session[]) || [] };
 }
 
+export async function createSessionsBulk(
+  sessions: Array<{
+    session_date: string;
+    event: string;
+    practice_type: string;
+    num_solves: number;
+    duration_minutes: number;
+    avg_time: number | null;
+    notes: string | null;
+  }>
+): Promise<{ inserted: number; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { inserted: 0, error: "You must be logged in to import sessions." };
+  }
+
+  if (sessions.length === 0) {
+    return { inserted: 0, error: "No sessions to import." };
+  }
+
+  if (sessions.length > 500) {
+    return { inserted: 0, error: "Maximum 500 sessions per import." };
+  }
+
+  const rows = sessions.map((s) => ({
+    user_id: user.id,
+    session_date: s.session_date,
+    event: s.event,
+    practice_type: s.practice_type,
+    num_solves: s.num_solves,
+    duration_minutes: s.duration_minutes,
+    avg_time: s.avg_time,
+    notes: s.notes || null,
+  }));
+
+  const { error } = await supabase.from("sessions").insert(rows);
+
+  if (error) {
+    return { inserted: 0, error: error.message };
+  }
+
+  return { inserted: rows.length };
+}
+
 export async function getSessionStats() {
   const supabase = await createClient();
 
