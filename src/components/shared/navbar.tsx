@@ -5,7 +5,6 @@ import Link from "next/link"
 import { Box, LogOut, LayoutDashboard, User, Rss, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import { logout } from "@/lib/actions/auth"
 
 export function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -78,15 +77,18 @@ export function Navbar() {
                 Log Session
               </Button>
             </Link>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={async () => {
+                const supabase = getSupabaseClient()
+                await supabase.auth.signOut()
+                window.location.href = "/"
+              }}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
