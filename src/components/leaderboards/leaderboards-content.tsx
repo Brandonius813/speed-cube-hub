@@ -148,19 +148,32 @@ export function LeaderboardsContent({
             ))}
           </div>
 
-          {/* Following toggle (only if logged in) — right-aligned, distinct style */}
+          {/* Global / Following segmented toggle (only if logged in) */}
           {userId && (
-            <button
-              type="button"
-              onClick={() => setFriendsOnly(!friendsOnly)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                friendsOnly
-                  ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {friendsOnly ? "Following" : "Global"}
-            </button>
+            <div className="flex shrink-0 rounded-full bg-muted/50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setFriendsOnly(false)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  !friendsOnly
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Global
+              </button>
+              <button
+                type="button"
+                onClick={() => setFriendsOnly(true)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  friendsOnly
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Following
+              </button>
+            </div>
           )}
         </div>
 
