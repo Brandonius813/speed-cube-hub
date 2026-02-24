@@ -34,15 +34,6 @@ export function Hero() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/profile" className="w-full sm:w-auto">
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full border-border px-8 text-foreground hover:bg-card hover:text-foreground sm:w-auto"
-            >
-              View Demo Profile
-            </Button>
-          </Link>
         </div>
       </div>
     </section>
