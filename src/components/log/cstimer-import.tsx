@@ -54,8 +54,8 @@ export function CsTimerImport() {
 
     // Validate file type
     const name = file.name.toLowerCase();
-    if (!name.endsWith(".csv") && !name.endsWith(".txt")) {
-      setFileError("Please select a CSV or TXT file.");
+    if (!name.endsWith(".csv")) {
+      setFileError("Please select a CSV file exported from csTimer.");
       return;
     }
 
@@ -351,7 +351,7 @@ function DropZone({
             Drop your csTimer export here or click to browse
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Accepts .csv and .txt files, max 5MB
+            Accepts .csv files, max 5MB
           </p>
         </div>
       </button>
@@ -359,7 +359,7 @@ function DropZone({
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.txt"
+        accept=".csv"
         onChange={onInputChange}
         className="hidden"
       />
