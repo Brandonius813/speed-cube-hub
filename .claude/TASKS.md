@@ -327,7 +327,8 @@ Build `/leaderboards` page with category tabs: Fastest Average (by event), Most 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Main |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migrations (2 tables) + 1 server action file + 2 pages + 3 components |
 
