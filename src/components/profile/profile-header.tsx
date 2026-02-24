@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Eye, MapPin, Pencil, Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
+import { FollowListModal } from "@/components/profile/follow-list-modal"
 import Link from "next/link"
 import type { Profile } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
@@ -33,6 +34,8 @@ export function ProfileHeader({
   followingCount?: number
 }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [followListOpen, setFollowListOpen] = useState(false)
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers")
 
   return (
     <>
@@ -71,14 +74,20 @@ export function ProfileHeader({
               </div>
               {(followerCount !== undefined || followingCount !== undefined) && (
                 <div className="mt-1 flex items-center justify-center gap-4 text-sm text-muted-foreground sm:justify-start">
-                  <span>
+                  <button
+                    onClick={() => { setFollowListTab("followers"); setFollowListOpen(true) }}
+                    className="hover:text-foreground transition-colors"
+                  >
                     <span className="font-semibold text-foreground">{followerCount ?? 0}</span>{" "}
                     {followerCount === 1 ? "follower" : "followers"}
-                  </span>
-                  <span>
+                  </button>
+                  <button
+                    onClick={() => { setFollowListTab("following"); setFollowListOpen(true) }}
+                    className="hover:text-foreground transition-colors"
+                  >
                     <span className="font-semibold text-foreground">{followingCount ?? 0}</span>{" "}
                     following
-                  </span>
+                  </button>
                 </div>
               )}
             </div>
@@ -131,6 +140,13 @@ export function ProfileHeader({
           onOpenChange={setEditOpen}
         />
       )}
+
+      <FollowListModal
+        userId={profile.id}
+        open={followListOpen}
+        onOpenChange={setFollowListOpen}
+        tab={followListTab}
+      />
     </>
   )
 }
