@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Target, Plus, Trash2, Pencil, Trophy, Clock, CalendarX2 } from "lucide-react"
+import { Target, Plus, Trash2, Pencil, Trophy, Clock, CalendarX2, CheckCircle2 } from "lucide-react"
 import { GoalModal } from "@/components/dashboard/goal-modal"
-import { deleteGoal, getGoals } from "@/lib/actions/goals"
+import { deleteGoal } from "@/lib/actions/goals"
 import { WCA_EVENTS } from "@/lib/constants"
 import type { Goal } from "@/lib/types"
 
@@ -33,7 +32,7 @@ function GoalCard({
   goal: Goal
   currentAvg: number | null
   onEdit: () => void
-  onDeleted: () => void
+  onDeleted: (goalId: string) => void
 }) {
   const [deleting, setDeleting] = useState(false)
   const isAchieved = goal.status === "achieved"
@@ -66,7 +65,7 @@ function GoalCard({
   async function handleDelete() {
     setDeleting(true)
     await deleteGoal(goal.id)
-    onDeleted()
+    onDeleted(goal.id)
   }
 
   return (
@@ -192,28 +191,44 @@ export function GoalsSection({
   initialGoals: Goal[]
   goalAverages: Record<string, number | null>
 }) {
-  const router = useRouter()
   const [goals, setGoals] = useState(initialGoals)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const successTimer = useRef<ReturnType<typeof setTimeout>>(null)
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimer.current) clearTimeout(successTimer.current)
+    }
+  }, [])
 
   // Split into active and completed/expired
   const activeGoals = goals.filter((g) => g.status === "active")
   const pastGoals = goals.filter((g) => g.status !== "active")
 
-  async function refreshGoals() {
-    const result = await getGoals()
-    if (result.data) setGoals(result.data)
+  function showSuccess(msg: string) {
+    setSuccessMsg(msg)
+    if (successTimer.current) clearTimeout(successTimer.current)
+    successTimer.current = setTimeout(() => setSuccessMsg(null), 3000)
   }
 
-  async function handleSaved() {
+  function handleSaved(goal: Goal, mode: "created" | "updated") {
     setModalOpen(false)
     setEditingGoal(null)
-    await refreshGoals()
+    if (mode === "created") {
+      setGoals((prev) => [goal, ...prev])
+      showSuccess("Goal created!")
+    } else {
+      setGoals((prev) => prev.map((g) => (g.id === goal.id ? goal : g)))
+      showSuccess("Goal updated!")
+    }
   }
 
-  async function handleDeleted() {
-    await refreshGoals()
+  function handleDeleted(goalId: string) {
+    setGoals((prev) => prev.filter((g) => g.id !== goalId))
+    showSuccess("Goal deleted.")
   }
 
   return (
@@ -238,6 +253,12 @@ export function GoalsSection({
           </Button>
         </CardHeader>
         <CardContent>
+          {successMsg && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-400">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {successMsg}
+            </div>
+          )}
           {goals.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground">
               Set a target to track your progress. Example: &quot;Sub-20 on 3x3
@@ -254,7 +275,7 @@ export function GoalsSection({
                     setEditingGoal(goal)
                     setModalOpen(true)
                   }}
-                  onDeleted={handleDeleted}
+                  onDeleted={(goalId) => handleDeleted(goalId)}
                 />
               ))}
               {pastGoals.length > 0 && activeGoals.length > 0 && (
@@ -266,7 +287,7 @@ export function GoalsSection({
                   goal={goal}
                   currentAvg={null}
                   onEdit={() => {}}
-                  onDeleted={handleDeleted}
+                  onDeleted={(goalId) => handleDeleted(goalId)}
                 />
               ))}
             </div>

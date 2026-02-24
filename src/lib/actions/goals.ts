@@ -45,7 +45,7 @@ export async function createGoal(fields: {
   event: string
   target_avg: number
   target_date: string
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; data?: Goal; error?: string }> {
   const supabase = await createClient()
 
   const {
@@ -67,19 +67,19 @@ export async function createGoal(fields: {
     return { success: false, error: "Target date is required." }
   }
 
-  const { error } = await supabase.from("goals").insert({
+  const { data, error } = await supabase.from("goals").insert({
     user_id: user.id,
     event: fields.event,
     target_avg: fields.target_avg,
     target_date: fields.target_date,
-  })
+  }).select().single()
 
   if (error) {
     return { success: false, error: error.message }
   }
 
   safeRevalidate("/dashboard")
-  return { success: true }
+  return { success: true, data: data as Goal }
 }
 
 export async function updateGoal(
@@ -89,7 +89,7 @@ export async function updateGoal(
     target_avg?: number
     target_date?: string
   }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; data?: Goal; error?: string }> {
   const supabase = await createClient()
 
   const {
@@ -105,18 +105,20 @@ export async function updateGoal(
   if (fields.target_avg && fields.target_avg > 0) updates.target_avg = fields.target_avg
   if (fields.target_date) updates.target_date = fields.target_date
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("goals")
     .update(updates)
     .eq("id", goalId)
     .eq("user_id", user.id)
+    .select()
+    .single()
 
   if (error) {
     return { success: false, error: error.message }
   }
 
   safeRevalidate("/dashboard")
-  return { success: true }
+  return { success: true, data: data as Goal }
 }
 
 export async function deleteGoal(
