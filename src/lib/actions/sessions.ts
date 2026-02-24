@@ -164,6 +164,79 @@ export async function createSessionsBulk(
   return { inserted: rows.length };
 }
 
+export async function updateSession(
+  sessionId: string,
+  data: {
+    session_date: string;
+    event: string;
+    practice_type: string;
+    num_solves: number;
+    duration_minutes: number;
+    avg_time: number | null;
+    best_time: number | null;
+    title: string | null;
+    notes: string | null;
+  }
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be logged in to edit a session." };
+  }
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({
+      session_date: data.session_date,
+      event: data.event,
+      practice_type: data.practice_type,
+      num_solves: data.num_solves,
+      duration_minutes: data.duration_minutes,
+      avg_time: data.avg_time,
+      best_time: data.best_time,
+      title: data.title || null,
+      notes: data.notes || null,
+    })
+    .eq("id", sessionId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function deleteSession(
+  sessionId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be logged in to delete a session." };
+  }
+
+  const { error } = await supabase
+    .from("sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
 export async function getSessionStats() {
   const supabase = await createClient();
 
