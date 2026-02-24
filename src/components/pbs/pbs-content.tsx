@@ -3,13 +3,14 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Trophy, Upload } from "lucide-react"
+import { Plus, Trophy, Upload, Settings } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { getPBTypesForEvent } from "@/lib/constants"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import { LogPBModal } from "@/components/pbs/log-pb-modal"
 import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
+import { PBSettingsModal } from "@/components/pbs/pb-settings-modal"
 import { PBHistoryModal } from "@/components/pbs/pb-history-modal"
 import type { PBRecord } from "@/lib/types"
 
@@ -26,14 +27,24 @@ function formatTime(seconds: number): string {
   return `${seconds.toFixed(2)}s`
 }
 
-export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
+export function PBsContent({
+  initialPBs,
+  initialVisibleTypes,
+}: {
+  initialPBs: PBRecord[]
+  initialVisibleTypes: string[] | null
+}) {
   const [pbs, setPbs] = useState<PBRecord[]>(initialPBs)
+  const [visibleTypes, setVisibleTypes] = useState<string[] | null>(
+    initialVisibleTypes
+  )
   const [showLogModal, setShowLogModal] = useState(false)
   const [logModalDefaults, setLogModalDefaults] = useState<{
     event?: string
     pbType?: string
   }>({})
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [historyModal, setHistoryModal] = useState<{
     event: string
     pbType: string
@@ -47,6 +58,16 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
   function handleAddPB(event?: string, pbType?: string) {
     setLogModalDefaults({ event, pbType })
     setShowLogModal(true)
+  }
+
+  /**
+   * Get the filtered PB types for an event, respecting the user's visibility settings.
+   * If visibleTypes is null, all types for the event are shown (default).
+   */
+  function getFilteredPBTypes(eventId: string): string[] {
+    const allTypes = getPBTypesForEvent(eventId)
+    if (!visibleTypes) return allTypes
+    return allTypes.filter((t) => visibleTypes.includes(t))
   }
 
   // Group PBs by event
@@ -63,7 +84,7 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-center sm:justify-start gap-2">
+      <div className="flex flex-wrap justify-center sm:justify-start gap-2">
         <Button
           onClick={() => handleAddPB()}
           className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
@@ -78,6 +99,15 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
         >
           <Upload className="h-4 w-4" />
           Bulk Import
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowSettingsModal(true)}
+          className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
+          title="Customize which PB types to show"
+        >
+          <Settings className="h-4 w-4" />
         </Button>
       </div>
 
@@ -94,7 +124,10 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {eventsWithPBs.map((eventId) => {
             const eventPBs = pbsByEvent[eventId]
-            const pbTypes = getPBTypesForEvent(eventId)
+            const pbTypes = getFilteredPBTypes(eventId)
+
+            // Skip event card if no PB types are visible for it
+            if (pbTypes.length === 0) return null
 
             return (
               <Card key={eventId} className="border-border/50 bg-card">
@@ -200,6 +233,13 @@ export function PBsContent({ initialPBs }: { initialPBs: PBRecord[] }) {
           setShowImportModal(false)
           reloadPBs()
         }}
+      />
+
+      <PBSettingsModal
+        open={showSettingsModal}
+        onOpenChange={setShowSettingsModal}
+        currentVisibleTypes={visibleTypes}
+        onSaved={(types) => setVisibleTypes(types)}
       />
 
       {historyModal && (

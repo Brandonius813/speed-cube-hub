@@ -1,8 +1,12 @@
 import { PBsContent } from "@/components/pbs/pbs-content"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
+import { getProfile } from "@/lib/actions/profiles"
 
 export default async function PBsPage() {
-  const { data: currentPBs } = await getCurrentPBs()
+  const [{ data: currentPBs }, { profile }] = await Promise.all([
+    getCurrentPBs(),
+    getProfile(),
+  ])
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -14,7 +18,10 @@ export default async function PBsPage() {
           Track your PB history across all events. Click any time to see its full history.
         </p>
       </div>
-      <PBsContent initialPBs={currentPBs} />
+      <PBsContent
+        initialPBs={currentPBs}
+        initialVisibleTypes={profile?.pb_visible_types ?? null}
+      />
     </main>
   )
 }

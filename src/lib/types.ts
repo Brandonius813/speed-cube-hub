@@ -29,6 +29,7 @@ export type Profile = {
   links: ProfileLink[];
   accomplishments: ProfileAccomplishment[];
   wca_event_order: string[] | null;
+  pb_visible_types: string[] | null;
   created_at: string;
   updated_at: string;
 };

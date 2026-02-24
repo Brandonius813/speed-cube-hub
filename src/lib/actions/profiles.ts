@@ -467,6 +467,35 @@ export async function updateProfileCubes(
   return { success: true }
 }
 
+export async function updatePBVisibleTypes(
+  types: string[] | null
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      pb_visible_types: types,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/pbs")
+  return { success: true }
+}
+
 export async function updateWcaEventOrder(
   order: string[]
 ): Promise<{ success: boolean; error?: string }> {
