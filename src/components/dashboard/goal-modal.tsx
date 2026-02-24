@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -42,13 +42,13 @@ export function GoalModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Reset form when modal opens with different goal
-  function resetForm() {
+  // Sync form fields when editingGoal changes (e.g., switching from "Add" to "Edit")
+  useEffect(() => {
     setEvent(editingGoal?.event ?? "333")
     setTargetAvg(editingGoal ? String(editingGoal.target_avg) : "")
     setTargetDate(editingGoal?.target_date ?? "")
     setError(null)
-  }
+  }, [editingGoal])
 
   async function handleSave() {
     setError(null)
@@ -97,10 +97,7 @@ export function GoalModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(isOpen) => {
-        onOpenChange(isOpen)
-        if (isOpen) resetForm()
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="border-border/50 bg-card">
         <DialogHeader>
