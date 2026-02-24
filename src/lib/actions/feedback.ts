@@ -3,7 +3,9 @@
 import { Resend } from "resend"
 import { createClient } from "@/lib/supabase/server"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 const VALID_CATEGORIES = ["bug", "feature", "general", "other"] as const
 type FeedbackCategory = (typeof VALID_CATEGORIES)[number]
@@ -62,7 +64,7 @@ export async function submitFeedback(
   const displayName = profile?.display_name ?? "Unknown User"
   const handle = profile?.handle ? `@${profile.handle}` : ""
 
-  resend.emails
+  getResend().emails
     .send({
       from: "Speed Cube Hub <feedback@speedcubehub.com>",
       to: "brandon@speedcubehub.com",
