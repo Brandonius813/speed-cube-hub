@@ -4,16 +4,14 @@ import { getWcaCountries } from "@/lib/actions/sor-kinch"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function LeaderboardsPage() {
-  // Fetch practice leaderboards, WCA countries, and user's WCA ID in parallel
-  const [initialData, countries, supabase] = await Promise.all([
-    getAllLeaderboards(),
-    getWcaCountries(),
-    createClient(),
-  ])
+  const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Fetch practice leaderboards, WCA countries, and user info in parallel
+  const [initialData, countries, { data: { user } }] = await Promise.all([
+    getAllLeaderboards(),
+    getWcaCountries().catch(() => []),
+    supabase.auth.getUser(),
+  ])
 
   // Get the user's WCA ID for "Find Me" on SOR/Kinch tabs
   let userWcaId: string | null = null

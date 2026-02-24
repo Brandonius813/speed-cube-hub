@@ -95,41 +95,46 @@ export async function getSorKinchLeaderboard(
   offset: number = 0,
   limit: number = PAGE_SIZE
 ): Promise<WcaLeaderboardPage> {
-  const admin = createAdminClient()
+  try {
+    const admin = createAdminClient()
 
-  const isSor = category === "sor"
-  const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
-  const ascending = isSor // SOR: lower is better; Kinch: higher is better
+    const isSor = category === "sor"
+    const column = isSor ? getSorColumn(type, region) : getKinchColumn(type)
+    const ascending = isSor // SOR: lower is better; Kinch: higher is better
 
-  // Count query
-  let countQuery = admin
-    .from("wca_rankings")
-    .select("*", { count: "exact", head: true })
-    .not(column, "is", null)
-  countQuery = applyRegionFilter(countQuery, region)
-  const { count } = await countQuery
-  const totalCount = count ?? 0
+    // Count query
+    let countQuery = admin
+      .from("wca_rankings")
+      .select("*", { count: "exact", head: true })
+      .not(column, "is", null)
+    countQuery = applyRegionFilter(countQuery, region)
+    const { count } = await countQuery
+    const totalCount = count ?? 0
 
-  // Data query — select all columns, let JS pick the right one
-  let dataQuery = admin
-    .from("wca_rankings")
-    .select("*")
-    .not(column, "is", null)
-    .order(column, { ascending })
-    .range(offset, offset + limit - 1)
-  dataQuery = applyRegionFilter(dataQuery, region)
+    // Data query — select all columns, let JS pick the right one
+    let dataQuery = admin
+      .from("wca_rankings")
+      .select("*")
+      .not(column, "is", null)
+      .order(column, { ascending })
+      .range(offset, offset + limit - 1)
+    dataQuery = applyRegionFilter(dataQuery, region)
 
-  const { data, error } = await dataQuery
-  if (error) {
-    console.error("SOR/Kinch leaderboard error:", error.message)
+    const { data, error } = await dataQuery
+    if (error) {
+      console.error("SOR/Kinch leaderboard error:", error.message)
+      return { entries: [], totalCount: 0 }
+    }
+
+    const entries = ((data ?? []) as AnyRow[]).map((row, index) =>
+      toEntry(row, column, offset + index + 1)
+    )
+
+    return { entries, totalCount }
+  } catch (err) {
+    console.error("SOR/Kinch leaderboard unexpected error:", err)
     return { entries: [], totalCount: 0 }
   }
-
-  const entries = ((data ?? []) as AnyRow[]).map((row, index) =>
-    toEntry(row, column, offset + index + 1)
-  )
-
-  return { entries, totalCount }
 }
 
 /**
