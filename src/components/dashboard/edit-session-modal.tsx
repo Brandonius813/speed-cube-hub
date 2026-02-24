@@ -33,7 +33,7 @@ import {
 import { Trash2 } from "lucide-react"
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants"
 import { updateSession, deleteSession } from "@/lib/actions/sessions"
-import { parseDuration, formatDuration } from "@/lib/utils"
+import { parseDuration, formatDuration, parseSolveTime, formatSolveTime } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
 const CUSTOM_VALUE = "__custom__"
@@ -139,8 +139,8 @@ export function EditSessionModal({
       practice_type: finalPracticeType,
       num_solves: numSolves,
       duration_minutes: durationMinutes,
-      avg_time: avgTimeStr ? parseFloat(avgTimeStr) : null,
-      best_time: bestTimeStr ? parseFloat(bestTimeStr) : null,
+      avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
+      best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
       title: title || null,
       notes: notes || null,
     })
@@ -276,14 +276,15 @@ export function EditSessionModal({
               <Label htmlFor="edit-avg">
                 Result Average
                 <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  (optional)
+                  (e.g. 12.34 or 1:30.00)
                 </span>
               </Label>
               <Input
                 id="edit-avg"
                 name="avg"
                 type="text"
-                defaultValue={session.avg_time?.toString() ?? ""}
+                defaultValue={session.avg_time != null ? formatSolveTime(session.avg_time) : ""}
+                placeholder="12.34 or 1:30.00"
                 className="min-h-11 border-border bg-secondary/50 font-mono"
               />
             </div>
@@ -292,14 +293,15 @@ export function EditSessionModal({
               <Label htmlFor="edit-best">
                 Best Single
                 <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  (optional)
+                  (e.g. 10.52 or 1:05.00)
                 </span>
               </Label>
               <Input
                 id="edit-best"
                 name="best"
                 type="text"
-                defaultValue={session.best_time?.toString() ?? ""}
+                defaultValue={session.best_time != null ? formatSolveTime(session.best_time) : ""}
+                placeholder="10.52 or 1:05.00"
                 className="min-h-11 border-border bg-secondary/50 font-mono"
               />
             </div>

@@ -16,7 +16,7 @@ import {
 import { CalendarDays, Check } from "lucide-react";
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants";
 import { createSession } from "@/lib/actions/sessions";
-import { parseDuration } from "@/lib/utils";
+import { parseDuration, parseSolveTime } from "@/lib/utils";
 
 const CUSTOM_VALUE = "__custom__";
 
@@ -101,8 +101,8 @@ export function SessionForm() {
       practice_type: finalPracticeType,
       num_solves: numSolves,
       duration_minutes: durationMinutes,
-      avg_time: avgTimeStr ? parseFloat(avgTimeStr) : null,
-      best_time: bestTimeStr ? parseFloat(bestTimeStr) : null,
+      avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
+      best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
       title: title || null,
       notes: notes || null,
     });
@@ -233,14 +233,14 @@ export function SessionForm() {
                   <Label htmlFor="avg" className="text-foreground">
                     Result Average
                     <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      (optional)
+                      (optional, e.g. 12.34 or 1:30.00)
                     </span>
                   </Label>
                   <Input
                     id="avg"
                     name="avg"
                     type="text"
-                    placeholder="12.34"
+                    placeholder="12.34 or 1:30.00"
                     className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
                   />
                 </div>
@@ -249,14 +249,14 @@ export function SessionForm() {
                   <Label htmlFor="best" className="text-foreground">
                     Best Single
                     <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      (optional)
+                      (optional, e.g. 10.52 or 1:05.00)
                     </span>
                   </Label>
                   <Input
                     id="best"
                     name="best"
                     type="text"
-                    placeholder="10.52"
+                    placeholder="10.52 or 1:05.00"
                     className="min-h-11 border-border bg-secondary/50 font-mono text-foreground"
                   />
                 </div>
