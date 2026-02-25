@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Square } from "lucide-react"
+import { Square, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TimerDisplay } from "@/components/timer/timer-display"
@@ -51,6 +51,7 @@ export function TimerContent() {
   // UI state
   const [showSummary, setShowSummary] = useState(false)
   const [lastTime, setLastTime] = useState<number | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Inspection hook
   const inspection = useInspection()
@@ -159,6 +160,7 @@ export function TimerContent() {
       )
 
       try {
+        setSaveError(null)
         const sessionId = await ensureTimerSession()
         const solveNumber = solves.length + 1
         const compSimGroup =
@@ -173,11 +175,14 @@ export function TimerContent() {
           comp_sim_group: compSimGroup,
         })
 
-        if (result.data) {
+        if (result.error) {
+          setSaveError(`Failed to save solve: ${result.error}`)
+        } else if (result.data) {
           setSolves((prev) => [...prev, result.data!])
         }
       } catch (err) {
-        console.error("Failed to save solve:", err)
+        const message = err instanceof Error ? err.message : "Unknown error"
+        setSaveError(`Failed to save solve: ${message}`)
       }
 
       // Load next scramble
@@ -193,6 +198,7 @@ export function TimerContent() {
       setLastTime(timeMs)
 
       try {
+        setSaveError(null)
         const sessionId = await ensureTimerSession()
         const solveNumber = solves.length + 1
         const compSimGroup =
@@ -207,11 +213,14 @@ export function TimerContent() {
           comp_sim_group: compSimGroup,
         })
 
-        if (result.data) {
+        if (result.error) {
+          setSaveError(`Failed to save solve: ${result.error}`)
+        } else if (result.data) {
           setSolves((prev) => [...prev, result.data!])
         }
       } catch (err) {
-        console.error("Failed to save solve:", err)
+        const message = err instanceof Error ? err.message : "Unknown error"
+        setSaveError(`Failed to save solve: ${message}`)
       }
 
       // Load next scramble
@@ -284,13 +293,19 @@ export function TimerContent() {
 
   const handleSaveAndClose = async () => {
     if (timerSessionId) {
-      await finalizeTimerSession(timerSessionId)
+      const result = await finalizeTimerSession(timerSessionId)
+      if (result.error) {
+        setSaveError(`Failed to save session: ${result.error}`)
+        setShowSummary(false)
+        return
+      }
     }
 
     setTimerSessionId(null)
     setSolves([])
     setLastTime(null)
     setShowSummary(false)
+    setSaveError(null)
     router.refresh()
   }
 
@@ -424,6 +439,16 @@ export function TimerContent() {
           />
         </div>
       </div>
+
+      {/* Error banner */}
+      {saveError && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-destructive/15 text-destructive text-sm border-b border-destructive/30">
+          <span>{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="shrink-0 p-0.5 hover:bg-destructive/20 rounded">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Main content — layout depends on sidebar position */}
       <div className={getLayoutClass()}>
