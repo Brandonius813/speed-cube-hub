@@ -479,6 +479,34 @@ Build `src/components/timer/session-summary-modal.tsx` — triggered by "End Ses
 
 ---
 
+### T52: Upgrade Scrambles to WCA-Standard Random-State
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T35 ✅ |
+| **Estimated scope** | 1 file rewrite + possible npm package swap or Next.js config |
+| **Priority** | HIGH — current scrambles are random-move, not competition-grade |
+
+**The problem:** `src/lib/timer/scrambles.ts` currently uses a simple random-move scramble generator as a fallback because `cubing.js` (which produces proper WCA random-state scrambles) fails in the browser due to Next.js Turbopack Web Worker bundling issues. Random-move scrambles are fine for casual practice but are NOT WCA-standard — they don't guarantee uniform state distribution, which matters for fair practice and comp sim mode.
+
+**What "WCA-standard" means:**
+- **2x2–4x4:** Must use random-state scrambles (every possible cube state is equally likely). This requires a solver/pruning table, not just random moves.
+- **5x5–7x7:** Random-move scrambles are acceptable (WCA uses these too), but the move count and move set must follow WCA specs.
+- **Pyraminx, Skewb, Clock, Square-1, Megaminx:** Each has specific WCA scramble generation rules.
+
+**Approaches to investigate (in priority order):**
+1. **Fix cubing.js in Next.js** — The root cause is Web Worker bundling. Options: configure Turbopack/Webpack to handle cubing.js workers, load cubing.js from a CDN via `<script>` tag, or run scramble generation in an iframe/service worker.
+2. **Use `cstimer_module`** — The csTimer scramble engine as an npm package. Powers the most popular timer in the world. May have similar bundling issues but worth testing.
+3. **Use `tnoodle` via API** — TNoodle is the official WCA scramble program (Java). Could run as a serverless function or microservice that returns scrambles via API. Adds latency but guarantees WCA compliance.
+4. **Pre-generate scramble pools** — Generate batches of WCA-standard scrambles server-side (via a script using cubing.js in Node, where it works fine) and store them in a database table. Client pulls from the pool. Refill pool via cron job.
+
+**File to modify:** `src/lib/timer/scrambles.ts`
+
+**Acceptance criteria:** Scrambles for 2x2, 3x3, and 4x4 must be random-state. All other events must follow their respective WCA scramble specifications. The `cubing.js` fallback random-move generator can remain as a last-resort emergency fallback but should not be the primary path.
+
+---
+
 ## Dependency Graph
 
 ```
@@ -512,6 +540,7 @@ T36 (Server Actions)     — T34
 T38 (Core Timer UI)      — T34, T35, T36, T37
 T39 (Inspection + CompSim) — T38
 T40 (Session Final)      — T38
+T52 (WCA Scrambles)      — T35 (upgrade random-move → random-state)
 ```
 
 **Max parallelism:**
@@ -753,7 +782,8 @@ Each RPC function should JOIN profiles for display_name, handle, avatar_url so o
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 server action files + 1-2 page files |
 | **Priority** | HIGH — doubles the data load on practice-stats and dashboard pages |
