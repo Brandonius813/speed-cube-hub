@@ -5,6 +5,9 @@ import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
+// Explicit column list — avoids select("*") to reduce bandwidth and prevent data leaks.
+const SESSION_COLUMNS = "id, user_id, session_date, event, practice_type, num_solves, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at";
+
 // Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
 // This helper paginates to fetch ALL matching rows.
 const PAGE_SIZE = 1000;
