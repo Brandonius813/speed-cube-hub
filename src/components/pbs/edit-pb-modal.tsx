@@ -20,7 +20,7 @@ import type { PBRecord } from "@/lib/types"
  * e.g., 10.32 → "10.32", 83.45 → "1:23.45", 3661 → "1:01:01"
  */
 function secondsToInput(seconds: number, eventId?: string): string {
-  if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (eventId === "333fm") return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
   if (seconds >= 3600) {
     const hrs = Math.floor(seconds / 3600)
     const mins = Math.floor((seconds % 3600) / 60)

@@ -12,7 +12,7 @@ function getEventLabel(eventId: string): string {
 }
 
 function formatTime(seconds: number, eventId?: string): string {
-  if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (eventId === "333fm") return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)

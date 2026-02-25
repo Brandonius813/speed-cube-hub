@@ -19,7 +19,7 @@ function getEventLabel(eventId: string): string {
 }
 
 function formatTime(seconds: number, eventId?: string): string {
-  if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (eventId === "333fm") return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
   if (seconds >= 3600) {
     const hrs = Math.floor(seconds / 3600)
     const mins = Math.floor((seconds % 3600) / 60)
