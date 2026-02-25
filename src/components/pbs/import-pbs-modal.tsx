@@ -30,6 +30,7 @@ type ImportRow = {
   pbType: string
   time: string
   date: string
+  mbldScore: string  // "4/5" format for Multi-BLD
 }
 
 type ParsedCSVRow = {
@@ -38,6 +39,7 @@ type ParsedCSVRow = {
   pbType: string
   time: string
   date: string
+  mbldScore: string  // "4/5" parsed from CSV for Multi-BLD
   error?: string
 }
 
@@ -61,6 +63,17 @@ function parseTimeInput(value: string): number | null {
     return !isNaN(num) && num > 0 ? num : null
   }
   const parts = value.split(":")
+  // H:MM:SS format
+  if (parts.length === 3) {
+    const hours = Number(parts[0])
+    const minutes = Number(parts[1])
+    const seconds = Number(parts[2])
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null
+    if (hours < 0 || minutes < 0 || minutes >= 60 || seconds < 0 || seconds >= 60) return null
+    const total = hours * 3600 + minutes * 60 + seconds
+    return total > 0 ? total : null
+  }
+  // MM:SS or MM:SS.XX format
   if (parts.length !== 2) return null
   const minutes = Number(parts[0])
   const seconds = Number(parts[1])
@@ -68,6 +81,18 @@ function parseTimeInput(value: string): number | null {
   if (minutes < 0 || seconds < 0 || seconds >= 60) return null
   const total = minutes * 60 + seconds
   return total > 0 ? total : null
+}
+
+/**
+ * Parse an MBLD score string like "4/5" into { solved, attempted }.
+ */
+function parseMBLDScore(value: string): { solved: number; attempted: number } | null {
+  const match = value.trim().match(/^(\d+)\s*\/\s*(\d+)$/)
+  if (!match) return null
+  const solved = Number(match[1])
+  const attempted = Number(match[2])
+  if (solved < 1 || attempted < 2 || solved > attempted) return null
+  return { solved, attempted }
 }
 
 /**
@@ -197,20 +222,45 @@ function parseCSVText(text: string): ParsedCSVRow[] {
         pbType: "",
         time: "",
         date: getTodayPacific(),
+        mbldScore: "",
         error: "Need at least 3 columns: Event, PB Type, Time",
       }
     }
 
     const eventId = resolveEventId(parts[0])
     const pbType = resolvePBType(parts[1])
-    const time = parts[2]
-    const date = parts[3] ? parseDateInput(parts[3]) : getTodayPacific()
+    const isMBLD = eventId === "333mbf"
 
     const errors: string[] = []
     if (!eventId) errors.push(`Unknown event "${parts[0]}"`)
     if (!pbType) errors.push(`Unknown PB type "${parts[1]}"`)
-    if (parseTimeInput(time) === null) errors.push(`Invalid time "${parts[2]}"`)
-    if (parts[3] && !date) errors.push(`Invalid date "${parts[3]}"`)
+
+    let time: string
+    let date: string | null
+    let mbldScore = ""
+
+    if (isMBLD) {
+      // MBLD format: Event, Type, Score (4/5), Time (19:31), Date
+      mbldScore = parts[2]
+      time = parts[3] || ""
+      date = parts[4] ? parseDateInput(parts[4]) : getTodayPacific()
+
+      const score = parseMBLDScore(mbldScore)
+      if (!score) errors.push(`Invalid MBLD score "${parts[2]}" (use solved/attempted, e.g. "4/5")`)
+      if (!time) {
+        errors.push("Time is required for Multi-BLD")
+      } else if (parseTimeInput(time) === null) {
+        errors.push(`Invalid time "${parts[3]}"`)
+      }
+      if (parts[4] && !date) errors.push(`Invalid date "${parts[4]}"`)
+    } else {
+      // Standard format: Event, Type, Time, Date
+      time = parts[2]
+      date = parts[3] ? parseDateInput(parts[3]) : getTodayPacific()
+
+      if (parseTimeInput(time) === null) errors.push(`Invalid time "${parts[2]}"`)
+      if (parts[3] && !date) errors.push(`Invalid date "${parts[3]}"`)
+    }
 
     // Validate PB type is valid for this event
     if (eventId && pbType) {
@@ -226,6 +276,7 @@ function parseCSVText(text: string): ParsedCSVRow[] {
       pbType: pbType || "",
       time,
       date: date || getTodayPacific(),
+      mbldScore,
       error: errors.length > 0 ? errors.join("; ") : undefined,
     }
   })
@@ -236,7 +287,7 @@ function parseCSVText(text: string): ParsedCSVRow[] {
 let nextId = 1
 
 function createEmptyRow(): ImportRow {
-  return { id: nextId++, event: "", pbType: "", time: "", date: getTodayPacific() }
+  return { id: nextId++, event: "", pbType: "", time: "", date: getTodayPacific(), mbldScore: "" }
 }
 
 export function ImportPBsModal({
@@ -351,6 +402,8 @@ export function ImportPBsModal({
       pb_type: string
       time_seconds: number
       date_achieved: string
+      mbld_solved?: number
+      mbld_attempted?: number
     }[] = []
 
     if (mode === "manual") {
@@ -364,18 +417,42 @@ export function ImportPBsModal({
         const row = filledRows[i]
         if (!row.event) { setError(`Row ${i + 1}: Select an event.`); return }
         if (!row.pbType) { setError(`Row ${i + 1}: Select a PB type.`); return }
-        const parsed = parseTimeInput(row.time)
-        if (parsed === null) {
-          setError(`Row ${i + 1}: Enter a valid time (e.g., "10.32" or "1:23.45").`)
-          return
+
+        const isMBLD = row.event === "333mbf"
+        if (isMBLD) {
+          const score = parseMBLDScore(row.mbldScore)
+          if (!score) {
+            setError(`Row ${i + 1}: Enter a valid MBLD score (e.g., "4/5").`)
+            return
+          }
+          const parsed = parseTimeInput(row.time)
+          if (parsed === null) {
+            setError(`Row ${i + 1}: Enter a valid time (e.g., "19:31" or "1:05:30").`)
+            return
+          }
+          if (!row.date) { setError(`Row ${i + 1}: Enter a date.`); return }
+          entries.push({
+            event: row.event,
+            pb_type: row.pbType,
+            time_seconds: parsed,
+            date_achieved: row.date,
+            mbld_solved: score.solved,
+            mbld_attempted: score.attempted,
+          })
+        } else {
+          const parsed = parseTimeInput(row.time)
+          if (parsed === null) {
+            setError(`Row ${i + 1}: Enter a valid time (e.g., "10.32" or "1:23.45").`)
+            return
+          }
+          if (!row.date) { setError(`Row ${i + 1}: Enter a date.`); return }
+          entries.push({
+            event: row.event,
+            pb_type: row.pbType,
+            time_seconds: parsed,
+            date_achieved: row.date,
+          })
         }
-        if (!row.date) { setError(`Row ${i + 1}: Enter a date.`); return }
-        entries.push({
-          event: row.event,
-          pb_type: row.pbType,
-          time_seconds: parsed,
-          date_achieved: row.date,
-        })
       }
     } else {
       // CSV mode — use parsed rows
@@ -392,13 +469,28 @@ export function ImportPBsModal({
 
       for (const row of csvParsed) {
         const parsed = parseTimeInput(row.time)
-        if (parsed === null) continue // shouldn't happen after validation
-        entries.push({
-          event: row.event,
-          pb_type: row.pbType,
-          time_seconds: parsed,
-          date_achieved: row.date,
-        })
+        if (parsed === null) continue
+
+        const isMBLD = row.event === "333mbf"
+        if (isMBLD) {
+          const score = parseMBLDScore(row.mbldScore)
+          if (!score) continue
+          entries.push({
+            event: row.event,
+            pb_type: row.pbType,
+            time_seconds: parsed,
+            date_achieved: row.date,
+            mbld_solved: score.solved,
+            mbld_attempted: score.attempted,
+          })
+        } else {
+          entries.push({
+            event: row.event,
+            pb_type: row.pbType,
+            time_seconds: parsed,
+            date_achieved: row.date,
+          })
+        }
       }
 
       if (entries.length === 0) {
@@ -517,9 +609,19 @@ export function ImportPBsModal({
                   </SelectContent>
                 </Select>
 
+                {row.event === "333mbf" && (
+                  <Input
+                    type="text"
+                    placeholder="4/5"
+                    value={row.mbldScore}
+                    onChange={(e) => updateRow(row.id, "mbldScore", e.target.value)}
+                    className="font-mono min-h-11 sm:min-h-9"
+                  />
+                )}
+
                 <Input
                   type="text"
-                  placeholder="10.32"
+                  placeholder={row.event === "333mbf" ? "19:31" : "10.32"}
                   value={row.time}
                   onChange={(e) => updateRow(row.id, "time", e.target.value)}
                   className="font-mono min-h-11 sm:min-h-9"
@@ -564,6 +666,7 @@ export function ImportPBsModal({
             <div className="flex flex-col gap-2">
               <p className="text-sm text-muted-foreground">
                 Paste CSV or upload a file. Columns: Event, PB Type, Time, Date (optional).
+                For Multi-BLD: Event, PB Type, Score (4/5), Time (19:31), Date.
               </p>
               <div className="flex items-center gap-2">
                 <a
@@ -596,7 +699,7 @@ export function ImportPBsModal({
               </div>
 
               <Textarea
-                placeholder={`3x3, Single, 7.82, 2025-01-15\n3x3, Ao5, 9.45, 2025-01-15\n4x4, Single, 32.10\nOH, Ao12, 18.55, 01/20/2025`}
+                placeholder={`3x3, Single, 7.82, 2025-01-15\n3x3, Ao5, 9.45, 2025-01-15\n4x4, Single, 32.10\nMulti-BLD, Single, 4/4, 19:31, 2018-10-31`}
                 value={csvText}
                 onChange={(e) => {
                   setCsvText(e.target.value)
@@ -630,6 +733,7 @@ export function ImportPBsModal({
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">Event</th>
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Score</th>
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">Time</th>
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
@@ -648,6 +752,7 @@ export function ImportPBsModal({
                             {row.event ? getEventLabel(row.event) : row.eventRaw}
                           </td>
                           <td className="px-3 py-2">{row.pbType || "—"}</td>
+                          <td className="px-3 py-2 font-mono">{row.mbldScore || "—"}</td>
                           <td className="px-3 py-2 font-mono">{row.time || "—"}</td>
                           <td className="px-3 py-2 font-mono">{row.date}</td>
                           <td className="px-3 py-2">

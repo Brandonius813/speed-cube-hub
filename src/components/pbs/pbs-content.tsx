@@ -20,12 +20,32 @@ function getEventLabel(eventId: string): string {
 
 function formatTime(seconds: number, eventId?: string): string {
   if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (seconds >= 3600) {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  }
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
     return `${min}:${sec.padStart(5, "0")}`
   }
   return `${seconds.toFixed(2)}s`
+}
+
+function formatMBLD(pb: PBRecord): string {
+  if (pb.mbld_solved && pb.mbld_attempted) {
+    return `${pb.mbld_solved}/${pb.mbld_attempted} in ${formatTime(pb.time_seconds)}`
+  }
+  return formatTime(pb.time_seconds)
+}
+
+function isBetterMBLD(a: PBRecord, b: PBRecord): boolean {
+  const pointsA = 2 * (a.mbld_solved || 0) - (a.mbld_attempted || 0)
+  const pointsB = 2 * (b.mbld_solved || 0) - (b.mbld_attempted || 0)
+  if (pointsA !== pointsB) return pointsA > pointsB
+  return a.time_seconds < b.time_seconds
 }
 
 export function PBsContent({
@@ -71,12 +91,16 @@ export function PBsContent({
     return allTypes.filter((t) => visibleTypes.includes(t))
   }
 
-  // Group PBs by event — keep only the fastest per event+type
+  // Group PBs by event — keep only the best per event+type
   const pbsByEvent: Record<string, Record<string, PBRecord>> = {}
   for (const pb of pbs) {
     if (!pbsByEvent[pb.event]) pbsByEvent[pb.event] = {}
     const existing = pbsByEvent[pb.event][pb.pb_type]
-    if (!existing || pb.time_seconds < existing.time_seconds) {
+    if (!existing) {
+      pbsByEvent[pb.event][pb.pb_type] = pb
+    } else if (pb.event === "333mbf") {
+      if (isBetterMBLD(pb, existing)) pbsByEvent[pb.event][pb.pb_type] = pb
+    } else if (pb.time_seconds < existing.time_seconds) {
       pbsByEvent[pb.event][pb.pb_type] = pb
     }
   }
@@ -185,7 +209,7 @@ export function PBsContent({
                           {pb ? (
                             <div className="text-right">
                               <div className="font-mono text-sm font-semibold text-foreground">
-                                {formatTime(pb.time_seconds, eventId)}
+                                {eventId === "333mbf" ? formatMBLD(pb) : formatTime(pb.time_seconds, eventId)}
                               </div>
                               <div className="font-mono text-[10px] uppercase text-muted-foreground/60">
                                 {new Date(

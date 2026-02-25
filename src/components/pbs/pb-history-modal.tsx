@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
+import { EditPBModal } from "@/components/pbs/edit-pb-modal"
 import {
   LineChart,
   Line,
@@ -29,6 +30,12 @@ function getEventLabel(eventId: string): string {
 
 function formatTime(seconds: number, eventId?: string): string {
   if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (seconds >= 3600) {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  }
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -37,18 +44,34 @@ function formatTime(seconds: number, eventId?: string): string {
   return `${seconds.toFixed(2)}s`
 }
 
+function formatMBLD(pb: PBRecord): string {
+  if (pb.mbld_solved && pb.mbld_attempted) {
+    return `${pb.mbld_solved}/${pb.mbld_attempted} in ${formatTime(pb.time_seconds)}`
+  }
+  return formatTime(pb.time_seconds)
+}
+
+/** MBLD points = solved - unsolved = 2*solved - attempted */
+function mbldPoints(pb: PBRecord): number {
+  return 2 * (pb.mbld_solved || 0) - (pb.mbld_attempted || 0)
+}
+
 function ChartTooltip({
   active,
   payload,
   label,
   pbType,
   eventId,
+  isMBLD,
+  history,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
   label?: number
   pbType: string
   eventId: string
+  isMBLD?: boolean
+  history?: PBRecord[]
 }) {
   if (!active || !payload?.length) return null
 
@@ -58,6 +81,17 @@ function ChartTooltip({
     year: "numeric",
   })
 
+  // For MBLD, find the matching record to show the full score
+  let displayValue: string
+  if (isMBLD && history) {
+    const matchingPB = history.find(
+      (pb) => new Date(pb.date_achieved + "T12:00:00").getTime() === label
+    )
+    displayValue = matchingPB ? formatMBLD(matchingPB) : `${payload[0].value} pts`
+  } else {
+    displayValue = formatTime(payload[0].value, eventId)
+  }
+
   return (
     <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
       <p className="mb-1 font-medium text-foreground">{date}</p>
@@ -65,9 +99,7 @@ function ChartTooltip({
         <div className="h-2 w-2 rounded-full bg-cyan-400" />
         <span className="text-muted-foreground">
           {pbType}:{" "}
-          <span className="font-mono text-foreground">
-            {formatTime(payload[0].value, eventId)}
-          </span>
+          <span className="font-mono text-foreground">{displayValue}</span>
         </span>
       </div>
     </div>
@@ -90,6 +122,9 @@ export function PBHistoryModal({
   const [history, setHistory] = useState<PBRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [editingPB, setEditingPB] = useState<PBRecord | null>(null)
+
+  const isMBLD = event === "333mbf"
 
   async function loadHistory() {
     setLoading(true)
@@ -118,11 +153,12 @@ export function PBHistoryModal({
   }
 
   // Chart data — history is newest-first, reverse for chronological
+  // For MBLD: chart "points" (higher = better). For others: chart time (lower = better).
   const chartData = [...history]
     .reverse()
     .map((pb) => ({
       timestamp: new Date(pb.date_achieved + "T12:00:00").getTime(),
-      time: pb.time_seconds,
+      time: isMBLD ? mbldPoints(pb) : pb.time_seconds,
     }))
 
   const showChart = chartData.length >= 2
@@ -130,11 +166,11 @@ export function PBHistoryModal({
   // Adaptive Y-axis with 15% padding
   const yDomain = (() => {
     if (!showChart) return [0, 1]
-    const times = chartData.map((d) => d.time)
-    const min = Math.min(...times)
-    const max = Math.max(...times)
+    const values = chartData.map((d) => d.time)
+    const min = Math.min(...values)
+    const max = Math.max(...values)
     const range = max - min
-    const padding = range > 0 ? range * 0.15 : min * 0.1
+    const padding = range > 0 ? range * 0.15 : Math.max(1, Math.abs(min * 0.1))
     return [Math.max(0, min - padding), max + padding]
   })()
 
@@ -162,7 +198,7 @@ export function PBHistoryModal({
             {showChart && (
               <div className="rounded-lg border border-border/50 bg-secondary/30 p-3">
                 <p className="mb-2 text-sm font-medium text-foreground">
-                  Progression
+                  {isMBLD ? "Score Progression" : "Progression"}
                 </p>
                 <ResponsiveContainer width="100%" height={180}>
                   <LineChart
@@ -187,12 +223,21 @@ export function PBHistoryModal({
                     <YAxis
                       tick={{ fontSize: 11, fill: "#8B8BA3" }}
                       stroke="#2A2A3C"
-                      tickFormatter={(v: number) => formatTime(v, event)}
+                      tickFormatter={(v: number) =>
+                        isMBLD ? `${v} pts` : formatTime(v, event)
+                      }
                       width={65}
                       domain={yDomain}
                     />
                     <Tooltip
-                      content={<ChartTooltip pbType={pbType} eventId={event} />}
+                      content={
+                        <ChartTooltip
+                          pbType={pbType}
+                          eventId={event}
+                          isMBLD={isMBLD}
+                          history={history}
+                        />
+                      }
                     />
                     <Line
                       type="monotone"
@@ -227,7 +272,7 @@ export function PBHistoryModal({
                             : "text-foreground"
                         }`}
                       >
-                        {formatTime(pb.time_seconds, event)}
+                        {isMBLD ? formatMBLD(pb) : formatTime(pb.time_seconds, event)}
                       </span>
                       {pb.is_current && (
                         <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">
@@ -246,20 +291,44 @@ export function PBHistoryModal({
                       {pb.notes && ` — ${pb.notes}`}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(pb.id)}
-                    disabled={deleting === pb.id}
-                    className="ml-2 min-h-11 min-w-11 flex items-center justify-center rounded-md text-destructive/60 transition hover:text-destructive disabled:opacity-50"
-                    title="Delete this PB"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="ml-2 flex items-center">
+                    <button
+                      onClick={() => setEditingPB(pb)}
+                      className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-muted-foreground/60 transition hover:text-foreground"
+                      title="Edit this PB"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(pb.id)}
+                      disabled={deleting === pb.id}
+                      className="min-h-11 min-w-11 flex items-center justify-center rounded-md text-destructive/60 transition hover:text-destructive disabled:opacity-50"
+                      title="Delete this PB"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
       </DialogContent>
+
+      {editingPB && (
+        <EditPBModal
+          pb={editingPB}
+          open={!!editingPB}
+          onOpenChange={(open) => {
+            if (!open) setEditingPB(null)
+          }}
+          onSaved={() => {
+            setEditingPB(null)
+            loadHistory()
+            onUpdate()
+          }}
+        />
+      )}
     </Dialog>
   )
 }
