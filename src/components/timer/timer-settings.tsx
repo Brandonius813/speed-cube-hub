@@ -7,6 +7,9 @@ import { WCA_EVENTS } from "@/lib/constants"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
+export type InputMode = "timer" | "typing"
+export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
+
 type TimerSettingsProps = {
   event: string
   onEventChange: (eventId: string) => void
@@ -16,6 +19,10 @@ type TimerSettingsProps = {
   onInspectionChange: (enabled: boolean) => void
   showTimeWhileSolving: boolean
   onShowTimeChange: (show: boolean) => void
+  inputMode: InputMode
+  onInputModeChange: (mode: InputMode) => void
+  sidebarPosition: SidebarPosition
+  onSidebarPositionChange: (position: SidebarPosition) => void
 }
 
 export function TimerSettings({
@@ -27,6 +34,10 @@ export function TimerSettings({
   onInspectionChange,
   showTimeWhileSolving,
   onShowTimeChange,
+  inputMode,
+  onInputModeChange,
+  sidebarPosition,
+  onSidebarPositionChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -130,6 +141,58 @@ export function TimerSettings({
                 enabled={showTimeWhileSolving}
                 onChange={onShowTimeChange}
               />
+
+              {/* Input mode toggle */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Input
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={inputMode === "timer" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => onInputModeChange("timer")}
+                  >
+                    Timer
+                  </Button>
+                  <Button
+                    variant={inputMode === "typing" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => onInputModeChange("typing")}
+                  >
+                    Typing
+                  </Button>
+                </div>
+              </div>
+
+              {/* Sidebar position */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Stats Panel
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      { value: "right", label: "Right" },
+                      { value: "left", label: "Left" },
+                      { value: "bottom", label: "Bottom" },
+                      { value: "hidden", label: "Hidden" },
+                    ] as const
+                  ).map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={sidebarPosition === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onSidebarPositionChange(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </>
