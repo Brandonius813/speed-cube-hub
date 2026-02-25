@@ -43,15 +43,18 @@ const AVERAGE_EVENTS = [
 ]
 
 // Kinch event groups — one combined score, not split into single/average.
-// Regular events: use the average ratio (100 * WR / PR)
+// Regular events: use the AVERAGE ratio (100 * avg_WR / avg_PR)
 const KINCH_AVERAGE_ONLY = [
   "222", "333", "333oh", "444", "555", "666", "777",
   "clock", "minx", "pyram", "skewb", "sq1",
 ]
-// BLD + FMC: take the BETTER of single and average ratios
-const KINCH_BEST_OF = ["333bf", "333fm", "444bf", "555bf"]
-// Total Kinch events: 12 regular + 4 best-of + 1 MBLD = 17
-const KINCH_EVENT_COUNT = KINCH_AVERAGE_ONLY.length + KINCH_BEST_OF.length + 1
+// 3BLD + FMC: take the BETTER of single and average ratios
+const KINCH_BEST_OF = ["333bf", "333fm"]
+// 4BLD + 5BLD: use SINGLE ratio only (averages are extremely rare)
+const KINCH_SINGLE_ONLY = ["444bf", "555bf"]
+// Total Kinch events: 12 average + 2 best-of + 2 single-only + 1 MBLD = 17
+const KINCH_EVENT_COUNT =
+  KINCH_AVERAGE_ONLY.length + KINCH_BEST_OF.length + KINCH_SINGLE_ONLY.length + 1
 
 /**
  * Decode a WCA Multi-BLD encoded result into a Kinch-compatible score.
@@ -372,7 +375,8 @@ function computeRankings(persons, countries, singleData, averageData) {
 
     // ── Kinch (one combined score per the official Kinch formula) ────
     // Regular events: use average ratio
-    // BLD + FMC: best of single and average ratios
+    // 3BLD + FMC: best of single and average ratios
+    // 4BLD + 5BLD: single ratio only
     // Multi-BLD: special decoded score
     let kinch = null
     if (singleEvents || averageEvents) {
@@ -387,7 +391,7 @@ function computeRankings(persons, countries, singleData, averageData) {
         }
       }
 
-      // BLD + FMC — take the better of single and average ratios
+      // 3BLD + FMC — take the better of single and average ratios
       for (const eventId of KINCH_BEST_OF) {
         const sr = singleEvents?.get(eventId)
         const sWr = singleWRs.get(eventId)
@@ -398,6 +402,15 @@ function computeRankings(persons, countries, singleData, averageData) {
         if (sr && sWr && sr.best > 0) singleRatio = (100 * sWr) / sr.best
         if (ar && aWr && ar.best > 0) avgRatio = (100 * aWr) / ar.best
         ratioSum += Math.max(singleRatio, avgRatio)
+      }
+
+      // 4BLD + 5BLD — use single ratio only (averages are extremely rare)
+      for (const eventId of KINCH_SINGLE_ONLY) {
+        const rank = singleEvents?.get(eventId)
+        const wr = singleWRs.get(eventId)
+        if (rank && wr && rank.best > 0) {
+          ratioSum += (100 * wr) / rank.best
+        }
       }
 
       // Multi-BLD — special Kinch scoring (decode WCA format)
