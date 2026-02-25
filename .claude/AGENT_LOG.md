@@ -68,3 +68,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** `.next/lock` contention is common with parallel agents — use `npx tsc --noEmit` as build alternative. T41 and T45 were already fixed in code but unmarked in TASKS.md — always check git log before starting a task.
 **Blockers:** None
 **Warnings:** T48 RPC won't work until user runs the SQL in Supabase dashboard. Remaining available tasks: T46 (RLS — largest), T47 (depends on T46), T50 (Dashboard Dedup), T51 (select("*") cleanup).
+
+---
+
+### 2026-02-25 18:00 PT — Production Hotfix Session
+
+**Task:** Emergency fix — T51 explicit column lists broke production queries
+**Status:** Fixed and deployed to production. Commit `ee68efc` (merged to main) switched session queries from `select("*")` to `select(SESSION_COLUMNS)` with an explicit column list. One or more column names in that list (likely `best_time`, `title`, `feed_visible`, or `timer_session_id`) didn't match the production database schema — these columns were added via direct SQL, not tracked migrations. The Supabase/PostgREST query silently errored, returning empty arrays. Profile stats, practice stats, and other pages showed 0 for all users. The feed was unaffected because it still used `select("*")`. Reverted ALL explicit column lists back to `select("*")` across 7 files (sessions, badges, challenges, clubs, goals, personal-bests, profiles). Merged to main and pushed.
+**Files touched:** src/lib/actions/sessions.ts, src/lib/actions/badges.ts, src/lib/actions/challenges.ts, src/lib/actions/clubs.ts, src/lib/actions/goals.ts, src/lib/actions/personal-bests.ts, src/lib/actions/profiles.ts
+**Learnings:** NEVER use explicit column lists in Supabase queries unless you've verified the exact column names against the live database. Many columns in this project were added via Supabase SQL editor and are NOT tracked in migration files. The feed using `select("*")` continued working while explicit-column queries silently failed — this discrepancy is the telltale sign.
+**Blockers:** None
+**Warnings:** T51 (explicit column lists) should be considered REVERTED, not Done. If re-attempted, must first audit the actual production DB schema column-by-column before writing the lists. Do NOT assume migration files reflect the true schema.

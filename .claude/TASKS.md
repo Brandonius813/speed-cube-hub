@@ -814,11 +814,11 @@ Each RPC function should JOIN profiles for display_name, handle, avatar_url so o
 
 | | |
 |---|---|
-| **Status** | ✅ Done |
+| **Status** | ⚠️ Reverted — caused production bug (column names didn't match live DB) |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 5-6 server action files |
-| **Priority** | MEDIUM — reduces bandwidth and prevents future data leaks |
+| **Priority** | LOW — must audit live DB schema before re-attempting |
 
 **The problem:** Most queries use `select("*")` which fetches every column. This wastes bandwidth (especially for JSONB columns like `cubes`, `links`, `accomplishments`) and means if a sensitive column is ever added to a table, it would automatically be exposed.
 
