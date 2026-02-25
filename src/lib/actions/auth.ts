@@ -88,3 +88,53 @@ export async function checkIsAdmin(): Promise<boolean> {
   return !!user && user.id === process.env.ADMIN_USER_ID
 }
 
+export type NavbarData = {
+  isLoggedIn: false
+} | {
+  isLoggedIn: true
+  displayName: string
+  avatarUrl: string | null
+  unreadCount: number
+  isAdmin: boolean
+}
+
+/**
+ * Single server action that returns everything the navbar needs.
+ * Replaces 3 separate calls (getProfile, getUnreadCount, checkIsAdmin)
+ * each of which called getUser() internally — so this cuts 7+ round trips to 1.
+ */
+export async function getNavbarData(): Promise<NavbarData> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { isLoggedIn: false }
+  }
+
+  const admin = createAdminClient()
+
+  // Fetch only the two profile columns the navbar uses + unread count in parallel
+  const [profileResult, unreadResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .single(),
+    admin
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("read", false),
+  ])
+
+  return {
+    isLoggedIn: true,
+    displayName: profileResult.data?.display_name ?? "",
+    avatarUrl: profileResult.data?.avatar_url ?? null,
+    unreadCount: unreadResult.count ?? 0,
+    isAdmin: user.id === process.env.ADMIN_USER_ID,
+  }
+}
+
