@@ -131,11 +131,11 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
 
 ### Security & Performance Hardening (Phase 9)
-- [ ] Fix open redirect in Google OAuth callback (T41)
-- [ ] Add middleware for route protection + session refresh (T42)
-- [ ] Make createNotification/checkAndAwardMilestones internal helpers (T43)
-- [ ] Add Zod input validation to session/PB server actions (T44)
-- [ ] Sanitize PostgREST search filter in searchProfiles (T45)
+- [x] Fix open redirect in Google OAuth callback (T41)
+- [x] Add middleware for route protection + session refresh (T42)
+- [x] Make createNotification/checkAndAwardMilestones internal helpers (T43)
+- [x] Add Zod input validation to session/PB server actions (T44)
+- [x] Sanitize PostgREST search filter in searchProfiles (T45)
 - [ ] Reduce admin client overuse — fix RLS policies (T46)
 - [ ] Fix leaderboards — move aggregation to database (T47)
 - [ ] Fix landing page stats — use database aggregation (T48)

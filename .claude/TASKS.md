@@ -559,7 +559,7 @@ const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 new file (`src/middleware.ts`) |
 | **Priority** | HIGH — auth sessions don't refresh without this |
@@ -603,8 +603,7 @@ const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
-| **Claimed by** | Claude-Opus |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 3 files (shared schemas + 2 server action files) |
 | **Priority** | MEDIUM |
