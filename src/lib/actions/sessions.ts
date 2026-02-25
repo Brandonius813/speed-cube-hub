@@ -2,24 +2,44 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { checkAndAwardMilestones } from "@/lib/actions/badges";
+import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
+
+// Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
+// This helper paginates to fetch ALL matching rows.
+const PAGE_SIZE = 1000;
+
+async function fetchAllPages(
+  queryFn: (from: number, to: number) => ReturnType<ReturnType<Awaited<ReturnType<typeof createClient>>["from"]>["select"]>
+): Promise<{ data: Session[]; error?: string }> {
+  const all: Session[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await queryFn(from, from + PAGE_SIZE - 1);
+    if (error) return { data: [], error: error.message };
+    if (!data || data.length === 0) break;
+    all.push(...(data as Session[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return { data: all };
+}
 
 export async function getSessionsByUserId(
   userId: string
 ): Promise<{ data: Session[]; error?: string }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("user_id", userId)
-    .order("session_date", { ascending: false });
-
-  if (error) {
-    return { data: [], error: error.message };
-  }
-
-  return { data: (data as Session[]) || [] };
+  return fetchAllPages((from, to) =>
+    supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("session_date", { ascending: false })
+      .range(from, to)
+  );
 }
 
 export async function createSession(data: {
@@ -41,6 +61,11 @@ export async function createSession(data: {
 
   if (!user) {
     return { error: "You must be logged in to log a session." };
+  }
+
+  const parsed = createSessionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
   const { error } = await supabase.from("sessions").insert({
@@ -82,16 +107,8 @@ export async function getSessions(filters?: {
     return { data: [], error: "Not authenticated" };
   }
 
-  let query = supabase
-    .from("sessions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("session_date", { ascending: false });
-
-  if (filters?.event && filters.event !== "all") {
-    query = query.eq("event", filters.event);
-  }
-
+  const eventFilter = filters?.event && filters.event !== "all" ? filters.event : null;
+  let dateFilter: string | null = null;
   if (filters?.dateRange && filters.dateRange !== "all") {
     const now = new Date();
     const days =
@@ -101,16 +118,22 @@ export async function getSessions(filters?: {
           ? 30
           : 90;
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    query = query.gte("session_date", startDate.toISOString().split("T")[0]);
+    dateFilter = startDate.toISOString().split("T")[0];
   }
 
-  const { data, error } = await query;
+  return fetchAllPages((from, to) => {
+    let query = supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("session_date", { ascending: false })
+      .range(from, to);
 
-  if (error) {
-    return { data: [], error: error.message };
-  }
+    if (eventFilter) query = query.eq("event", eventFilter);
+    if (dateFilter) query = query.gte("session_date", dateFilter);
 
-  return { data: (data as Session[]) || [] };
+    return query;
+  });
 }
 
 export async function createSessionsBulk(
@@ -142,6 +165,17 @@ export async function createSessionsBulk(
 
   if (sessions.length > 500) {
     return { inserted: 0, error: "Maximum 500 sessions per import." };
+  }
+
+  // Validate every row
+  for (let i = 0; i < sessions.length; i++) {
+    const parsed = bulkSessionItemSchema.safeParse(sessions[i]);
+    if (!parsed.success) {
+      return {
+        inserted: 0,
+        error: `Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid input"}`,
+      };
+    }
   }
 
   const source = options?.source;
@@ -211,6 +245,11 @@ export async function updateSession(
 
   if (!user) {
     return { error: "You must be logged in to edit a session." };
+  }
+
+  const parsed = createSessionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
   const { error } = await supabase
@@ -310,11 +349,14 @@ export async function getSessionStats() {
     };
   }
 
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("session_date", { ascending: false });
+  const { data: sessions } = await fetchAllPages((from, to) =>
+    supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("session_date", { ascending: false })
+      .range(from, to)
+  );
 
   if (!sessions || sessions.length === 0) {
     return {

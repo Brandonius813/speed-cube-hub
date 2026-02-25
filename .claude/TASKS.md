@@ -540,7 +540,7 @@ Full audit completed 2026-02-25. Issues ranked by severity. Most tasks are indep
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file, 1-line fix |
 | **Priority** | HIGH — exploitable today |
@@ -603,9 +603,10 @@ const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
-| **Estimated scope** | 2 files |
+| **Estimated scope** | 3 files (shared schemas + 2 server action files) |
 | **Priority** | MEDIUM |
 
 **The problem:** Session and PB creation/update actions accept user input with no validation. Someone could submit negative solve counts, million-character titles, invalid event names, or times of 0.0001 seconds. Zod is already installed but unused.
@@ -633,7 +634,7 @@ const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 | **Priority** | MEDIUM |

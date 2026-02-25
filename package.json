@@ -17,6 +17,7 @@
     "@vercel/og": "^0.8.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cubing": "^0.63.2",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
