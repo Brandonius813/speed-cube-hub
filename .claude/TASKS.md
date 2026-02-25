@@ -853,3 +853,278 @@ T51 (select("*") cleanup)    — no deps
 ```
 
 **Max parallelism:** Up to 5 agents on Wave A, then up to 4-5 agents on Wave B. T47 must wait for T46 since leaderboard queries need matching RLS policies.
+
+---
+
+## Phase 10 — QoL Polish (All Independent — Max 4 Parallel Agents)
+
+---
+
+### T53: Navbar Active Tab + Notification Popup
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files (1 modify, 1 create) |
+| **Priority** | HIGH |
+
+**Two changes to the navbar:**
+
+**A) Active Tab Highlighting** — No visual indication of which page you're on currently.
+
+File: `src/components/shared/navbar.tsx`
+- Import `usePathname` from `next/navigation` and `cn` from `@/lib/utils`
+- Create `navLinkClass(href)` helper that compares `pathname` to each link's `href`
+- Active state: `text-foreground` + `border-b-2 border-primary` underline on desktop; brighter icon on mobile
+- Inactive: existing `text-muted-foreground` with hover
+- Replace all hardcoded className strings on nav `<Link>` elements with `navLinkClass()` calls
+- Special case: admin link keeps yellow color treatment, just make it brighter when active
+
+**B) Notification Popup** — Bell icon currently navigates to a full page. Should be a popup dropdown.
+
+Create: `src/components/shared/notification-popup.tsx` (~200 lines)
+Modify: `src/components/shared/navbar.tsx` — swap bell `<Link>` for popup component
+
+- Use existing Shadcn `Popover` component (renders via portal, handles click-outside)
+- Bell icon becomes `PopoverTrigger` (keeps the unread badge)
+- On open: fetch `getNotifications(10)` for 10 most recent; show loading skeleton while fetching
+- Each notification item shows icon, message, time ago, unread dot (copy styling from `NotificationCard` in `notifications-content.tsx`)
+- Header: "Mark all as read" button
+- Footer: "View all notifications" link to `/notifications`
+- **On popover close:** call `markAllAsRead()` if any were unread, update navbar badge to 0, dispatch `notifications-updated` event
+- Clicking a notification: marks as read, closes popover, navigates to target page
+- Mobile: popup width `w-[calc(100vw-2rem)]`, `max-h-[70vh]` with scroll
+- Keep `/notifications` full page as-is — popup is an addition, not a replacement
+- Component receives `unreadCount` + `onUnreadCountChange` props from navbar
+
+**Helper functions to copy into popup** (don't refactor existing file — smallest change rule):
+`getNotificationIcon`, `getNotificationMessage`, `getNotificationLink`, `getInitials` from `notifications-content.tsx`
+
+**Existing code to reuse (don't rebuild):**
+- `Popover`, `PopoverTrigger`, `PopoverContent` from `@/components/ui/popover`
+- `getNotifications`, `markAllAsRead`, `markAsRead` from `@/lib/actions/notifications`
+- `notifications-updated` custom window event pattern (already used by navbar + notifications page)
+
+---
+
+### T54: Practice Stats Page Overhaul
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 10 files (4 create, 4 modify, 2 delete) |
+| **Priority** | HIGH |
+
+Complete overhaul of the practice stats page layout, filters, and visualizations.
+
+**New layout order in `dashboard-content.tsx`:**
+```
+1. PracticeStreak (heatmap + streak counters merged — NEW component)
+2. DashboardFilters (enhanced with more controls)
+3. StatsCards (2 cards only — Sessions This Week + Total Practice Time)
+4. Grid: TimeByEventChart (NEW) + EventPieChart (existing)
+5. DailyBarChart (modified to respect date filter)
+6. EventBreakdownTable (NEW)
+7. SessionLog (unchanged)
+```
+
+**Removed from page:** StreakCard (merged into heatmap), GoalsSection (defer to profile later), PBProgressChart (separate PBs page exists)
+
+#### Files to create:
+
+**1. `src/components/dashboard/practice-streak.tsx`** (~200 lines)
+- Merges `practice-heatmap.tsx` + `streak-card.tsx` into one card
+- Title: "Practice Streak" (was "Practice Activity")
+- Header area: current streak (flame icon + number) + longest streak (trophy + number) + milestone badges (7d, 30d, 100d, 365d) — all from old `StreakCard`
+- Below header: 52-week heatmap grid (reuse existing grid logic from `practice-heatmap.tsx`)
+- Props: `sessions: Session[]`, `currentStreak: number`, `longestStreak: number`
+- Pre-compute `sessionsByDate` map (`Map<string, Session[]>`) for tooltip lookup
+- Heatmap cells use `onMouseMove` (not `onMouseEnter`) to track cursor position for floating tooltip
+- Tooltip state: `{ date: string, mouseX: number, mouseY: number } | null`
+
+**2. `src/components/dashboard/heatmap-tooltip.tsx`** (~120 lines)
+- Portal-based floating tooltip using `createPortal(content, document.body)`
+- Props: `sessions: Session[]` (sessions for hovered date), `date: string`, `mouseX: number`, `mouseY: number`, `visible: boolean`
+- Smart positioning: offset 12px from cursor, flips when near right/bottom viewport edges, clamped to viewport
+- `pointer-events-none` + `z-[9999]` so it never interferes or gets clipped
+- Shows:
+  - Date formatted ("Wed, Feb 25, 2026")
+  - List of sessions: event name, num solves, duration per session
+  - Separator line + Total row with summed duration
+- Empty state: "No practice" text
+
+**3. `src/components/dashboard/time-by-event-chart.tsx`** (~100 lines)
+- Horizontal bar chart using Recharts `BarChart` with `layout="vertical"`
+- Shows total practice time per event from filtered sessions, sorted descending
+- `XAxis type="number"` with `formatDuration` tick formatter
+- `YAxis type="category" dataKey="event"` with event labels
+- Uses shared `EVENT_COLORS` from `@/lib/constants`
+- Card wrapper matching existing chart card styling
+
+**4. `src/components/dashboard/event-breakdown-table.tsx`** (~100 lines)
+- Table columns: Event (with cubing icon), Total Time (formatted), Solves, % of Total
+- Computed from filtered sessions, sorted by most time descending
+- `font-mono` for all numeric values
+- Desktop: standard table; Mobile: card layout per row
+
+#### Files to modify:
+
+**5. `src/components/dashboard/filters.tsx`**
+- Add Practice Type multi-select dropdown (same pattern as Event dropdown)
+  - Derive available types from sessions (pass as `availablePracticeTypes` prop)
+- Add "Search Notes" text input (filters by `notes`/`title` substring, case-insensitive)
+- Add "Clear Filters" button (visible only when any filter is active)
+- Expand date range buttons: Today (`1d`), Last Week (`7d`), 30 days, 90 days, This Year (`1y`), Last 365 Days (`365d`), All Time, Custom
+- Update `DateRange` type: `"1d" | "7d" | "30d" | "90d" | "1y" | "365d" | "all" | "custom"`
+- New props: `selectedPracticeTypes`, `onPracticeTypesChange`, `searchNotes`, `onSearchNotesChange`, `onClearFilters`, `availablePracticeTypes`
+
+**6. `src/components/dashboard/dashboard-content.tsx`**
+- Add state: `selectedPracticeTypes: string[]`, `searchNotes: string`
+- Derive `availablePracticeTypes` via useMemo from `initialSessions`
+- Update `filteredSessions` useMemo: add practice type + notes search filters, new date ranges
+- Compute filtered stats from filteredSessions (sessions count, total minutes, weekly stats)
+- Remove imports: `StreakCard`, `GoalsSection`, `PBProgressChart`
+- Add imports: `PracticeStreak`, `TimeByEventChart`, `EventBreakdownTable`
+- Remove `initialGoals` prop and `goalAverages` computation
+- New render order per layout above; pass `filteredSessions` to ALL components
+- Add `handleClearFilters` callback
+
+**7. `src/components/dashboard/daily-bar-chart.tsx`**
+- Change from hardcoded 7 days to showing data from all passed sessions
+- Adaptive grouping: <=14 days daily, <=90 days weekly, >90 days monthly
+- Still stacked bars by top 3 events + "other" bucket
+
+**8. `src/components/dashboard/stats-cards.tsx`**
+- Remove the third "Current Streak" card (now in heatmap)
+- Change grid from `md:grid-cols-3` to `md:grid-cols-2`
+
+#### Server component + shared constant:
+
+**9. `src/app/(main)/practice-stats/page.tsx`** — Remove `getGoals`/`checkGoalProgress` imports/calls, remove `initialGoals` prop
+
+**10. `src/lib/constants.ts`** — Add shared `EVENT_COLORS` export, update `event-pie-chart.tsx` and `daily-bar-chart.tsx` to import from here
+
+#### Files to delete:
+- `src/components/dashboard/streak-card.tsx` (merged into practice-streak)
+- `src/components/dashboard/practice-heatmap.tsx` (replaced by practice-streak)
+- `goals-section.tsx` and `goal-modal.tsx` stay — just remove imports from dashboard-content
+
+**Reference design:** Filters styled similar to https://www.brandontruecubing.com/practicestats
+
+**Existing code to reuse:** Heatmap grid logic from `practice-heatmap.tsx`, streak UI from `streak-card.tsx`, `formatDuration` from `@/lib/utils`, `WCA_EVENTS`/`CubingIcon`, Recharts components
+
+---
+
+### T55: PB Type Fix — Add Ao5 for 6x6 and 7x7
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file, 2-line change |
+| **Priority** | LOW |
+
+File: `src/lib/constants.ts` (lines 86-87 in `EVENT_PB_TYPES`)
+
+```
+Before: "666": ["Single", "Mo3", "Ao12", "Ao50", "Ao100"]
+After:  "666": ["Single", "Ao5", "Mo3", "Ao12", "Ao50", "Ao100"]
+
+Before: "777": ["Single", "Mo3", "Ao12", "Ao50", "Ao100"]
+After:  "777": ["Single", "Ao5", "Mo3", "Ao12", "Ao50", "Ao100"]
+```
+
+No other files need changes — `getPBTypesForEvent()` reads from this config and all consumers use that function.
+
+---
+
+### T56: Time Distribution + Time Trend Charts (Solve-Level Analytics)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action + 2 components + 2 integration points |
+| **Priority** | MEDIUM |
+
+Two new charts that visualize individual solve data (from the `solves` table). Accessible from both the timer page and practice stats page. Most users don't have much solve data yet, so empty states are important.
+
+**A) Time Distribution Histogram** — Like csTimer's distribution view
+
+Shows how solve times are distributed across time buckets (e.g., 6-8s, 8-10s, 10-12s). Each bar shows the count of solves in that bucket. Optionally shows cumulative count.
+
+Create: `src/components/shared/time-distribution-chart.tsx` (~150 lines)
+- Recharts `BarChart` with 2-second buckets (adaptive bucket size based on time range)
+- X axis: time buckets (e.g., "8-10s", "10-12s")
+- Y axis: solve count
+- Two display modes (toggle): frequency count vs cumulative
+- Filter out DNF solves
+- Event selector (if showing across events)
+- Empty state: "No individual solve data yet. Use the built-in timer to start tracking!"
+- Props: `solves: Solve[]` (pre-filtered by event)
+
+**B) Time Trend Graph** — Like csTimer's trend view
+
+Shows individual solve times as bars over solve number, with Ao5 and Ao200 rolling average lines overlaid.
+
+Create: `src/components/shared/time-trend-chart.tsx` (~180 lines)
+- Recharts `ComposedChart` with:
+  - `Bar` for individual solve times (gray, thin)
+  - `Line` for Ao5 rolling average (red)
+  - `Line` for Ao200 rolling average (blue)
+- X axis: solve number
+- Y axis: time in seconds
+- Legend showing which lines are which (clickable to toggle on/off)
+- Filter out DNF solves from the visual
+- Props: `solves: Solve[]` (pre-filtered by event)
+- Uses existing `computeAoN` from `src/lib/timer/averages.ts` for rolling averages
+
+**C) Server Action: Get All Solves for User/Event**
+
+Currently solves are only queried per-session. Need a new function.
+
+Add to `src/lib/actions/timer.ts`:
+```ts
+export async function getSolvesByEvent(event: string, limit = 5000)
+  // Fetch all solves for current user for this event
+  // Order by solved_at ASC (oldest first) for trend chart
+  // Return: { solves: Solve[], error?: string }
+```
+
+**D) Integration Points**
+
+1. **Timer page** (`src/components/timer/stats-panel.tsx` or `timer-content.tsx`):
+   - Add a "Charts" tab or expandable section below the stats grid
+   - Show both charts for the current timer session's event
+   - Use current session's solves from memory (no extra fetch)
+   - Toggle: "This Session" vs "All Time" (All Time triggers `getSolvesByEvent`)
+
+2. **Practice Stats page** (`src/components/dashboard/dashboard-content.tsx`):
+   - Add both charts after existing charts area (before SessionLog)
+   - Event selector to pick which event to show
+   - Calls `getSolvesByEvent(selectedEvent)` on selection
+   - Empty state if no solve data for that event
+
+**Data notes:**
+- `Solve.time_ms` is integer milliseconds (10320 = 10.32s)
+- `Solve.penalty` can be `"+2"` (add 2000ms), `"DNF"` (exclude), or `null`
+- Use `getEffectiveTime(solve)` from `src/lib/timer/averages.ts` to apply penalties
+- `formatTimeMs()` from same file for display
+
+---
+
+### Phase 10 Dependency Graph
+
+```
+Phase 10 — QoL Polish (all parallel, no deps):
+T53 (Navbar + Notifications)  — no deps
+T54 (Practice Stats Overhaul) — no deps
+T55 (PB Ao5 Fix)              — no deps ⚡ 2-line change
+T56 (Solve Analytics Charts)  — no deps
+```
+
+**Max parallelism:** Up to 3 agents. T55 is trivial — do it first then start T56.
+
+**Merge conflict note:** T54 and T55 both touch `src/lib/constants.ts`. T55 should commit first (tiny change). T54 agent should `git pull` before modifying constants.ts. T56 also adds to `dashboard-content.tsx` — if T54 runs in parallel, T54 does the restructure first, T56 adds solve charts after.
