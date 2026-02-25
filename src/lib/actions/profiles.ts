@@ -85,11 +85,15 @@ export async function searchProfiles(
   }
 
   // Text search across name, handle, and location
+  // Sanitize input: strip PostgREST filter syntax chars to prevent filter injection via .or()
   if (trimmed.length >= 2) {
-    const searchTerm = `%${trimmed}%`
-    qb = qb.or(
-      `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
-    )
+    const safe = trimmed.replace(/[,.()"\\]/g, "")
+    if (safe.length >= 2) {
+      const searchTerm = `%${safe}%`
+      qb = qb.or(
+        `display_name.ilike.${searchTerm},handle.ilike.${searchTerm},location.ilike.${searchTerm}`
+      )
+    }
   }
 
   // Sort

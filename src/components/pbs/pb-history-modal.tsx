@@ -27,7 +27,8 @@ function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number, eventId?: string): string {
+  if (eventId === "333fm") return `${Math.round(seconds)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -41,11 +42,13 @@ function ChartTooltip({
   payload,
   label,
   pbType,
+  eventId,
 }: {
   active?: boolean
   payload?: Array<{ value: number }>
   label?: number
   pbType: string
+  eventId: string
 }) {
   if (!active || !payload?.length) return null
 
@@ -63,7 +66,7 @@ function ChartTooltip({
         <span className="text-muted-foreground">
           {pbType}:{" "}
           <span className="font-mono text-foreground">
-            {formatTime(payload[0].value)}
+            {formatTime(payload[0].value, eventId)}
           </span>
         </span>
       </div>
@@ -184,12 +187,12 @@ export function PBHistoryModal({
                     <YAxis
                       tick={{ fontSize: 11, fill: "#8B8BA3" }}
                       stroke="#2A2A3C"
-                      tickFormatter={(v: number) => formatTime(v)}
+                      tickFormatter={(v: number) => formatTime(v, event)}
                       width={65}
                       domain={yDomain}
                     />
                     <Tooltip
-                      content={<ChartTooltip pbType={pbType} />}
+                      content={<ChartTooltip pbType={pbType} eventId={event} />}
                     />
                     <Line
                       type="monotone"
@@ -224,7 +227,7 @@ export function PBHistoryModal({
                             : "text-foreground"
                         }`}
                       >
-                        {formatTime(pb.time_seconds)}
+                        {formatTime(pb.time_seconds, event)}
                       </span>
                       {pb.is_current && (
                         <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">

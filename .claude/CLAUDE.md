@@ -187,6 +187,14 @@ The shared task list is at `.claude/TASKS.md`. This is a coordinated task board 
 
 Always check dependencies before claiming a task — don't start work that depends on unfinished tasks.
 
+## Agent Coordination Log
+
+The shared agent log is at `.claude/AGENT_LOG.md`. This is an append-only log where parallel sessions record what they did, what they learned, and any warnings for other sessions.
+
+- **Managed by:** The `/sync` skill — type `/sync` in any session to check in
+- **Format:** Timestamped entries, newest at bottom, auto-trimmed to 50 entries
+- **When to sync:** At session start, after completing a task, before stopping work
+
 ## Feature Status
 
 Features will be tracked in the PRD with checkmarks. Refer to it for current progress.
