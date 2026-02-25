@@ -133,11 +133,6 @@ export function CsTimerImport() {
       <CardContent>
         {state === "idle" && (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Export your solves from csTimer (Options &rarr; Export &rarr;
-              Export as CSV) and upload the file here.
-            </p>
-
             <a
               href="https://youtu.be/eDWnIDWC2ag"
               target="_blank"
