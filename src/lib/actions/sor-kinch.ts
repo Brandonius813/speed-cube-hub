@@ -1,7 +1,7 @@
 "use server"
 
 import { unstable_cache } from "next/cache"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 
 export type SorKinchCategory = "sor" | "kinch"
 export type SorKinchType = "single" | "average"
@@ -98,20 +98,20 @@ async function fetchSorKinchLeaderboard(
   offset: number,
   limit: number
 ): Promise<WcaLeaderboardPage> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
   const isSor = category === "sor"
   const column = isSor ? getSorColumn(type, region) : getKinchColumn()
   const ascending = isSor // SOR: lower is better; Kinch: higher is better
 
   // Run count + data queries in parallel (not sequentially)
-  let countQuery = admin
+  let countQuery = supabase
     .from("wca_rankings")
     .select("*", { count: "exact", head: true })
     .not(column, "is", null)
   countQuery = applyRegionFilter(countQuery, region)
 
-  let dataQuery = admin
+  let dataQuery = supabase
     .from("wca_rankings")
     .select(`wca_id, name, country_id, ${column}`)
     .not(column, "is", null)
@@ -173,14 +173,14 @@ export async function findUserInSorKinch(
   userRank: number
   totalCount: number
 } | null> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
   const isSor = category === "sor"
   const column = isSor ? getSorColumn(type, region) : getKinchColumn()
   const ascending = isSor
 
   // Get the user's row (only need wca_id + the relevant column)
-  const { data: userData } = await admin
+  const { data: userData } = await supabase
     .from("wca_rankings")
     .select(`wca_id, name, country_id, ${column}`)
     .eq("wca_id", wcaId)
@@ -192,7 +192,7 @@ export async function findUserInSorKinch(
   const userScore = Number(row[column])
 
   // Run rank + total count queries in parallel
-  let rankQuery = admin
+  let rankQuery = supabase
     .from("wca_rankings")
     .select("*", { count: "exact", head: true })
     .not(column, "is", null)
@@ -203,7 +203,7 @@ export async function findUserInSorKinch(
   }
   rankQuery = applyRegionFilter(rankQuery, region)
 
-  let totalQuery = admin
+  let totalQuery = supabase
     .from("wca_rankings")
     .select("*", { count: "exact", head: true })
     .not(column, "is", null)
@@ -217,7 +217,7 @@ export async function findUserInSorKinch(
   const start = Math.max(0, userRank - FIND_ME_WINDOW - 1)
   const windowSize = FIND_ME_WINDOW * 2 + 1
 
-  let surroundingQuery = admin
+  let surroundingQuery = supabase
     .from("wca_rankings")
     .select(`wca_id, name, country_id, ${column}`)
     .not(column, "is", null)
@@ -255,9 +255,9 @@ export async function getUserSorKinchStats(
   wcaId: string
 ): Promise<UserSorKinchStats | null> {
   if (!wcaId) return null
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data } = await admin
+  const { data } = await supabase
     .from("wca_rankings")
     .select("wca_id, sor_single, sor_average, kinch_single")
     .eq("wca_id", wcaId)
@@ -276,27 +276,27 @@ export async function getUserSorKinchStats(
   const queries = await Promise.all([
     // SOR single rank
     sorSingle != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_single", sorSingle).not("sor_single", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_single", sorSingle).not("sor_single", "is", null)
       : Promise.resolve({ count: null }),
     // SOR single total
     sorSingle != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_single", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_single", "is", null)
       : Promise.resolve({ count: null }),
     // SOR average rank
     sorAverage != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_average", sorAverage).not("sor_average", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).lt("sor_average", sorAverage).not("sor_average", "is", null)
       : Promise.resolve({ count: null }),
     // SOR average total
     sorAverage != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_average", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).not("sor_average", "is", null)
       : Promise.resolve({ count: null }),
     // Kinch rank
     kinchValue != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).gt("kinch_single", kinchValue).not("kinch_single", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).gt("kinch_single", kinchValue).not("kinch_single", "is", null)
       : Promise.resolve({ count: null }),
     // Kinch total
     kinchValue != null
-      ? admin.from("wca_rankings").select("*", { count: "exact", head: true }).not("kinch_single", "is", null)
+      ? supabase.from("wca_rankings").select("*", { count: "exact", head: true }).not("kinch_single", "is", null)
       : Promise.resolve({ count: null }),
   ])
 
@@ -318,8 +318,8 @@ export async function getUserSorKinchStats(
  */
 export const getWcaCountries = unstable_cache(
   async (): Promise<WcaCountry[]> => {
-    const admin = createAdminClient()
-    const { data } = await admin
+    const supabase = await createClient()
+    const { data } = await supabase
       .from("wca_countries")
       .select("id, name, continent_id")
       .order("name")

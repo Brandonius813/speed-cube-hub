@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { getCommentCounts } from "@/lib/actions/comments"
 import type { FeedItem } from "@/lib/types"
@@ -25,9 +24,7 @@ export async function getFeed(cursor?: string): Promise<{
   }
 
   // Get the IDs of people the current user follows
-  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
-  const admin = createAdminClient()
-  const { data: followData, error: followError } = await admin
+  const { data: followData, error: followError } = await supabase
     .from("follows")
     .select("following_id")
     .eq("follower_id", user.id)
@@ -46,8 +43,7 @@ export async function getFeed(cursor?: string): Promise<{
   }
 
   // Query sessions from followed users + self, joined with profiles
-  // Use admin client to avoid any RLS or foreign key hint issues
-  let query = admin
+  let query = supabase
     .from("sessions")
     .select(`
       *,

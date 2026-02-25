@@ -1,6 +1,5 @@
 "use server"
 
-import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import type { WrappedStats } from "@/lib/types"
 
@@ -28,8 +27,7 @@ export async function getWrappedStats(
   const startDate = `${targetYear}-01-01`
   const endDate = `${targetYear}-12-31`
 
-  const admin = createAdminClient()
-  const { data: sessions, error } = await admin
+  const { data: sessions, error } = await supabase
     .from("sessions")
     .select("session_date, event, num_solves, duration_minutes, avg_time")
     .eq("user_id", user.id)

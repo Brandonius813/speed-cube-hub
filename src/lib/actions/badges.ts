@@ -1,7 +1,7 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Badge, UserBadge, PendingBadgeClaim } from "@/lib/types";
 
 /**
@@ -11,7 +11,7 @@ export async function getBadgeDefinitions(): Promise<{
   data: Badge[];
   error?: string;
 }> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("badges")
@@ -32,7 +32,7 @@ export async function getBadgeDefinitions(): Promise<{
 export async function getUserBadges(
   userId: string
 ): Promise<{ data: UserBadge[]; error?: string }> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("user_badges")
@@ -70,10 +70,8 @@ export async function claimCompetitionBadge(
     return { success: false, error: "Badge, year, and detail are required." };
   }
 
-  const admin = createAdminClient();
-
   // Verify the badge exists and is a competition badge
-  const { data: badge } = await admin
+  const { data: badge } = await supabase
     .from("badges")
     .select("id, category, verification")
     .eq("id", badgeId)
@@ -84,7 +82,7 @@ export async function claimCompetitionBadge(
   }
 
   // Check for duplicate claim (same badge + year + detail)
-  const { data: existing } = await admin
+  const { data: existing } = await supabase
     .from("user_badges")
     .select("id")
     .eq("user_id", user.id)
@@ -96,7 +94,7 @@ export async function claimCompetitionBadge(
     return { success: false, error: "You already claimed this badge." };
   }
 
-  const { error } = await admin.from("user_badges").insert({
+  const { error } = await supabase.from("user_badges").insert({
     user_id: user.id,
     badge_id: badgeId,
     year,
@@ -133,10 +131,8 @@ export async function claimSponsorBadge(
     return { success: false, error: "Sponsor name is required." };
   }
 
-  const admin = createAdminClient();
-
   // Find the "Sponsored Athlete" badge
-  const { data: badge } = await admin
+  const { data: badge } = await supabase
     .from("badges")
     .select("id")
     .eq("name", "Sponsored Athlete")
@@ -147,7 +143,7 @@ export async function claimSponsorBadge(
   }
 
   // Check if user already has this badge
-  const { data: existing } = await admin
+  const { data: existing } = await supabase
     .from("user_badges")
     .select("id")
     .eq("user_id", user.id)
@@ -160,7 +156,7 @@ export async function claimSponsorBadge(
     };
   }
 
-  const { error } = await admin.from("user_badges").insert({
+  const { error } = await supabase.from("user_badges").insert({
     user_id: user.id,
     badge_id: badge.id,
     detail: sponsorName.trim(),
@@ -190,9 +186,7 @@ export async function removeBadge(
     return { success: false, error: "Not authenticated" };
   }
 
-  const admin = createAdminClient();
-
-  const { error } = await admin
+  const { error } = await supabase
     .from("user_badges")
     .delete()
     .eq("id", userBadgeId)
@@ -207,6 +201,7 @@ export async function removeBadge(
 
 /**
  * Admin only: approve a badge claim (sets verified=true).
+ * Uses admin client because RLS only allows users to update their own badges.
  */
 export async function approveBadge(
   userBadgeId: string
@@ -242,6 +237,7 @@ export async function approveBadge(
 
 /**
  * Admin only: get all pending (unverified) badge claims with user profile info.
+ * Uses admin client for cross-user reads with profile joins.
  */
 export async function getPendingBadgeClaims(): Promise<{
   data: PendingBadgeClaim[];
@@ -274,6 +270,7 @@ export async function getPendingBadgeClaims(): Promise<{
 
 /**
  * Admin only: reject (delete) a badge claim.
+ * Uses admin client because RLS only allows users to delete their own badges.
  */
 export async function rejectBadge(
   userBadgeId: string

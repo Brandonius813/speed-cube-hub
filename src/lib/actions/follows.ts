@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { createNotification } from "@/lib/helpers/create-notification"
 
 export async function followUser(
@@ -72,15 +71,14 @@ export async function unfollowUser(
 export async function getFollowCounts(
   userId: string
 ): Promise<{ followers: number; following: number }> {
-  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
   const [followersResult, followingResult] = await Promise.all([
-    admin
+    supabase
       .from("follows")
       .select("*", { count: "exact", head: true })
       .eq("following_id", userId),
-    admin
+    supabase
       .from("follows")
       .select("*", { count: "exact", head: true })
       .eq("follower_id", userId),
@@ -103,9 +101,7 @@ export async function isFollowing(
 
   if (!user) return false
 
-  // Use admin client to bypass RLS — the follows table may lack a SELECT policy
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .from("follows")
     .select("follower_id")
     .eq("follower_id", user.id)
@@ -126,9 +122,9 @@ export type FollowListUser = {
 export async function getFollowers(
   userId: string
 ): Promise<FollowListUser[]> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("follows")
     .select("follower_id, profiles!follows_follower_id_fkey(id, display_name, handle, avatar_url)")
     .eq("following_id", userId)
@@ -147,9 +143,9 @@ export async function getFollowers(
 export async function getFollowing(
   userId: string
 ): Promise<FollowListUser[]> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("follows")
     .select("following_id, profiles!follows_following_id_fkey(id, display_name, handle, avatar_url)")
     .eq("follower_id", userId)

@@ -27,9 +27,7 @@ export async function createClub(
     return { error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-
-  const { data: club, error: clubError } = await admin
+  const { data: club, error: clubError } = await supabase
     .from("clubs")
     .insert({
       name: trimmedName,
@@ -43,14 +41,14 @@ export async function createClub(
     return { error: clubError?.message ?? "Failed to create club" }
   }
 
-  const { error: memberError } = await admin.from("club_members").insert({
+  const { error: memberError } = await supabase.from("club_members").insert({
     club_id: club.id,
     user_id: user.id,
     role: "owner",
   })
 
   if (memberError) {
-    await admin.from("clubs").delete().eq("id", club.id)
+    await supabase.from("clubs").delete().eq("id", club.id)
     return { error: memberError.message }
   }
 
@@ -72,9 +70,7 @@ export async function joinClub(
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-
-  const { error } = await admin.from("club_members").insert({
+  const { error } = await supabase.from("club_members").insert({
     club_id: clubId,
     user_id: user.id,
     role: "member",
@@ -105,9 +101,7 @@ export async function leaveClub(
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-
-  const { data: membership } = await admin
+  const { data: membership } = await supabase
     .from("club_members")
     .select("role")
     .eq("club_id", clubId)
@@ -115,7 +109,7 @@ export async function leaveClub(
     .single()
 
   if (membership?.role === "owner") {
-    const { count } = await admin
+    const { count } = await supabase
       .from("club_members")
       .select("*", { count: "exact", head: true })
       .eq("club_id", clubId)
@@ -129,7 +123,7 @@ export async function leaveClub(
     }
   }
 
-  const { error } = await admin
+  const { error } = await supabase
     .from("club_members")
     .delete()
     .eq("club_id", clubId)

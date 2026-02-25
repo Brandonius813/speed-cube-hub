@@ -113,8 +113,6 @@ export async function getNavbarData(): Promise<NavbarData> {
     return { isLoggedIn: false }
   }
 
-  const admin = createAdminClient()
-
   // Fetch only the two profile columns the navbar uses + unread count in parallel
   const [profileResult, unreadResult] = await Promise.all([
     supabase
@@ -122,7 +120,7 @@ export async function getNavbarData(): Promise<NavbarData> {
       .select("display_name, avatar_url")
       .eq("id", user.id)
       .single(),
-    admin
+    supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)

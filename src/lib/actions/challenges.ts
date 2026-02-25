@@ -15,14 +15,13 @@ export async function getChallenges(): Promise<{
   error?: string
 }> {
   const supabase = await createClient()
-  const admin = createAdminClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   // Fetch all challenges
-  const { data: challenges, error } = await admin
+  const { data: challenges, error } = await supabase
     .from("challenges")
     .select("id, title, description, type, target_value, start_date, end_date, created_at")
     .order("end_date", { ascending: false })
@@ -37,7 +36,7 @@ export async function getChallenges(): Promise<{
 
   // Get participant counts for all challenges in one query
   const challengeIds = challenges.map((c: { id: string }) => c.id)
-  const { data: participants } = await admin
+  const { data: participants } = await supabase
     .from("challenge_participants")
     .select("challenge_id, user_id")
     .in("challenge_id", challengeIds)
@@ -87,7 +86,6 @@ export async function joinChallenge(
   challengeId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  const admin = createAdminClient()
 
   const {
     data: { user },
@@ -97,7 +95,7 @@ export async function joinChallenge(
     return { success: false, error: "Not authenticated" }
   }
 
-  const { error } = await admin.from("challenge_participants").insert({
+  const { error } = await supabase.from("challenge_participants").insert({
     challenge_id: challengeId,
     user_id: user.id,
   })
@@ -121,7 +119,6 @@ export async function leaveChallenge(
   challengeId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-  const admin = createAdminClient()
 
   const {
     data: { user },
@@ -131,7 +128,7 @@ export async function leaveChallenge(
     return { success: false, error: "Not authenticated" }
   }
 
-  const { error } = await admin
+  const { error } = await supabase
     .from("challenge_participants")
     .delete()
     .eq("challenge_id", challengeId)
@@ -158,7 +155,6 @@ export async function getChallengeProgress(
   challengeId: string
 ): Promise<{ progress: number; error?: string }> {
   const supabase = await createClient()
-  const admin = createAdminClient()
 
   const {
     data: { user },
@@ -169,7 +165,7 @@ export async function getChallengeProgress(
   }
 
   // Get the challenge details
-  const { data: challenge, error: challengeError } = await admin
+  const { data: challenge, error: challengeError } = await supabase
     .from("challenges")
     .select("type, start_date, end_date")
     .eq("id", challengeId)
@@ -180,7 +176,7 @@ export async function getChallengeProgress(
   }
 
   // Get user's sessions during the challenge period
-  const { data: sessions, error: sessionsError } = await admin
+  const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
     .select("num_solves, duration_minutes, session_date, event")
     .eq("user_id", user.id)
@@ -232,6 +228,8 @@ export async function getChallengeProgress(
 
 /**
  * Create a new challenge. Admin only (checks ADMIN_USER_ID env var).
+ * Uses admin client because the challenges INSERT RLS policy is too broad
+ * (allows any authenticated user) — we enforce admin-only via server action.
  */
 export async function createChallenge(fields: {
   title: string

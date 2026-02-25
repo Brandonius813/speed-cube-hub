@@ -686,7 +686,8 @@ where `sanitized` strips or escapes `,` and `.` characters from the input.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migrations + 8-10 server action files |
 | **Priority** | MEDIUM — defense-in-depth improvement |

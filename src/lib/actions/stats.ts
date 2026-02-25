@@ -1,6 +1,6 @@
 "use server"
 
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 
 export type GlobalStats = {
   totalUsers: number
@@ -10,10 +10,9 @@ export type GlobalStats = {
 }
 
 export async function getGlobalStats(): Promise<GlobalStats> {
-  // Use admin client until the RPC migration with SECURITY DEFINER is deployed.
-  // Once the SQL in 014_create_global_stats_rpc.sql is run in Supabase,
-  // this can be switched to createClient() from "@/lib/supabase/server".
-  const supabase = createAdminClient()
+  // The get_global_stats RPC uses SECURITY DEFINER + GRANT for anon/authenticated,
+  // so it works with the regular client (no admin bypass needed).
+  const supabase = await createClient()
 
   // Single RPC call — returns all stats computed inside PostgreSQL.
   // No session rows are transferred over the network.

@@ -1,6 +1,6 @@
 "use server"
 
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import type { LeaderboardEntry } from "@/lib/types"
 
 export type LeaderboardCategory =
@@ -24,8 +24,8 @@ const FIND_ME_WINDOW = 25
  * Get user IDs that a given user follows (+ self).
  */
 async function getFriendUserIds(userId: string): Promise<string[]> {
-  const admin = createAdminClient()
-  const { data } = await admin
+  const supabase = await createClient()
+  const { data } = await supabase
     .from("follows")
     .select("following_id")
     .eq("follower_id", userId)
@@ -42,9 +42,9 @@ async function enrichWithProfiles(
   rankOffset: number = 0
 ): Promise<LeaderboardEntry[]> {
   if (rows.length === 0) return []
-  const admin = createAdminClient()
+  const supabase = await createClient()
   const userIds = rows.map((r) => r.user_id)
-  const { data: profiles } = await admin
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("id, display_name, handle, avatar_url")
     .in("id", userIds)
@@ -78,8 +78,8 @@ async function enrichWithProfiles(
 async function computeMostSolves(
   friendIds?: string[]
 ): Promise<RawResult[]> {
-  const admin = createAdminClient()
-  let query = admin.from("sessions").select("user_id, num_solves")
+  const supabase = await createClient()
+  let query = supabase.from("sessions").select("user_id, num_solves")
   if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
   if (!data || data.length === 0) return []
@@ -103,8 +103,8 @@ async function computeMostSolves(
 async function computeLongestStreak(
   friendIds?: string[]
 ): Promise<RawResult[]> {
-  const admin = createAdminClient()
-  let query = admin.from("sessions").select("user_id, session_date")
+  const supabase = await createClient()
+  let query = supabase.from("sessions").select("user_id, session_date")
   if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
   if (!data || data.length === 0) return []
@@ -145,8 +145,8 @@ async function computeLongestStreak(
 async function computeMostPracticeTime(
   friendIds?: string[]
 ): Promise<RawResult[]> {
-  const admin = createAdminClient()
-  let query = admin.from("sessions").select("user_id, duration_minutes")
+  const supabase = await createClient()
+  let query = supabase.from("sessions").select("user_id, duration_minutes")
   if (friendIds) query = query.in("user_id", friendIds)
   const { data } = await query
   if (!data || data.length === 0) return []

@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { getCommentCounts } from "@/lib/actions/comments"
 import type { Club, ClubMember, FeedItem } from "@/lib/types"
@@ -23,9 +22,8 @@ export async function getClubs(query?: string): Promise<{
 }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const admin = createAdminClient()
 
-  let clubQuery = admin
+  let clubQuery = supabase
     .from("clubs")
     .select("id, name, description, avatar_url, created_by, created_at")
     .order("created_at", { ascending: false })
@@ -40,7 +38,7 @@ export async function getClubs(query?: string): Promise<{
   const clubIds = (clubs ?? []).map((c: ClubRow) => c.id)
   if (clubIds.length === 0) return { clubs: [], currentUserId: user?.id }
 
-  const { data: memberRows } = await admin
+  const { data: memberRows } = await supabase
     .from("club_members")
     .select("club_id")
     .in("club_id", clubIds)
@@ -53,7 +51,7 @@ export async function getClubs(query?: string): Promise<{
   const userClubIds = new Set<string>()
   const userRoles = new Map<string, string>()
   if (user) {
-    const { data: memberships } = await admin
+    const { data: memberships } = await supabase
       .from("club_members")
       .select("club_id, role")
       .eq("user_id", user.id)
@@ -86,9 +84,8 @@ export async function getClub(clubId: string): Promise<{
 }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const admin = createAdminClient()
 
-  const { data: club, error } = await admin
+  const { data: club, error } = await supabase
     .from("clubs")
     .select("id, name, description, avatar_url, created_by, created_at")
     .eq("id", clubId)
@@ -96,7 +93,7 @@ export async function getClub(clubId: string): Promise<{
 
   if (error || !club) return { club: null, error: error?.message ?? "Club not found" }
 
-  const { count } = await admin
+  const { count } = await supabase
     .from("club_members")
     .select("*", { count: "exact", head: true })
     .eq("club_id", clubId)
@@ -104,7 +101,7 @@ export async function getClub(clubId: string): Promise<{
   let isMember = false
   let userRole: string | null = null
   if (user) {
-    const { data: membership } = await admin
+    const { data: membership } = await supabase
       .from("club_members")
       .select("role")
       .eq("club_id", clubId)
@@ -132,9 +129,9 @@ export async function getClubMembers(clubId: string): Promise<{
   members: ClubMember[]
   error?: string
 }> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("club_members")
     .select(`
       user_id, role, joined_at,
@@ -166,9 +163,8 @@ export async function getClubFeed(clubId: string): Promise<{
 }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const admin = createAdminClient()
 
-  const { data: memberData } = await admin
+  const { data: memberData } = await supabase
     .from("club_members")
     .select("user_id")
     .eq("club_id", clubId)
@@ -176,7 +172,7 @@ export async function getClubFeed(clubId: string): Promise<{
   const memberIds = (memberData ?? []).map((m: { user_id: string }) => m.user_id)
   if (memberIds.length === 0) return { items: [], currentUserId: user?.id }
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("sessions")
     .select(`id, user_id, session_date, event, practice_type, num_solves, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at, profile:profiles(display_name, handle, avatar_url)`)
     .in("user_id", memberIds)
@@ -208,9 +204,9 @@ export async function getUserClubs(userId: string): Promise<{
   clubs: Club[]
   error?: string
 }> {
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data: memberships, error: memberError } = await admin
+  const { data: memberships, error: memberError } = await supabase
     .from("club_members")
     .select("club_id, role")
     .eq("user_id", userId)
@@ -222,7 +218,7 @@ export async function getUserClubs(userId: string): Promise<{
   const roleMap = new Map<string, string>()
   for (const m of memberships) roleMap.set(m.club_id, m.role)
 
-  const { data: clubs, error: clubError } = await admin
+  const { data: clubs, error: clubError } = await supabase
     .from("clubs")
     .select("id, name, description, avatar_url, created_by, created_at")
     .in("id", clubIds)
@@ -230,7 +226,7 @@ export async function getUserClubs(userId: string): Promise<{
 
   if (clubError) return { clubs: [], error: clubError.message }
 
-  const { data: allMembers } = await admin
+  const { data: allMembers } = await supabase
     .from("club_members")
     .select("club_id")
     .in("club_id", clubIds)

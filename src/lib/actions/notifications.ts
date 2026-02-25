@@ -1,15 +1,12 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import type { Notification } from "@/lib/types"
 
 /**
  * Get the current user's notifications, most recent first.
  * Joins with the actor's profile to show their name/avatar.
- * Uses admin client because SELECT policy requires auth.uid() match,
- * but we verify auth here and use admin for the query to avoid
- * cookie/RLS timing issues in server actions.
+ * RLS policy: SELECT where user_id = auth.uid().
  */
 export async function getNotifications(
   limit: number = 50
@@ -23,8 +20,7 @@ export async function getNotifications(
     return { notifications: [], error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("notifications")
     .select(
       `
@@ -49,8 +45,7 @@ export async function getNotifications(
 
 /**
  * Mark a single notification as read.
- * Uses admin client, but verifies the notification belongs to the
- * current user first.
+ * RLS policy: UPDATE where user_id = auth.uid().
  */
 export async function markAsRead(
   notificationId: string
@@ -64,8 +59,7 @@ export async function markAsRead(
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-  const { error } = await admin
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("id", notificationId)
@@ -94,8 +88,7 @@ export async function markAllAsRead(): Promise<{
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-  const { error } = await admin
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("user_id", user.id)
@@ -125,8 +118,7 @@ export async function getUnreadCount(): Promise<{
     return { count: 0, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-  const { count, error } = await admin
+  const { count, error } = await supabase
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
