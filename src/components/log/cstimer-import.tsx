@@ -92,7 +92,7 @@ export function CsTimerImport() {
       practice_type: "Solves",
       num_solves: s.num_solves,
       num_dnf: s.num_dnf,
-      duration_minutes: Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60)),
+      duration_minutes: Math.min(1440, Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60))),
       avg_time: s.avg_time,
       best_time: s.best_time,
       notes: "csTimer import",
