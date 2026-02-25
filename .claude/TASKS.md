@@ -372,7 +372,7 @@ Built OG image API route at `src/app/api/og/route.tsx` using `@vercel/og` (edge 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration (2 new tables + 1 ALTER) |
 
@@ -394,7 +394,7 @@ Create `timer_sessions` table (id, user_id, event, mode, status, started_at, end
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 npm package + 1 new file |
 
@@ -408,7 +408,7 @@ Install `cubing` package. Create `src/lib/timer/scrambles.ts` wrapping `cubing/s
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T34 ✅ |
 | **Estimated scope** | 1 new file + 1 minor edit |
 
@@ -422,7 +422,7 @@ Create `src/lib/actions/timer.ts` with: `createTimerSession(event, mode)`, `addS
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 new files |
 
@@ -436,7 +436,7 @@ Create `src/lib/timer/inspection.ts`: `useInspection()` React hook with 15-secon
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T34 ✅, T35 ✅, T36 ✅, T37 ✅ |
 | **Estimated scope** | 7 new component files + 1 page + navbar + middleware |
 
@@ -457,7 +457,7 @@ Add Timer link to navbar (`src/components/shared/navbar.tsx`). Add `/timer` to m
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T38 ✅ |
 | **Estimated scope** | 1 new component + updates to timer-content and solve-list |
 
@@ -471,7 +471,7 @@ Add comp sim mode: group solves in sets of 5 in solve-list with group averages, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T38 ✅ |
 | **Estimated scope** | 1 new component + timer-content update |
 
