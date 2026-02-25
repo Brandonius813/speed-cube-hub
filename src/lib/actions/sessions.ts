@@ -5,6 +5,9 @@ import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
+// Explicit column list — avoids select("*") to reduce bandwidth and prevent data leaks.
+const SESSION_COLUMNS = "id, user_id, session_date, event, practice_type, num_solves, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at";
+
 // Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
 // This helper paginates to fetch ALL matching rows.
 const PAGE_SIZE = 1000;
@@ -32,14 +35,15 @@ export async function getSessionsByUserId(
 ): Promise<{ data: Session[]; error?: string }> {
   const supabase = await createClient();
 
-  return fetchAllPages((from, to) =>
-    supabase
-      .from("sessions")
-      .select("*")
-      .eq("user_id", userId)
-      .order("session_date", { ascending: false })
-      .range(from, to)
-  );
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("session_date", { ascending: false })
+    .limit(200);
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data as Session[]) ?? [] };
 }
 
 export async function createSession(data: {
@@ -73,7 +77,7 @@ export async function createSession(data: {
     session_date: data.session_date,
     event: data.event,
     practice_type: data.practice_type,
-    num_solves: data.num_solves,
+    num_solves: data.num_solves ?? 0,
     duration_minutes: data.duration_minutes,
     avg_time: data.avg_time,
     best_time: data.best_time,
@@ -258,7 +262,7 @@ export async function updateSession(
       session_date: data.session_date,
       event: data.event,
       practice_type: data.practice_type,
-      num_solves: data.num_solves,
+      num_solves: data.num_solves ?? 0,
       duration_minutes: data.duration_minutes,
       avg_time: data.avg_time,
       best_time: data.best_time,
@@ -349,102 +353,23 @@ export async function getSessionStats() {
     };
   }
 
-  const { data: sessions } = await fetchAllPages((from, to) =>
-    supabase
+  // Only fetch the two columns needed for stats — NOT select("*")
+  const all: Array<{ session_date: string; duration_minutes: number }> = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
       .from("sessions")
-      .select("*")
+      .select("session_date, duration_minutes")
       .eq("user_id", user.id)
       .order("session_date", { ascending: false })
-      .range(from, to)
-  );
-
-  if (!sessions || sessions.length === 0) {
-    return {
-      sessionsThisWeek: 0,
-      totalMinutes: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      weeklyMinutes: 0,
-      weeklyChange: 0,
-    };
+      .range(from, from + PAGE_SIZE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
 
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const lastWeekStart = new Date(startOfWeek);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-
-  let sessionsThisWeek = 0;
-  let weeklyMinutes = 0;
-  let lastWeekSessions = 0;
-  let totalMinutes = 0;
-
-  for (const session of sessions) {
-    const sessionDate = new Date(session.session_date + "T00:00:00");
-    totalMinutes += session.duration_minutes;
-
-    if (sessionDate >= startOfWeek) {
-      sessionsThisWeek++;
-      weeklyMinutes += session.duration_minutes;
-    } else if (sessionDate >= lastWeekStart && sessionDate < startOfWeek) {
-      lastWeekSessions++;
-    }
-  }
-
-  // Calculate current streak (consecutive days with practice)
-  const uniqueDates = [
-    ...new Set(sessions.map((s: Session) => s.session_date)),
-  ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-  let currentStreak = 0;
-  if (uniqueDates.length > 0) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let checkDate = new Date(today);
-    const latestSession = new Date(uniqueDates[0] + "T00:00:00");
-    if (latestSession < today) {
-      checkDate = latestSession;
-    }
-
-    for (const dateStr of uniqueDates) {
-      const sessionDate = new Date(dateStr + "T00:00:00");
-      if (sessionDate.getTime() === checkDate.getTime()) {
-        currentStreak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (sessionDate < checkDate) {
-        break;
-      }
-    }
-  }
-
-  // Calculate longest streak (all-time)
-  let longestStreak = 0;
-  if (uniqueDates.length > 0) {
-    let streak = 1;
-    for (let i = 1; i < uniqueDates.length; i++) {
-      const prev = new Date(uniqueDates[i - 1] + "T00:00:00");
-      const curr = new Date(uniqueDates[i] + "T00:00:00");
-      const diffDays = (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000);
-      if (diffDays === 1) {
-        streak++;
-      } else {
-        longestStreak = Math.max(longestStreak, streak);
-        streak = 1;
-      }
-    }
-    longestStreak = Math.max(longestStreak, streak);
-  }
-
-  return {
-    sessionsThisWeek,
-    totalMinutes,
-    currentStreak,
-    longestStreak,
-    weeklyMinutes,
-    weeklyChange: sessionsThisWeek - lastWeekSessions,
-  };
+  // Delegate to the shared utility (same logic, no duplication)
+  const { computeSessionStats } = await import("@/lib/utils");
+  return computeSessionStats(all);
 }

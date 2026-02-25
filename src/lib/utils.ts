@@ -96,3 +96,112 @@ export function parseDuration(input: string): number | null {
   if (isNaN(num) || num < 1) return null
   return num
 }
+
+export type SessionStats = {
+  sessionsThisWeek: number
+  totalMinutes: number
+  currentStreak: number
+  longestStreak: number
+  weeklyMinutes: number
+  weeklyChange: number
+}
+
+/**
+ * Compute dashboard stats from a list of sessions.
+ * Only needs session_date and duration_minutes — avoids loading full rows.
+ * Used by page server components to derive stats from already-fetched sessions,
+ * eliminating the previous pattern of fetching all sessions twice.
+ */
+export function computeSessionStats(
+  sessions: Array<{ session_date: string; duration_minutes: number }>
+): SessionStats {
+  if (sessions.length === 0) {
+    return {
+      sessionsThisWeek: 0,
+      totalMinutes: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      weeklyMinutes: 0,
+      weeklyChange: 0,
+    }
+  }
+
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay())
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const lastWeekStart = new Date(startOfWeek)
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+
+  let sessionsThisWeek = 0
+  let weeklyMinutes = 0
+  let lastWeekSessions = 0
+  let totalMinutes = 0
+
+  for (const session of sessions) {
+    const sessionDate = new Date(session.session_date + "T00:00:00")
+    totalMinutes += session.duration_minutes
+
+    if (sessionDate >= startOfWeek) {
+      sessionsThisWeek++
+      weeklyMinutes += session.duration_minutes
+    } else if (sessionDate >= lastWeekStart && sessionDate < startOfWeek) {
+      lastWeekSessions++
+    }
+  }
+
+  // Calculate streaks from unique dates
+  const uniqueDates = [
+    ...new Set(sessions.map((s) => s.session_date)),
+  ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+
+  let currentStreak = 0
+  if (uniqueDates.length > 0) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    let checkDate = new Date(today)
+    const latestSession = new Date(uniqueDates[0] + "T00:00:00")
+    if (latestSession < today) {
+      checkDate = latestSession
+    }
+
+    for (const dateStr of uniqueDates) {
+      const sessionDate = new Date(dateStr + "T00:00:00")
+      if (sessionDate.getTime() === checkDate.getTime()) {
+        currentStreak++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else if (sessionDate < checkDate) {
+        break
+      }
+    }
+  }
+
+  let longestStreak = 0
+  if (uniqueDates.length > 0) {
+    let streak = 1
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prev = new Date(uniqueDates[i - 1] + "T00:00:00")
+      const curr = new Date(uniqueDates[i] + "T00:00:00")
+      const diffDays =
+        (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000)
+      if (diffDays === 1) {
+        streak++
+      } else {
+        longestStreak = Math.max(longestStreak, streak)
+        streak = 1
+      }
+    }
+    longestStreak = Math.max(longestStreak, streak)
+  }
+
+  return {
+    sessionsThisWeek,
+    totalMinutes,
+    currentStreak,
+    longestStreak,
+    weeklyMinutes,
+    weeklyChange: sessionsThisWeek - lastWeekSessions,
+  }
+}

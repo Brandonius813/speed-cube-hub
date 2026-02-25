@@ -162,10 +162,10 @@ export async function checkGoalProgress(): Promise<void> {
 
   if (!user) return
 
-  // Fetch active goals
+  // Fetch active goals (only need id, event, target_avg, target_date)
   const { data: goals } = await supabase
     .from("goals")
-    .select("*")
+    .select("id, event, target_avg, target_date, status")
     .eq("user_id", user.id)
     .eq("status", "active")
 
@@ -173,41 +173,69 @@ export async function checkGoalProgress(): Promise<void> {
 
   const today = new Date().toISOString().split("T")[0]
 
+  // Separate expired goals (batch update) from active goals (need session check)
+  const expiredIds: string[] = []
+  const activeGoals: typeof goals = []
   for (const goal of goals) {
-    // Check if expired (target date has passed)
     if (goal.target_date < today) {
-      await supabase
-        .from("goals")
-        .update({ status: "expired" })
-        .eq("id", goal.id)
-      continue
+      expiredIds.push(goal.id)
+    } else {
+      activeGoals.push(goal)
     }
+  }
 
-    // Get recent sessions for this event (last 12 sessions with avg_time)
-    const { data: sessions } = await supabase
-      .from("sessions")
-      .select("avg_time")
-      .eq("user_id", user.id)
-      .eq("event", goal.event)
-      .not("avg_time", "is", null)
-      .order("session_date", { ascending: false })
-      .limit(12)
+  // Batch-expire all past-due goals in one query
+  if (expiredIds.length > 0) {
+    await supabase
+      .from("goals")
+      .update({ status: "expired" })
+      .in("id", expiredIds)
+  }
 
-    if (!sessions || sessions.length < 3) continue
+  if (activeGoals.length === 0) {
+    safeRevalidate("/practice-stats")
+    return
+  }
 
-    // Calculate rolling average of the last 5 sessions (or fewer if not enough)
-    const recentSessions = sessions.slice(0, Math.min(5, sessions.length))
-    const recentAvg =
-      recentSessions.reduce((sum: number, s: { avg_time: number }) => sum + s.avg_time, 0) /
-      recentSessions.length
+  // Fetch recent sessions for ALL goal events in a single query
+  const goalEvents = [...new Set(activeGoals.map((g) => g.event))]
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("event, avg_time, session_date")
+    .eq("user_id", user.id)
+    .in("event", goalEvents)
+    .not("avg_time", "is", null)
+    .order("session_date", { ascending: false })
 
-    // If recent average is at or below target, mark as achieved
+  // Group sessions by event, keeping only last 5 per event
+  const sessionsByEvent = new Map<string, number[]>()
+  for (const s of sessions ?? []) {
+    const existing = sessionsByEvent.get(s.event)
+    if (!existing) {
+      sessionsByEvent.set(s.event, [s.avg_time])
+    } else if (existing.length < 5) {
+      existing.push(s.avg_time)
+    }
+  }
+
+  // Check each active goal against pre-loaded sessions
+  const achievedIds: string[] = []
+  for (const goal of activeGoals) {
+    const eventTimes = sessionsByEvent.get(goal.event)
+    if (!eventTimes || eventTimes.length < 3) continue
+
+    const recentAvg = eventTimes.reduce((sum, t) => sum + t, 0) / eventTimes.length
     if (recentAvg <= goal.target_avg) {
-      await supabase
-        .from("goals")
-        .update({ status: "achieved", achieved_at: new Date().toISOString() })
-        .eq("id", goal.id)
+      achievedIds.push(goal.id)
     }
+  }
+
+  // Batch-achieve all goals that met their target
+  if (achievedIds.length > 0) {
+    await supabase
+      .from("goals")
+      .update({ status: "achieved", achieved_at: new Date().toISOString() })
+      .in("id", achievedIds)
   }
 
   safeRevalidate("/practice-stats")

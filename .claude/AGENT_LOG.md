@@ -55,3 +55,16 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** `.next/lock` conflicts are common when parallel agents build simultaneously — only one `npm run build` can run at a time. TypeScript type-checking (`npx tsc --noEmit`) is a good alternative to verify changes compile when the build is locked. Pre-existing TS errors in allrounding-results.tsx and sor-kinch.ts are from another agent's in-progress work.
 **Blockers:** None
 **Warnings:** All security Wave A tasks (T41-T45) complete. T46 (RLS policies) is the largest remaining task and requires SQL migrations. Performance tasks T48-T51 are all available with no deps.
+
+---
+
+### 2026-02-25 15:00 PT — T44 + T48 Session
+
+**Task:** T44 (Zod Validation) and T48 (Landing Page Stats RPC)
+**Status:** Completed both tasks:
+- T44: Created `src/lib/validations.ts` with Zod schemas derived from WCA_EVENTS/PRACTICE_TYPES constants. Wired validation into createSession, createSessionsBulk, updateSession, logNewPB, bulkImportPBs. Added 500-entry cap to bulkImportPBs. A parallel session enhanced with zodFirstError(), updatePBSchema, date-not-in-future refinement.
+- T48: Created `supabase/migrations/014_create_global_stats_rpc.sql` with SECURITY DEFINER + GRANT for anon/authenticated. Updated `src/lib/actions/stats.ts` to single RPC call — no session rows transferred. User needs to run the SQL in Supabase SQL Editor.
+**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, supabase/migrations/014_create_global_stats_rpc.sql (created), src/lib/actions/stats.ts, .claude/TASKS.md
+**Learnings:** `.next/lock` contention is common with parallel agents — use `npx tsc --noEmit` as build alternative. T41 and T45 were already fixed in code but unmarked in TASKS.md — always check git log before starting a task.
+**Blockers:** None
+**Warnings:** T48 RPC won't work until user runs the SQL in Supabase dashboard. Remaining available tasks: T46 (RLS — largest), T47 (depends on T46), T50 (Dashboard Dedup), T51 (select("*") cleanup).
