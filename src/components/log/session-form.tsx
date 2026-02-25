@@ -67,6 +67,8 @@ export function SessionForm() {
     const sessionDate = formData.get("date") as string;
     const solvesRaw = (formData.get("solves") as string)?.trim();
     const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : null;
+    const dnfRaw = (formData.get("dnfs") as string)?.trim();
+    const numDnf = dnfRaw ? parseInt(dnfRaw, 10) : null;
     const durationMinutes = parseDuration(formData.get("time") as string);
     const avgTimeStr = (formData.get("avg") as string)?.trim();
     const bestTimeStr = (formData.get("best") as string)?.trim();
@@ -100,6 +102,7 @@ export function SessionForm() {
       event,
       practice_type: finalPracticeType,
       num_solves: numSolves,
+      num_dnf: numDnf,
       duration_minutes: durationMinutes,
       avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
       best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
@@ -208,6 +211,25 @@ export function SessionForm() {
                 className="min-h-11 border-border bg-secondary/50 text-foreground"
               />
             </div>
+
+            {solveBased && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="dnfs" className="text-foreground">
+                  DNFs
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="dnfs"
+                  name="dnfs"
+                  type="number"
+                  placeholder="0"
+                  min={0}
+                  className="min-h-11 border-border bg-secondary/50 text-foreground"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="time" className="text-foreground">

@@ -49,6 +49,7 @@ export async function createSession(data: {
   event: string;
   practice_type: string;
   num_solves: number | null;
+  num_dnf: number | null;
   duration_minutes: number;
   avg_time: number | null;
   best_time: number | null;
@@ -76,6 +77,7 @@ export async function createSession(data: {
     event: data.event,
     practice_type: data.practice_type,
     num_solves: data.num_solves ?? 0,
+    num_dnf: data.num_dnf ?? 0,
     duration_minutes: data.duration_minutes,
     avg_time: data.avg_time,
     best_time: data.best_time,
@@ -144,6 +146,7 @@ export async function createSessionsBulk(
     event: string;
     practice_type: string;
     num_solves: number | null;
+    num_dnf: number | null;
     duration_minutes: number;
     avg_time: number | null;
     best_time: number | null;
@@ -203,6 +206,7 @@ export async function createSessionsBulk(
       event: s.event,
       practice_type: s.practice_type,
       num_solves: s.num_solves,
+      num_dnf: s.num_dnf ?? 0,
       duration_minutes: s.duration_minutes,
       avg_time: s.avg_time,
       best_time: s.best_time,
@@ -232,6 +236,7 @@ export async function updateSession(
     event: string;
     practice_type: string;
     num_solves: number | null;
+    num_dnf: number | null;
     duration_minutes: number;
     avg_time: number | null;
     best_time: number | null;
@@ -261,6 +266,7 @@ export async function updateSession(
       event: data.event,
       practice_type: data.practice_type,
       num_solves: data.num_solves ?? 0,
+      num_dnf: data.num_dnf ?? 0,
       duration_minutes: data.duration_minutes,
       avg_time: data.avg_time,
       best_time: data.best_time,

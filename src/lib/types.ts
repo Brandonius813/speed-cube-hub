@@ -43,6 +43,7 @@ export type Session = {
   event: string;
   practice_type: string;
   num_solves: number | null;
+  num_dnf: number | null;
   duration_minutes: number;
   avg_time: number | null;
   best_time: number | null;

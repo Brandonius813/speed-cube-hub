@@ -243,6 +243,7 @@ export async function finalizeTimerSession(
   })
 
   const numSolves = solves.length
+  const numDnf = solves.filter((s: Solve) => s.penalty === "DNF").length
   const bestTimeMs =
     effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
   const avgTimeMs =
@@ -278,6 +279,7 @@ export async function finalizeTimerSession(
       event: timerSession.event,
       practice_type: practiceType,
       num_solves: numSolves,
+      num_dnf: numDnf,
       duration_minutes: durationMinutes,
       avg_time: avgTimeSeconds,
       best_time: bestTimeSeconds,

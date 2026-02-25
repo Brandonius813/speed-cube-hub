@@ -89,10 +89,11 @@ export function CubeTimeImport() {
       event,
       practice_type: "Solves",
       num_solves: s.num_solves,
+      num_dnf: s.num_dnf,
       duration_minutes: Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60)),
       avg_time: s.avg_time,
       best_time: s.best_time,
-      notes: s.num_dnf > 0 ? `${s.num_dnf} DNF${s.num_dnf !== 1 ? "s" : ""} (CubeTime import)` : "CubeTime import",
+      notes: "CubeTime import",
     }));
 
     const result = await createSessionsBulk(rows, { source: "CubeTime" });

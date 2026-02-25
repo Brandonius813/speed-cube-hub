@@ -73,6 +73,7 @@ export function CsvImport() {
       event: r.parsed.event!,
       practice_type: r.parsed.practice_type!,
       num_solves: r.parsed.num_solves!,
+      num_dnf: null as number | null,
       duration_minutes: r.parsed.duration_minutes!,
       avg_time: r.parsed.avg_time,
       best_time: r.parsed.best_time,

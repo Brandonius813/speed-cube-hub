@@ -114,6 +114,8 @@ export function EditSessionModal({
     const sessionDate = formData.get("date") as string
     const solvesRaw = (formData.get("solves") as string)?.trim()
     const numSolves = solvesRaw ? parseInt(solvesRaw, 10) : null
+    const dnfRaw = (formData.get("dnfs") as string)?.trim()
+    const numDnf = dnfRaw ? parseInt(dnfRaw, 10) : null
     const durationMinutes = parseDuration(formData.get("time") as string)
     const avgTimeStr = (formData.get("avg") as string)?.trim()
     const bestTimeStr = (formData.get("best") as string)?.trim()
@@ -138,6 +140,7 @@ export function EditSessionModal({
       event,
       practice_type: finalPracticeType,
       num_solves: numSolves,
+      num_dnf: numDnf,
       duration_minutes: durationMinutes,
       avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
       best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
@@ -249,6 +252,23 @@ export function EditSessionModal({
                 name="solves"
                 type="number"
                 defaultValue={session.num_solves ?? ""}
+                min={0}
+                className="min-h-11 border-border bg-secondary/50"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-dnfs">
+                DNFs
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                id="edit-dnfs"
+                name="dnfs"
+                type="number"
+                defaultValue={session.num_dnf ?? ""}
                 min={0}
                 className="min-h-11 border-border bg-secondary/50"
               />

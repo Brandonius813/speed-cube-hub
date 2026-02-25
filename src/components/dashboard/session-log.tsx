@@ -178,6 +178,9 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                       {session.num_solves !== null && session.num_solves > 0 && (
                         <span>{session.num_solves} solves</span>
                       )}
+                      {session.num_dnf != null && session.num_dnf > 0 && (
+                        <span className="text-amber-500">{session.num_dnf} DNF{session.num_dnf !== 1 ? "s" : ""}</span>
+                      )}
                       <span>{formatDuration(session.duration_minutes)}</span>
                     </div>
                   </div>
@@ -240,6 +243,9 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     Solves
                   </th>
                   <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
+                    DNFs
+                  </th>
+                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
                     Duration
                   </th>
                   <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
@@ -284,6 +290,13 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     </td>
                     <td className="py-3 text-right font-mono text-sm text-foreground">
                       {session.num_solves ?? "—"}
+                    </td>
+                    <td className="py-3 text-right font-mono text-sm">
+                      {session.num_dnf != null && session.num_dnf > 0 ? (
+                        <span className="text-amber-500">{session.num_dnf}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="py-3 text-right font-mono text-sm text-foreground">
                       {formatDuration(session.duration_minutes)}
