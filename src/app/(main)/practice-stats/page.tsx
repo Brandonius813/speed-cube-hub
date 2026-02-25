@@ -1,15 +1,8 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
-import { getSessions, getSessionStats } from "@/lib/actions/sessions"
+import { getSessions } from "@/lib/actions/sessions"
 import { getGoals, checkGoalProgress } from "@/lib/actions/goals"
-
-const defaultStats = {
-  sessionsThisWeek: 0,
-  totalMinutes: 0,
-  currentStreak: 0,
-  longestStreak: 0,
-  weeklyMinutes: 0,
-  weeklyChange: 0,
-}
+import { computeSessionStats } from "@/lib/utils"
+import type { Session } from "@/lib/types"
 
 export default async function DashboardPage() {
   // Check for expired/achieved goals (non-blocking — don't let this crash the page)
@@ -19,22 +12,22 @@ export default async function DashboardPage() {
     console.error("[Dashboard] checkGoalProgress failed:", err)
   }
 
-  let sessions: Awaited<ReturnType<typeof getSessions>>["data"] = []
-  let stats = defaultStats
+  let sessions: Session[] = []
   let goals: Awaited<ReturnType<typeof getGoals>>["data"] = []
 
   try {
-    const [sessionsResult, statsResult, goalsResult] = await Promise.all([
+    const [sessionsResult, goalsResult] = await Promise.all([
       getSessions(),
-      getSessionStats(),
       getGoals(),
     ])
     sessions = sessionsResult.data
-    stats = statsResult
     goals = goalsResult.data
   } catch (err) {
     console.error("[Dashboard] Data fetch failed:", err)
   }
+
+  // Compute stats from already-loaded sessions (no second DB fetch)
+  const stats = computeSessionStats(sessions)
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
