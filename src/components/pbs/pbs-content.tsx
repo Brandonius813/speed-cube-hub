@@ -71,11 +71,14 @@ export function PBsContent({
     return allTypes.filter((t) => visibleTypes.includes(t))
   }
 
-  // Group PBs by event
+  // Group PBs by event — keep only the fastest per event+type
   const pbsByEvent: Record<string, Record<string, PBRecord>> = {}
   for (const pb of pbs) {
     if (!pbsByEvent[pb.event]) pbsByEvent[pb.event] = {}
-    pbsByEvent[pb.event][pb.pb_type] = pb
+    const existing = pbsByEvent[pb.event][pb.pb_type]
+    if (!existing || pb.time_seconds < existing.time_seconds) {
+      pbsByEvent[pb.event][pb.pb_type] = pb
+    }
   }
 
   // Sort events by WCA order
