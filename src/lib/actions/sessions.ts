@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { checkAndAwardMilestones } from "@/lib/actions/badges";
+import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
 // Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
@@ -60,6 +61,11 @@ export async function createSession(data: {
 
   if (!user) {
     return { error: "You must be logged in to log a session." };
+  }
+
+  const parsed = createSessionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
   const { error } = await supabase.from("sessions").insert({
@@ -161,6 +167,17 @@ export async function createSessionsBulk(
     return { inserted: 0, error: "Maximum 500 sessions per import." };
   }
 
+  // Validate every row
+  for (let i = 0; i < sessions.length; i++) {
+    const parsed = bulkSessionItemSchema.safeParse(sessions[i]);
+    if (!parsed.success) {
+      return {
+        inserted: 0,
+        error: `Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid input"}`,
+      };
+    }
+  }
+
   const source = options?.source;
   const hideFromFeed = !!source && sessions.length > 1;
 
@@ -228,6 +245,11 @@ export async function updateSession(
 
   if (!user) {
     return { error: "You must be logged in to edit a session." };
+  }
+
+  const parsed = createSessionSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
   const { error } = await supabase

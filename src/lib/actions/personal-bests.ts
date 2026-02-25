@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { logPBSchema, bulkPBItemSchema } from "@/lib/validations"
 import type { PBRecord } from "@/lib/types"
 
 function mapPBRow(pb: Record<string, unknown>): PBRecord {
@@ -75,17 +76,9 @@ export async function logNewPB(fields: {
     return { success: false, error: "Not authenticated" }
   }
 
-  if (!fields.event) {
-    return { success: false, error: "Event is required." }
-  }
-  if (!fields.pb_type) {
-    return { success: false, error: "PB type is required." }
-  }
-  if (!fields.time_seconds || fields.time_seconds <= 0) {
-    return { success: false, error: "Time must be a positive number." }
-  }
-  if (!fields.date_achieved) {
-    return { success: false, error: "Date is required." }
+  const parsed = logPBSchema.safeParse(fields)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
   }
 
   const isMBLD = fields.event === "333mbf"
@@ -96,9 +89,6 @@ export async function logNewPB(fields: {
     }
     if (fields.mbld_solved > fields.mbld_attempted) {
       return { success: false, error: "Solved cannot be greater than attempted." }
-    }
-    if (fields.mbld_solved < 1 || fields.mbld_attempted < 2) {
-      return { success: false, error: "Must attempt at least 2 cubes with at least 1 solved." }
     }
   }
 
@@ -181,13 +171,17 @@ export async function bulkImportPBs(
     return { success: false, imported: 0, error: "No entries to import." }
   }
 
-  // Validate all entries first
+  if (entries.length > 500) {
+    return { success: false, imported: 0, error: "Maximum 500 PBs per import." }
+  }
+
+  // Validate all entries with Zod + MBLD cross-field checks
   for (let i = 0; i < entries.length; i++) {
+    const parsed = bulkPBItemSchema.safeParse(entries[i])
+    if (!parsed.success) {
+      return { success: false, imported: 0, error: `Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid input"}` }
+    }
     const e = entries[i]
-    if (!e.event) return { success: false, imported: 0, error: `Row ${i + 1}: Event is required.` }
-    if (!e.pb_type) return { success: false, imported: 0, error: `Row ${i + 1}: PB type is required.` }
-    if (!e.time_seconds || e.time_seconds <= 0) return { success: false, imported: 0, error: `Row ${i + 1}: Time must be positive.` }
-    if (!e.date_achieved) return { success: false, imported: 0, error: `Row ${i + 1}: Date is required.` }
     if (e.event === "333mbf") {
       if (!e.mbld_solved || !e.mbld_attempted) return { success: false, imported: 0, error: `Row ${i + 1}: Multi-BLD requires solved/attempted.` }
       if (e.mbld_solved > e.mbld_attempted) return { success: false, imported: 0, error: `Row ${i + 1}: Solved cannot exceed attempted.` }
