@@ -100,6 +100,7 @@ Each page uses a two-file pattern:
 - `src/components/leaderboards/region-filter.tsx` — Reusable region filter dropdown (world/continent/country)
 - `src/lib/actions/feedback.ts` — Feedback submission (submitFeedback — saves to feedback table, requires auth)
 - `src/components/shared/feedback-modal.tsx` — Feedback modal (category picker + message, shown in footer)
+- `src/components/shared/notification-popup.tsx` — Notification popup dropdown (replaces bell link in navbar, shows recent notifications)
 - `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
 - `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
 - `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)

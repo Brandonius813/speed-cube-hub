@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell, Box, LogOut, LayoutDashboard, Medal, Rss, Search, Shield, Timer, Trophy, User } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { Box, LogOut, LayoutDashboard, Medal, Rss, Search, Shield, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getNavbarData } from "@/lib/actions/auth"
+import { NotificationPopup } from "@/components/shared/notification-popup"
 
 function getInitials(name: string): string {
   return name
@@ -18,6 +21,7 @@ function getInitials(name: string): string {
 }
 
 export function Navbar() {
+  const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -25,6 +29,30 @@ export function Navbar() {
     avatar_url: string | null
     display_name: string
   } | null>(null)
+
+  // Returns true if the current path matches the link's href
+  function isActive(href: string): boolean {
+    if (href === "/") return pathname === "/"
+    return pathname === href || pathname.startsWith(href + "/")
+  }
+
+  // Desktop text nav link classes
+  function navLinkClass(href: string) {
+    return cn(
+      "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
+      isActive(href)
+        ? "text-foreground"
+        : "text-muted-foreground hover:text-foreground"
+    )
+  }
+
+  // Mobile icon classes (brighter when active)
+  function navIconClass(href: string) {
+    return cn(
+      "h-4 w-4",
+      isActive(href) ? "text-foreground" : ""
+    )
+  }
 
   useEffect(() => {
     const supabase = getSupabaseClient()
@@ -89,81 +117,52 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
-            <Link
-              href="/timer"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Timer"
-            >
-              <Timer className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Timer</span>
+            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
+              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
             </Link>
-            <Link
-              href="/feed"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Feed"
-            >
-              <Rss className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Feed</span>
+            <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
+              <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
             </Link>
-            <Link
-              href="/discover"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Discover"
-            >
-              <Search className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Discover</span>
+            <Link href="/discover" className={navLinkClass("/discover")} aria-label="Discover">
+              <Search className={cn(navIconClass("/discover"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
             </Link>
-            <Link
-              href="/leaderboards"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Leaderboards"
-            >
-              <Trophy className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Leaderboards</span>
+            <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
+              <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
-            <Link
-              href="/pbs"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Personal Bests"
-            >
-              <Medal className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">PBs</span>
+            <Link href="/pbs" className={navLinkClass("/pbs")} aria-label="Personal Bests">
+              <Medal className={cn(navIconClass("/pbs"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
             </Link>
-            <Link
-              href="/practice-stats"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Practice Stats"
-            >
-              <LayoutDashboard className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Practice Stats</span>
+            <Link href="/practice-stats" className={navLinkClass("/practice-stats")} aria-label="Practice Stats">
+              <LayoutDashboard className={cn(navIconClass("/practice-stats"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
             </Link>
             {isAdmin && (
               <Link
                 href="/admin/badges"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-yellow-400 transition-colors hover:text-yellow-300 sm:min-h-0 sm:min-w-0"
+                className={cn(
+                  "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
+                  isActive("/admin") ? "text-yellow-300" : "text-yellow-400 hover:text-yellow-300"
+                )}
                 aria-label="Admin"
               >
                 <Shield className="h-4 w-4" />
               </Link>
             )}
-            <Link
-              href="/notifications"
-              className="relative flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white sm:-right-1.5 sm:-top-1">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </Link>
+            <NotificationPopup
+              unreadCount={unreadCount}
+              onUnreadCountChange={setUnreadCount}
+            />
             <Link
               href="/profile"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors hover:opacity-80 sm:min-h-0 sm:min-w-0"
               aria-label="Profile"
             >
-              <Avatar className="h-7 w-7 border border-border">
+              <Avatar className={cn("h-7 w-7 border", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
                 {userProfile?.avatar_url && (
                   <AvatarImage
                     src={userProfile.avatar_url}
@@ -200,13 +199,9 @@ export function Navbar() {
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/leaderboards"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground sm:min-h-0 sm:min-w-0"
-              aria-label="Leaderboards"
-            >
-              <Trophy className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-sm sm:inline">Leaderboards</span>
+            <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
+              <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
+              <span className={cn("hidden text-sm sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
             <Link href="/login">
               <Button

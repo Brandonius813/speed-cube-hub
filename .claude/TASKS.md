@@ -864,7 +864,7 @@ T51 (select("*") cleanup)    — no deps
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files (1 modify, 1 create) |
 | **Priority** | HIGH |
@@ -1021,7 +1021,7 @@ Complete overhaul of the practice stats page layout, filters, and visualizations
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file, 2-line change |
 | **Priority** | LOW |
