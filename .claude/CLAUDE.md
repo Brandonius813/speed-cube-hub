@@ -101,6 +101,11 @@ Each page uses a two-file pattern:
 - `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
 - `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
 - `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)
+- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession)
+- `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
+- `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
+- `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 
@@ -126,6 +131,7 @@ Each page uses a two-file pattern:
 ## Data Conventions
 
 - **Database stores times as decimal seconds** (e.g., `10.32`). Display with a `formatTime()` utility.
+- **Timer solves store times as integer milliseconds** (e.g., `10320` = 10.32s) in the `solves` table. Convert to decimal seconds when syncing to `sessions.avg_time`.
 - **Timezone:** Pacific Time (`America/Los_Angeles`), hardcoded in date helpers.
 
 ## Environment Variables
@@ -156,6 +162,7 @@ See `.env.local.example` for required variables:
 /profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
 /profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
+/timer               → Built-in cubing timer [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
@@ -198,3 +205,21 @@ The shared agent log is at `.claude/AGENT_LOG.md`. This is an append-only log wh
 ## Feature Status
 
 Features will be tracked in the PRD with checkmarks. Refer to it for current progress.
+
+## Known Security & Performance Issues (Phase 9)
+
+A full audit was completed 2026-02-25. Tasks T41–T51 in `.claude/TASKS.md` track all fixes. Key patterns to be aware of:
+
+### Security
+- **No middleware exists** — route protection and session refresh are missing (T42)
+- **`createAdminClient()` is overused** — many read queries bypass RLS unnecessarily. Use regular `createClient()` wherever possible (T46)
+- **`createNotification` and `checkAndAwardMilestones` are publicly callable** — need to be made internal (T43)
+- **No input validation** on session/PB creation — add Zod schemas (T44)
+- **Open redirect** in Google OAuth callback — validate `next` param (T41)
+
+### Performance
+- **Leaderboards and landing page stats do full-table scans** — must use DB-level aggregation (T47, T48)
+- **Navbar fires 4-8 server calls per page navigation** — consolidate to 1 call (T49)
+- **Dashboard loads all sessions twice with `select("*")`** — deduplicate and add limits (T50)
+- **`select("*")` is used everywhere** — replace with explicit column lists (T51)
+- **N+1 patterns** in challenge progress and goal checking — batch queries (T50)

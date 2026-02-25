@@ -130,6 +130,19 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
 - [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
 
+### Security & Performance Hardening (Phase 9)
+- [ ] Fix open redirect in Google OAuth callback (T41)
+- [ ] Add middleware for route protection + session refresh (T42)
+- [ ] Make createNotification/checkAndAwardMilestones internal helpers (T43)
+- [ ] Add Zod input validation to session/PB server actions (T44)
+- [ ] Sanitize PostgREST search filter in searchProfiles (T45)
+- [ ] Reduce admin client overuse — fix RLS policies (T46)
+- [ ] Fix leaderboards — move aggregation to database (T47)
+- [ ] Fix landing page stats — use database aggregation (T48)
+- [ ] Fix navbar — reduce server calls from 8 to 1 (T49)
+- [ ] Fix dashboard — deduplicate session fetches + add limits (T50)
+- [ ] Replace select("*") with explicit column lists (T51)
+
 ### Coaching Platform (Future)
 - Coach role with student management
 - Assign homework (e.g., "do 100 solves of 3x3 this week" or "practice F2L for 30 min daily")
@@ -137,13 +150,40 @@ Each practice session captures (based on the proven model from brandontruecubing
 - Coaching notes per student (stored after each session/call)
 - Potential integration with cubing.gg's existing coaching workflows
 
-### Built-In Timer (Future)
-- Competition simulation mode and normal mode
-- Cloud save with easy sync
-- Stats sync directly to the practice tracker
-- Clean mobile controls
-- Bluetooth timer integration (e.g., GAN timers, StackMat)
-- Trainers and drills (like csTimer's extras), easy to pull up
+### Built-In Timer — V1 (In Progress)
+
+Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csTimer, deeply integrated with Speed Cube Hub profiles.
+
+**V1 Features:**
+- Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
+- NxN scrambles (2x2–7x7) via `cubing` library (random-state 2x2–4x4, random-move 5x5–7x7)
+- Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
+- Running averages: Ao5, Ao12, Mo100, BPA, WPA, best single, best Ao5, session mean
+- WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
+- Competition simulation mode: solves grouped in Ao5 sets (trimmed mean)
+- Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
+- Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop
+- Event selector for all 17 WCA events
+
+**Future Timer Features (not in V1):**
+- GAN Timer / Rubik's Timer Bluetooth support
+- Smart cube support (Moyu, GAN) with auto-breakdown
+- StackMat support on Mac
+- Typed time input (enter times like a stackmat display)
+- Scramble visualization / draw scramble overlay
+- Reconstructions tied to scramble/solve (like cube.db)
+- Streamer view (clean OBS-friendly layout with stats + scramble + timer)
+- 1-click share a PB or great session (screenshot + post to feed)
+- Share great sessions as visual cards (Spotify Wrapped style)
+- Light mode, dark mode, custom color schemes
+- Verbal inspection warnings
+- Settings search
+- Dope keyboard shortcuts (customizable)
+- Session break/resume within a session
+- Toggle between today's session vs all-time view (like csTimer)
+- Stats/draw scramble overlays (like csTimer panels)
+
+**NOT planned:** Native alg training in the timer (other tools do this better; will revisit long-term)
 
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
@@ -353,6 +393,37 @@ Each practice session captures (based on the proven model from brandontruecubing
 | name | text | Country name |
 | continent_id | text | WCA continent code |
 
+**timer_sessions** — Timer session (one sitting at the timer for one event)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| user_id | uuid (FK) | References profiles(id), CASCADE |
+| event | text | WCA event code |
+| mode | text | 'normal' or 'comp_sim', default 'normal' |
+| status | text | 'active' or 'completed', default 'active' |
+| started_at | timestamptz | When user opened the timer |
+| ended_at | timestamptz | When session ended (null while active) |
+| session_id | uuid (FK) | Links to auto-created sessions row (null until finalized) |
+| created_at | timestamptz | Auto |
+
+**solves** — Individual timed solves within a timer session
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Generated |
+| timer_session_id | uuid (FK) | References timer_sessions(id), CASCADE |
+| user_id | uuid (FK) | References profiles(id), CASCADE (denormalized for RLS) |
+| solve_number | integer | 1-based position in session |
+| time_ms | integer | Raw time in milliseconds (before penalty) |
+| penalty | text | null, '+2', or 'DNF' |
+| scramble | text | Scramble notation string |
+| event | text | Denormalized from timer_session for query speed |
+| comp_sim_group | integer | null in normal mode; group number in comp sim |
+| notes | text | Optional per-solve notes |
+| solved_at | timestamptz | Exact time this solve happened |
+| created_at | timestamptz | Auto |
+
+**sessions** table alteration: Added nullable `timer_session_id` FK to `timer_sessions(id)` — links auto-created session summaries back to their timer session source.
+
 ## Routes
 
 ```
@@ -363,6 +434,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 /profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /profile/[handle]    → Public profile for any user [public]
 /log                 → Log a practice session (form) [protected]
+/timer               → Built-in cubing timer [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
