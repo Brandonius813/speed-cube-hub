@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Square } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TimerDisplay } from "@/components/timer/timer-display"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import { SolveList } from "@/components/timer/solve-list"
 import { StatsPanel } from "@/components/timer/stats-panel"
 import { EventSelector, TimerSettings } from "@/components/timer/timer-settings"
+import { TimeInput } from "@/components/timer/time-input"
+import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
 import { generateScramble, preGenerateScramble } from "@/lib/timer/scrambles"
@@ -42,10 +45,11 @@ export function TimerContent() {
   // Settings
   const [inspectionEnabled, setInspectionEnabled] = useState(false)
   const [showTimeWhileSolving, setShowTimeWhileSolving] = useState(true)
+  const [inputMode, setInputMode] = useState<InputMode>("timer")
+  const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
-  const [showSidebar, setShowSidebar] = useState(true)
   const [lastTime, setLastTime] = useState<number | null>(null)
 
   // Inspection hook
@@ -183,6 +187,40 @@ export function TimerContent() {
     [solves.length, event, mode, timerSessionId, currentScramble]
   )
 
+  // Handle a typed time submission
+  const handleTypedTime = useCallback(
+    async (timeMs: number) => {
+      setLastTime(timeMs)
+
+      try {
+        const sessionId = await ensureTimerSession()
+        const solveNumber = solves.length + 1
+        const compSimGroup =
+          mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
+
+        const result = await addSolve(sessionId, {
+          solve_number: solveNumber,
+          time_ms: timeMs,
+          penalty: null,
+          scramble: currentScramble ?? "",
+          event,
+          comp_sim_group: compSimGroup,
+        })
+
+        if (result.data) {
+          setSolves((prev) => [...prev, result.data!])
+        }
+      } catch (err) {
+        console.error("Failed to save solve:", err)
+      }
+
+      // Load next scramble
+      loadScramble(event as WcaEventId)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [solves.length, event, mode, timerSessionId, currentScramble]
+  )
+
   const handlePenaltyChange = async (
     solveId: string,
     penalty: "+2" | "DNF" | null
@@ -273,6 +311,73 @@ export function TimerContent() {
     // We need to tell it inspection is done so it can start
   }
 
+  // Sidebar panel (shared between all positions)
+  const sidebarPanel = sidebarPosition !== "hidden" && (
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden",
+        sidebarPosition === "bottom"
+          ? "border-t border-border/50 max-h-[40vh]"
+          : sidebarPosition === "left"
+            ? "border-r border-border/50"
+            : "border-l border-border/50"
+      )}
+    >
+      <StatsPanel
+        stats={stats}
+        mode={mode}
+        currentCompSimProgress={
+          mode === "comp_sim" ? currentCompSimProgress : undefined
+        }
+      />
+      <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
+        <SolveList
+          solves={solves}
+          onPenaltyChange={handlePenaltyChange}
+          onDelete={handleDeleteSolve}
+          mode={mode}
+        />
+      </div>
+    </div>
+  )
+
+  // Timer or typing input area
+  const timerArea = (
+    <div className="flex flex-col flex-1 min-h-0">
+      <ScrambleDisplay
+        scramble={currentScramble}
+        isLoading={isLoadingScramble}
+      />
+      {inputMode === "typing" ? (
+        <TimeInput
+          onSubmit={handleTypedTime}
+          disabled={showSummary}
+        />
+      ) : (
+        <TimerDisplay
+          onSolveComplete={handleSolveComplete}
+          lastTime={lastTime}
+          showTimeWhileSolving={showTimeWhileSolving}
+          disabled={showSummary || inspection.isInspecting}
+          inspectionActive={inspectionEnabled && !inspection.isInspecting}
+          onStartInspection={handleStartInspection}
+        />
+      )}
+    </div>
+  )
+
+  // Build grid class based on sidebar position
+  const getLayoutClass = () => {
+    if (sidebarPosition === "hidden" || sidebarPosition === "bottom") {
+      return "flex-1 flex flex-col min-h-0 overflow-hidden"
+    }
+    if (sidebarPosition === "left") {
+      return "flex-1 flex flex-col md:grid md:grid-cols-[320px_1fr] min-h-0 overflow-hidden"
+    }
+    // right (default)
+    return "flex-1 flex flex-col md:grid md:grid-cols-[1fr_320px] min-h-0 overflow-hidden"
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Top bar */}
@@ -282,6 +387,11 @@ export function TimerContent() {
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim
+            </span>
+          )}
+          {inputMode === "typing" && (
+            <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
+              Typing
             </span>
           )}
         </div>
@@ -298,15 +408,6 @@ export function TimerContent() {
               End Session
             </Button>
           )}
-          {/* Toggle sidebar on mobile */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs md:hidden"
-            onClick={() => setShowSidebar(!showSidebar)}
-          >
-            {showSidebar ? "Hide" : "Stats"}
-          </Button>
           <TimerSettings
             event={event}
             onEventChange={handleEventChange}
@@ -316,54 +417,20 @@ export function TimerContent() {
             onInspectionChange={setInspectionEnabled}
             showTimeWhileSolving={showTimeWhileSolving}
             onShowTimeChange={setShowTimeWhileSolving}
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
+            sidebarPosition={sidebarPosition}
+            onSidebarPositionChange={setSidebarPosition}
           />
         </div>
       </div>
 
-      {/* Main content — adaptive layout */}
-      <div className="flex-1 flex flex-col md:grid md:grid-cols-[1fr_320px] min-h-0 overflow-hidden">
-        {/* Timer area */}
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Scramble */}
-          <ScrambleDisplay
-            scramble={currentScramble}
-            isLoading={isLoadingScramble}
-          />
-
-          {/* Timer */}
-          <TimerDisplay
-            onSolveComplete={handleSolveComplete}
-            lastTime={lastTime}
-            showTimeWhileSolving={showTimeWhileSolving}
-            disabled={showSummary || inspection.isInspecting}
-            inspectionActive={inspectionEnabled && !inspection.isInspecting}
-            onStartInspection={handleStartInspection}
-          />
-        </div>
-
-        {/* Sidebar — stats + solve list */}
-        {showSidebar && (
-          <div className="flex flex-col border-t md:border-t-0 md:border-l border-border/50 max-h-[40vh] md:max-h-full overflow-hidden">
-            {/* Stats */}
-            <StatsPanel
-              stats={stats}
-              mode={mode}
-              currentCompSimProgress={
-                mode === "comp_sim" ? currentCompSimProgress : undefined
-              }
-            />
-
-            {/* Solve list */}
-            <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
-              <SolveList
-                solves={solves}
-                onPenaltyChange={handlePenaltyChange}
-                onDelete={handleDeleteSolve}
-                mode={mode}
-              />
-            </div>
-          </div>
-        )}
+      {/* Main content — layout depends on sidebar position */}
+      <div className={getLayoutClass()}>
+        {sidebarPosition === "left" && sidebarPanel}
+        {timerArea}
+        {sidebarPosition === "right" && sidebarPanel}
+        {sidebarPosition === "bottom" && sidebarPanel}
       </div>
 
       {/* Inspection overlay */}
