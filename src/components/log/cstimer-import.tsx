@@ -9,6 +9,7 @@ import {
   Check,
   AlertTriangle,
   RotateCcw,
+  PlayCircle,
 } from "lucide-react";
 import { WCA_EVENTS, DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants";
 import {
@@ -135,6 +136,16 @@ export function CsTimerImport() {
               Export your solves from csTimer (Options &rarr; Export &rarr;
               Export as CSV) and upload the file here.
             </p>
+
+            <a
+              href="https://youtu.be/eDWnIDWC2ag"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors w-fit"
+            >
+              <PlayCircle className="h-4 w-4" />
+              Watch the tutorial
+            </a>
 
             {/* Event picker */}
             <div className="flex flex-col gap-1.5">
