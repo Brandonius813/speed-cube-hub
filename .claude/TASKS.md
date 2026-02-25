@@ -812,7 +812,8 @@ Each RPC function should JOIN profiles for display_name, handle, avatar_url so o
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 5-6 server action files |
 | **Priority** | MEDIUM — reduces bandwidth and prevents future data leaks |

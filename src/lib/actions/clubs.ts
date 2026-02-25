@@ -27,7 +27,7 @@ export async function getClubs(query?: string): Promise<{
 
   let clubQuery = admin
     .from("clubs")
-    .select("*")
+    .select("id, name, description, avatar_url, created_by, created_at")
     .order("created_at", { ascending: false })
 
   if (query && query.trim()) {
@@ -90,7 +90,7 @@ export async function getClub(clubId: string): Promise<{
 
   const { data: club, error } = await admin
     .from("clubs")
-    .select("*")
+    .select("id, name, description, avatar_url, created_by, created_at")
     .eq("id", clubId)
     .single()
 
@@ -178,7 +178,7 @@ export async function getClubFeed(clubId: string): Promise<{
 
   const { data, error } = await admin
     .from("sessions")
-    .select(`*, profile:profiles(display_name, handle, avatar_url)`)
+    .select(`id, user_id, session_date, event, practice_type, num_solves, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at, profile:profiles(display_name, handle, avatar_url)`)
     .in("user_id", memberIds)
     .order("created_at", { ascending: false })
     .limit(30)
@@ -224,7 +224,7 @@ export async function getUserClubs(userId: string): Promise<{
 
   const { data: clubs, error: clubError } = await admin
     .from("clubs")
-    .select("*")
+    .select("id, name, description, avatar_url, created_by, created_at")
     .in("id", clubIds)
     .order("created_at", { ascending: false })
 

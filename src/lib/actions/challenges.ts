@@ -24,7 +24,7 @@ export async function getChallenges(): Promise<{
   // Fetch all challenges
   const { data: challenges, error } = await admin
     .from("challenges")
-    .select("*")
+    .select("id, title, description, type, target_value, start_date, end_date, created_at")
     .order("end_date", { ascending: false })
 
   if (error) {
