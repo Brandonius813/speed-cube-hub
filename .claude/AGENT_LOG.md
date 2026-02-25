@@ -33,3 +33,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** T43, T44, T45 were already implemented by previous sessions but not tracked in TASKS.md. Always check git log before starting a task. The project uses Next.js 16 proxy.ts (not middleware.ts) — creating middleware.ts causes build errors.
 **Blockers:** None
 **Warnings:** Performance tasks T47–T51 still available. T46 (RLS policies) is the largest task and requires SQL migrations run in Supabase dashboard — coordinate carefully. T47 depends on T46.
+
+---
+
+### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
+
+**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
+**Status:** Completed remaining gaps in T44. Added `updatePBSchema` and `zodFirstError()` helper to validations.ts. Wired Zod validation into `updatePB()` in personal-bests.ts. Updated all error messages to use `zodFirstError()` consistently. Added "not in the future" date refinement to the shared dateField schema. Another parallel session had already created the base schemas and wired most functions — this session filled in the gaps.
+**Files touched:** src/lib/validations.ts, src/lib/actions/personal-bests.ts, src/lib/actions/sessions.ts
+**Learnings:** T43 session moved `checkAndAwardMilestones` import in sessions.ts from `@/lib/actions/badges` to `@/lib/helpers/check-milestones`. The `.next/lock` file gets stuck when parallel sessions try to build simultaneously — only one `npm run build` can run at a time.
+**Blockers:** None
+**Warnings:** None — all security Wave A tasks (T41-T45) are now complete. T46 + performance tasks remain.
