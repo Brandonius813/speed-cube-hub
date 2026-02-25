@@ -68,6 +68,8 @@ export async function logNewPB(fields: {
   }
 
   // Check if there's an existing current PB for this event+type
+  // Use order+limit+maybeSingle to handle cases where multiple rows
+  // have is_current=true (data corruption from earlier bug)
   const { data: existing } = await supabase
     .from("personal_bests")
     .select("id, time_seconds")
@@ -75,18 +77,22 @@ export async function logNewPB(fields: {
     .eq("event", fields.event)
     .eq("pb_type", fields.pb_type)
     .eq("is_current", true)
-    .single()
+    .order("time_seconds", { ascending: true })
+    .limit(1)
+    .maybeSingle()
 
   const isFastest =
     !existing || fields.time_seconds < Number(existing.time_seconds)
 
-  // If the new one is fastest, unmark the old current PB
-  if (isFastest && existing) {
+  // If the new one is fastest, unmark ALL old current PBs for this event+type
+  if (isFastest) {
     await supabase
       .from("personal_bests")
       .update({ is_current: false })
-      .eq("id", existing.id)
       .eq("user_id", user.id)
+      .eq("event", fields.event)
+      .eq("pb_type", fields.pb_type)
+      .eq("is_current", true)
   }
 
   const { error } = await supabase.from("personal_bests").insert({
@@ -154,27 +160,29 @@ export async function bulkImportPBs(
     })
   }
 
-  // Sort entries by time ascending so we process fastest last
-  // (for duplicate event+type in same import, fastest wins is_current)
-  const sorted = [...entries].sort((a, b) => b.time_seconds - a.time_seconds)
-
-  // Track which event+type combos we've already set is_current for in this batch
-  const batchCurrentSet = new Map<string, number>()
-
-  const rows = sorted.map((e) => {
+  // Find the fastest time per event+type in the import batch
+  const fastestInBatch = new Map<string, number>()
+  for (const e of entries) {
     const key = `${e.event}|${e.pb_type}`
-    const existing = currentMap.get(key)
-
-    // Check against existing DB value AND any faster value from this batch
-    const dbTime = existing?.time_seconds ?? Infinity
-    const batchTime = batchCurrentSet.get(key) ?? Infinity
-    const bestSoFar = Math.min(dbTime, batchTime)
-
-    const isFastest = e.time_seconds < bestSoFar
-
-    if (isFastest) {
-      batchCurrentSet.set(key, e.time_seconds)
+    const current = fastestInBatch.get(key)
+    if (current === undefined || e.time_seconds < current) {
+      fastestInBatch.set(key, e.time_seconds)
     }
+  }
+
+  // Build rows — only mark the single fastest per event+type as current
+  // (and only if it actually beats the existing DB current PB)
+  const assignedCurrent = new Set<string>()
+  const rows = entries.map((e) => {
+    const key = `${e.event}|${e.pb_type}`
+    const dbCurrent = currentMap.get(key)
+    const batchFastest = fastestInBatch.get(key)!
+    const isThisBatchFastest =
+      e.time_seconds === batchFastest && !assignedCurrent.has(key)
+    const beatsDb = !dbCurrent || batchFastest < dbCurrent.time_seconds
+    const isCurrent = isThisBatchFastest && beatsDb
+
+    if (isCurrent) assignedCurrent.add(key)
 
     return {
       user_id: user.id,
@@ -182,15 +190,17 @@ export async function bulkImportPBs(
       pb_type: e.pb_type,
       time_seconds: e.time_seconds,
       date_achieved: e.date_achieved,
-      is_current: isFastest,
+      is_current: isCurrent,
     }
   })
 
-  // Unmark old current PBs that are being beaten
+  // Unmark old current PBs that are being beaten by faster batch entries
   const idsToUnmark: string[] = []
-  for (const [key] of batchCurrentSet) {
-    const existing = currentMap.get(key)
-    if (existing) idsToUnmark.push(existing.id)
+  for (const [key, batchTime] of fastestInBatch) {
+    const dbCurrent = currentMap.get(key)
+    if (dbCurrent && batchTime < dbCurrent.time_seconds) {
+      idsToUnmark.push(dbCurrent.id)
+    }
   }
 
   if (idsToUnmark.length > 0) {
