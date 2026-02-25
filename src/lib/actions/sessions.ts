@@ -12,8 +12,9 @@ const SESSION_COLUMNS = "id, user_id, session_date, event, practice_type, num_so
 // This helper paginates to fetch ALL matching rows.
 const PAGE_SIZE = 1000;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchAllPages(
-  queryFn: (from: number, to: number) => ReturnType<ReturnType<Awaited<ReturnType<typeof createClient>>["from"]>["select"]>
+  queryFn: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>
 ): Promise<{ data: Session[]; error?: string }> {
   const all: Session[] = [];
   let from = 0;
@@ -37,7 +38,7 @@ export async function getSessionsByUserId(
 
   const { data, error } = await supabase
     .from("sessions")
-    .select("*")
+    .select(SESSION_COLUMNS)
     .eq("user_id", userId)
     .order("session_date", { ascending: false })
     .limit(200);
@@ -128,7 +129,7 @@ export async function getSessions(filters?: {
   return fetchAllPages((from, to) => {
     let query = supabase
       .from("sessions")
-      .select("*")
+      .select(SESSION_COLUMNS)
       .eq("user_id", user.id)
       .order("session_date", { ascending: false })
       .range(from, to);
