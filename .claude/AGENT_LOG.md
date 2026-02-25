@@ -44,3 +44,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** T43 session moved `checkAndAwardMilestones` import in sessions.ts from `@/lib/actions/badges` to `@/lib/helpers/check-milestones`. The `.next/lock` file gets stuck when parallel sessions try to build simultaneously — only one `npm run build` can run at a time.
 **Blockers:** None
 **Warnings:** None — all security Wave A tasks (T41-T45) are now complete. T46 + performance tasks remain.
+
+---
+
+### 2026-02-25 12:30 PT — T44 Zod Validation Session (Initial)
+
+**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
+**Status:** Created the base Zod validation infrastructure for T44. Built `src/lib/validations.ts` with schemas that dynamically derive valid values from WCA_EVENTS, getPracticeTypesForEvent, and getPBTypesForEvent constants. Added validation to createSession, createSessionsBulk, updateSession in sessions.ts and logNewPB, bulkImportPBs in personal-bests.ts. Added 500-entry cap to bulkImportPBs. Also verified T41 (open redirect) and T45 (search sanitize) were already fixed in code but unmarked — marked both as done. A parallel session then completed the remaining gaps (updatePBSchema, zodFirstError helper, updatePB validation, date-not-in-future refinement).
+**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, .claude/TASKS.md
+**Learnings:** `.next/lock` conflicts are common when parallel agents build simultaneously — only one `npm run build` can run at a time. TypeScript type-checking (`npx tsc --noEmit`) is a good alternative to verify changes compile when the build is locked. Pre-existing TS errors in allrounding-results.tsx and sor-kinch.ts are from another agent's in-progress work.
+**Blockers:** None
+**Warnings:** All security Wave A tasks (T41-T45) complete. T46 (RLS policies) is the largest remaining task and requires SQL migrations. Performance tasks T48-T51 are all available with no deps.
