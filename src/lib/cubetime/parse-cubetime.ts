@@ -1,3 +1,5 @@
+import { toDateStringPacific } from "@/lib/utils"
+
 /**
  * Parses a CubeTime (iOS timer app) CSV export and groups individual
  * solves into per-day session summaries for import into Speed Cube Hub.
@@ -9,6 +11,9 @@
  * Time column:  Raw decimal seconds (e.g., 9.632094025611877)
  *               May also contain "DNF" for did-not-finish solves
  * Date column:  ISO-ish format with timezone offset (2024-12-12 20:39:49 +0000)
+ *
+ * IMPORTANT: Dates are converted to Pacific Time (America/Los_Angeles) so that
+ * solves are grouped by the user's local day, not UTC day.
  */
 
 export type CubeTimeParsedSession = {
@@ -76,13 +81,27 @@ export function parseCubeTimeCsv(text: string): {
     const time = parseSolveTime(rawTime);
 
     // Parse date — format: "2024-12-12 20:39:49 +0000"
-    const dateMatch = rawDate.match(/^(\d{4}-\d{2}-\d{2})/);
+    // Convert full timestamp to Pacific Time so solves group by the user's local day
+    const dateMatch = rawDate.match(
+      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s*([+-]\d{4})?/
+    );
     if (!dateMatch) {
       errors.push(`Row ${i + 1}: invalid date "${rawDate}"`);
       continue;
     }
 
-    solves.push({ time, date: dateMatch[1] });
+    let dateStr: string;
+    if (dateMatch[2] && dateMatch[3]) {
+      // Full timestamp with timezone — convert to Pacific
+      const isoStr = `${dateMatch[1]}T${dateMatch[2]}${dateMatch[3].slice(0, 3)}:${dateMatch[3].slice(3)}`;
+      const parsed = new Date(isoStr);
+      dateStr = isNaN(parsed.getTime()) ? dateMatch[1] : toDateStringPacific(parsed);
+    } else {
+      // Fallback: just the date portion
+      dateStr = dateMatch[1];
+    }
+
+    solves.push({ time, date: dateStr });
   }
 
   if (solves.length === 0) {

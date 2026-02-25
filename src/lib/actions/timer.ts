@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { getTodayPacific } from "@/lib/utils"
 import type { TimerSession, Solve } from "@/lib/types"
 
 export async function createTimerSession(
@@ -262,8 +263,8 @@ export async function finalizeTimerSession(
   const avgTimeSeconds = avgTimeMs ? Math.round(avgTimeMs) / 1000 : null
   const bestTimeSeconds = bestTimeMs ? bestTimeMs / 1000 : null
 
-  // Today's date in YYYY-MM-DD format
-  const sessionDate = new Date().toISOString().split("T")[0]
+  // Today's date in YYYY-MM-DD format (Pacific Time, not UTC)
+  const sessionDate = getTodayPacific()
 
   const practiceType =
     timerSession.mode === "comp_sim" ? "Comp Sim" : "Solves"

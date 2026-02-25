@@ -6,6 +6,25 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Convert any Date to a YYYY-MM-DD string in Pacific Time.
+ * Works on both client (any timezone) and server (Vercel = UTC).
+ */
+export function toDateStringPacific(date: Date): string {
+  const pacific = new Date(
+    date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
+  )
+  const y = pacific.getFullYear()
+  const m = String(pacific.getMonth() + 1).padStart(2, "0")
+  const d = String(pacific.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+/** Today's date as YYYY-MM-DD in Pacific Time. */
+export function getTodayPacific(): string {
+  return toDateStringPacific(new Date())
+}
+
+/**
  * Format a duration in minutes to a human-readable string.
  * - Under 60 minutes: "45m"
  * - 60+ minutes: "1h 30m" (omits minutes if exactly on the hour, e.g. "2h")
