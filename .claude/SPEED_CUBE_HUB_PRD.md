@@ -156,7 +156,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **V1 Features:**
 - Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
-- NxN scrambles (2x2–7x7) via `cubing` library (random-state 2x2–4x4, random-move 5x5–7x7)
+- ✅ NxN scrambles (2x2–7x7) via `cubing` library — WCA-standard random-state for all events via server-side API route (`/api/scramble`), with random-move fallback
 - Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
 - Running averages: Ao5, Ao12, Mo100, BPA, WPA, best single, best Ao5, session mean
 - WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable

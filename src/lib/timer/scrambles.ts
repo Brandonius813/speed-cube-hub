@@ -2,7 +2,7 @@
 
 import type { WcaEventId } from "@/lib/constants"
 
-// ─── Random-move scramble generator (built-in, always works) ─────────
+// ─── Random-move scramble generator (fallback, always works) ─────────
 
 type MoveSet = {
   faces: string[]
@@ -150,59 +150,60 @@ function generateMinxScramble(): string {
   return lines.join("\n")
 }
 
-// ─── Main export (tries cubing.js, falls back to random-move) ───────
+// ─── API-based scramble generation (WCA random-state via cubing.js on server) ─
 
-// Map WCA event IDs to cubing.js event IDs
-const CUBING_EVENT_MAP: Record<string, string> = {
-  "222": "222",
-  "333": "333",
-  "444": "444",
-  "555": "555",
-  "666": "666",
-  "777": "777",
-  "333bf": "333bf",
-  "444bf": "444bf",
-  "555bf": "555bf",
-  "333mbf": "333mbf",
-  "333oh": "333oh",
-  minx: "minx",
-  pyram: "pyram",
-  clock: "clock",
-  skewb: "skewb",
-  sq1: "sq1",
-  "333fm": "333fm",
+// Track whether the API route is available
+let apiAvailable: boolean | null = null
+
+/**
+ * Fetch a WCA-standard random-state scramble from the server API.
+ * cubing.js runs on the server side where Web Workers work correctly.
+ * Returns null if the API is unavailable or fails.
+ */
+async function fetchScrambleFromApi(eventId: string): Promise<string | null> {
+  // If we already know the API doesn't work, skip it
+  if (apiAvailable === false) return null
+
+  try {
+    const res = await fetch(`/api/scramble?event=${eventId}`, {
+      signal: AbortSignal.timeout(5000), // 5s timeout
+    })
+
+    if (!res.ok) {
+      apiAvailable = false
+      return null
+    }
+
+    const data = await res.json()
+    if (data.scramble && typeof data.scramble === "string") {
+      apiAvailable = true
+      return data.scramble
+    }
+
+    apiAvailable = false
+    return null
+  } catch {
+    // Network error, timeout, or other failure
+    apiAvailable = false
+    console.warn("Scramble API unavailable, using random-move scrambles")
+    return null
+  }
 }
 
-// Track whether cubing.js works in this environment
-let cubingAvailable: boolean | null = null
+// ─── Main export ─────────────────────────────────────────────────────
 
 /**
  * Generate a scramble for the given WCA event.
- * Tries cubing.js (random-state) first, falls back to random-move if it fails.
+ * Tries the server API (cubing.js random-state) first, falls back to
+ * random-move scrambles if the API is unavailable.
  */
 export async function generateScramble(eventId: WcaEventId): Promise<string> {
-  // If we already know cubing.js doesn't work, skip it
-  if (cubingAvailable === false) {
-    return generateRandomMoveScramble(eventId)
-  }
+  // Try the API route first (WCA-standard random-state scrambles)
+  const apiScramble = await fetchScrambleFromApi(eventId)
+  if (apiScramble) return apiScramble
 
-  const cubingEventId = CUBING_EVENT_MAP[eventId]
-  if (!cubingEventId) {
-    return generateRandomMoveScramble(eventId)
-  }
-
-  try {
-    const { randomScrambleForEvent } = await import("cubing/scramble")
-    const scramble = await randomScrambleForEvent(cubingEventId)
-    cubingAvailable = true
-    return scramble.toString()
-  } catch {
-    // cubing.js failed (common in Next.js due to Web Worker issues)
-    // Fall back to random-move scrambles permanently for this session
-    cubingAvailable = false
-    console.warn("cubing.js unavailable, using random-move scrambles")
-    return generateRandomMoveScramble(eventId)
-  }
+  // Fall back to random-move scrambles
+  return generateRandomMoveScramble(eventId)
 }
 
 /**

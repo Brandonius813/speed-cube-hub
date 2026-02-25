@@ -80,6 +80,7 @@ Each page uses a two-file pattern:
 - `src/components/shared/` — Shared app components (navbar, etc.)
 - `src/components/profile/` — Profile page components (header, stats, WCA results, follow button, follow list modal, etc.)
 - `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, share-button, following-sidebar)
+- `src/app/api/scramble/route.ts` — WCA-standard scramble generation API (runs cubing.js server-side to avoid Turbopack Web Worker issues)
 - `src/app/api/og/route.tsx` — OG image generation API (share cards for sessions/PBs, uses @vercel/og)
 - `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components
