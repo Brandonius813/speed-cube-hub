@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
-import { logPBSchema, bulkPBItemSchema } from "@/lib/validations"
+import { logPBSchema, bulkPBItemSchema, updatePBSchema, zodFirstError } from "@/lib/validations"
 import type { PBRecord } from "@/lib/types"
 
 function mapPBRow(pb: Record<string, unknown>): PBRecord {
@@ -78,7 +78,7 @@ export async function logNewPB(fields: {
 
   const parsed = logPBSchema.safeParse(fields)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: zodFirstError(parsed.error) }
   }
 
   const isMBLD = fields.event === "333mbf"
@@ -179,7 +179,7 @@ export async function bulkImportPBs(
   for (let i = 0; i < entries.length; i++) {
     const parsed = bulkPBItemSchema.safeParse(entries[i])
     if (!parsed.success) {
-      return { success: false, imported: 0, error: `Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid input"}` }
+      return { success: false, imported: 0, error: `Row ${i + 1}: ${zodFirstError(parsed.error)}` }
     }
     const e = entries[i]
     if (e.event === "333mbf") {
@@ -459,11 +459,9 @@ export async function updatePB(
     return { success: false, error: "PB not found" }
   }
 
-  if (!fields.time_seconds || fields.time_seconds <= 0) {
-    return { success: false, error: "Time must be a positive number." }
-  }
-  if (!fields.date_achieved) {
-    return { success: false, error: "Date is required." }
+  const parsed = updatePBSchema.safeParse(fields)
+  if (!parsed.success) {
+    return { success: false, error: zodFirstError(parsed.error) }
   }
 
   const isMBLD = existing.event === "333mbf"
@@ -474,9 +472,6 @@ export async function updatePB(
     }
     if (fields.mbld_solved > fields.mbld_attempted) {
       return { success: false, error: "Solved cannot be greater than attempted." }
-    }
-    if (fields.mbld_solved < 1 || fields.mbld_attempted < 2) {
-      return { success: false, error: "Must attempt at least 2 cubes with at least 1 solved." }
     }
   }
 

@@ -101,7 +101,10 @@ export function LeaderboardsContent({
   // Cache keys
   const practiceKey = `${friendsOnly ? "following:" : ""}${category}`
 
-  const wcaKey = `${category}:${sorKinchType}:${region.level}:${region.id ?? "all"}`
+  // Kinch is one combined score — don't include sorKinchType in its cache key
+  const wcaKey = category === "kinch"
+    ? `${category}:combined:${region.level}:${region.id ?? "all"}`
+    : `${category}:${sorKinchType}:${region.level}:${region.id ?? "all"}`
 
   // Current data
   const currentPracticePage = practiceCache[practiceKey]
@@ -151,10 +154,12 @@ export function LeaderboardsContent({
   useEffect(() => {
     if (!isWca || wcaCache[wcaKey]) return
 
+    // Kinch always uses "single" (one combined score stored in kinch_single)
+    const type = category === "kinch" ? "single" : sorKinchType
     startTransition(async () => {
       const data = await getSorKinchLeaderboard(
         category as "sor" | "kinch",
-        sorKinchType,
+        type,
         { level: region.level, id: region.id }
       )
       setWcaCache((prev) => ({ ...prev, [wcaKey]: data }))
@@ -169,10 +174,11 @@ export function LeaderboardsContent({
   const handleLoadMore = () => {
     if (isWca) {
       if (!currentWcaPage || !hasMore) return
+      const type = category === "kinch" ? "single" : sorKinchType
       startTransition(async () => {
         const data = await getSorKinchLeaderboard(
           category as "sor" | "kinch",
-          sorKinchType,
+          type,
           { level: region.level, id: region.id },
           currentWcaPage.entries.length
         )
@@ -210,10 +216,11 @@ export function LeaderboardsContent({
         setFindMeNoData(true)
         return
       }
+      const type = category === "kinch" ? "single" : sorKinchType
       startFindTransition(async () => {
         const result = await findUserInSorKinch(
           category as "sor" | "kinch",
-          sorKinchType,
+          type,
           userWcaId,
           { level: region.level, id: region.id }
         )

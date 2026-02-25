@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { checkAndAwardMilestones } from "@/lib/actions/badges";
+import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
@@ -65,7 +65,7 @@ export async function createSession(data: {
 
   const parsed = createSessionSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: zodFirstError(parsed.error) };
   }
 
   const { error } = await supabase.from("sessions").insert({
@@ -173,7 +173,7 @@ export async function createSessionsBulk(
     if (!parsed.success) {
       return {
         inserted: 0,
-        error: `Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid input"}`,
+        error: `Row ${i + 1}: ${zodFirstError(parsed.error)}`,
       };
     }
   }
@@ -249,7 +249,7 @@ export async function updateSession(
 
   const parsed = createSessionSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { error: zodFirstError(parsed.error) };
   }
 
   const { error } = await supabase
