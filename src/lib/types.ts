@@ -49,6 +49,7 @@ export type Session = {
   title: string | null;
   notes: string | null;
   feed_visible?: boolean;
+  timer_session_id?: string | null;
   created_at: string;
 };
 
@@ -179,6 +180,8 @@ export type PBRecord = {
   is_current: boolean
   notes: string | null
   created_at: string
+  mbld_solved: number | null
+  mbld_attempted: number | null
 }
 
 export type PendingBadgeClaim = {
@@ -196,6 +199,33 @@ export type PendingBadgeClaim = {
     handle: string;
     avatar_url: string | null;
   };
+};
+
+export type TimerSession = {
+  id: string;
+  user_id: string;
+  event: string;
+  mode: "normal" | "comp_sim";
+  status: "active" | "completed";
+  started_at: string;
+  ended_at: string | null;
+  session_id: string | null;
+  created_at: string;
+};
+
+export type Solve = {
+  id: string;
+  timer_session_id: string;
+  user_id: string;
+  solve_number: number;
+  time_ms: number;
+  penalty: "+2" | "DNF" | null;
+  scramble: string;
+  event: string;
+  comp_sim_group: number | null;
+  notes: string | null;
+  solved_at: string;
+  created_at: string;
 };
 
 export type Challenge = {

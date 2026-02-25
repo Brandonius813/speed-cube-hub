@@ -12,26 +12,27 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { WCA_EVENTS } from "@/lib/constants"
-import { getPBTypesForEvent } from "@/lib/constants"
-import { logNewPB } from "@/lib/actions/personal-bests"
+import { updatePB } from "@/lib/actions/personal-bests"
+import type { PBRecord } from "@/lib/types"
 
-function getTodayPacific(): string {
-  const now = new Date()
-  const pacific = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
-  )
-  const y = pacific.getFullYear()
-  const m = String(pacific.getMonth() + 1).padStart(2, "0")
-  const d = String(pacific.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
+/**
+ * Format decimal seconds back into a readable time string for the input field.
+ * e.g., 10.32 → "10.32", 83.45 → "1:23.45", 3661 → "1:01:01"
+ */
+function secondsToInput(seconds: number, eventId?: string): string {
+  if (eventId === "333fm") return `${Math.round(seconds)}`
+  if (seconds >= 3600) {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  }
+  if (seconds >= 60) {
+    const min = Math.floor(seconds / 60)
+    const sec = (seconds % 60).toFixed(2)
+    return `${min}:${sec.padStart(5, "0")}`
+  }
+  return seconds.toFixed(2)
 }
 
 /**
@@ -41,7 +42,6 @@ function getTodayPacific(): string {
 function parseTimeInput(value: string): number | null {
   if (!value.trim()) return null
 
-  // Plain decimal seconds (no colon)
   if (!value.includes(":")) {
     const num = Number(value)
     return !isNaN(num) && num > 0 ? num : null
@@ -49,7 +49,6 @@ function parseTimeInput(value: string): number | null {
 
   const parts = value.split(":")
 
-  // H:MM:SS format
   if (parts.length === 3) {
     const hours = Number(parts[0])
     const minutes = Number(parts[1])
@@ -60,7 +59,6 @@ function parseTimeInput(value: string): number | null {
     return total > 0 ? total : null
   }
 
-  // MM:SS or MM:SS.XX format
   if (parts.length === 2) {
     const minutes = Number(parts[0])
     const seconds = Number(parts[1])
@@ -73,56 +71,38 @@ function parseTimeInput(value: string): number | null {
   return null
 }
 
-export function LogPBModal({
+export function EditPBModal({
+  pb,
   open,
   onOpenChange,
-  defaultEvent,
-  defaultPBType,
   onSaved,
 }: {
+  pb: PBRecord
   open: boolean
   onOpenChange: (open: boolean) => void
-  defaultEvent?: string
-  defaultPBType?: string
   onSaved: () => void
 }) {
-  const [event, setEvent] = useState(defaultEvent || "")
-  const [pbType, setPbType] = useState(defaultPBType || "")
+  const isMBLD = pb.event === "333mbf"
+
   const [time, setTime] = useState("")
-  const [dateAchieved, setDateAchieved] = useState(getTodayPacific())
+  const [dateAchieved, setDateAchieved] = useState("")
   const [notes, setNotes] = useState("")
   const [mbldSolved, setMbldSolved] = useState("")
   const [mbldAttempted, setMbldAttempted] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const isMBLD = event === "333mbf"
-
-  // Reset form when modal opens with new defaults
+  // Pre-fill form when modal opens
   useEffect(() => {
     if (open) {
-      setEvent(defaultEvent || "")
-      setPbType(defaultPBType || "")
-      setTime("")
-      setDateAchieved(getTodayPacific())
-      setNotes("")
-      setMbldSolved("")
-      setMbldAttempted("")
+      setTime(secondsToInput(pb.time_seconds, pb.event))
+      setDateAchieved(pb.date_achieved)
+      setNotes(pb.notes || "")
+      setMbldSolved(pb.mbld_solved ? String(pb.mbld_solved) : "")
+      setMbldAttempted(pb.mbld_attempted ? String(pb.mbld_attempted) : "")
       setError(null)
     }
-  }, [open, defaultEvent, defaultPBType])
-
-  // Reset PB type when event changes (unless it's still valid)
-  useEffect(() => {
-    if (event) {
-      const validTypes = getPBTypesForEvent(event)
-      if (!validTypes.includes(pbType)) {
-        setPbType("")
-      }
-    }
-  }, [event, pbType])
-
-  const availableTypes = event ? getPBTypesForEvent(event) : []
+  }, [open, pb])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -151,9 +131,7 @@ export function LogPBModal({
       }
 
       setSubmitting(true)
-      const result = await logNewPB({
-        event,
-        pb_type: pbType,
+      const result = await updatePB(pb.id, {
         time_seconds: timeSeconds,
         date_achieved: dateAchieved,
         notes: notes.trim() || undefined,
@@ -162,7 +140,7 @@ export function LogPBModal({
       })
 
       if (!result.success) {
-        setError(result.error ?? "Failed to save PB")
+        setError(result.error ?? "Failed to update PB")
         setSubmitting(false)
         return
       }
@@ -175,24 +153,20 @@ export function LogPBModal({
     // Non-MBLD flow
     const timeSeconds = parseTimeInput(time)
     if (timeSeconds === null) {
-      setError(
-        'Enter a valid time (e.g., "10.32" or "1:23.45")'
-      )
+      setError('Enter a valid time (e.g., "10.32" or "1:23.45")')
       return
     }
 
     setSubmitting(true)
 
-    const result = await logNewPB({
-      event,
-      pb_type: pbType,
+    const result = await updatePB(pb.id, {
       time_seconds: timeSeconds,
       date_achieved: dateAchieved,
       notes: notes.trim() || undefined,
     })
 
     if (!result.success) {
-      setError(result.error ?? "Failed to save PB")
+      setError(result.error ?? "Failed to update PB")
       setSubmitting(false)
       return
     }
@@ -205,55 +179,19 @@ export function LogPBModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Log New PB</DialogTitle>
+          <DialogTitle>Edit PB</DialogTitle>
           <DialogDescription>
-            Add a personal best to your records.
+            Update the time, date, or notes for this personal best.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label>Event</Label>
-            <Select value={event} onValueChange={setEvent}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select event" />
-              </SelectTrigger>
-              <SelectContent>
-                {WCA_EVENTS.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>PB Type</Label>
-            <Select
-              value={pbType}
-              onValueChange={setPbType}
-              disabled={!event}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select PB type" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTypes.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {isMBLD && (
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="mbld-solved">Solved</Label>
+                <Label htmlFor="edit-mbld-solved">Solved</Label>
                 <Input
-                  id="mbld-solved"
+                  id="edit-mbld-solved"
                   type="number"
                   min={1}
                   placeholder="e.g., 4"
@@ -265,9 +203,9 @@ export function LogPBModal({
               </div>
               <div className="flex items-end pb-2 text-muted-foreground font-mono text-lg">/</div>
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="mbld-attempted">Attempted</Label>
+                <Label htmlFor="edit-mbld-attempted">Attempted</Label>
                 <Input
-                  id="mbld-attempted"
+                  id="edit-mbld-attempted"
                   type="number"
                   min={2}
                   placeholder="e.g., 5"
@@ -281,9 +219,9 @@ export function LogPBModal({
           )}
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pb-time">Time</Label>
+            <Label htmlFor="edit-pb-time">Time</Label>
             <Input
-              id="pb-time"
+              id="edit-pb-time"
               type="text"
               placeholder={isMBLD ? 'e.g., "19:31" or "1:05:30"' : 'e.g., "10.32" or "1:23.45"'}
               value={time}
@@ -299,9 +237,9 @@ export function LogPBModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pb-date">Date Achieved</Label>
+            <Label htmlFor="edit-pb-date">Date Achieved</Label>
             <Input
-              id="pb-date"
+              id="edit-pb-date"
               type="date"
               value={dateAchieved}
               onChange={(e) => setDateAchieved(e.target.value)}
@@ -310,12 +248,12 @@ export function LogPBModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pb-notes">
+            <Label htmlFor="edit-pb-notes">
               Notes{" "}
               <span className="text-muted-foreground">(optional)</span>
             </Label>
             <Textarea
-              id="pb-notes"
+              id="edit-pb-notes"
               placeholder={isMBLD ? "e.g., Competition, 60 min time limit..." : "e.g., Full step, great cross..."}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -337,10 +275,10 @@ export function LogPBModal({
             </Button>
             <Button
               type="submit"
-              disabled={submitting || !event || !pbType}
+              disabled={submitting}
               className="flex-1 min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {submitting ? "Saving..." : "Save PB"}
+              {submitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
