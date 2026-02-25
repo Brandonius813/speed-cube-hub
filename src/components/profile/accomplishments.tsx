@@ -60,9 +60,14 @@ export function Accomplishments({
   function openEdit(index: number) {
     setEditIndex(index)
     setTitle(items[index].title)
-    // Parse stored date string back to Date object
+    // Parse stored date string back to Date object (append T00:00:00 to parse as local time, not UTC)
     const stored = items[index].date
-    setDate(stored ? new Date(stored) : undefined)
+    if (stored) {
+      const parsed = new Date(stored + "T00:00:00")
+      setDate(isNaN(parsed.getTime()) ? undefined : parsed)
+    } else {
+      setDate(undefined)
+    }
     setError(null)
     setEditOpen(true)
   }
@@ -78,7 +83,9 @@ export function Accomplishments({
     const updated = [...items]
     const entry: ProfileAccomplishment = {
       title: title.trim(),
-      date: date ? date.toISOString().split("T")[0] : null,
+      date: date
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+        : null,
     }
 
     if (editIndex !== null) {
