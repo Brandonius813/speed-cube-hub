@@ -10,29 +10,26 @@ export type GlobalStats = {
 }
 
 export async function getGlobalStats(): Promise<GlobalStats> {
+  // Use admin client until the RPC migration with SECURITY DEFINER is deployed.
+  // Once the SQL in 014_create_global_stats_rpc.sql is run in Supabase,
+  // this can be switched to createClient() from "@/lib/supabase/server".
   const supabase = createAdminClient()
 
-  const [usersResult, sessionsResult] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase
-      .from("sessions")
-      .select("duration_minutes, num_solves"),
-  ])
+  // Single RPC call — returns all stats computed inside PostgreSQL.
+  // No session rows are transferred over the network.
+  const { data } = await supabase.rpc("get_global_stats")
 
-  const totalUsers = usersResult.count ?? 0
-  const sessions = sessionsResult.data ?? []
-
-  let totalMinutes = 0
-  let totalSolves = 0
-  for (const s of sessions) {
-    totalMinutes += s.duration_minutes ?? 0
-    totalSolves += s.num_solves ?? 0
-  }
+  const stats = data as {
+    session_count: number
+    total_minutes: number
+    total_solves: number
+    user_count: number
+  } | null
 
   return {
-    totalUsers,
-    totalSessions: sessions.length,
-    totalHours: Math.round(totalMinutes / 60),
-    totalSolves,
+    totalUsers: stats?.user_count ?? 0,
+    totalSessions: stats?.session_count ?? 0,
+    totalHours: Math.round((stats?.total_minutes ?? 0) / 60),
+    totalSolves: stats?.total_solves ?? 0,
   }
 }
