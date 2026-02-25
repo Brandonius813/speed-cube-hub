@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createNotification } from "@/lib/actions/notifications"
+import { createNotification } from "@/lib/helpers/create-notification"
 import type { Comment } from "@/lib/types"
 
 /**

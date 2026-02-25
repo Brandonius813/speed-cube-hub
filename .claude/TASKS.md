@@ -582,7 +582,7 @@ const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 | **Priority** | MEDIUM — exploitable today but low impact |

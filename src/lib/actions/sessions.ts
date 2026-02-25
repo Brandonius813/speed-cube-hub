@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { checkAndAwardMilestones } from "@/lib/actions/badges";
+import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 

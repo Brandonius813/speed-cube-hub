@@ -69,8 +69,10 @@ Each page uses a two-file pattern:
 - `src/lib/actions/likes.ts` — Like/unlike system (likeSession, unlikeSession, getSessionLikeInfo)
 - `src/lib/actions/comments.ts` — Comments system (addComment, getComments, deleteComment, getCommentCounts)
 - `src/lib/actions/goals.ts` — Goals system (createGoal, getGoals, updateGoal, deleteGoal, checkGoalProgress)
-- `src/lib/actions/notifications.ts` — Notifications system (createNotification, getNotifications, markAsRead, markAllAsRead, getUnreadCount)
-- `src/lib/actions/badges.ts` — Badges system (getBadgeDefinitions, getUserBadges, claimCompetitionBadge, claimSponsorBadge, removeBadge, approveBadge, rejectBadge, getPendingBadgeClaims, checkAndAwardMilestones)
+- `src/lib/actions/notifications.ts` — Notifications system (getNotifications, markAsRead, markAllAsRead, getUnreadCount)
+- `src/lib/actions/badges.ts` — Badges system (getBadgeDefinitions, getUserBadges, claimCompetitionBadge, claimSponsorBadge, removeBadge, approveBadge, rejectBadge, getPendingBadgeClaims)
+- `src/lib/helpers/create-notification.ts` — Internal helper: createNotification (NOT a server action, not callable from browser)
+- `src/lib/helpers/check-milestones.ts` — Internal helper: checkAndAwardMilestones (NOT a server action, not callable from browser)
 - `src/components/admin/` — Admin components (badge-queue-content)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
@@ -213,7 +215,7 @@ A full audit was completed 2026-02-25. Tasks T41–T51 in `.claude/TASKS.md` tra
 ### Security
 - **No middleware exists** — route protection and session refresh are missing (T42)
 - **`createAdminClient()` is overused** — many read queries bypass RLS unnecessarily. Use regular `createClient()` wherever possible (T46)
-- **`createNotification` and `checkAndAwardMilestones` are publicly callable** — need to be made internal (T43)
+- **`createNotification` and `checkAndAwardMilestones`** — FIXED (T43): moved to `src/lib/helpers/` as internal helpers, no longer callable from browser
 - **No input validation** on session/PB creation — add Zod schemas (T44)
 - **Open redirect** in Google OAuth callback — validate `next` param (T41)
 
