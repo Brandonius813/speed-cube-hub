@@ -18,7 +18,8 @@ function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number, eventId?: string): string {
+  if (eventId === "333fm") return `${Math.round(seconds)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -181,7 +182,7 @@ export function PBsContent({
                           {pb ? (
                             <div className="text-right">
                               <div className="font-mono text-sm font-semibold text-foreground">
-                                {formatTime(pb.time_seconds)}
+                                {formatTime(pb.time_seconds, eventId)}
                               </div>
                               <div className="font-mono text-[10px] uppercase text-muted-foreground/60">
                                 {new Date(

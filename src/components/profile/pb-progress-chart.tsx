@@ -28,7 +28,8 @@ function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number, eventId?: string): string {
+  if (eventId === "333fm") return `${Math.round(seconds)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -48,10 +49,12 @@ function CustomTooltip({
   active,
   payload,
   label,
+  eventId,
 }: {
   active?: boolean
   payload?: Array<{ dataKey: string; value: number | null; color: string; name: string }>
   label?: string
+  eventId?: string
 }) {
   if (active && payload && payload.length) {
     return (
@@ -66,7 +69,7 @@ function CustomTooltip({
                   style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-muted-foreground">
-                  {entry.name}: <span className="font-mono text-foreground">{formatTime(entry.value)}</span>
+                  {entry.name}: <span className="font-mono text-foreground">{formatTime(entry.value, eventId)}</span>
                 </span>
               </div>
             )
@@ -210,10 +213,10 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
                   tick={{ fill: "#8B8BA3", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => formatTime(v)}
+                  tickFormatter={(v) => formatTime(v, selectedEvent)}
                   domain={["dataMin", "dataMax"]}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip eventId={selectedEvent} />} />
                 <Legend
                   wrapperStyle={{ fontSize: 12, color: "#8B8BA3" }}
                 />

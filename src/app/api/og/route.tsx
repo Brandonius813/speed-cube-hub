@@ -25,7 +25,8 @@ const EVENT_LABELS: Record<string, string> = {
   "333fm": "FMC",
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number, eventId?: string): string {
+  if (eventId === "333fm") return `${Math.round(seconds)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
   const isPB = type === "pb"
 
   // Main stat: either the time or the solve count
-  const mainStat = time ? formatTime(parseFloat(time)) : solves ? `${solves} solves` : ""
+  const mainStat = time ? formatTime(parseFloat(time), event) : solves ? `${solves} solves` : ""
   const subtitle = isPB ? "New Personal Best!" : "Practice Session"
 
   return new ImageResponse(
@@ -235,7 +236,7 @@ export async function GET(request: NextRequest) {
             >
               <span>{solves} solves</span>
               <span style={{ color: "#3F3F46" }}>|</span>
-              <span>avg {formatTime(parseFloat(time))}</span>
+              <span>avg {formatTime(parseFloat(time), event)}</span>
             </div>
           )}
         </div>
