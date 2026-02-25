@@ -318,6 +318,23 @@ export async function updateProfile(fields: {
 const AVATAR_MAX_SIZE = 2 * 1024 * 1024 // 2MB
 const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
+// Magic byte signatures for server-side image validation
+const JPEG_MAGIC = [0xff, 0xd8, 0xff]
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47]
+
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false
+  const bytes = Array.from(buffer.subarray(0, 12))
+  // JPEG
+  if (bytes[0] === JPEG_MAGIC[0] && bytes[1] === JPEG_MAGIC[1] && bytes[2] === JPEG_MAGIC[2]) return true
+  // PNG
+  if (bytes[0] === PNG_MAGIC[0] && bytes[1] === PNG_MAGIC[1] && bytes[2] === PNG_MAGIC[2] && bytes[3] === PNG_MAGIC[3]) return true
+  // WebP (RIFF....WEBP)
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+    && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true
+  return false
+}
+
 export async function uploadAvatar(
   formData: FormData
 ): Promise<{ success: boolean; url?: string; error?: string }> {
@@ -344,15 +361,30 @@ export async function uploadAvatar(
     return { success: false, error: "Image must be under 2MB." }
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
-  const filePath = `${user.id}/avatar.${ext}`
-
   // Convert File to Buffer for reliable server-side upload
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
+  // Validate actual file content (magic bytes), not just the MIME type
+  if (!isValidImageBuffer(buffer)) {
+    return { success: false, error: "The file doesn't appear to be a valid image." }
+  }
+
+  // Fixed path (no extension) — avoids orphan files when user changes format
+  const filePath = `${user.id}/avatar`
+
   // Use admin client to bypass storage RLS
   const admin = createAdminClient()
+
+  // Clean up any old avatar files (handles extension mismatch from legacy uploads)
+  const { data: existingFiles } = await admin.storage
+    .from("avatars")
+    .list(user.id)
+
+  if (existingFiles?.length) {
+    const filesToDelete = existingFiles.map((f) => `${user.id}/${f.name}`)
+    await admin.storage.from("avatars").remove(filesToDelete)
+  }
 
   const { error: uploadError } = await admin.storage
     .from("avatars")
@@ -360,7 +392,13 @@ export async function uploadAvatar(
 
   if (uploadError) {
     console.error("Avatar upload error:", uploadError)
-    return { success: false, error: "Failed to upload image. Please try again." }
+    if (uploadError.message?.includes("Bucket not found")) {
+      return { success: false, error: "Storage is not configured. Please contact support." }
+    }
+    if (uploadError.message?.includes("too large") || uploadError.message?.includes("Payload")) {
+      return { success: false, error: "Image is too large. Maximum size is 2MB." }
+    }
+    return { success: false, error: `Upload failed: ${uploadError.message}` }
   }
 
   const { data: urlData } = admin.storage
@@ -371,9 +409,29 @@ export async function uploadAvatar(
   const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
   // Return the URL — the caller (updateProfile) handles saving it to the DB.
-  // This avoids a partial-success state where the file uploads but the DB update
-  // fails, leaving the old avatar_url orphaned.
   return { success: true, url: publicUrl }
+}
+
+export async function deleteAvatar(): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  const admin = createAdminClient()
+
+  // List and delete all files in the user's avatar folder
+  const { data: files } = await admin.storage.from("avatars").list(user.id)
+  if (files?.length) {
+    await admin.storage.from("avatars").remove(files.map((f) => `${user.id}/${f.name}`))
+  }
+
+  return { success: true }
 }
 
 const VALID_PLATFORMS = [

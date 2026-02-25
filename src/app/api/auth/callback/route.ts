@@ -88,11 +88,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Use the Google profile picture if available
+      const googleAvatarUrl =
+        user.user_metadata?.avatar_url ||
+        user.user_metadata?.picture ||
+        null
+
       await supabase.from("profiles").insert({
         id: user.id,
         display_name: fullName,
         handle,
-        avatar_url: null,
+        avatar_url: googleAvatarUrl,
       })
     }
   }
