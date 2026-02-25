@@ -34,7 +34,7 @@ export function parseCsTimerCsv(text: string): {
   // Strip UTF-8 BOM
   const cleaned = text.replace(/^\uFEFF/, "");
 
-  const lines = cleaned.split(/\r?\n/).filter((l) => l.trim());
+  const lines = splitIntoRows(cleaned);
 
   if (lines.length === 0) {
     return { sessions: [], totalSolves: 0, errors: ["The file is empty."] };
@@ -173,6 +173,34 @@ function parseSolveTime(raw: string): number | null {
   if (isNaN(num) || num <= 0) return null;
 
   return Math.round(num * 100) / 100;
+}
+
+/**
+ * Splits CSV text into logical rows, respecting quoted fields that may
+ * contain newlines (e.g. megaminx scrambles span multiple lines).
+ */
+function splitIntoRows(text: string): string[] {
+  const rows: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      current += char;
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      if (current.trim()) rows.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  if (current.trim()) rows.push(current);
+  return rows;
 }
 
 /**
