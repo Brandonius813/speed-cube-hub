@@ -16,3 +16,31 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** None yet — this is the first entry
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-02-25 14:30 PT — Security & Performance Audit Session
+
+**Task:** Full codebase security + performance audit → Phase 9 tasks (T41–T51)
+**Status:** Completed full audit and fixed all security items:
+- Created Phase 9 in TASKS.md with 11 detailed tasks (T41–T51)
+- T41 ✅ Fixed open redirect in OAuth callback (validated `next` param)
+- T42 ✅ Hardened proxy.ts — added all missing protected routes, switched getClaims→getUser for session refresh, added login redirect for auth'd users, added ?next= param
+- T43 ✅ Already done by previous session (createNotification/checkAndAwardMilestones moved to helpers)
+- T44 ✅ Already done by previous session (Zod validation on sessions/PBs)
+- T45 ✅ Already done (commit 87a8a51)
+**Files touched:** src/app/api/auth/callback/route.ts, src/lib/supabase/proxy.ts, .claude/TASKS.md, .claude/SPEED_CUBE_HUB_PRD.md, .claude/CLAUDE.md
+**Learnings:** T43, T44, T45 were already implemented by previous sessions but not tracked in TASKS.md. Always check git log before starting a task. The project uses Next.js 16 proxy.ts (not middleware.ts) — creating middleware.ts causes build errors.
+**Blockers:** None
+**Warnings:** Performance tasks T47–T51 still available. T46 (RLS policies) is the largest task and requires SQL migrations run in Supabase dashboard — coordinate carefully. T47 depends on T46.
+
+---
+
+### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
+
+**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
+**Status:** Completed remaining gaps in T44. Added `updatePBSchema` and `zodFirstError()` helper to validations.ts. Wired Zod validation into `updatePB()` in personal-bests.ts. Updated all error messages to use `zodFirstError()` consistently. Added "not in the future" date refinement to the shared dateField schema. Another parallel session had already created the base schemas and wired most functions — this session filled in the gaps.
+**Files touched:** src/lib/validations.ts, src/lib/actions/personal-bests.ts, src/lib/actions/sessions.ts
+**Learnings:** T43 session moved `checkAndAwardMilestones` import in sessions.ts from `@/lib/actions/badges` to `@/lib/helpers/check-milestones`. The `.next/lock` file gets stuck when parallel sessions try to build simultaneously — only one `npm run build` can run at a time.
+**Blockers:** None
+**Warnings:** None — all security Wave A tasks (T41-T45) are now complete. T46 + performance tasks remain.

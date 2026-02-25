@@ -16,7 +16,7 @@ import {
 import { CalendarDays, Check } from "lucide-react";
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants";
 import { createSession } from "@/lib/actions/sessions";
-import { parseDuration, parseSolveTime } from "@/lib/utils";
+import { parseDuration, parseSolveTime, getTodayPacific } from "@/lib/utils";
 
 const CUSTOM_VALUE = "__custom__";
 
@@ -141,7 +141,7 @@ export function SessionForm() {
                 id="date"
                 name="date"
                 type="date"
-                defaultValue={new Date().toISOString().split("T")[0]}
+                defaultValue={getTodayPacific()}
                 required
                 className="min-h-11 border-border bg-secondary/50 text-foreground"
               />

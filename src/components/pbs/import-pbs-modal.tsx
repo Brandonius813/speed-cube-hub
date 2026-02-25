@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { WCA_EVENTS, getPBTypesForEvent } from "@/lib/constants"
 import { bulkImportPBs } from "@/lib/actions/personal-bests"
+import { getTodayPacific } from "@/lib/utils"
 import { Plus, Trash2, FileSpreadsheet, LayoutList, Download } from "lucide-react"
 
 // ── Types ──
@@ -44,17 +45,6 @@ type ParsedCSVRow = {
 }
 
 // ── Helpers ──
-
-function getTodayPacific(): string {
-  const now = new Date()
-  const pacific = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
-  )
-  const y = pacific.getFullYear()
-  const m = String(pacific.getMonth() + 1).padStart(2, "0")
-  const d = String(pacific.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
 
 function parseTimeInput(value: string): number | null {
   if (!value.trim()) return null

@@ -22,17 +22,7 @@ import {
 import { WCA_EVENTS } from "@/lib/constants"
 import { getPBTypesForEvent } from "@/lib/constants"
 import { logNewPB } from "@/lib/actions/personal-bests"
-
-function getTodayPacific(): string {
-  const now = new Date()
-  const pacific = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
-  )
-  const y = pacific.getFullYear()
-  const m = String(pacific.getMonth() + 1).padStart(2, "0")
-  const d = String(pacific.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
+import { getTodayPacific } from "@/lib/utils"
 
 /**
  * Parse a time string into decimal seconds.
