@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { formatTimeMs } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 
-type TimerState = "idle" | "ready" | "running" | "stopped"
+type TimerState = "idle" | "holding" | "ready" | "running" | "stopped"
 
 type TimerDisplayProps = {
   onSolveComplete: (timeMs: number) => void
@@ -79,8 +79,9 @@ export function TimerDisplay({
       return
     }
 
-    // Start hold-to-ready
+    // Start hold-to-ready: immediately go red, then green after threshold
     if (currentState === "idle" || currentState === "stopped") {
+      setTimerState("holding")
       holdTimerRef.current = setTimeout(() => {
         setTimerState("ready")
       }, HOLD_THRESHOLD)
@@ -100,6 +101,11 @@ export function TimerDisplay({
     if (currentState === "ready") {
       setDisplayTime(0)
       startTimer()
+    }
+
+    // If still holding (released too early), go back to idle
+    if (currentState === "holding") {
+      setTimerState("idle")
     }
   }, [startTimer])
 
@@ -169,6 +175,7 @@ export function TimerDisplay({
     switch (timerState) {
       case "idle":
         return lastTime !== null ? formatTimeMs(lastTime) : "0.000"
+      case "holding":
       case "ready":
         return "0.000"
       case "running":
@@ -182,6 +189,8 @@ export function TimerDisplay({
 
   const getTimeColor = () => {
     switch (timerState) {
+      case "holding":
+        return "text-red-400"
       case "ready":
         return "text-green-400"
       case "running":
@@ -198,6 +207,8 @@ export function TimerDisplay({
       case "idle":
         if (inspectionActive) return "Press space to start inspection"
         return "Hold space to start"
+      case "holding":
+        return "Keep holding..."
       case "ready":
         return "Release to start"
       case "running":
