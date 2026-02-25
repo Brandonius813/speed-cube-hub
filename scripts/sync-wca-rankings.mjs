@@ -42,8 +42,31 @@ const AVERAGE_EVENTS = [
   "clock", "minx", "pyram", "skewb", "sq1",
 ]
 
-// Kinch uses average events (333mbf scoring is incompatible with Kinch formula)
-const KINCH_EVENTS = AVERAGE_EVENTS
+// Kinch event groups — one combined score, not split into single/average.
+// Regular events: use the average ratio (100 * WR / PR)
+const KINCH_AVERAGE_ONLY = [
+  "222", "333", "333oh", "444", "555", "666", "777",
+  "clock", "minx", "pyram", "skewb", "sq1",
+]
+// BLD + FMC: take the BETTER of single and average ratios
+const KINCH_BEST_OF = ["333bf", "333fm", "444bf", "555bf"]
+// Total Kinch events: 12 regular + 4 best-of + 1 MBLD = 17
+const KINCH_EVENT_COUNT = KINCH_AVERAGE_ONLY.length + KINCH_BEST_OF.length + 1
+
+/**
+ * Decode a WCA Multi-BLD encoded result into a Kinch-compatible score.
+ * WCA format: 0DDTTTTTMM (DD = 99 - points, TTTTT = seconds, MM = missed)
+ * Kinch MBLD score = points + max(0, (3600 - seconds) / 3600)
+ */
+function decodeMbldKinchScore(wcaValue) {
+  const missed = wcaValue % 100
+  const remainder = Math.floor(wcaValue / 100)
+  const timeSeconds = remainder % 100000
+  const dd = Math.floor(remainder / 100000)
+  const points = 99 - dd
+  if (points <= 0) return 0
+  return points + Math.max(0, (3600 - timeSeconds) / 3600)
+}
 
 const BATCH_SIZE = 500
 const TMP_DIR = join(process.cwd(), ".wca-sync-tmp")
@@ -347,32 +370,48 @@ function computeRankings(persons, countries, singleData, averageData) {
       }
     }
 
-    // ── Kinch Single (16 events, avg of 100*WR/PR) ──────────────────
-    let kinchSingle = null
-    if (singleEvents) {
+    // ── Kinch (one combined score per the official Kinch formula) ────
+    // Regular events: use average ratio
+    // BLD + FMC: best of single and average ratios
+    // Multi-BLD: special decoded score
+    let kinch = null
+    if (singleEvents || averageEvents) {
       let ratioSum = 0
-      for (const eventId of KINCH_EVENTS) {
-        const rank = singleEvents.get(eventId)
-        const wr = singleWRs.get(eventId)
-        if (rank && wr && rank.best > 0) {
-          ratioSum += (100 * wr) / rank.best
-        }
-      }
-      kinchSingle = Math.round((ratioSum / KINCH_EVENTS.length) * 100) / 100
-    }
 
-    // ── Kinch Average ───────────────────────────────────────────────
-    let kinchAverage = null
-    if (averageEvents) {
-      let ratioSum = 0
-      for (const eventId of KINCH_EVENTS) {
-        const rank = averageEvents.get(eventId)
+      // Regular events — use average ratio only
+      for (const eventId of KINCH_AVERAGE_ONLY) {
+        const rank = averageEvents?.get(eventId)
         const wr = averageWRs.get(eventId)
         if (rank && wr && rank.best > 0) {
           ratioSum += (100 * wr) / rank.best
         }
       }
-      kinchAverage = Math.round((ratioSum / KINCH_EVENTS.length) * 100) / 100
+
+      // BLD + FMC — take the better of single and average ratios
+      for (const eventId of KINCH_BEST_OF) {
+        const sr = singleEvents?.get(eventId)
+        const sWr = singleWRs.get(eventId)
+        const ar = averageEvents?.get(eventId)
+        const aWr = averageWRs.get(eventId)
+        let singleRatio = 0
+        let avgRatio = 0
+        if (sr && sWr && sr.best > 0) singleRatio = (100 * sWr) / sr.best
+        if (ar && aWr && ar.best > 0) avgRatio = (100 * aWr) / ar.best
+        ratioSum += Math.max(singleRatio, avgRatio)
+      }
+
+      // Multi-BLD — special Kinch scoring (decode WCA format)
+      const mbldRank = singleEvents?.get("333mbf")
+      const mbldWr = singleWRs.get("333mbf")
+      if (mbldRank && mbldWr && mbldRank.best > 0 && mbldWr > 0) {
+        const prScore = decodeMbldKinchScore(mbldRank.best)
+        const wrScore = decodeMbldKinchScore(mbldWr)
+        if (prScore > 0 && wrScore > 0) {
+          ratioSum += (100 * wrScore) / prScore
+        }
+      }
+
+      kinch = Math.round((ratioSum / KINCH_EVENT_COUNT) * 100) / 100
     }
 
     results.push({
@@ -386,8 +425,8 @@ function computeRankings(persons, countries, singleData, averageData) {
       sor_average_cr: sorAverageCr,
       sor_single_nr: sorSingleNr,
       sor_average_nr: sorAverageNr,
-      kinch_single: kinchSingle,
-      kinch_average: kinchAverage,
+      kinch_single: kinch,
+      kinch_average: null,
       single_event_count: singleEventCount,
       average_event_count: averageEventCount,
     })

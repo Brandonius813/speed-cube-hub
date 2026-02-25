@@ -36,7 +36,7 @@ export default async function LeaderboardsPage() {
         initialData={initialData}
         initialWcaData={{
           "sor:single:world:all": sorSingleData,
-          "kinch:single:world:all": kinchSingleData,
+          "kinch:combined:world:all": kinchSingleData,
         }}
         countries={countries}
         userWcaId={userWcaId}

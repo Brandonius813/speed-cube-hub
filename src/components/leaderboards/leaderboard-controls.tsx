@@ -116,30 +116,33 @@ export function LeaderboardControls({
                 onChange={setRegion}
                 countries={countries}
               />
-              <div className="flex rounded-full bg-muted/50 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setSorKinchType("single")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    sorKinchType === "single"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Single
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSorKinchType("average")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    sorKinchType === "average"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Average
-                </button>
-              </div>
+              {/* Single/Average toggle only applies to SOR — Kinch is one combined score */}
+              {category === "sor" && (
+                <div className="flex rounded-full bg-muted/50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSorKinchType("single")}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      sorKinchType === "single"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Single
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSorKinchType("average")}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      sorKinchType === "average"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Average
+                  </button>
+                </div>
+              )}
             </>
           )}
 

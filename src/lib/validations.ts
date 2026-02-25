@@ -16,7 +16,7 @@ export function zodFirstError(err: ZodError): string {
 
 // --- Valid value sets derived from constants ---
 
-const validEventIds = new Set(WCA_EVENTS.map((e) => e.id))
+const validEventIds = new Set<string>(WCA_EVENTS.map((e) => e.id))
 
 const validPracticeTypes = new Set<string>()
 for (const event of WCA_EVENTS) {
@@ -94,6 +94,14 @@ export const bulkPBItemSchema = z.object({
   pb_type: pbTypeField,
   time_seconds: z.number().positive().max(3600),
   date_achieved: dateField,
+  mbld_solved: z.number().int().min(1).optional(),
+  mbld_attempted: z.number().int().min(2).optional(),
+})
+
+export const updatePBSchema = z.object({
+  time_seconds: z.number().positive().max(3600),
+  date_achieved: dateField,
+  notes: z.string().max(2000).optional(),
   mbld_solved: z.number().int().min(1).optional(),
   mbld_attempted: z.number().int().min(2).optional(),
 })

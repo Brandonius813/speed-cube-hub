@@ -50,8 +50,7 @@ export function AllroundingResults({
   const hasAnything =
     stats.sorSingleRank != null ||
     stats.sorAverageRank != null ||
-    stats.kinchSingleRank != null ||
-    stats.kinchAverageRank != null
+    stats.kinchRank != null
 
   if (!hasAnything) return null
 
@@ -77,16 +76,10 @@ export function AllroundingResults({
           value={stats.sorAverageValue != null ? `Score: ${stats.sorAverageValue.toLocaleString()}` : undefined}
         />
         <StatRow
-          label="Kinch Single"
-          rank={stats.kinchSingleRank}
-          total={stats.kinchSingleTotal}
-          value={stats.kinchSingleScore != null ? `Score: ${stats.kinchSingleScore.toFixed(2)}` : undefined}
-        />
-        <StatRow
-          label="Kinch Average"
-          rank={stats.kinchAverageRank}
-          total={stats.kinchAverageTotal}
-          value={stats.kinchAverageScore != null ? `Score: ${stats.kinchAverageScore.toFixed(2)}` : undefined}
+          label="Kinch Score"
+          rank={stats.kinchRank}
+          total={stats.kinchTotal}
+          value={stats.kinchScore != null ? `Score: ${stats.kinchScore.toFixed(2)}` : undefined}
         />
       </CardContent>
     </Card>
