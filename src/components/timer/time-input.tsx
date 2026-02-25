@@ -55,7 +55,7 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus the hidden input on mount
+  // Auto-focus the input on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -107,27 +107,26 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
       // Only allow digits 0-9, max 7 digits (up to 99:59.99)
       if (/^[0-9]$/.test(e.key) && digits.length < 7) {
         e.preventDefault()
-        // Strip leading zeros as user types (except the digit itself)
         setDigits((prev) => {
           const next = prev + e.key
-          // Remove leading zeros
-          return next.replace(/^0+/, "") || e.key === "0" ? next.replace(/^0+(?=\d)/, "") : next
+          return next.replace(/^0+(?=\d)/, "")
         })
         return
       }
 
-      // Block everything else
-      e.preventDefault()
+      // Block everything else from modifying the value
+      if (e.key !== "Tab") {
+        e.preventDefault()
+      }
     },
     [disabled, digits, handleSubmit]
   )
 
-  // Global keyboard listener so user doesn't have to click the input
+  // Global keyboard listener so user can type anywhere on the page
   useEffect(() => {
     if (disabled) return
 
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if focused on another input
       if (
         e.target instanceof HTMLInputElement &&
         e.target !== inputRef.current
@@ -136,7 +135,6 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
       }
       if (e.target instanceof HTMLTextAreaElement) return
 
-      // Focus our hidden input so it captures the keystroke
       if (/^[0-9]$/.test(e.key) || e.key === "Backspace" || e.key === "Enter" || e.key === "Escape") {
         inputRef.current?.focus()
       }
@@ -147,42 +145,61 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
   }, [disabled])
 
   const displayText = formatStackmat(digits)
-  const timeMs = digitsToMs(digits)
   const hasValue = digits.length > 0
 
   return (
     <div
-      className="flex flex-col items-center justify-center flex-1 select-none"
+      className="flex flex-col items-center justify-center flex-1"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Hidden input to capture keyboard */}
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        className="sr-only"
-        value={digits}
-        onChange={() => {}}
-        onKeyDown={handleKeyDown}
-        autoFocus
-        aria-label="Type time"
-      />
-
-      {/* Big time display */}
+      {/* Visible input box styled like a time entry field */}
       <div
         className={cn(
-          "font-mono text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tabular-nums tracking-tight transition-colors duration-150",
-          hasValue ? "text-foreground" : "text-muted-foreground"
+          "relative w-full max-w-md mx-auto rounded-xl border-2 bg-background/50 px-6 py-5 transition-colors cursor-text",
+          hasValue
+            ? "border-primary/50 shadow-[0_0_15px_-3px] shadow-primary/20"
+            : "border-border/80"
         )}
+        onClick={() => inputRef.current?.focus()}
       >
-        {displayText}
+        {/* The real input — visually hidden but functionally active */}
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-text"
+          value={digits}
+          onChange={() => {}}
+          onKeyDown={handleKeyDown}
+          autoFocus
+          aria-label="Type time"
+        />
+
+        {/* Formatted time display */}
+        <div
+          className={cn(
+            "font-mono text-5xl sm:text-6xl md:text-7xl font-bold tabular-nums tracking-tight text-center transition-colors",
+            hasValue ? "text-foreground" : "text-muted-foreground/40"
+          )}
+        >
+          {displayText}
+        </div>
+
+        {/* Blinking cursor indicator */}
+        {!hasValue && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="font-mono text-5xl sm:text-6xl md:text-7xl font-bold text-muted-foreground/40 animate-pulse">
+              |
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Hint text */}
-      <p className="mt-4 text-sm text-muted-foreground">
+      <p className="mt-4 text-sm text-muted-foreground text-center">
         {hasValue
-          ? `Press Enter to log${timeMs >= 60000 ? "" : ""} · Esc to clear`
-          : "Type a time (e.g. 1032 = 10.32s)"}
+          ? "Enter to log · Backspace to correct · Esc to clear"
+          : "Type digits like a stackmat (1032 = 10.32s · 10326 = 1:03.26)"}
       </p>
     </div>
   )
