@@ -40,7 +40,8 @@ const eventField = z
 
 const practiceTypeField = z
   .string()
-  .refine((v) => validPracticeTypes.has(v), { message: "Invalid practice type" })
+  .min(1, "Practice type is required")
+  .max(100, "Practice type is too long")
 
 const pbTypeField = z
   .string()
