@@ -262,6 +262,36 @@ export async function deleteSession(
   return {};
 }
 
+export async function deleteSessionsBulk(
+  sessionIds: string[]
+): Promise<{ deleted: number; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { deleted: 0, error: "You must be logged in to delete sessions." };
+  }
+
+  if (sessionIds.length === 0) {
+    return { deleted: 0, error: "No sessions selected." };
+  }
+
+  const { error } = await supabase
+    .from("sessions")
+    .delete()
+    .in("id", sessionIds)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { deleted: 0, error: error.message };
+  }
+
+  return { deleted: sessionIds.length };
+}
+
 export async function getSessionStats() {
   const supabase = await createClient();
 
