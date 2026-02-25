@@ -25,7 +25,7 @@ export async function getClubs(query?: string): Promise<{
 
   let clubQuery = supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .order("created_at", { ascending: false })
 
   if (query && query.trim()) {
@@ -87,7 +87,7 @@ export async function getClub(clubId: string): Promise<{
 
   const { data: club, error } = await supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .eq("id", clubId)
     .single()
 
@@ -174,7 +174,7 @@ export async function getClubFeed(clubId: string): Promise<{
 
   const { data, error } = await supabase
     .from("sessions")
-    .select(`id, user_id, session_date, event, practice_type, num_solves, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at, profile:profiles(display_name, handle, avatar_url)`)
+    .select(`*, profile:profiles(display_name, handle, avatar_url)`)
     .in("user_id", memberIds)
     .order("created_at", { ascending: false })
     .limit(30)
@@ -220,7 +220,7 @@ export async function getUserClubs(userId: string): Promise<{
 
   const { data: clubs, error: clubError } = await supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .in("id", clubIds)
     .order("created_at", { ascending: false })
 

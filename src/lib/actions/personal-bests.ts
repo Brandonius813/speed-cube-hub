@@ -45,7 +45,7 @@ export async function getCurrentPBs(): Promise<{
 
   const { data, error } = await supabase
     .from("personal_bests")
-    .select("id, user_id, event, pb_type, time_seconds, date_achieved, is_current, notes, created_at, mbld_solved, mbld_attempted")
+    .select("*")
     .eq("user_id", user.id)
     .eq("is_current", true)
     .order("event")
@@ -316,7 +316,7 @@ export async function getPBHistory(
 
   const { data, error } = await supabase
     .from("personal_bests")
-    .select("id, user_id, event, pb_type, time_seconds, date_achieved, is_current, notes, created_at, mbld_solved, mbld_attempted")
+    .select("*")
     .eq("user_id", user.id)
     .eq("event", event)
     .eq("pb_type", pbType)

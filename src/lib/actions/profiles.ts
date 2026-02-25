@@ -72,8 +72,7 @@ export async function searchProfiles(
     return { profiles: [] }
   }
 
-  // Only select columns the discover page uses — drops large JSONB columns (cubes, links, accomplishments)
-  let qb = supabase.from("profiles").select("id, display_name, handle, avatar_url, bio, location, main_event, wca_id, events, sponsor, created_at, updated_at")
+  let qb = supabase.from("profiles").select("*")
 
   // Filter by main event
   if (event) {

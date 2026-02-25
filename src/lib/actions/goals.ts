@@ -30,7 +30,7 @@ export async function getGoals(): Promise<{ data: Goal[]; error?: string }> {
 
   const { data, error } = await supabase
     .from("goals")
-    .select("id, user_id, event, target_avg, target_date, status, achieved_at, created_at")
+    .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
