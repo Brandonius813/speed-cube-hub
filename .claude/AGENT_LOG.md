@@ -79,3 +79,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** NEVER use explicit column lists in Supabase queries unless you've verified the exact column names against the live database. Many columns in this project were added via Supabase SQL editor and are NOT tracked in migration files. The feed using `select("*")` continued working while explicit-column queries silently failed — this discrepancy is the telltale sign.
 **Blockers:** None
 **Warnings:** T51 (explicit column lists) should be considered REVERTED, not Done. If re-attempted, must first audit the actual production DB schema column-by-column before writing the lists. Do NOT assume migration files reflect the true schema.
+
+---
+
+### 2026-02-25 14:57 PT — Phase 9 Completion + T47 Leaderboard RPC Session
+
+**Task:** T47 — Fix Leaderboards: Move Aggregation to Database (+ T34-T40 status update)
+**Status:** Completed T47 — the last remaining Phase 9 performance task. Created 6 SQL RPC functions (3 leaderboard + 3 rank-lookup) that do all aggregation inside PostgreSQL instead of loading the entire sessions table into Node.js memory. Also updated T34-T40 (Timer) status from Available → Done (timer was already fully built but TASKS.md wasn't updated). All Phase 9 tasks (T41-T51) are now complete. Only T52 (WCA-Standard Scrambles) remains as an available task.
+**Files touched:** supabase/migrations/016_create_leaderboard_rpcs.sql (created), src/lib/actions/leaderboards.ts (rewritten), .claude/TASKS.md
+**Learnings:** The SQL "islands and gaps" pattern (date - ROW_NUMBER() groups consecutive dates) works cleanly for streak calculation in PostgreSQL. Supabase RPC with `RETURNS TABLE(...)` returns arrays; scalar returns (like the rank functions returning `int`) come back as a plain number. `SECURITY DEFINER` + `SET search_path = public` is the safe pattern for RPC functions accessible to anon users.
+**Blockers:** None
+**Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor before leaderboards/follows/stats work with the new code: 014_create_global_stats_rpc.sql, 015_add_follows_rls.sql, 016_create_leaderboard_rpcs.sql. Without these, the RPC calls will fail with "function not found" errors.
