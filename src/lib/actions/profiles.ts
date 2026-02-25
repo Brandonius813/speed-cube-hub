@@ -72,7 +72,8 @@ export async function searchProfiles(
     return { profiles: [] }
   }
 
-  let qb = supabase.from("profiles").select("*")
+  // Only select columns the discover page uses — drops large JSONB columns (cubes, links, accomplishments)
+  let qb = supabase.from("profiles").select("id, display_name, handle, avatar_url, bio, location, main_event, wca_id, events, sponsor, created_at, updated_at")
 
   // Filter by main event
   if (event) {
@@ -143,6 +144,7 @@ export async function getDistinctLocations(): Promise<{
  * Generate a unique handle from a name.
  * Tries the clean name first (e.g. "brandontrue"), then adds incrementing
  * numbers (brandontrue1, brandontrue2, ...) until one is available.
+ * Uses a single query to fetch all similar handles instead of looping.
  */
 export async function generateUniqueHandle(
   name: string,
@@ -153,25 +155,22 @@ export async function generateUniqueHandle(
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 30)
 
-  // Try the clean name first
+  // Fetch all existing handles that start with the base handle in one query
   const { data: existing } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("handle", baseHandle)
-    .single()
+    .select("handle")
+    .ilike("handle", `${baseHandle}%`)
 
-  if (!existing) return baseHandle
+  const taken = new Set((existing ?? []).map((r) => r.handle as string))
 
-  // If taken, try adding incrementing numbers
+  // Try the clean name first
+  if (!taken.has(baseHandle)) return baseHandle
+
+  // Find the first available numbered variant
+  const prefix = baseHandle.slice(0, 26)
   for (let i = 1; i <= 999; i++) {
-    const candidate = `${baseHandle.slice(0, 26)}${i}`
-    const { data } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("handle", candidate)
-      .single()
-
-    if (!data) return candidate
+    const candidate = `${prefix}${i}`
+    if (!taken.has(candidate)) return candidate
   }
 
   // Fallback (extremely unlikely)

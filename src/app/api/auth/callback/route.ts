@@ -60,28 +60,25 @@ export async function GET(request: NextRequest) {
         user.email?.split("@")[0] ||
         "User"
 
-      // Try the clean name first, only add numbers if already taken
+      // Find a unique handle — single query instead of looping
       const baseHandle = fullName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
         .slice(0, 30)
 
-      let handle = baseHandle
-      const { data: existing } = await supabase
+      const { data: existingHandles } = await supabase
         .from("profiles")
-        .select("id")
-        .eq("handle", baseHandle)
-        .single()
+        .select("handle")
+        .ilike("handle", `${baseHandle}%`)
 
-      if (existing) {
+      const taken = new Set((existingHandles ?? []).map((r) => r.handle as string))
+
+      let handle = baseHandle
+      if (taken.has(baseHandle)) {
+        const prefix = baseHandle.slice(0, 26)
         for (let i = 1; i <= 999; i++) {
-          const candidate = `${baseHandle.slice(0, 26)}${i}`
-          const { data } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("handle", candidate)
-            .single()
-          if (!data) {
+          const candidate = `${prefix}${i}`
+          if (!taken.has(candidate)) {
             handle = candidate
             break
           }

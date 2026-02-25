@@ -133,6 +133,7 @@ export async function getFollowers(
     .select("follower_id, profiles!follows_follower_id_fkey(id, display_name, handle, avatar_url)")
     .eq("following_id", userId)
     .order("created_at", { ascending: false })
+    .limit(100)
 
   if (error || !data) return []
 
@@ -153,6 +154,7 @@ export async function getFollowing(
     .select("following_id, profiles!follows_following_id_fkey(id, display_name, handle, avatar_url)")
     .eq("follower_id", userId)
     .order("created_at", { ascending: false })
+    .limit(100)
 
   if (error || !data) return []
 
