@@ -722,7 +722,8 @@ where `sanitized` strips or escapes `,` and `.` characters from the input.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T46 (if RLS policies change, leaderboard queries need to match) |
 | **Estimated scope** | 1 server action file + SQL (RPC functions or views) |
 | **Priority** | CRITICAL — 3 full-table scans on every leaderboard page visit |

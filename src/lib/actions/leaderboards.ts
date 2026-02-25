@@ -15,8 +15,6 @@ export type LeaderboardPage = {
   totalCount: number
 }
 
-type RawResult = { user_id: string; stat_value: number }
-
 const PAGE_SIZE = 50
 const FIND_ME_WINDOW = 25
 
@@ -34,161 +32,23 @@ async function getFriendUserIds(userId: string): Promise<string[]> {
   return ids
 }
 
-/**
- * Attach profile info to raw rows. rankOffset shifts rank numbers for pagination.
- */
-async function enrichWithProfiles(
-  rows: RawResult[],
-  rankOffset: number = 0
-): Promise<LeaderboardEntry[]> {
-  if (rows.length === 0) return []
-  const supabase = await createClient()
-  const userIds = rows.map((r) => r.user_id)
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name, handle, avatar_url")
-    .in("id", userIds)
-
-  const profileMap = new Map(
-    (profiles ?? []).map((p) => [
-      p.id,
-      {
-        display_name: p.display_name as string,
-        handle: p.handle as string,
-        avatar_url: p.avatar_url as string | null,
-      },
-    ])
-  )
-
-  return rows.map((row, index) => {
-    const profile = profileMap.get(row.user_id)
-    return {
-      rank: rankOffset + index + 1,
-      user_id: row.user_id,
-      display_name: profile?.display_name ?? "Unknown",
-      handle: profile?.handle ?? "unknown",
-      avatar_url: profile?.avatar_url ?? null,
-      stat_value: row.stat_value,
-    }
-  })
+// Map category → RPC function name
+const LEADERBOARD_RPC: Record<string, string> = {
+  most_solves: "get_leaderboard_most_solves",
+  longest_streak: "get_leaderboard_longest_streak",
+  most_practice_time: "get_leaderboard_most_practice_time",
 }
 
-// --- Compute functions: return full sorted raw results ---
-
-async function computeMostSolves(
-  friendIds?: string[]
-): Promise<RawResult[]> {
-  const supabase = await createClient()
-  let query = supabase.from("sessions").select("user_id, num_solves")
-  if (friendIds) query = query.in("user_id", friendIds)
-  const { data } = await query
-  if (!data || data.length === 0) return []
-
-  const userSolves = new Map<string, number>()
-  for (const row of data) {
-    userSolves.set(
-      row.user_id,
-      (userSolves.get(row.user_id) ?? 0) + (row.num_solves ?? 0)
-    )
-  }
-
-  const results = Array.from(userSolves, ([user_id, total]) => ({
-    user_id,
-    stat_value: total,
-  }))
-  results.sort((a, b) => b.stat_value - a.stat_value)
-  return results
+const RANK_RPC: Record<string, string> = {
+  most_solves: "get_user_rank_most_solves",
+  longest_streak: "get_user_rank_longest_streak",
+  most_practice_time: "get_user_rank_most_practice_time",
 }
-
-async function computeLongestStreak(
-  friendIds?: string[]
-): Promise<RawResult[]> {
-  const supabase = await createClient()
-  let query = supabase.from("sessions").select("user_id, session_date")
-  if (friendIds) query = query.in("user_id", friendIds)
-  const { data } = await query
-  if (!data || data.length === 0) return []
-
-  const userDates = new Map<string, Set<string>>()
-  for (const row of data) {
-    const dates = userDates.get(row.user_id) ?? new Set()
-    dates.add(row.session_date)
-    userDates.set(row.user_id, dates)
-  }
-
-  const results: RawResult[] = []
-  for (const [userId, dateSet] of userDates) {
-    const sortedDates = Array.from(dateSet)
-      .map((d) => new Date(d + "T00:00:00"))
-      .sort((a, b) => a.getTime() - b.getTime())
-
-    let longestStreak = 1
-    let currentStreak = 1
-    for (let i = 1; i < sortedDates.length; i++) {
-      const diff =
-        (sortedDates[i].getTime() - sortedDates[i - 1].getTime()) /
-        (24 * 60 * 60 * 1000)
-      if (diff === 1) {
-        currentStreak++
-        longestStreak = Math.max(longestStreak, currentStreak)
-      } else {
-        currentStreak = 1
-      }
-    }
-    results.push({ user_id: userId, stat_value: longestStreak })
-  }
-
-  results.sort((a, b) => b.stat_value - a.stat_value)
-  return results
-}
-
-async function computeMostPracticeTime(
-  friendIds?: string[]
-): Promise<RawResult[]> {
-  const supabase = await createClient()
-  let query = supabase.from("sessions").select("user_id, duration_minutes")
-  if (friendIds) query = query.in("user_id", friendIds)
-  const { data } = await query
-  if (!data || data.length === 0) return []
-
-  const userMinutes = new Map<string, number>()
-  for (const row of data) {
-    userMinutes.set(
-      row.user_id,
-      (userMinutes.get(row.user_id) ?? 0) + (row.duration_minutes ?? 0)
-    )
-  }
-
-  const results = Array.from(userMinutes, ([user_id, total]) => ({
-    user_id,
-    stat_value: total,
-  }))
-  results.sort((a, b) => b.stat_value - a.stat_value)
-  return results
-}
-
-// --- Dispatcher ---
-
-async function computeRanking(
-  category: LeaderboardCategory,
-  friendIds?: string[]
-): Promise<RawResult[]> {
-  switch (category) {
-    case "most_solves":
-      return computeMostSolves(friendIds)
-    case "longest_streak":
-      return computeLongestStreak(friendIds)
-    case "most_practice_time":
-      return computeMostPracticeTime(friendIds)
-    default:
-      return []
-  }
-}
-
-// --- Public API ---
 
 /**
  * Fetch a paginated leaderboard for a given category.
+ * All aggregation happens in the database via RPC functions —
+ * only the top N results are returned, not the entire table.
  */
 export async function getLeaderboard(
   category: LeaderboardCategory,
@@ -197,30 +57,63 @@ export async function getLeaderboard(
   offset: number = 0,
   limit: number = PAGE_SIZE
 ): Promise<LeaderboardPage> {
-  let friendIds: string[] | undefined
+  const rpcName = LEADERBOARD_RPC[category]
+  if (!rpcName) return { entries: [], totalCount: 0 }
+
+  const supabase = await createClient()
+
+  let friendIds: string[] | null = null
   if (friendsOnly && userId) {
     friendIds = await getFriendUserIds(userId)
   }
 
-  const results = await computeRanking(category, friendIds)
-  const sliced = results.slice(offset, offset + limit)
-  const entries = await enrichWithProfiles(sliced, offset)
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_friend_ids: friendIds,
+    p_offset: offset,
+    p_limit: limit,
+  })
 
-  return { entries, totalCount: results.length }
+  if (error || !data || data.length === 0) {
+    return { entries: [], totalCount: 0 }
+  }
+
+  const totalCount = Number(data[0].total_count) || 0
+
+  const entries: LeaderboardEntry[] = data.map(
+    (
+      row: {
+        user_id: string
+        display_name: string
+        handle: string
+        avatar_url: string | null
+        stat_value: number
+      },
+      index: number
+    ) => ({
+      rank: offset + index + 1,
+      user_id: row.user_id,
+      display_name: row.display_name ?? "Unknown",
+      handle: row.handle ?? "unknown",
+      avatar_url: row.avatar_url ?? null,
+      stat_value: Number(row.stat_value),
+    })
+  )
+
+  return { entries, totalCount }
 }
 
 /**
- * Fetch all 4 leaderboard categories in parallel (for instant tab switching).
+ * Fetch all 3 practice leaderboard categories in parallel
+ * (for instant tab switching on the leaderboards page).
  */
 export async function getAllLeaderboards(): Promise<
   Record<string, LeaderboardPage>
 > {
-  const [mostSolves, longestStreak, mostPracticeTime] =
-    await Promise.all([
-      getLeaderboard("most_solves"),
-      getLeaderboard("longest_streak"),
-      getLeaderboard("most_practice_time"),
-    ])
+  const [mostSolves, longestStreak, mostPracticeTime] = await Promise.all([
+    getLeaderboard("most_solves"),
+    getLeaderboard("longest_streak"),
+    getLeaderboard("most_practice_time"),
+  ])
 
   return {
     most_solves: mostSolves,
@@ -242,19 +135,36 @@ export async function getUserLeaderboardPosition(
   userRank: number
   totalCount: number
 } | null> {
-  let friendIds: string[] | undefined
+  const rankRpcName = RANK_RPC[category]
+  if (!rankRpcName) return null
+
+  const supabase = await createClient()
+
+  let friendIds: string[] | null = null
   if (friendsOnly) {
     friendIds = await getFriendUserIds(userId)
   }
 
-  const results = await computeRanking(category, friendIds)
-  const userIndex = results.findIndex((r) => r.user_id === userId)
-  if (userIndex === -1) return null
+  // Step 1: Get the user's rank number from the database
+  const { data: rankData } = await supabase.rpc(rankRpcName, {
+    p_user_id: userId,
+    p_friend_ids: friendIds,
+  })
 
-  const start = Math.max(0, userIndex - FIND_ME_WINDOW)
-  const end = Math.min(results.length, userIndex + FIND_ME_WINDOW + 1)
-  const sliced = results.slice(start, end)
-  const entries = await enrichWithProfiles(sliced, start)
+  // rankData is a single integer (or null if user not found)
+  const userRank = typeof rankData === "number" ? rankData : null
+  if (!userRank) return null
 
-  return { entries, userRank: userIndex + 1, totalCount: results.length }
+  // Step 2: Fetch surrounding entries using the main leaderboard RPC
+  const start = Math.max(0, userRank - 1 - FIND_ME_WINDOW)
+  const windowSize = FIND_ME_WINDOW * 2 + 1
+  const { entries, totalCount } = await getLeaderboard(
+    category,
+    friendsOnly,
+    userId,
+    start,
+    windowSize
+  )
+
+  return { entries, userRank, totalCount }
 }
