@@ -6,9 +6,7 @@ import { Bell, Box, LogOut, LayoutDashboard, Medal, Rss, Search, Shield, Timer, 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import { getUnreadCount } from "@/lib/actions/notifications"
-import { getProfile } from "@/lib/actions/profiles"
-import { checkIsAdmin } from "@/lib/actions/auth"
+import { getNavbarData } from "@/lib/actions/auth"
 
 function getInitials(name: string): string {
   return name
@@ -31,55 +29,34 @@ export function Navbar() {
   useEffect(() => {
     const supabase = getSupabaseClient()
 
-    async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
-
-      if (user) {
-        const [profileResult, notifResult, adminResult] = await Promise.all([
-          getProfile(),
-          getUnreadCount(),
-          checkIsAdmin(),
-        ])
-
-        if (profileResult.profile) {
-          setUserProfile({
-            avatar_url: profileResult.profile.avatar_url,
-            display_name: profileResult.profile.display_name,
-          })
-        }
-
-        setUnreadCount(notifResult.count)
-        setIsAdmin(adminResult)
+    // Single server action replaces 3 separate calls + their internal getUser() calls
+    async function loadNavbar() {
+      const data = await getNavbarData()
+      if (data.isLoggedIn) {
+        setIsLoggedIn(true)
+        setUserProfile({
+          avatar_url: data.avatarUrl,
+          display_name: data.displayName,
+        })
+        setUnreadCount(data.unreadCount)
+        setIsAdmin(data.isAdmin)
+      } else {
+        setIsLoggedIn(false)
+        setUserProfile(null)
+        setUnreadCount(0)
+        setIsAdmin(false)
       }
     }
 
-    loadUser()
+    loadNavbar()
 
+    // Only use onAuthStateChange to detect sign-out — no re-fetch needed
+    // for sign-in since loadNavbar() already ran on mount
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsLoggedIn(!!session?.user)
-
-      if (session?.user) {
-        const [profileResult, notifResult, adminResult] = await Promise.all([
-          getProfile(),
-          getUnreadCount(),
-          checkIsAdmin(),
-        ])
-
-        if (profileResult.profile) {
-          setUserProfile({
-            avatar_url: profileResult.profile.avatar_url,
-            display_name: profileResult.profile.display_name,
-          })
-        }
-
-        setUnreadCount(notifResult.count)
-        setIsAdmin(adminResult)
-      } else {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setIsLoggedIn(false)
         setUserProfile(null)
         setUnreadCount(0)
         setIsAdmin(false)
@@ -92,7 +69,9 @@ export function Navbar() {
   // Re-fetch unread count when notifications are marked as read
   useEffect(() => {
     function handleUpdate() {
-      getUnreadCount().then((result) => setUnreadCount(result.count))
+      getNavbarData().then((data) => {
+        if (data.isLoggedIn) setUnreadCount(data.unreadCount)
+      })
     }
     window.addEventListener("notifications-updated", handleUpdate)
     return () => window.removeEventListener("notifications-updated", handleUpdate)
