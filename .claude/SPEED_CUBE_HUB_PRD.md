@@ -241,7 +241,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 19 — Advanced Tools — T134-T138:**
 - [x] Batch scramble generator (up to 999) (T134)
-- [ ] Metronome tool (T135)
+- [x] Metronome tool (T135)
 - [ ] Shared scramble seed (race friends) (T136)
 - [ ] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
 - [ ] BLD helper tool (T138)

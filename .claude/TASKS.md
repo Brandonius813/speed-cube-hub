@@ -2316,11 +2316,18 @@ Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-D |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
+| **Key files** | `src/components/tools/metronome.tsx`, `src/app/(main)/tools/metronome/page.tsx` |
 
-Adjustable BPM, beep-at-seconds mode, Web Audio API.
+- ✅ BPM mode with adjustable tempo (20-300), slider, +/- buttons, quick presets
+- ✅ Seconds mode — beep at configurable intervals (0.5s to 30s)
+- ✅ Beats per measure selector (2, 3, 4, 6, 8)
+- ✅ Visual beat indicators with accent on first beat
+- ✅ Web Audio API for precise timing (lookahead scheduling)
+- ✅ Route: `/tools/metronome`
 
 ---
 

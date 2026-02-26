@@ -192,6 +192,7 @@ See `.env.local.example` for required variables:
 /log                 → Log a practice session (form) [protected]
 /timer               → Built-in cubing timer [protected]
 /tools/scrambles     → Batch scramble generator (1-999 scrambles) [public]
+/tools/metronome     → Metronome tool (BPM + seconds mode) [public]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
