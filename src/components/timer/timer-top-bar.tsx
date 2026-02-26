@@ -6,7 +6,7 @@ import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import { SeedInput } from "@/components/timer/seed-input"
-import type { InputMode, SidebarPosition, AutoBackupInterval } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
@@ -50,6 +50,10 @@ export function TimerTopBar({
   onAutoBackupIntervalChange,
   raceSeed,
   onRaceSeedChange,
+  phaseCount,
+  onPhaseCountChange,
+  phaseLabels,
+  onPhaseLabelsChange,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -90,6 +94,10 @@ export function TimerTopBar({
   onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
   raceSeed?: string | null
   onRaceSeedChange?: (seed: string | null) => void
+  phaseCount?: PhaseCount
+  onPhaseCountChange?: (count: PhaseCount) => void
+  phaseLabels?: string[]
+  onPhaseLabelsChange?: (labels: string[]) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -136,6 +144,11 @@ export function TimerTopBar({
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim
+            </span>
+          )}
+          {phaseCount && phaseCount > 1 && (
+            <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">
+              {phaseCount}-Phase
             </span>
           )}
           {inputMode === "typing" && (
@@ -214,6 +227,10 @@ export function TimerTopBar({
             onStatIndicatorsChange={onStatIndicatorsChange}
             autoBackupInterval={autoBackupInterval}
             onAutoBackupIntervalChange={onAutoBackupIntervalChange}
+            phaseCount={phaseCount}
+            onPhaseCountChange={onPhaseCountChange}
+            phaseLabels={phaseLabels}
+            onPhaseLabelsChange={onPhaseLabelsChange}
           />
         </div>
       </div>

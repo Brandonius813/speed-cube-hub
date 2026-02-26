@@ -12,7 +12,8 @@ import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
-import type { InputMode, SidebarPosition, AutoBackupInterval } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
+import { DEFAULT_PHASE_LABELS } from "@/components/timer/timer-settings"
 import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
@@ -93,6 +94,8 @@ const SMALL_DECIMALS_KEY = "sch_small_decimals"
 const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
 const AUTO_BACKUP_INTERVAL_KEY = "sch_auto_backup_interval"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
+const PHASE_COUNT_KEY = "sch_phase_count"
+const PHASE_LABELS_KEY = "sch_phase_labels"
 
 export function TimerContent() {
   const router = useRouter()
@@ -204,6 +207,23 @@ export function TimerContent() {
     }
     return DEFAULT_HOLD_DURATION
   })
+  const [phaseCount, setPhaseCount] = useState<PhaseCount>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem(PHASE_COUNT_KEY) ?? "1", 10)
+      if (stored >= 1 && stored <= 10) return stored as PhaseCount
+    }
+    return 1
+  })
+  const [phaseLabels, setPhaseLabels] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(PHASE_LABELS_KEY)
+        if (stored) return JSON.parse(stored)
+      } catch { /* ignore */ }
+    }
+    return []
+  })
+  const [lastPhases, setLastPhases] = useState<number[] | null>(null)
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
@@ -517,7 +537,7 @@ export function TimerContent() {
 
   // ---- Solve handling ----
 
-  const saveSolve = async (timeMs: number, penalty: "+2" | "DNF" | null) => {
+  const saveSolve = async (timeMs: number, penalty: "+2" | "DNF" | null, phases?: number[]) => {
     const solveNumber = solves.length + 1
     const compSimGroup =
       mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
@@ -534,6 +554,7 @@ export function TimerContent() {
       event,
       comp_sim_group: compSimGroup,
       notes: null,
+      phases: phases ?? null,
       solve_session_id: currentSession?.id ?? null,
       solved_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
@@ -560,6 +581,7 @@ export function TimerContent() {
         scramble: currentScramble ?? "",
         event,
         comp_sim_group: compSimGroup,
+        phases: phases ?? null,
         solve_session_id: currentSession?.id ?? null,
       })
 
@@ -593,7 +615,7 @@ export function TimerContent() {
     }
   }
 
-  const handleSolveComplete = async (timeMs: number) => {
+  const handleSolveComplete = async (timeMs: number, phases?: number[]) => {
     const inspPenalty = inspectionPenaltyRef.current
     inspectionPenaltyRef.current = null
 
@@ -604,8 +626,9 @@ export function TimerContent() {
           ? null
           : timeMs
     )
+    setLastPhases(phases ?? null)
 
-    saveSolve(timeMs, inspPenalty)
+    saveSolve(timeMs, inspPenalty, phases)
     loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
 
@@ -842,6 +865,37 @@ export function TimerContent() {
       localStorage.setItem(AUTO_BACKUP_INTERVAL_KEY, String(interval))
     }
   }
+
+  const handlePhaseCountChange = (count: PhaseCount) => {
+    setPhaseCount(count)
+    setLastPhases(null)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PHASE_COUNT_KEY, String(count))
+    }
+    // Auto-populate labels from defaults if switching to a known count
+    if (DEFAULT_PHASE_LABELS[count] && phaseLabels.length !== count) {
+      const newLabels = DEFAULT_PHASE_LABELS[count]
+      setPhaseLabels(newLabels)
+      if (typeof window !== "undefined") {
+        localStorage.setItem(PHASE_LABELS_KEY, JSON.stringify(newLabels))
+      }
+    }
+  }
+
+  const handlePhaseLabelsChange = (labels: string[]) => {
+    setPhaseLabels(labels)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PHASE_LABELS_KEY, JSON.stringify(labels))
+    }
+  }
+
+  // Compute effective phase labels (use stored or defaults)
+  const effectivePhaseLabels = useMemo(() => {
+    if (phaseCount <= 1) return undefined
+    const labels = phaseLabels.length >= phaseCount ? phaseLabels : []
+    if (labels.some((l) => l.trim().length > 0)) return labels
+    return DEFAULT_PHASE_LABELS[phaseCount] ?? undefined
+  }, [phaseCount, phaseLabels])
 
   const handleScrambleTypeChange = (typeId: string) => {
     setScrambleTypeId(typeId)
@@ -1126,6 +1180,10 @@ export function TimerContent() {
         onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
         raceSeed={raceSeed}
         onRaceSeedChange={handleRaceSeedChange}
+        phaseCount={phaseCount}
+        onPhaseCountChange={handlePhaseCountChange}
+        phaseLabels={phaseLabels}
+        onPhaseLabelsChange={handlePhaseLabelsChange}
       />)}
 
       <div className={layoutClass}>
@@ -1151,6 +1209,7 @@ export function TimerContent() {
               onRunningChange={setIsTimerRunning}
               onSwipe={handleSwipe}
               lastTime={lastTime}
+              lastPhases={lastPhases}
               timerUpdateMode={timerUpdateMode}
               timerSize={timerSize}
               smallDecimals={smallDecimals}
@@ -1159,6 +1218,8 @@ export function TimerContent() {
               inspectionActive={inspectionEnabled && !inspection.isInspecting}
               onStartInspection={handleStartInspection}
               hasSolves={solves.length > 0}
+              phaseCount={phaseCount}
+              phaseLabels={effectivePhaseLabels}
             />
           )}
         </div>

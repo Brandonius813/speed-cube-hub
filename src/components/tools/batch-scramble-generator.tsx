@@ -3,18 +3,17 @@
 import { useState, useRef } from "react"
 import { Copy, Check, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { WCA_EVENTS, getEventLabel } from "@/lib/constants"
-import type { WcaEventId } from "@/lib/constants"
+import { ALL_TIMER_EVENTS, getEventLabel } from "@/lib/constants"
 import { generateScramble } from "@/lib/timer/scrambles"
 import { cn } from "@/lib/utils"
 
 const MAX_SCRAMBLES = 999
-const SCRAMBLE_EVENTS = WCA_EVENTS.filter(
+const SCRAMBLE_EVENTS = ALL_TIMER_EVENTS.filter(
   (e) => e.id !== "333fm" && e.id !== "333mbf"
 )
 
 export function BatchScrambleGenerator() {
-  const [event, setEvent] = useState<WcaEventId>("333")
+  const [event, setEvent] = useState("333")
   const [count, setCount] = useState(12)
   const [scrambles, setScrambles] = useState<string[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -116,7 +115,7 @@ export function BatchScrambleGenerator() {
           </label>
           <select
             value={event}
-            onChange={(e) => setEvent(e.target.value as WcaEventId)}
+            onChange={(e) => setEvent(e.target.value)}
             className="h-10 px-3 rounded-md border border-border bg-secondary/50 text-sm min-w-[140px]"
           >
             {SCRAMBLE_EVENTS.map((e) => (

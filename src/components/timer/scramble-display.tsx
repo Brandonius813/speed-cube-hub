@@ -37,6 +37,7 @@ export function ScrambleDisplay({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const is3x3 = event === "333"
+  const isRelay = event?.startsWith("relay")
 
   // Scramble display settings (persisted to localStorage)
   const [scrambleSize, setScrambleSize] = useState<ScrambleSize>(() => {
@@ -184,6 +185,34 @@ export function ScrambleDisplay({
               </button>
             </div>
           </div>
+        ) : isRelay && scramble && scramble.includes("\n") ? (
+          <div
+            className={cn(
+              "w-full space-y-2",
+              scrambleFont === "mono" ? "font-mono" : "font-sans",
+              onManualScramble && "cursor-pointer hover:text-foreground/80 transition-colors",
+              isManualScramble && "text-blue-400",
+              compactMode && "max-h-[6em] overflow-y-auto"
+            )}
+            onClick={onManualScramble ? handleStartEdit : undefined}
+            title={onManualScramble ? "Click to edit scramble" : undefined}
+          >
+            {scramble.split("\n").filter(Boolean).map((line, i) => {
+              const match = line.match(/^(\d+)\)\s*(.+)$/)
+              const cubeSize = match ? match[1] : String(i + 2)
+              const moves = match ? match[2].trim() : line.trim()
+              return (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="shrink-0 text-xs font-semibold bg-secondary/70 text-muted-foreground rounded px-1.5 py-0.5 mt-0.5">
+                    {cubeSize}x{cubeSize}
+                  </span>
+                  <span className={cn("leading-relaxed break-words min-w-0", getFontSize())}>
+                    {moves}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         ) : (
           <p
             className={cn(
@@ -235,16 +264,18 @@ export function ScrambleDisplay({
                 <Plus className="h-4 w-4" />
               </button>
             )}
-            <button
-              onClick={() => setShowImage(!showImage)}
-              className={cn(
-                "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
-                showImage && "bg-secondary text-foreground"
-              )}
-              title={showImage ? "Hide scramble image" : "Show scramble image"}
-            >
-              <Image className="h-4 w-4" />
-            </button>
+            {!isRelay && (
+              <button
+                onClick={() => setShowImage(!showImage)}
+                className={cn(
+                  "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
+                  showImage && "bg-secondary text-foreground"
+                )}
+                title={showImage ? "Hide scramble image" : "Show scramble image"}
+              >
+                <Image className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={handleCopy}
               className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"

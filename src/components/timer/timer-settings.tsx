@@ -16,6 +16,15 @@ export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
 export type AutoBackupInterval = 0 | 10 | 25 | 50 | 100
 export const AUTO_BACKUP_OPTIONS: AutoBackupInterval[] = [0, 10, 25, 50, 100]
 
+export const PHASE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
+export type PhaseCount = (typeof PHASE_COUNT_OPTIONS)[number]
+
+/** Default phase labels for common phase counts */
+export const DEFAULT_PHASE_LABELS: Record<number, string[]> = {
+  2: ["First", "Last"],
+  4: ["Cross", "F2L", "OLL", "PLL"],
+}
+
 type TimerSettingsProps = {
   mode: "normal" | "comp_sim"
   onModeChange: (mode: "normal" | "comp_sim") => void
@@ -39,6 +48,10 @@ type TimerSettingsProps = {
   onStatIndicatorsChange: (indicators: string) => void
   autoBackupInterval?: AutoBackupInterval
   onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
+  phaseCount?: PhaseCount
+  onPhaseCountChange?: (count: PhaseCount) => void
+  phaseLabels?: string[]
+  onPhaseLabelsChange?: (labels: string[]) => void
 }
 
 export function TimerSettings({
@@ -64,6 +77,10 @@ export function TimerSettings({
   onStatIndicatorsChange,
   autoBackupInterval,
   onAutoBackupIntervalChange,
+  phaseCount = 1,
+  onPhaseCountChange,
+  phaseLabels,
+  onPhaseLabelsChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -225,6 +242,53 @@ export function TimerSettings({
                   ))}
                 </div>
               </div>
+
+              {/* Multi-phase timing */}
+              {onPhaseCountChange && (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                    Multi-Phase
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Split timing into phases (tap/key to advance)
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([1, 2, 3, 4, 5, 6] as const).map((n) => (
+                      <Button
+                        key={n}
+                        variant={phaseCount === n ? "default" : "outline"}
+                        size="sm"
+                        className="text-xs w-10"
+                        onClick={() => onPhaseCountChange(n as PhaseCount)}
+                      >
+                        {n === 1 ? "Off" : n}
+                      </Button>
+                    ))}
+                  </div>
+                  {phaseCount > 1 && onPhaseLabelsChange && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Phase labels:</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {Array.from({ length: phaseCount }, (_, i) => (
+                          <input
+                            key={i}
+                            type="text"
+                            value={phaseLabels?.[i] ?? ""}
+                            onChange={(e) => {
+                              const newLabels = [...(phaseLabels ?? [])]
+                              while (newLabels.length < phaseCount) newLabels.push("")
+                              newLabels[i] = e.target.value
+                              onPhaseLabelsChange(newLabels)
+                            }}
+                            placeholder={DEFAULT_PHASE_LABELS[phaseCount]?.[i] ?? `Phase ${i + 1}`}
+                            className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Input mode toggle */}
               <div className="space-y-2">

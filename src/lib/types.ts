@@ -252,6 +252,7 @@ export type Solve = {
   event: string;
   comp_sim_group: number | null;
   notes: string | null;
+  phases?: number[] | null;
   solve_session_id: string | null;
   solved_at: string;
   created_at: string;

@@ -6,8 +6,6 @@ import {
   setScrambleSeed,
   type ScrambleWithCase,
 } from "@/lib/timer/scrambles"
-import type { WcaEventId } from "@/lib/constants"
-
 export function useTimerScramble() {
   const [currentScramble, setCurrentScramble] = useState<string | null>(null)
   const [currentCaseIndex, setCurrentCaseIndex] = useState<number | null>(null)
@@ -37,7 +35,7 @@ export function useTimerScramble() {
    * If caseFilter is provided, picks from selected cases only.
    */
   const loadScramble = (
-    eventId: WcaEventId,
+    eventId: string,
     trainingCstimerType?: string,
     caseFilter?: number[] | null
   ) => {

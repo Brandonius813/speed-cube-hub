@@ -6,6 +6,7 @@ import type { WcaEventId } from "@/lib/constants"
 // Map WCA event IDs to cstimer_module scramble type strings
 // (verified from csTimer source: src/js/scramble/scramble.js + src/lang/en-us.js)
 const CSTIMER_TYPE_MAP: Record<string, string> = {
+  // WCA events
   "333": "333",
   "222": "222so",
   "444": "444wca",
@@ -23,6 +24,33 @@ const CSTIMER_TYPE_MAP: Record<string, string> = {
   clock: "clkwca",
   sq1: "sqrs",
   minx: "mgmp",
+  // Big cubes (T139)
+  "888": "888",
+  "999": "999",
+  "101010": "101010",
+  "111111": "111111",
+  // Non-WCA puzzles (T140/T141)
+  gear: "gearso",
+  redi: "rediso",
+  ivy: "ivyso",
+  fto: "ftoso",
+  mpyr: "mpyrso",
+  heli: "heli",
+  curvycop: "helicv",
+  sq2: "sq2",
+  "223": "223",
+  "233": "233",
+  "334": "334",
+  "335": "335",
+  giga: "giga",
+  icosamate: "ctico",
+  ufo: "ufo",
+  "15puzzle": "15prp",
+  // Relay events (T142)
+  relay234: "r234w",
+  relay2345: "r2345w",
+  relay23456: "r23456w",
+  relay234567: "r234567w",
 }
 
 // WCA regulation 4b3: 2x2 scrambles must require ≥4 moves to solve.
@@ -41,7 +69,7 @@ function countMoves(scramble: string): number {
  * Uses cstimer_module (same engine as csTimer) for random-state scrambles.
  * Runs entirely client-side — no API calls needed.
  */
-export function generateScramble(eventId: WcaEventId): string {
+export function generateScramble(eventId: string): string {
   const cstimerType = CSTIMER_TYPE_MAP[eventId]
   if (!cstimerType) return "Scramble not available for this event"
 
@@ -117,7 +145,7 @@ export function generateTrainingScrambleWithCase(
  * Accepts an optional cstimer type override for training scrambles.
  */
 export function preGenerateScramble(
-  eventId: WcaEventId,
+  eventId: string,
   trainingCstimerType?: string,
   caseFilter?: number[] | null
 ): string | null {
@@ -135,7 +163,7 @@ export function preGenerateScramble(
  * Pre-generate a scramble with case index tracking.
  */
 export function preGenerateScrambleWithCase(
-  eventId: WcaEventId,
+  eventId: string,
   trainingCstimerType?: string,
   caseFilter?: number[] | null
 ): ScrambleWithCase | null {
@@ -174,7 +202,7 @@ export function setScrambleSeed(seed: string | null): void {
  * @param count - Number of scrambles to generate
  */
 export function generateSeededScrambles(
-  eventId: WcaEventId,
+  eventId: string,
   seed: string,
   count: number
 ): string[] {

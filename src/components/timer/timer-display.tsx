@@ -33,10 +33,11 @@ const SMALL_DECIMAL_SIZE: Record<TimerSize, string> = {
 export type { SwipeDirection }
 
 type TimerDisplayProps = {
-  onSolveComplete: (timeMs: number) => void
+  onSolveComplete: (timeMs: number, phases?: number[]) => void
   onRunningChange?: (isRunning: boolean) => void
   onSwipe?: (direction: SwipeDirection) => void
   lastTime: number | null
+  lastPhases?: number[] | null
   timerUpdateMode?: TimerUpdateMode
   timerSize?: TimerSize
   smallDecimals?: boolean
@@ -44,6 +45,10 @@ type TimerDisplayProps = {
   disabled?: boolean
   inspectionActive?: boolean
   onStartInspection?: () => void
+  /** Number of timing phases (1 = normal, 2-10 = multi-phase) */
+  phaseCount?: number
+  /** Optional labels for each phase (e.g. ["Cross","F2L","OLL","PLL"]) */
+  phaseLabels?: string[]
   /** Whether there are solves to apply swipe actions to */
   hasSolves?: boolean
 }
@@ -53,6 +58,7 @@ export function TimerDisplay({
   onRunningChange,
   onSwipe,
   lastTime,
+  lastPhases,
   timerUpdateMode = "realtime",
   timerSize = "large",
   smallDecimals = false,
@@ -60,6 +66,8 @@ export function TimerDisplay({
   disabled = false,
   inspectionActive = false,
   onStartInspection,
+  phaseCount = 1,
+  phaseLabels,
   hasSolves = false,
 }: TimerDisplayProps) {
   const [timerState, setTimerState] = useState<TimerState>("idle")
@@ -68,6 +76,10 @@ export function TimerDisplay({
   const animFrameRef = useRef<number | null>(null)
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerStateRef = useRef<TimerState>("idle")
+
+  // Multi-phase tracking: cumulative split timestamps (ms from start)
+  const phaseSplitsRef = useRef<number[]>([])
+  const [currentPhase, setCurrentPhase] = useState(0)
 
   // Swipe gesture tracking
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -92,11 +104,28 @@ export function TimerDisplay({
     const timeMs = Math.round(elapsed)
     setDisplayTime(timeMs)
     setTimerState("stopped")
-    onSolveComplete(timeMs)
+
+    // Compute phase durations from cumulative splits
+    const splits = phaseSplitsRef.current
+    if (splits.length > 0) {
+      const durations: number[] = []
+      let prev = 0
+      for (const split of splits) {
+        durations.push(split - prev)
+        prev = split
+      }
+      durations.push(timeMs - prev) // last phase
+      setCurrentPhase(0)
+      onSolveComplete(timeMs, durations)
+    } else {
+      onSolveComplete(timeMs)
+    }
   }, [onSolveComplete])
 
   const startTimer = useCallback(() => {
     startTimeRef.current = performance.now()
+    phaseSplitsRef.current = []
+    setCurrentPhase(0)
     setTimerState("running")
 
     const tick = () => {
@@ -107,13 +136,24 @@ export function TimerDisplay({
     animFrameRef.current = requestAnimationFrame(tick)
   }, [])
 
+  // Record a phase split (multi-phase mode)
+  const recordSplit = useCallback(() => {
+    const elapsed = Math.round(performance.now() - startTimeRef.current)
+    phaseSplitsRef.current = [...phaseSplitsRef.current, elapsed]
+    setCurrentPhase((p) => p + 1)
+  }, [])
+
   const handleHoldStart = useCallback(() => {
     if (disabled) return
 
     const currentState = timerStateRef.current
 
-    // If timer is running, stop it
+    // If timer is running: in multi-phase mode, record split; otherwise stop
     if (currentState === "running") {
+      if (phaseCount > 1 && phaseSplitsRef.current.length < phaseCount - 1) {
+        recordSplit()
+        return
+      }
       stopTimer()
       return
     }
@@ -172,10 +212,15 @@ export function TimerDisplay({
         return
       }
 
-      // Any key stops the timer when running
+      // Any key during running: split or stop
       if (timerStateRef.current === "running") {
         e.preventDefault()
-        stopTimer()
+        if (e.repeat) return
+        if (phaseCount > 1 && phaseSplitsRef.current.length < phaseCount - 1) {
+          recordSplit()
+        } else {
+          stopTimer()
+        }
         return
       }
 
@@ -210,7 +255,7 @@ export function TimerDisplay({
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
     }
-  }, [disabled, handleHoldStart, handleHoldEnd, stopTimer])
+  }, [disabled, handleHoldStart, handleHoldEnd, stopTimer, phaseCount, recordSplit])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -272,6 +317,11 @@ export function TimerDisplay({
       case "ready":
         return "Release to start"
       case "running":
+        if (phaseCount > 1) {
+          const phaseIdx = currentPhase
+          const label = phaseLabels?.[phaseIdx] ?? `Phase ${phaseIdx + 1}/${phaseCount}`
+          return `${label} — tap/key for next`
+        }
         return "Press any key to stop"
       case "stopped":
         if (hasSolves && onSwipe) return "Hold for next · Swipe for actions"
@@ -370,6 +420,22 @@ export function TimerDisplay({
           ) : text
         })()}
       </div>
+
+      {/* Phase breakdown (shown after multi-phase solve) */}
+      {lastPhases && lastPhases.length > 1 && timerState !== "running" && (
+        <div className="mt-3 flex gap-2 flex-wrap justify-center">
+          {lastPhases.map((dur, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                {phaseLabels?.[i] ?? `P${i + 1}`}
+              </span>
+              <span className="text-sm font-mono tabular-nums text-muted-foreground">
+                {formatTimeMs(dur)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Hint text */}
       <p className="mt-4 text-sm text-muted-foreground">

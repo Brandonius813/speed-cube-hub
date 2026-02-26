@@ -117,6 +117,7 @@ export async function addSolve(
     scramble: string
     event: string
     comp_sim_group: number | null
+    phases?: number[] | null
     solve_session_id?: string | null
   }
 ): Promise<{ data: Solve | null; error?: string }> {
@@ -158,6 +159,7 @@ export async function addSolve(
     comp_sim_group: parsed.data.comp_sim_group,
   }
   if (data.solve_session_id) insertData.solve_session_id = data.solve_session_id
+  if (data.phases && data.phases.length > 0) insertData.phases = data.phases
 
   const { data: solve, error } = await supabase
     .from("solves")
