@@ -6,13 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Calendar,
-  ExternalLink,
   Eye,
-  Globe,
   MapPin,
   Pencil,
 } from "lucide-react"
 import { EventBadge } from "@/components/shared/event-badge"
+import { SocialIcon, PLATFORM_COLORS } from "@/components/shared/social-icons"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import { FollowListModal } from "@/components/profile/follow-list-modal"
 import { getWcaCountries } from "@/lib/actions/sor-kinch"
@@ -40,16 +39,6 @@ function formatPracticeTime(totalMinutes: number): string {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
   return `${hours}h`
-}
-
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: "#EF4444",
-  instagram: "#F97316",
-  tiktok: "#A855F7",
-  x: "#6366F1",
-  discord: "#22D3EE",
-  wca: "#22D3EE",
-  website: "#8B8BA3",
 }
 
 export function ProfileSidebar({
@@ -221,11 +210,7 @@ export function ProfileSidebar({
                   className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-secondary"
                   style={{ color }}
                 >
-                  {link.platform === "website" ? (
-                    <ExternalLink className="h-4 w-4" />
-                  ) : (
-                    <Globe className="h-4 w-4" />
-                  )}
+                  <SocialIcon platform={link.platform} />
                 </a>
               )
             })}

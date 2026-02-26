@@ -368,3 +368,17 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Supabase does NOT throw errors when you query a non-existent column with `head: true` + `count: "exact"` — it silently returns null for the count. This is the same class of bug as the T51 explicit column list issue. Always verify column names actually exist before using them in queries.
 **Blockers:** None
 **Warnings:** There are uncommitted changes on dev in 7 other files (dashboard-content, stats-cards, main-cubes, pb-grid, pb-progress-chart, tab-pbs, personal-bests, wca-results) from a previous session. These appear to be PB progress chart improvements and dashboard stats card changes. Don't revert these — they're intentional work that hasn't been committed yet.
+
+---
+
+### 2026-02-27 17:59 PT — Practice Stats Dynamic Labels Session
+
+**Task:** Make stats cards dynamic based on date range filter
+**Status:** Made two changes and merged to main:
+1. Changed "Sessions This Week" card to dynamically update its label based on the selected date range (e.g. "Sessions Today", "Sessions in the Last 30 Days", "Total Sessions", etc.)
+2. Removed gray subtext from both stat cards ("+X from last week" and "X minutes this week")
+3. Fixed session count to use `filteredSessions.length` instead of `computeSessionStats().sessionsThisWeek` (which always counted from current calendar week regardless of filter)
+**Files touched:** src/components/dashboard/stats-cards.tsx, src/components/dashboard/dashboard-content.tsx
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** None

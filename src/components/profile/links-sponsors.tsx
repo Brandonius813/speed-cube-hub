@@ -8,41 +8,37 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   ExternalLink,
-  Globe,
   Link2,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react"
 import { updateProfileLinks } from "@/lib/actions/profiles"
+import { SocialIcon, PLATFORM_COLORS } from "@/components/shared/social-icons"
 import type { ProfileLink } from "@/lib/types"
 
 const PLATFORMS = [
-  { value: "youtube", label: "YouTube", color: "#EF4444" },
-  { value: "instagram", label: "Instagram", color: "#F97316" },
-  { value: "tiktok", label: "TikTok", color: "#A855F7" },
-  { value: "x", label: "X / Twitter", color: "#6366F1" },
-  { value: "discord", label: "Discord", color: "#22D3EE" },
-  { value: "wca", label: "WCA", color: "#22D3EE" },
-  { value: "website", label: "Website", color: "#8B8BA3" },
+  { value: "youtube", label: "YouTube" },
+  { value: "instagram", label: "Instagram" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "x", label: "X / Twitter" },
+  { value: "discord", label: "Discord" },
+  { value: "wca", label: "WCA" },
+  { value: "website", label: "Website" },
 ] as const
-
-function getPlatformColor(platform: string): string {
-  return PLATFORMS.find((p) => p.value === platform)?.color ?? "#6366F1"
-}
 
 function getPlatformLabel(platform: string): string {
   return PLATFORMS.find((p) => p.value === platform)?.label ?? platform
 }
 
 function PlatformIcon({ platform }: { platform: string }) {
-  const color = getPlatformColor(platform)
+  const color = PLATFORM_COLORS[platform] ?? "#6366F1"
   return (
     <div
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
       style={{ backgroundColor: `${color}20` }}
     >
-      <Globe className="h-4 w-4" style={{ color }} />
+      <SocialIcon platform={platform} style={{ color }} />
     </div>
   )
 }
