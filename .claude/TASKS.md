@@ -1663,3 +1663,237 @@ T95 (Navbar avatar fix)          — no deps
 Wave 2 (after T83):
 T89 (Stats tab filters + dedup)  — T83 (needs clean streak component)
 ```
+
+---
+
+## Phase 14 — Timer Session Management
+
+### T96: Database Migration — Create `solve_sessions` Table
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 SQL migration file |
+
+Create `supabase/migrations/023_create_solve_sessions.sql`:
+- New `solve_sessions` table (id, user_id, name, event, is_tracked, is_archived, active_from, sort_order, created_at, updated_at)
+- Add `solve_session_id` FK to `solves`, `timer_sessions`, and `sessions` tables
+- Add indexes for efficient queries
+- RLS policies: users can only CRUD their own rows
+- Backfill: create one `solve_sessions` row per unique (user_id, event) from existing solves, then UPDATE solves/timer_sessions/sessions to set the FK
+
+**Files:** `supabase/migrations/023_create_solve_sessions.sql`
+
+---
+
+### T97: Types & Validation Schemas
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T96 |
+| **Estimated scope** | 2 files |
+
+- Add `SolveSession` type to `src/lib/types.ts`
+- Add Zod schemas for create/update solve_session to `src/lib/validations.ts`
+- Update `Solve`, `TimerSession`, and `Session` types to include optional `solve_session_id`
+
+**Files:** `src/lib/types.ts`, `src/lib/validations.ts`
+
+---
+
+### T98: Server Actions — Solve Session CRUD
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T97 |
+| **Estimated scope** | 1 new file |
+
+Create `src/lib/actions/solve-sessions.ts` with:
+- `getUserSolveSessions()` — fetch all non-archived sessions for current user
+- `getSolveSession(id)` — fetch single session with solve count
+- `createSolveSession(name, event, isTracked?)` — create a new named session
+- `updateSolveSession(id, data)` — rename, change tracked status
+- `resetSolveSession(id)` — set `active_from` to now (finalize active timer_session first)
+- `archiveSolveSession(id)` — set `is_archived = true`
+- `deleteSolveSession(id)` — hard delete (solves get NULL FK, preserved)
+- `getOrCreateDefaultSession(event)` — find existing or create "Session 1" for an event
+
+**Files:** `src/lib/actions/solve-sessions.ts`
+
+---
+
+### T99: Update Timer Server Actions
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T98 |
+| **Estimated scope** | 1 file |
+
+Update `src/lib/actions/timer.ts`:
+- `createTimerSession()` — accept `solve_session_id` param, store it on the row
+- `addSolve()` — accept `solve_session_id` param, store it on the solve row
+- `getActiveTimerSession()` — change to look up by `solve_session_id` instead of event
+- `getSolvesBySession(solveSessionId, activeFrom)` — new action to fetch solves for a named session (only those after `active_from`)
+- `finalizeTimerSession()` — pass `solve_session_id` to the `sessions` row; skip creating `sessions` row if session's `is_tracked = false`
+
+**Files:** `src/lib/actions/timer.ts`
+
+---
+
+### T100: Session Selector Component
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T98 |
+| **Estimated scope** | 1 new file |
+
+Build `src/components/timer/session-selector.tsx`:
+- Dropdown showing user's sessions (name + event icon + solve count)
+- Grouped by event
+- "New Session" button at bottom
+- Quick-create inline (name + event picker + tracked toggle)
+- "Manage Sessions" link to open the full manager
+- Selected session highlighted
+
+**Files:** `src/components/timer/session-selector.tsx`
+
+---
+
+### T101: Session Manager Modal
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T100 |
+| **Estimated scope** | 1 new file |
+
+Build `src/components/timer/session-manager.tsx`:
+- Full-screen modal/sheet for managing all sessions
+- List view: session name, event, solve count, created date, tracked/untracked badge
+- Actions per session: rename, reset (with confirmation), archive, delete (with confirmation)
+- Create new session form
+- Toggle tracked/untracked
+- Mobile-responsive
+
+**Files:** `src/components/timer/session-manager.tsx`
+
+---
+
+### T102: Timer Integration — Wire Up Named Sessions
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T99, T100, T101 |
+| **Estimated scope** | 4 files |
+
+Rewire `timer-content.tsx` to use solve_sessions:
+- Replace `event` state with `currentSession` (SolveSession) state
+- On mount: load user's sessions, select last-used or default
+- Load solves by `solve_session_id` + `active_from` filter (not by event)
+- When switching session: finalize active timer_session, load new session's solves
+- When creating first solve: ensure timer_session exists with `solve_session_id`
+- Pass session info to sidebar for display
+
+Update `timer-top-bar.tsx`:
+- Replace `EventSelector` with `SessionSelector`
+- Rename "End Session" → "End Practice"
+
+Update `session-summary-modal.tsx`:
+- Change copy to indicate session persists ("Practice saved!")
+
+Update `timer-settings.tsx`:
+- Remove event selector (now handled by session selector)
+- Keep mode, inspection, sidebar position settings
+
+**Files:** `src/components/timer/timer-content.tsx`, `src/components/timer/timer-top-bar.tsx`, `src/components/timer/session-summary-modal.tsx`, `src/components/timer/timer-settings.tsx`
+
+---
+
+### T103: First-Time Defaults & Auto-Create
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T102 |
+| **Estimated scope** | 2 files |
+
+Handle edge cases for new/returning users:
+- First timer visit: auto-create "Session 1" for 3x3
+- Store last-used session ID in localStorage so it's restored on next visit
+- If user has existing solves but no solve_sessions (migration didn't run yet): gracefully fall back
+
+**Files:** `src/components/timer/timer-content.tsx`, `src/lib/actions/solve-sessions.ts`
+
+---
+
+### T104: Reset & Throwaway Behavior
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T102 |
+| **Estimated scope** | 2 files |
+
+- Reset: finalize any active timer_session, update `active_from`, reload solves (empty list)
+- Throwaway: during finalization, check `is_tracked` — if false, skip `sessions` row creation
+- Verify throwaway solves don't appear in: feed queries, streak calculations, leaderboard RPCs
+- Add confirmation dialog for reset ("This will clear your solve list. Your all-time stats are not affected.")
+
+**Files:** `src/lib/actions/timer.ts`, `src/components/timer/session-manager.tsx`
+
+---
+
+### T105: Update CLAUDE.md & PRD
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T104 |
+| **Estimated scope** | 2 files |
+
+- Update CLAUDE.md key files section with new files
+- Update CLAUDE.md architecture section to describe solve_sessions
+- Update PRD to mark session management as built
+- Verify `npm run build` passes
+
+**Files:** `.claude/CLAUDE.md`, `.claude/SPEED_CUBE_HUB_PRD.md`
+
+---
+
+### Phase 14 Dependency Graph
+
+```
+Phase 14 — Timer Session Management
+
+Wave 1 (no deps):
+T96 (DB migration)               — no deps
+
+Wave 2 (after T96):
+T97 (Types & validation)         — T96
+
+Wave 3 (after T97):
+T98 (Solve session CRUD actions) — T97
+
+Wave 4 (after T98, parallel):
+T99 (Update timer actions)       — T98
+T100 (Session selector UI)       — T98
+
+Wave 5 (after T100):
+T101 (Session manager modal)     — T100
+
+Wave 6 (after T99, T100, T101):
+T102 (Timer integration)         — T99, T100, T101
+
+Wave 7 (after T102, parallel):
+T103 (First-time defaults)       — T102
+T104 (Reset & throwaway)         — T102
+
+Wave 8 (after T104):
+T105 (Docs update)               — T104
+```

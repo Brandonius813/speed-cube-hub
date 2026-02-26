@@ -454,3 +454,20 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Server action serialization can drop fields on large payloads — always add `.default()` to Zod schemas for nullable numeric fields.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-02-28 12:00 PT — Timer Session Management Design Session
+
+**Task:** Phase 14 planning — Timer session management data hierarchy (T96–T105)
+**Status:** Designed the full data hierarchy for csTimer-style named sessions. Created 10 tasks (T96–T105) in TASKS.md under new Phase 14. Key design decisions:
+- New `solve_sessions` table = persistent, named, event-locked containers for solves
+- Existing `timer_sessions` = practice sittings (one per solving period)
+- Existing `sessions` = practice log entries (unchanged, powers feed/stats/streaks)
+- Sessions have `active_from` timestamp for resets (hides old solves, preserves history)
+- `is_tracked` flag enables throwaway sessions (no stats/feed contribution)
+- Backfill migration creates default sessions from existing solves
+**Files touched:** .claude/TASKS.md, .claude/plans/refactored-roaming-tide.md
+**Learnings:** The `sessions` table is deeply integrated (feed, leaderboards, challenges, goals, wrapped, streaks) — adding a layer on top is much safer than restructuring. The `timer_sessions` table already maps perfectly to "practice sitting" concept.
+**Blockers:** None — ready to start T96 (DB migration)
+**Warnings:** Phase 14 touches `timer.ts` and all timer UI components. If another session is working on timer features, coordinate before starting T99/T102.
