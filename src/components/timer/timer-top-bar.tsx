@@ -2,6 +2,7 @@ import { Square, X, Download } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { SessionSelector } from "@/components/timer/session-selector"
+import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
@@ -36,6 +37,8 @@ export function TimerTopBar({
   onExport,
   saveError,
   onDismissError,
+  scrambleTypeId,
+  onScrambleTypeChange,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -65,6 +68,8 @@ export function TimerTopBar({
   onExport?: (format: "csv" | "json" | "txt" | "clipboard") => void
   saveError: string | null
   onDismissError: () => void
+  scrambleTypeId?: string
+  onScrambleTypeChange?: (typeId: string) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -91,6 +96,13 @@ export function TimerTopBar({
             onCreate={onCreateSession}
             onManage={onManageSessions}
           />
+          {scrambleTypeId && onScrambleTypeChange && currentSession && (
+            <ScrambleTypeSelector
+              eventId={currentSession.event}
+              selectedTypeId={scrambleTypeId}
+              onTypeChange={onScrambleTypeChange}
+            />
+          )}
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim

@@ -54,6 +54,11 @@ import { getProfile } from "@/lib/actions/profiles"
 import { getTodayPacific } from "@/lib/utils"
 import type { Solve, SolveSession, PBRecord } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
+import {
+  NORMAL_SCRAMBLE_ID,
+  getTrainingType,
+  hasTrainingTypes,
+} from "@/lib/timer/training-scrambles"
 
 type PBDetection = {
   event: string
@@ -75,6 +80,7 @@ const HOLD_DURATION_KEY = "sch_hold_duration"
 const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
 const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
+const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 
 export function TimerContent() {
   const router = useRouter()
@@ -91,6 +97,18 @@ export function TimerContent() {
 
   // Derived event from current session
   const event = currentSession?.event ?? "333"
+
+  // Training scramble type
+  const [scrambleTypeId, setScrambleTypeId] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
+    }
+    return NORMAL_SCRAMBLE_ID
+  })
+
+  // Resolve the cstimer type string for the current training type (null = normal)
+  const trainingType = getTrainingType(event, scrambleTypeId)
+  const trainingCstimerType = trainingType?.cstimerType
 
   // Scramble management
   const { currentScramble, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
@@ -241,7 +259,12 @@ export function TimerContent() {
     if (session) {
       setCurrentSession(session)
       saveLastSessionId(session.id)
-      loadScramble(session.event as WcaEventId)
+      // If saved scramble type is valid for this event, use it; otherwise reset
+      const savedType = typeof window !== "undefined"
+        ? localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
+        : NORMAL_SCRAMBLE_ID
+      const resolved = getTrainingType(session.event, savedType)
+      loadScramble(session.event as WcaEventId, resolved?.cstimerType)
       await loadSessionSolves(session)
     } else {
       loadScramble("333" as WcaEventId)
@@ -317,7 +340,13 @@ export function TimerContent() {
     setLastTime(null)
     setTimerSessionId(null)
     clearNextScramble()
-    loadScramble(session.event as WcaEventId)
+    // Reset scramble type if the new event doesn't support current training type
+    const resolved = getTrainingType(session.event, scrambleTypeId)
+    if (!resolved && scrambleTypeId !== NORMAL_SCRAMBLE_ID) {
+      setScrambleTypeId(NORMAL_SCRAMBLE_ID)
+      localStorage.setItem(SCRAMBLE_TYPE_KEY, NORMAL_SCRAMBLE_ID)
+    }
+    loadScramble(session.event as WcaEventId, resolved?.cstimerType)
     await loadSessionSolves(session)
   }
 
@@ -484,13 +513,13 @@ export function TimerContent() {
     )
 
     saveSolve(timeMs, inspPenalty)
-    loadScramble(event as WcaEventId)
+    loadScramble(event as WcaEventId, trainingCstimerType)
   }
 
   const handleTypedTime = async (timeMs: number) => {
     setLastTime(timeMs)
     saveSolve(timeMs, null)
-    loadScramble(event as WcaEventId)
+    loadScramble(event as WcaEventId, trainingCstimerType)
   }
 
   const handlePenaltyChange = async (
@@ -671,6 +700,17 @@ export function TimerContent() {
     }
   }
 
+  const handleScrambleTypeChange = (typeId: string) => {
+    setScrambleTypeId(typeId)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SCRAMBLE_TYPE_KEY, typeId)
+    }
+    // Immediately generate a new scramble with the new type
+    clearNextScramble()
+    const resolved = getTrainingType(event, typeId)
+    loadScramble(event as WcaEventId, resolved?.cstimerType)
+  }
+
   const handleEndSession = () => {
     if (solves.length === 0) return
     setShowSummary(true)
@@ -765,7 +805,7 @@ export function TimerContent() {
   useEffect(() => {
     if (inspection.state === "done" && inspectionEnabled) {
       saveSolve(0, "DNF")
-      loadScramble(event as WcaEventId)
+      loadScramble(event as WcaEventId, trainingCstimerType)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inspection.state])
@@ -884,6 +924,8 @@ export function TimerContent() {
         onExport={handleExport}
         saveError={saveError}
         onDismissError={() => setSaveError(null)}
+        scrambleTypeId={scrambleTypeId}
+        onScrambleTypeChange={handleScrambleTypeChange}
       />
 
       <div className={layoutClass}>
@@ -894,7 +936,7 @@ export function TimerContent() {
             event={event}
             isManualScramble={isManualScramble}
             onManualScramble={setManualScramble}
-            onClearManualScramble={() => loadScramble(event as WcaEventId)}
+            onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType)}
           />
           {inputMode === "typing" ? (
             <TimeInput

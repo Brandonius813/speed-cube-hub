@@ -62,10 +62,31 @@ export function generateScramble(eventId: WcaEventId): string {
 }
 
 /**
- * Pre-generate a scramble (for caching one ahead).
+ * Generate a training scramble using a cstimer_module type string directly.
+ * Training types (PLL, OLL, F2L, etc.) use different scramble generators
+ * than the standard event scrambles.
  */
-export function preGenerateScramble(eventId: WcaEventId): string | null {
+export function generateTrainingScramble(cstimerType: string): string {
   try {
+    return cstimerGetScramble(cstimerType)
+  } catch (err) {
+    console.error("Training scramble generation failed:", err)
+    return "Error generating scramble — try refreshing"
+  }
+}
+
+/**
+ * Pre-generate a scramble (for caching one ahead).
+ * Accepts an optional cstimer type override for training scrambles.
+ */
+export function preGenerateScramble(
+  eventId: WcaEventId,
+  trainingCstimerType?: string
+): string | null {
+  try {
+    if (trainingCstimerType) {
+      return generateTrainingScramble(trainingCstimerType)
+    }
     return generateScramble(eventId)
   } catch {
     return null
