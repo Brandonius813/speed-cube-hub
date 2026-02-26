@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Copy, Check, Image, Plus, Pencil, X, Settings } from "lucide-react"
+import { Copy, Check, Image, Plus, Pencil, X, Settings, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrambleImage } from "@/components/timer/scramble-image"
+import { ScrambleAnimator } from "@/components/timer/scramble-animator"
 import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
 
 type ScrambleSize = "auto" | "small" | "medium" | "large"
@@ -34,6 +35,7 @@ export function ScrambleDisplay({
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState("")
   const [showSettings, setShowSettings] = useState(false)
+  const [showAnimator, setShowAnimator] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const is3x3 = event === "333"
@@ -265,16 +267,28 @@ export function ScrambleDisplay({
               </button>
             )}
             {!isRelay && (
-              <button
-                onClick={() => setShowImage(!showImage)}
-                className={cn(
-                  "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
-                  showImage && "bg-secondary text-foreground"
-                )}
-                title={showImage ? "Hide scramble image" : "Show scramble image"}
-              >
-                <Image className="h-4 w-4" />
-              </button>
+              <>
+                <button
+                  onClick={() => { setShowAnimator(!showAnimator); if (!showAnimator) setShowImage(false) }}
+                  className={cn(
+                    "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
+                    showAnimator && "bg-secondary text-foreground"
+                  )}
+                  title={showAnimator ? "Hide scramble animation" : "Animate scramble"}
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => { setShowImage(!showImage); if (!showImage) setShowAnimator(false) }}
+                  className={cn(
+                    "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
+                    showImage && "bg-secondary text-foreground"
+                  )}
+                  title={showImage ? "Hide scramble image" : "Show scramble image"}
+                >
+                  <Image className="h-4 w-4" />
+                </button>
+              </>
             )}
             <button
               onClick={handleCopy}
@@ -359,7 +373,10 @@ export function ScrambleDisplay({
           </div>
         )}
       </div>
-      {showImage && event && scramble && (
+      {showAnimator && event && scramble && (
+        <ScrambleAnimator scramble={scramble} event={event} />
+      )}
+      {showImage && !showAnimator && event && scramble && (
         <ScrambleImage scramble={scramble} event={event} />
       )}
       {showCross && is3x3 && scramble && (
