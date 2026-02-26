@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TimerDisplay } from "@/components/timer/timer-display"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
@@ -8,6 +8,7 @@ import { TimerTopBar } from "@/components/timer/timer-top-bar"
 import { TimerSidebar } from "@/components/timer/timer-sidebar"
 import { TimeInput } from "@/components/timer/time-input"
 import { SessionManager } from "@/components/timer/session-manager"
+import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
@@ -69,6 +70,13 @@ export function TimerContent() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Solve detail modal
+  const [selectedSolve, setSelectedSolve] = useState<Solve | null>(null)
+
+  // Undo state
+  const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Inspection hook
   const inspection = useInspection()
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
@@ -98,11 +106,9 @@ export function TimerContent() {
   const initializeSession = async () => {
     setIsLoading(true)
 
-    // Load all user sessions
     const { data: sessions } = await getUserSolveSessions()
     setSolveSessions(sessions)
 
-    // Try to restore last-used session from localStorage
     const lastId = typeof window !== "undefined"
       ? localStorage.getItem(LAST_SESSION_KEY)
       : null
@@ -113,12 +119,10 @@ export function TimerContent() {
       session = sessions.find((s) => s.id === lastId) ?? null
     }
 
-    // If no saved session, get or create default for 3x3
     if (!session) {
       const result = await getOrCreateDefaultSession("333")
       if (result.data) {
         session = result.data
-        // Refresh session list if we created a new one
         if (!sessions.find((s) => s.id === session!.id)) {
           const { data: refreshed } = await getUserSolveSessions()
           setSolveSessions(refreshed)
@@ -147,7 +151,6 @@ export function TimerContent() {
   }
 
   const loadSessionSolves = async (session: SolveSession) => {
-    // Check for an active timer session linked to this solve session
     const activeResult = await getActiveTimerSession(session.event, session.id)
     if (activeResult.data) {
       setTimerSessionId(activeResult.data.id)
@@ -166,7 +169,6 @@ export function TimerContent() {
       return
     }
 
-    // No active timer session — load solves from solve_session (after active_from)
     const { solves: sessionSolves } = await getSolvesBySession(
       session.id,
       session.active_from
@@ -197,7 +199,6 @@ export function TimerContent() {
   const handleSelectSession = async (session: SolveSession) => {
     if (session.id === currentSession?.id) return
 
-    // Finalize current timer session if there are solves
     if (timerSessionId && solves.length > 0) {
       await finalizeTimerSession(timerSessionId)
     }
@@ -317,6 +318,9 @@ export function TimerContent() {
     setSolves((prev) =>
       prev.map((s) => (s.id === solveId ? { ...s, penalty } : s))
     )
+    setSelectedSolve((prev) =>
+      prev && prev.id === solveId ? { ...prev, penalty } : prev
+    )
 
     const result = await updateSolve(solveId, { penalty })
     if (result.error && currentSession) {
@@ -337,12 +341,95 @@ export function TimerContent() {
     setSolves((prev) =>
       prev.map((s) => (s.id === solveId ? { ...s, notes: notes || null } : s))
     )
-
-    const result = await updateSolve(solveId, { notes: notes || null })
-    if (result.error && currentSession) {
-      await loadSessionSolves(currentSession)
-    }
+    setSelectedSolve((prev) =>
+      prev && prev.id === solveId ? { ...prev, notes: notes || null } : prev
+    )
+    await updateSolve(solveId, { notes: notes || null })
   }
+
+  // ---- Undo last solve (Ctrl+Z) ----
+
+  const handleUndoLastSolve = useCallback(async () => {
+    if (solves.length === 0) return
+
+    const lastSolve = solves[solves.length - 1]
+    setSolves((prev) => prev.slice(0, -1))
+    setUndoSolve(lastSolve)
+
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    undoTimerRef.current = setTimeout(() => {
+      setUndoSolve(null)
+    }, 5000)
+
+    await deleteSolve(lastSolve.id)
+  }, [solves])
+
+  const handleRestoreUndo = useCallback(async () => {
+    if (!undoSolve) return
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+
+    const sessionId = await ensureTimerSession()
+    const result = await addSolve(sessionId, {
+      solve_number: undoSolve.solve_number,
+      time_ms: undoSolve.time_ms,
+      penalty: undoSolve.penalty,
+      scramble: undoSolve.scramble,
+      event: undoSolve.event,
+      comp_sim_group: undoSolve.comp_sim_group,
+      solve_session_id: undoSolve.solve_session_id,
+    })
+
+    if (result.data) {
+      setSolves((prev) => [...prev, result.data!])
+    }
+    setUndoSolve(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undoSolve])
+
+  // ---- Keyboard shortcuts ----
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return
+      }
+
+      if (showSummary || showManager || selectedSolve) return
+
+      // Ctrl+Z = Undo last solve
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
+        e.preventDefault()
+        handleUndoLastSolve()
+        return
+      }
+
+      // Ctrl+1 = OK, Ctrl+2 = +2, Ctrl+3 = DNF (last solve)
+      if ((e.ctrlKey || e.metaKey) && solves.length > 0) {
+        const lastSolve = solves[solves.length - 1]
+        if (e.code === "Digit1") {
+          e.preventDefault()
+          handlePenaltyChange(lastSolve.id, null)
+          return
+        }
+        if (e.code === "Digit2") {
+          e.preventDefault()
+          handlePenaltyChange(lastSolve.id, "+2")
+          return
+        }
+        if (e.code === "Digit3") {
+          e.preventDefault()
+          handlePenaltyChange(lastSolve.id, "DNF")
+          return
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [showSummary, showManager, selectedSolve, solves, handleUndoLastSolve])
 
   const handleModeChange = (newMode: "normal" | "comp_sim") => {
     if (newMode === mode) return
@@ -467,6 +554,10 @@ export function TimerContent() {
 
   // ---- Render ----
 
+  const handleSolveClick = (solve: Solve) => {
+    setSelectedSolve(solve)
+  }
+
   const sidebarPanel = sidebarPosition !== "hidden" && (
     <TimerSidebar
       sidebarPosition={sidebarPosition}
@@ -476,7 +567,7 @@ export function TimerContent() {
       event={event}
       onPenaltyChange={handlePenaltyChange}
       onDelete={handleDeleteSolve}
-      onNotesChange={handleNotesChange}
+      onSolveClick={handleSolveClick}
     />
   )
 
@@ -543,6 +634,18 @@ export function TimerContent() {
         {sidebarPosition === "bottom" && sidebarPanel}
       </div>
 
+      {undoSolve && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-2.5 flex items-center gap-3">
+          <span className="text-sm">Solve deleted</span>
+          <button
+            onClick={handleRestoreUndo}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Undo
+          </button>
+        </div>
+      )}
+
       <InspectionOverlay
         secondsLeft={inspection.secondsLeft}
         state={inspection.state}
@@ -571,6 +674,15 @@ export function TimerContent() {
         onArchive={handleManagerArchive}
         onDelete={handleManagerDelete}
         onCreate={handleCreateSession}
+      />
+
+      <SolveDetailModal
+        solve={selectedSolve}
+        isOpen={selectedSolve !== null}
+        onClose={() => setSelectedSolve(null)}
+        onPenaltyChange={handlePenaltyChange}
+        onDelete={handleDeleteSolve}
+        onNotesChange={handleNotesChange}
       />
     </div>
   )
