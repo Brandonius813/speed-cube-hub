@@ -1,6 +1,7 @@
 import { Square, X, Download } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { SessionSelector } from "@/components/timer/session-selector"
 import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
@@ -54,6 +55,11 @@ export function TimerTopBar({
   onPhaseCountChange,
   phaseLabels,
   onPhaseLabelsChange,
+  stackmatConnected,
+  stackmatReceiving,
+  stackmatError,
+  onStackmatConnect,
+  onStackmatDisconnect,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -98,6 +104,11 @@ export function TimerTopBar({
   onPhaseCountChange?: (count: PhaseCount) => void
   phaseLabels?: string[]
   onPhaseLabelsChange?: (labels: string[]) => void
+  stackmatConnected?: boolean
+  stackmatReceiving?: boolean
+  stackmatError?: string | null
+  onStackmatConnect?: () => void
+  onStackmatDisconnect?: () => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -154,6 +165,17 @@ export function TimerTopBar({
           {inputMode === "typing" && (
             <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
               Typing
+            </span>
+          )}
+          {inputMode === "stackmat" && (
+            <span className="text-xs bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  stackmatReceiving ? "bg-green-400" : stackmatConnected ? "bg-yellow-400" : "bg-muted-foreground/30"
+                )}
+              />
+              Stackmat
             </span>
           )}
         </div>
@@ -231,6 +253,11 @@ export function TimerTopBar({
             onPhaseCountChange={onPhaseCountChange}
             phaseLabels={phaseLabels}
             onPhaseLabelsChange={onPhaseLabelsChange}
+            stackmatConnected={stackmatConnected}
+            stackmatReceiving={stackmatReceiving}
+            stackmatError={stackmatError}
+            onStackmatConnect={onStackmatConnect}
+            onStackmatDisconnect={onStackmatDisconnect}
           />
         </div>
       </div>

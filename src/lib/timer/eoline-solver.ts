@@ -1,8 +1,11 @@
 /**
- * EOLine analyzer for the ZZ method.
+ * EOLine analyzer and solver for the ZZ method.
  *
- * In ZZ, "bad" edges need an F or B move to eventually solve.
- * After EO, the cube can be solved with only R, U, L, D moves.
+ * Analyzer: counts bad edges, checks DF/DB placement.
+ * Solver: BFS pruning table finds optimal move sequence to solve EOLine.
+ *
+ * State space: EO (4096) × DF slot (12) × DB slot (12) = 589,824.
+ * Table builds lazily in <200ms. Max solution depth: ~9 moves.
  *
  * Edge indices: UF=0 UR=1 UB=2 UL=3 DF=4 DR=5 DB=6 DL=7 FR=8 FL=9 BR=10 BL=11
  */

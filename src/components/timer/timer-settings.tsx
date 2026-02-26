@@ -11,7 +11,7 @@ import {
   type TimerUpdateMode,
 } from "@/components/timer/timer-display"
 
-export type InputMode = "timer" | "typing"
+export type InputMode = "timer" | "typing" | "stackmat"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
 export type AutoBackupInterval = 0 | 10 | 25 | 50 | 100
 export const AUTO_BACKUP_OPTIONS: AutoBackupInterval[] = [0, 10, 25, 50, 100]
@@ -52,6 +52,11 @@ type TimerSettingsProps = {
   onPhaseCountChange?: (count: PhaseCount) => void
   phaseLabels?: string[]
   onPhaseLabelsChange?: (labels: string[]) => void
+  stackmatConnected?: boolean
+  stackmatReceiving?: boolean
+  stackmatError?: string | null
+  onStackmatConnect?: () => void
+  onStackmatDisconnect?: () => void
 }
 
 export function TimerSettings({
@@ -81,6 +86,11 @@ export function TimerSettings({
   onPhaseCountChange,
   phaseLabels,
   onPhaseLabelsChange,
+  stackmatConnected,
+  stackmatReceiving,
+  stackmatError,
+  onStackmatConnect,
+  onStackmatDisconnect,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -295,11 +305,11 @@ export function TimerSettings({
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                   Input
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   <Button
                     variant={inputMode === "timer" ? "default" : "outline"}
                     size="sm"
-                    className="flex-1"
+                    className="text-xs"
                     onClick={() => onInputModeChange("timer")}
                   >
                     Timer
@@ -307,12 +317,59 @@ export function TimerSettings({
                   <Button
                     variant={inputMode === "typing" ? "default" : "outline"}
                     size="sm"
-                    className="flex-1"
+                    className="text-xs"
                     onClick={() => onInputModeChange("typing")}
                   >
                     Typing
                   </Button>
+                  <Button
+                    variant={inputMode === "stackmat" ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => onInputModeChange("stackmat")}
+                  >
+                    Stackmat
+                  </Button>
                 </div>
+                {inputMode === "stackmat" && (
+                  <div className="space-y-2 rounded-lg bg-secondary/30 p-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            stackmatReceiving
+                              ? "bg-green-400"
+                              : stackmatConnected
+                                ? "bg-yellow-400"
+                                : "bg-muted-foreground/30"
+                          )}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {stackmatReceiving
+                            ? "Signal detected"
+                            : stackmatConnected
+                              ? "Listening..."
+                              : "Disconnected"}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={stackmatConnected ? onStackmatDisconnect : onStackmatConnect}
+                      >
+                        {stackmatConnected ? "Disconnect" : "Connect"}
+                      </Button>
+                    </div>
+                    {stackmatError && (
+                      <p className="text-xs text-red-400">{stackmatError}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground/60">
+                      Connect a Stackmat timer via audio jack. Gen 3/4/5 supported.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Statistics indicators */}

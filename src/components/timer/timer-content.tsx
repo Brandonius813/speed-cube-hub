@@ -18,7 +18,7 @@ import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
 import { useTimerScramble } from "@/lib/timer/use-timer-scramble"
-import { computeSessionStats } from "@/lib/timer/averages"
+import { computeSessionStats, formatTimeMs } from "@/lib/timer/averages"
 import { useInspection } from "@/lib/timer/inspection"
 import {
   createTimerSession,
@@ -56,6 +56,7 @@ import {
 } from "@/lib/timer/export"
 import { getCurrentPBs, logNewPB } from "@/lib/actions/personal-bests"
 import { getProfile } from "@/lib/actions/profiles"
+import { cn } from "@/lib/utils"
 import { getTodayPacific } from "@/lib/utils"
 import type { Solve, SolveSession, PBRecord } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
@@ -70,6 +71,7 @@ import { SwipeFeedback } from "@/components/timer/swipe-feedback"
 import { TrainingCaseStats } from "@/components/timer/training-case-stats"
 import { SeedInput, loadPersistedSeed } from "@/components/timer/seed-input"
 import type { SwipeDirection } from "@/components/timer/timer-display"
+import { useStackmat } from "@/lib/timer/use-stackmat"
 
 type PBDetection = {
   event: string
@@ -253,6 +255,14 @@ export function TimerContent() {
   // Inspection hook
   const inspection = useInspection()
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
+
+  // Stackmat timer - handler ref set below after saveSolve is defined
+  const stackmatSolveRef = useRef<(timeMs: number) => void>(() => {})
+
+  const stackmat = useStackmat({
+    onSolveComplete: (timeMs: number) => stackmatSolveRef.current(timeMs),
+    enabled: inputMode === "stackmat",
+  })
 
   // Compute stats from current solves
   const stats = computeSessionStats(solves)
@@ -634,6 +644,14 @@ export function TimerContent() {
 
   const handleTypedTime = async (timeMs: number) => {
     setLastTime(timeMs)
+    saveSolve(timeMs, null)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+  }
+
+  // Stackmat solve handler (using ref so the hook always has latest closure)
+  stackmatSolveRef.current = (timeMs: number) => {
+    setLastTime(timeMs)
+    setLastPhases(null)
     saveSolve(timeMs, null)
     loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
@@ -1184,6 +1202,11 @@ export function TimerContent() {
         onPhaseCountChange={handlePhaseCountChange}
         phaseLabels={phaseLabels}
         onPhaseLabelsChange={handlePhaseLabelsChange}
+        stackmatConnected={stackmat.isConnected}
+        stackmatReceiving={stackmat.isReceiving}
+        stackmatError={stackmat.error}
+        onStackmatConnect={stackmat.connect}
+        onStackmatDisconnect={stackmat.disconnect}
       />)}
 
       <div className={layoutClass}>
@@ -1203,6 +1226,36 @@ export function TimerContent() {
               onSubmit={handleTypedTime}
               disabled={showSummary}
             />
+          ) : inputMode === "stackmat" ? (
+            <div className="flex-1 flex flex-col items-center justify-center select-none">
+              <div
+                className={cn(
+                  "font-mono tabular-nums font-bold transition-colors",
+                  timerSize === "small" ? "text-4xl sm:text-5xl md:text-6xl"
+                    : timerSize === "medium" ? "text-5xl sm:text-6xl md:text-7xl lg:text-8xl"
+                    : "text-6xl sm:text-7xl md:text-8xl lg:text-9xl",
+                  stackmat.stackmatState === "running" ? "text-green-400"
+                    : stackmat.stackmatState === "stopped" ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                {lastTime !== null && stackmat.stackmatState !== "running"
+                  ? formatTimeMs(lastTime)
+                  : stackmat.stackmatState === "running"
+                    ? formatTimeMs(stackmat.currentTimeMs)
+                    : formatTimeMs(0)}
+              </div>
+              {!stackmat.isConnected && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Connect your Stackmat timer in Settings to start
+                </p>
+              )}
+              {stackmat.isConnected && !stackmat.isReceiving && (
+                <p className="text-sm text-yellow-400/80 mt-4">
+                  Waiting for signal... Make sure your timer is connected and powered on
+                </p>
+              )}
+            </div>
           ) : (
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
