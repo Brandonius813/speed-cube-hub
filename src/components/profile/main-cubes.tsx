@@ -299,9 +299,10 @@ export function MainCubes({
   if (!isOwner && items.length === 0) return null
 
   const eventHistoryForModal = historyEvent ? getEventHistory(historyEvent) : []
-  const currentMainForModal = historyEvent
-    ? items.find((c) => c.event === historyEvent)
-    : null
+  const currentMainIdx = historyEvent
+    ? items.findIndex((c) => c.event === historyEvent)
+    : -1
+  const currentMainForModal = currentMainIdx >= 0 ? items[currentMainIdx] : null
 
   return (
     <>
@@ -583,17 +584,49 @@ export function MainCubes({
             {/* Current main */}
             {currentMainForModal && (
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
-                    Current
-                  </span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                        Current
+                      </span>
+                    </div>
+                    <p className="font-medium text-foreground">{currentMainForModal.name}</p>
+                    {currentMainForModal.setup && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {currentMainForModal.setup}
+                      </p>
+                    )}
+                  </div>
+                  {isOwner && (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        onClick={() => {
+                          setHistoryOpen(false)
+                          openEdit(currentMainIdx)
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                        aria-label="Edit current main"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await handleDelete(currentMainIdx)
+                          // Close modal if we just removed the only cube for this event
+                          if (!items.some((c, i) => c.event === historyEvent && i !== currentMainIdx)) {
+                            setHistoryOpen(false)
+                          }
+                        }}
+                        disabled={saving}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                        aria-label="Delete current main"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="font-medium text-foreground">{currentMainForModal.name}</p>
-                {currentMainForModal.setup && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {currentMainForModal.setup}
-                  </p>
-                )}
               </div>
             )}
 
