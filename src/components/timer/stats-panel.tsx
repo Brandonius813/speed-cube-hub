@@ -294,7 +294,12 @@ export function StatsPanel({
             <>
               <TimeDistributionChart solves={chartSolves} />
               <TimeTrendChart solves={chartSolves} />
-              {chartScope === "all" && <DailySolveChart solves={chartSolves} />}
+              {chartScope === "all" && (
+                <>
+                  <SolveHeatmap solves={chartSolves} />
+                  <DailySolveChart solves={chartSolves} />
+                </>
+              )}
             </>
           )}
         </div>

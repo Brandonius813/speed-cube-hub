@@ -12,7 +12,7 @@ import {
 } from "recharts"
 import type { Solve } from "@/lib/types"
 
-type GroupMode = "daily" | "weekly" | "monthly"
+type GroupMode = "daily" | "weekly" | "monthly" | "yearly"
 
 function getDateStr(isoDate: string): string {
   const d = new Date(isoDate)
@@ -28,7 +28,8 @@ function getGroupMode(solves: Solve[]): GroupMode {
   const daySpan = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1
   if (daySpan <= 31) return "daily"
   if (daySpan <= 90) return "weekly"
-  return "monthly"
+  if (daySpan <= 365) return "monthly"
+  return "yearly"
 }
 
 function getGroupSortKey(dateStr: string, mode: GroupMode): number {
@@ -39,7 +40,8 @@ function getGroupSortKey(dateStr: string, mode: GroupMode): number {
     start.setDate(start.getDate() - start.getDay())
     return start.getTime()
   }
-  return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
+  if (mode === "monthly") return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
+  return new Date(date.getFullYear(), 0, 1).getTime()
 }
 
 function getGroupKey(dateStr: string, mode: GroupMode): string {
@@ -54,7 +56,10 @@ function getGroupKey(dateStr: string, mode: GroupMode): string {
     return `${start.getMonth() + 1}/${start.getDate()}`
   }
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`
+  if (mode === "monthly") {
+    return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`
+  }
+  return String(date.getFullYear())
 }
 
 function CustomTooltip({
@@ -89,6 +94,7 @@ export function DailySolveChart({ solves }: { solves: Solve[] }) {
       daily: "Daily Solve Count",
       weekly: "Weekly Solve Count",
       monthly: "Monthly Solve Count",
+      yearly: "Yearly Solve Count",
     }
 
     // Group solves by time period
