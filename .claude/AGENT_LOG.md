@@ -315,3 +315,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Most Phase 13 tasks were completed by a prior session that also synced — always read AGENT_LOG before starting work to avoid duplicate effort.
 **Blockers:** None
 **Warnings:** None — Phase 13 fully complete. Remaining available Phase 12 tasks: T78, T79, T80, T81, T82.
+
+---
+
+### 2026-02-26 17:30 PT — Phase 13 Final Verification + Build Fix Session
+
+**Task:** Phase 13 (T83–T95) final verification + build fix
+**Status:** Verified all 13 Phase 13 QoL tasks by reading each source file — all were already implemented by prior sessions. Fixed one build error: `/dashboard/page.tsx` still passed a removed `initialStats` prop to `DashboardContent` (leftover from T85 dynamic stats). Removed the stale prop and unused import. Build passes clean. Updated TASKS.md statuses. Remaining available: T80, T81, T82 only.
+**Files touched:** src/app/(main)/dashboard/page.tsx, .claude/TASKS.md
+**Learnings:** The `/dashboard` route is a duplicate of `/practice-stats` — both render the same `DashboardContent`. May be worth removing one. The `.next` cache frequently corrupts on macOS — `rm -rf .next` before build is often needed.
+**Blockers:** None
+**Warnings:** Only 3 tasks remain: T80 (homepage revalidation), T81 (count query fix), T82 (image optimization config).
