@@ -1,12 +1,14 @@
 "use client"
 
 import { Settings, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   HOLD_DURATION_OPTIONS,
   type HoldDuration,
+  type TimerSize,
+  type TimerUpdateMode,
 } from "@/components/timer/timer-display"
 
 export type InputMode = "timer" | "typing"
@@ -17,8 +19,12 @@ type TimerSettingsProps = {
   onModeChange: (mode: "normal" | "comp_sim") => void
   inspectionEnabled: boolean
   onInspectionChange: (enabled: boolean) => void
-  showTimeWhileSolving: boolean
-  onShowTimeChange: (show: boolean) => void
+  timerUpdateMode: TimerUpdateMode
+  onTimerUpdateModeChange: (mode: TimerUpdateMode) => void
+  timerSize: TimerSize
+  onTimerSizeChange: (size: TimerSize) => void
+  smallDecimals: boolean
+  onSmallDecimalsChange: (enabled: boolean) => void
   holdDuration?: HoldDuration
   onHoldDurationChange?: (duration: HoldDuration) => void
   inputMode: InputMode
@@ -34,8 +40,12 @@ export function TimerSettings({
   onModeChange,
   inspectionEnabled,
   onInspectionChange,
-  showTimeWhileSolving,
-  onShowTimeChange,
+  timerUpdateMode,
+  onTimerUpdateModeChange,
+  timerSize,
+  onTimerSizeChange,
+  smallDecimals,
+  onSmallDecimalsChange,
   holdDuration,
   onHoldDurationChange,
   inputMode,
@@ -46,9 +56,22 @@ export function TimerSettings({
   onStatIndicatorsChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [isOpen])
 
   return (
-    <>
+    <div className="relative" ref={popoverRef}>
       {/* Settings toggle button */}
       <Button
         variant="ghost"
@@ -59,29 +82,22 @@ export function TimerSettings({
         <Settings className="h-4 w-4" />
       </Button>
 
-      {/* Settings panel — slides in from right on mobile, inline on desktop */}
+      {/* Settings popover — floats above content, never rearranges layout */}
       {isOpen && (
-        <>
-          {/* Backdrop on mobile */}
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setIsOpen(false)}
-          />
-
-          <div className="fixed right-0 top-0 bottom-0 w-72 bg-card border-l border-border z-50 overflow-y-auto md:static md:w-full md:border-l-0 md:border-t md:border-border md:z-auto">
-            <div className="p-4 space-y-5">
-              {/* Close button (mobile only) */}
-              <div className="flex items-center justify-between md:hidden">
-                <h3 className="text-sm font-medium">Settings</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+        <div className="absolute right-0 top-full mt-1 w-72 max-h-[80vh] overflow-y-auto bg-card border border-border rounded-lg shadow-lg z-50">
+          <div className="p-4 space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Settings</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
               {/* Mode toggle */}
               <div className="space-y-2">
@@ -116,12 +132,60 @@ export function TimerSettings({
                 onChange={onInspectionChange}
               />
 
-              {/* Show time while solving toggle */}
+              {/* Timer update mode */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  During Solve
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { value: "realtime", label: "Real-time" },
+                    { value: "seconds", label: "Seconds" },
+                    { value: "hidden", label: "Hidden" },
+                  ] as const).map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={timerUpdateMode === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onTimerUpdateModeChange(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timer size */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Timer Size
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { value: "small", label: "Small" },
+                    { value: "medium", label: "Medium" },
+                    { value: "large", label: "Large" },
+                  ] as const).map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={timerSize === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onTimerSizeChange(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Small decimals toggle */}
               <ToggleSetting
-                label="Show Time"
-                description="Display running time while solving"
-                enabled={showTimeWhileSolving}
-                onChange={onShowTimeChange}
+                label="Small Decimals"
+                description="Show decimal digits in a smaller font"
+                enabled={smallDecimals}
+                onChange={onSmallDecimalsChange}
               />
 
               {/* Hold duration */}
@@ -214,9 +278,9 @@ export function TimerSettings({
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
-    </>
+    </div>
   )
 }
 
@@ -254,4 +318,3 @@ function ToggleSetting({
     </div>
   )
 }
-
