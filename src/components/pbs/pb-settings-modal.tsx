@@ -9,10 +9,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { ChevronUp, ChevronDown, Plus, X } from "lucide-react"
 import { updatePBVisibleTypes, updatePBMainEvents } from "@/lib/actions/profiles"
 import { WCA_EVENTS } from "@/lib/constants"
-import { CubingIcon } from "@/components/shared/cubing-icon"
+import { EventOrderTab } from "@/components/pbs/event-order-tab"
 
 /**
  * All possible PB types across all events, in a logical order.
@@ -53,8 +52,12 @@ export function PBSettingsModal({
   })
 
   // ── Event Order state ──
+  // First 3 entries in the saved array are "main events", rest are ordered other events
   const [mainEvents, setMainEvents] = useState<string[]>(
-    () => currentMainEvents ?? []
+    () => (currentMainEvents ?? []).slice(0, 3)
+  )
+  const [orderedOtherEvents, setOrderedOtherEvents] = useState<string[]>(
+    () => (currentMainEvents ?? []).slice(3)
   )
 
   const [saving, setSaving] = useState(false)
@@ -80,16 +83,20 @@ export function PBSettingsModal({
 
   const allSelected = selected.size === ALL_PB_TYPES.length
 
+  const MAX_MAIN_EVENTS = 3
+
   // ── Event Order handlers ──
   function addToMain(eventId: string) {
+    if (mainEvents.length >= MAX_MAIN_EVENTS) return
     setMainEvents((prev) => [...prev, eventId])
+    setOrderedOtherEvents((prev) => prev.filter((id) => id !== eventId))
   }
 
   function removeFromMain(eventId: string) {
     setMainEvents((prev) => prev.filter((id) => id !== eventId))
   }
 
-  function moveUp(index: number) {
+  function moveMainUp(index: number) {
     if (index === 0) return
     setMainEvents((prev) => {
       const next = [...prev]
@@ -98,7 +105,7 @@ export function PBSettingsModal({
     })
   }
 
-  function moveDown(index: number) {
+  function moveMainDown(index: number) {
     setMainEvents((prev) => {
       if (index >= prev.length - 1) return prev
       const next = [...prev]
@@ -107,8 +114,38 @@ export function PBSettingsModal({
     })
   }
 
+  function moveOtherUp(index: number) {
+    if (index === 0) return
+    setOrderedOtherEvents((prev) => {
+      const next = [...prev]
+      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+      return next
+    })
+  }
+
+  function moveOtherDown(index: number) {
+    setOrderedOtherEvents((prev) => {
+      if (index >= prev.length - 1) return prev
+      const next = [...prev]
+      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
+      return next
+    })
+  }
+
+  function addToOtherEvents(eventId: string) {
+    setOrderedOtherEvents((prev) => [...prev, eventId])
+  }
+
+  function removeFromOtherEvents(eventId: string) {
+    setOrderedOtherEvents((prev) => prev.filter((id) => id !== eventId))
+  }
+
   const mainEventSet = new Set(mainEvents)
-  const otherEvents = WCA_EVENTS.filter((e) => !mainEventSet.has(e.id))
+  const orderedOtherSet = new Set(orderedOtherEvents)
+  const unorderedEvents = WCA_EVENTS.filter(
+    (e) => !mainEventSet.has(e.id) && !orderedOtherSet.has(e.id)
+  )
+  const mainLimitReached = mainEvents.length >= MAX_MAIN_EVENTS
 
   function getEventLabel(eventId: string): string {
     return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
@@ -123,7 +160,8 @@ export function PBSettingsModal({
       ? null
       : ALL_PB_TYPES.filter((t) => selected.has(t.id)).map((t) => t.id)
 
-    const mainToSave = mainEvents.length === 0 ? null : mainEvents
+    const fullOrder = [...mainEvents, ...orderedOtherEvents]
+    const mainToSave = fullOrder.length === 0 ? null : fullOrder
 
     const [typesResult, mainResult] = await Promise.all([
       updatePBVisibleTypes(typesToSave),
@@ -191,12 +229,19 @@ export function PBSettingsModal({
           ) : (
             <EventOrderTab
               mainEvents={mainEvents}
-              otherEvents={otherEvents}
+              maxMainEvents={MAX_MAIN_EVENTS}
+              mainLimitReached={mainLimitReached}
+              orderedOtherEvents={orderedOtherEvents}
+              unorderedEvents={unorderedEvents}
               getEventLabel={getEventLabel}
-              onAdd={addToMain}
-              onRemove={removeFromMain}
-              onMoveUp={moveUp}
-              onMoveDown={moveDown}
+              onAddToMain={addToMain}
+              onRemoveFromMain={removeFromMain}
+              onMoveMainUp={moveMainUp}
+              onMoveMainDown={moveMainDown}
+              onAddToOther={addToOtherEvents}
+              onRemoveFromOther={removeFromOtherEvents}
+              onMoveOtherUp={moveOtherUp}
+              onMoveOtherDown={moveOtherDown}
             />
           )}
         </div>
@@ -272,112 +317,3 @@ function PBTypesTab({
   )
 }
 
-// ── Event Order Tab ──
-function EventOrderTab({
-  mainEvents,
-  otherEvents,
-  getEventLabel,
-  onAdd,
-  onRemove,
-  onMoveUp,
-  onMoveDown,
-}: {
-  mainEvents: string[]
-  otherEvents: { id: string; label: string }[]
-  getEventLabel: (id: string) => string
-  onAdd: (id: string) => void
-  onRemove: (id: string) => void
-  onMoveUp: (index: number) => void
-  onMoveDown: (index: number) => void
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Main Events */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-          Main Events
-        </p>
-        {mainEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground/60 px-1 py-3">
-            No main events yet. Add events below to pin them to the top of your
-            PBs page.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-0.5">
-            {mainEvents.map((eventId, index) => (
-              <div
-                key={eventId}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 bg-secondary/40 min-h-11"
-              >
-                <CubingIcon
-                  event={eventId}
-                  className="text-sm text-muted-foreground shrink-0"
-                />
-                <span className="text-sm font-medium text-foreground flex-1 min-w-0">
-                  {getEventLabel(eventId)}
-                </span>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <button
-                    onClick={() => onMoveUp(index)}
-                    disabled={index === 0}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:hover:bg-transparent"
-                    title="Move up"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => onMoveDown(index)}
-                    disabled={index === mainEvents.length - 1}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:hover:bg-transparent"
-                    title="Move down"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => onRemove(eventId)}
-                    className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    title="Remove from main events"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Other Events */}
-      {otherEvents.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-            Other Events
-          </p>
-          <div className="flex flex-col gap-0.5">
-            {otherEvents.map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-secondary/40 min-h-11 transition"
-              >
-                <CubingIcon
-                  event={event.id}
-                  className="text-sm text-muted-foreground shrink-0"
-                />
-                <span className="text-sm text-muted-foreground flex-1 min-w-0">
-                  {event.label}
-                </span>
-                <button
-                  onClick={() => onAdd(event.id)}
-                  className="rounded p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-                  title="Add to main events"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}

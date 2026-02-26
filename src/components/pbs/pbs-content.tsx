@@ -110,19 +110,20 @@ export function PBsContent({
     }
   }
 
-  // Split events into main and other
+  // Split events into main (first 3 in array), ordered other (rest of array),
+  // and unordered (events with PBs not in the array, shown in default WCA order)
   const allEventsWithPBs = WCA_EVENTS
     .map((e) => e.id)
     .filter((id) => pbsByEvent[id])
 
-  const hasMainEvents = mainEvents && mainEvents.length > 0
-  const mainEventIds = hasMainEvents
-    ? mainEvents.filter((id) => pbsByEvent[id])
-    : []
-  const mainEventSet = new Set(mainEvents ?? [])
-  const otherEventIds = hasMainEvents
-    ? allEventsWithPBs.filter((id) => !mainEventSet.has(id))
-    : allEventsWithPBs
+  const savedOrder = mainEvents ?? []
+  const mainEventIds = savedOrder.slice(0, 3).filter((id) => pbsByEvent[id])
+  const orderedOtherIds = savedOrder.slice(3).filter((id) => pbsByEvent[id])
+  const savedSet = new Set(savedOrder)
+  const unorderedIds = allEventsWithPBs.filter((id) => !savedSet.has(id))
+
+  const hasMainEvents = mainEventIds.length > 0
+  const otherEventIds = [...orderedOtherIds, ...unorderedIds]
 
   function renderEventCard(eventId: string) {
     const eventPBs = pbsByEvent[eventId]
