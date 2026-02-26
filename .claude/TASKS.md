@@ -1908,18 +1908,13 @@ Goal: Make Speed Cube Hub's timer feel like csTimer to experienced cubers. The t
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
-| **Key files** | `src/components/timer/stats-panel.tsx`, `src/components/timer/solve-list.tsx` |
+| **Key files** | `src/components/timer/stats-panel.tsx`, `src/lib/timer/averages.ts` |
 
-Rebuild the stats panel above the time list to match csTimer's familiar layout:
-- Two-column table: label (single, mo3, ao5, ao12, ao50, ao100), columns = current / best
-- Show sigma (σ) standard deviation next to each average
-- Show "target time" column (exact time needed to beat session best)
-- Compact, information-dense layout — tight table like csTimer, NOT big cards
-- "This Session" / "All Time" scope toggle stays
-- BPA/WPA values shown for incomplete windows
+Rebuilt stats panel from card grid to csTimer-style compact table. Columns: label | current | best | σ (std dev per window). Added `computeAoNStdDev()` and `computeTargetTime()` to averages.ts. Session header shows solve count + μ (mean) + σ (session std dev). BPA/WPA shown for incomplete Ao5 windows. Rows are clickable (for future T108 stat detail modal).
 
 ---
 
@@ -1964,21 +1959,13 @@ Click any stat → beautiful modal showing:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
-| **Key files** | New: `src/components/timer/solve-detail-modal.tsx` |
+| **Key files** | `src/components/timer/solve-detail-modal.tsx` |
 
-Click any time → polished modal card:
-- Large time display (mono font)
-- Scramble text (copyable)
-- Date/time solved
-- Notes field (editable, existing `notes` column)
-- Penalty toggles: OK / +2 / DNF
-- Delete button (confirmation)
-- Copy all info button
-
-Replaces current expandable row approach.
+Built polished modal card at `src/components/timer/solve-detail-modal.tsx`. Large time display (mono font), scramble text (copyable), date/time, editable notes field, penalty toggles (OK/+2/DNF), delete button, Escape to close. Wired through timer-sidebar → solve-list → timer-content. Modal renders at top level in timer-content.tsx.
 
 ---
 
@@ -1986,17 +1973,13 @@ Replaces current expandable row approach.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Dependencies** | T109 |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
+| **Dependencies** | T109 ✅ |
 | **Estimated scope** | 1-2 files |
 | **Key files** | `src/components/timer/solve-list.tsx` |
 
-- Compact rows: solve number + time (mono), penalty indicator
-- Click row → solve detail modal (T109)
-- Summary stats at top (count, mean, best, worst)
-- PB solves highlighted (green)
-- DNF solves grayed out with strikethrough
-- Comp Sim: grouped by Ao5 with headers
+Redesigned solve list to compact clickable rows (36px min height). Click opens solve detail modal (T109). PB solves highlighted green, DNF with strikethrough + red, +2 yellow. Notes icon shown for solves with notes. Comp Sim mode preserved with Ao5 group headers. Removed old expandable row + inline penalty controls.
 
 ---
 
