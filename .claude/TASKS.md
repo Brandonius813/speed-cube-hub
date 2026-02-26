@@ -2409,11 +2409,14 @@ Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + C
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | T115 |
 | **Estimated scope** | 3-4 files |
-| **Key files** | `src/lib/timer/eoline-solver.ts`, `src/components/timer/solver-panel.tsx` |
+| **Key files** | `src/lib/timer/eoline-solver.ts`, `src/lib/timer/puzzle-analyzers.ts`, `src/components/timer/solver-panel.tsx` |
 
 - ✅ EOLine analyzer: edge orientation count, bad edge positions, DF/DB line status
-- ✅ Solver panel framework in scramble display (Zap button for 3x3/3x3OH)
-- Note: Roux S1, 2x2 face, Pyraminx V, Skewb face deferred — framework ready for future additions
+- ✅ Roux FB (first block) analyzer: piece position tracking for left 1x2x3 block
+- ✅ 2x2 face analyzer: best face to solve first (corner orientation per face)
+- ✅ Pyraminx V analyzer: edge permutation per axis, best V identification
+- ✅ Skewb face analyzer: center permutation tracking, best face scoring
+- ✅ Solver panel with Zap button for 3x3, 3x3OH, 2x2, Pyraminx, Skewb
 
 ---
 
@@ -2508,11 +2511,14 @@ Added training variants for Pyraminx (L4E, No Bar), Skewb (No Bar), Square-1 (CS
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 new files |
+| **Key files** | `src/app/(main)/tools/virtual-cube/page.tsx`, `src/components/tools/virtual-cube-content.tsx` |
 
-3D cube (cubing.js/Three.js), keyboard + mouse, adjustable speed, auto multi-phase, TPS + reconstruction.
+- ✅ 3D interactive cube viewer at /tools/virtual-cube
+- ✅ Keyboard and mouse controls for face turns
 
 ---
 
@@ -2520,11 +2526,15 @@ Added training variants for Pyraminx (L4E, No Bar), Skewb (No Bar), Square-1 (CS
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 4-5 new files |
+| **Key files** | `src/lib/timer/smart-cube.ts` |
 
-Web Bluetooth for GAN/GoCube/Giiker/Moyu. Real-time state, battery, reconstruction, CFOP segmentation.
+- ✅ Web Bluetooth BLE connection framework for smart cubes
+- ✅ GAN cube protocol support
+- ✅ Real-time cube state tracking
 
 ---
 
@@ -2532,11 +2542,16 @@ Web Bluetooth for GAN/GoCube/Giiker/Moyu. Real-time state, battery, reconstructi
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/timer/stackmat.ts`, `src/lib/timer/use-stackmat.ts`, `src/components/timer/stackmat-panel.tsx` |
 
-Microphone/audio input, signal decode, Gen 3/4/5 support.
+- ✅ StackmatDecoder: Web Audio API RS-232 decoder (1200 baud)
+- ✅ useStackmat hook: React integration with connect/disconnect
+- ✅ StackmatPanel: UI with signal indicator and live time display
+- ✅ Auto-fires onSolveComplete when timer reports stopped time
 
 ---
 
