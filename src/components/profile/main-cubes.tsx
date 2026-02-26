@@ -59,8 +59,10 @@ export function MainCubes({
   const [historyEvent, setHistoryEvent] = useState<string | null>(null)
   // Index into the full `history` array for the entry being edited (null = not editing)
   const [editingHistoryIdx, setEditingHistoryIdx] = useState<number | null>(null)
+  const [addingHistory, setAddingHistory] = useState(false)
   const [historyName, setHistoryName] = useState("")
   const [historySetup, setHistorySetup] = useState("")
+  const [historyDate, setHistoryDate] = useState("")
 
   const visibleItems = expanded ? items : items.slice(0, PREVIEW_COUNT)
   const hiddenCount = items.length - PREVIEW_COUNT
@@ -205,20 +207,34 @@ export function MainCubes({
 
   function startEditHistory(realIdx: number) {
     const entry = history[realIdx]
+    setAddingHistory(false)
     setEditingHistoryIdx(realIdx)
     setHistoryName(entry.name)
     setHistorySetup(entry.setup ?? "")
+    // Format as YYYY-MM-DD for the date input
+    setHistoryDate(new Date(entry.retired_at).toISOString().slice(0, 10))
+  }
+
+  function startAddHistory() {
+    setEditingHistoryIdx(null)
+    setAddingHistory(true)
+    setHistoryName("")
+    setHistorySetup("")
+    setHistoryDate("")
   }
 
   function cancelEditHistory() {
     setEditingHistoryIdx(null)
+    setAddingHistory(false)
     setHistoryName("")
     setHistorySetup("")
+    setHistoryDate("")
   }
 
   async function saveEditHistory() {
     if (editingHistoryIdx === null) return
     if (!historyName.trim()) return
+    if (!historyDate) return
     setSaving(true)
 
     const updated = [...history]
@@ -226,12 +242,40 @@ export function MainCubes({
       ...updated[editingHistoryIdx],
       name: historyName.trim(),
       setup: historySetup.trim(),
+      retired_at: new Date(historyDate + "T12:00:00").toISOString(),
     }
 
     const result = await updateProfileCubes(items, updated)
     if (result.success) {
       setHistory(updated)
       setEditingHistoryIdx(null)
+      setHistoryDate("")
+      router.refresh()
+    }
+    setSaving(false)
+  }
+
+  async function saveAddHistory() {
+    if (!historyName.trim()) return
+    if (!historyDate) return
+    if (!historyEvent) return
+    setSaving(true)
+
+    const newEntry: CubeHistoryEntry = {
+      name: historyName.trim(),
+      setup: historySetup.trim(),
+      event: historyEvent,
+      retired_at: new Date(historyDate + "T12:00:00").toISOString(),
+    }
+    const updated = [newEntry, ...history]
+
+    const result = await updateProfileCubes(items, updated)
+    if (result.success) {
+      setHistory(updated)
+      setAddingHistory(false)
+      setHistoryName("")
+      setHistorySetup("")
+      setHistoryDate("")
       router.refresh()
     }
     setSaving(false)
@@ -560,47 +604,18 @@ export function MainCubes({
 
                 if (isEditing) {
                   return (
-                    <div
+                    <HistoryEntryForm
                       key={entry._idx}
-                      className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-secondary/30 p-3"
-                    >
-                      <Input
-                        value={historyName}
-                        onChange={(e) => setHistoryName(e.target.value)}
-                        placeholder="Cube name"
-                        className="min-h-9 text-sm"
-                        maxLength={100}
-                      />
-                      <Input
-                        value={historySetup}
-                        onChange={(e) => setHistorySetup(e.target.value)}
-                        placeholder="Setup (optional)"
-                        className="min-h-9 text-sm"
-                        maxLength={200}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Retired {formatRetiredDate(entry.retired_at)}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={saveEditHistory}
-                          disabled={saving || !historyName.trim()}
-                          className="min-h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          {saving ? "Saving..." : "Save"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={cancelEditHistory}
-                          disabled={saving}
-                          className="min-h-8 text-xs"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
+                      name={historyName}
+                      setup={historySetup}
+                      date={historyDate}
+                      saving={saving}
+                      onNameChange={setHistoryName}
+                      onSetupChange={setHistorySetup}
+                      onDateChange={setHistoryDate}
+                      onSave={saveEditHistory}
+                      onCancel={cancelEditHistory}
+                    />
                   )
                 }
 
@@ -644,15 +659,111 @@ export function MainCubes({
                   </div>
                 )
               })
-            ) : (
+            ) : !addingHistory ? (
               <p className="text-sm text-muted-foreground py-2">
                 No previous mains for this event.
               </p>
+            ) : null}
+
+            {/* Add past cube form */}
+            {isOwner && addingHistory && (
+              <HistoryEntryForm
+                name={historyName}
+                setup={historySetup}
+                date={historyDate}
+                saving={saving}
+                onNameChange={setHistoryName}
+                onSetupChange={setHistorySetup}
+                onDateChange={setHistoryDate}
+                onSave={saveAddHistory}
+                onCancel={cancelEditHistory}
+              />
+            )}
+
+            {/* Add past cube button */}
+            {isOwner && !addingHistory && editingHistoryIdx === null && (
+              <button
+                type="button"
+                onClick={startAddHistory}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/50 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Past Cube
+              </button>
             )}
           </div>
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function HistoryEntryForm({
+  name,
+  setup,
+  date,
+  saving,
+  onNameChange,
+  onSetupChange,
+  onDateChange,
+  onSave,
+  onCancel,
+}: {
+  name: string
+  setup: string
+  date: string
+  saving: boolean
+  onNameChange: (v: string) => void
+  onSetupChange: (v: string) => void
+  onDateChange: (v: string) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-secondary/30 p-3">
+      <Input
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
+        placeholder="Cube name"
+        className="min-h-9 text-sm"
+        maxLength={100}
+      />
+      <Input
+        value={setup}
+        onChange={(e) => onSetupChange(e.target.value)}
+        placeholder="Setup (optional)"
+        className="min-h-9 text-sm"
+        maxLength={200}
+      />
+      <div className="flex flex-col gap-1">
+        <Label className="text-xs text-muted-foreground">Retired date</Label>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => onDateChange(e.target.value)}
+          className="min-h-9 text-sm"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={onSave}
+          disabled={saving || !name.trim() || !date}
+          className="min-h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onCancel}
+          disabled={saving}
+          className="min-h-8 text-xs"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
   )
 }
 
