@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
@@ -36,16 +37,18 @@ export default async function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <ProfileContent
-        profile={profileResult.profile}
-        sessions={sessionsResult.data}
-        followerCount={followCounts.followers}
-        followingCount={followCounts.following}
-        userBadges={badgesResult.data}
-        allBadges={badgeDefsResult.data}
-        pbs={pbsResult.data}
-        sorKinchStats={sorKinchStats}
-      />
+      <Suspense>
+        <ProfileContent
+          profile={profileResult.profile}
+          sessions={sessionsResult.data}
+          followerCount={followCounts.followers}
+          followingCount={followCounts.following}
+          userBadges={badgesResult.data}
+          allBadges={badgeDefsResult.data}
+          pbs={pbsResult.data}
+          sorKinchStats={sorKinchStats}
+        />
+      </Suspense>
     </main>
   )
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { PublicProfileContent } from "@/components/profile/public-profile-content"
 import { getProfileByHandle } from "@/lib/actions/profiles"
@@ -46,20 +47,22 @@ export default async function PublicProfilePage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <PublicProfileContent
-        profile={profile}
-        sessions={sessionsResult.data}
-        isOwner={isOwner}
-        isLoggedIn={!!user}
-        isFollowing={viewerIsFollowing}
-        followerCount={followCounts.followers}
-        followingCount={followCounts.following}
-        userBadges={badgesResult.data}
-        allBadges={badgeDefsResult.data}
-        pbs={pbsResult.data}
-        isAdmin={user?.id === process.env.ADMIN_USER_ID}
-        sorKinchStats={sorKinchStats}
-      />
+      <Suspense>
+        <PublicProfileContent
+          profile={profile}
+          sessions={sessionsResult.data}
+          isOwner={isOwner}
+          isLoggedIn={!!user}
+          isFollowing={viewerIsFollowing}
+          followerCount={followCounts.followers}
+          followingCount={followCounts.following}
+          userBadges={badgesResult.data}
+          allBadges={badgeDefsResult.data}
+          pbs={pbsResult.data}
+          isAdmin={user?.id === process.env.ADMIN_USER_ID}
+          sorKinchStats={sorKinchStats}
+        />
+      </Suspense>
     </main>
   )
 }

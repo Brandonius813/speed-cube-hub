@@ -102,10 +102,10 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse
   }
 
-  // Redirect authenticated users away from login/signup to practice-stats
+  // Redirect authenticated users away from login/signup to feed
   if (user && AUTH_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone()
-    url.pathname = "/practice-stats"
+    url.pathname = "/feed"
     url.search = ""
     const redirectResponse = NextResponse.redirect(url)
     supabaseResponse.cookies.getAll().forEach((cookie) => {
