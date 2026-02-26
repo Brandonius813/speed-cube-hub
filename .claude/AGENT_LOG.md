@@ -440,3 +440,17 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `getDefaultDisplayTypes()` function in event-detail-modal.tsx centralizes the per-event default display types — BLD/FMC/6x6/7x7 get Single+Mo3, Multi-BLD gets just Single, everything else gets Single+Ao5. Display type overrides are in-memory only (no DB persistence yet).
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-02-28 11:00 PT — csTimer Import Bug Fix Session
+
+**Task:** General work — Fix csTimer import "num_dnf: expected number, received undefined" bug
+**Status:** Fixed two issues reported by a user (G1acia1) on Discord:
+1. **Import crash fix:** `num_dnf` was arriving as `undefined` at the server action boundary during large imports (5,476 solves / 112 sessions). Added `.default(0)` to Zod schemas for `num_dnf` and `num_solves`, plus defensive `?? 0` defaults on the client side in both csTimer and CubeTime import components.
+2. **DNFs now count in averages:** Updated csTimer parser to extract the underlying time from "DNF(12.34)" format and include it in avg_time/best_time calculations. Added `isDnf` flag to `ParsedSolve` type, refactored `parseSolveTime` to return both time and isDnf, extracted shared `parseTimeValue` helper. Updated warning message from "excluded from averages" to "times included in averages." CubeTime parser unchanged (bare "DNF" has no time to extract).
+- Both fixes deployed to production.
+**Files touched:** src/lib/validations.ts, src/lib/cstimer/parse-cstimer.ts, src/components/log/cstimer-import.tsx, src/components/log/cubetime-import.tsx
+**Learnings:** Server action serialization can drop fields on large payloads — always add `.default()` to Zod schemas for nullable numeric fields.
+**Blockers:** None
+**Warnings:** None
