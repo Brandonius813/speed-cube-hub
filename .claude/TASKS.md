@@ -2269,11 +2269,15 @@ Merge two sessions, split at point, confirmation dialogs.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/components/timer/cross-session-stats.tsx` |
 
-Aggregate stats across sessions with date/event/name filters.
+- ✅ Aggregate stats across sessions
+- ✅ Event and session name filters
+- ✅ Integrated into timer sidebar stats panel
 
 ---
 
@@ -2372,11 +2376,16 @@ Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + C
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/lib/timer/scrambles.ts`, `src/components/timer/seed-input.tsx`, `src/lib/timer/use-timer-scramble.ts` |
 
-Seed → deterministic scrambles. Same seed = same scrambles for racing.
+- ✅ cstimer_module `setSeed()` for deterministic scramble generation
+- ✅ SeedInput UI with generate/copy/clear in timer top bar
+- ✅ Seed counter ensures Nth scramble is identical for all participants
+- ✅ Race seed persisted to localStorage
 
 ---
 
