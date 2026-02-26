@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Box, LayoutDashboard, Medal, Rss, Search, Timer, Trophy, User } from "lucide-react"
+import { Box, Rss, Search, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -166,14 +166,6 @@ export function Navbar() {
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
-            </Link>
-            <Link href="/pbs" className={navLinkClass("/pbs")} aria-label="Personal Bests">
-              <Medal className={cn(navIconClass("/pbs"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
-            </Link>
-            <Link href="/practice-stats" className={navLinkClass("/practice-stats")} aria-label="Practice Stats">
-              <LayoutDashboard className={cn(navIconClass("/practice-stats"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
             </Link>
             <NotificationPopup
               unreadCount={unreadCount}
