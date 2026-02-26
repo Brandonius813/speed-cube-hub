@@ -134,7 +134,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-        <Link href="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <Link href={isLoggedIn ? "/feed" : "/"} className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Box className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
           <span className="text-sm font-semibold text-foreground sm:text-lg">
             SpeedCubeHub
