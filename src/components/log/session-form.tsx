@@ -97,32 +97,36 @@ export function SessionForm() {
       return;
     }
 
-    const result = await createSession({
-      session_date: sessionDate,
-      event,
-      practice_type: finalPracticeType,
-      num_solves: numSolves,
-      num_dnf: numDnf,
-      duration_minutes: durationMinutes,
-      avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
-      best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
-      title: title || null,
-      notes: notes || null,
-    });
+    try {
+      const result = await createSession({
+        session_date: sessionDate,
+        event,
+        practice_type: finalPracticeType,
+        num_solves: numSolves,
+        num_dnf: numDnf,
+        duration_minutes: durationMinutes,
+        avg_time: avgTimeStr ? parseSolveTime(avgTimeStr) : null,
+        best_time: bestTimeStr ? parseSolveTime(bestTimeStr) : null,
+        title: title || null,
+        notes: notes || null,
+      });
 
-    if (result.error) {
-      setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      setSubmitted(true);
+      form.reset();
+      setEvent("333");
+      setPracticeType("Solves");
+      setCustomType("");
+      setTimeout(() => setSubmitted(false), 2000);
+    } catch {
+      setError("Something went wrong. Check your internet connection and try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setSubmitted(true);
-    setLoading(false);
-    form.reset();
-    setEvent("333");
-    setPracticeType("Solves");
-    setCustomType("");
-    setTimeout(() => setSubmitted(false), 2000);
   }
 
   return (

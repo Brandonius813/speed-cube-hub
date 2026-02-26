@@ -108,6 +108,8 @@ export function TimerContent() {
     // Pre-generate next scramble in background
     preGenerateScramble(eventId).then((s) => {
       nextScrambleRef.current = s
+    }).catch(() => {
+      // Pre-generation is optional — next scramble will generate on-demand
     })
   }
 
@@ -315,6 +317,16 @@ export function TimerContent() {
   const handleKeepGoing = () => {
     setShowSummary(false)
   }
+
+  // Handle inspection auto-DNF: when inspection exceeds 17s, record a DNF solve
+  useEffect(() => {
+    if (inspection.state === "done" && inspectionEnabled) {
+      // Auto-DNF: inspection timed out, record a DNF solve with 0ms time
+      saveSolve(0, "DNF")
+      loadScramble(event as WcaEventId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspection.state])
 
   // Inspection handlers
   const handleStartInspection = () => {

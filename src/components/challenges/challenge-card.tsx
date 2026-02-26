@@ -50,6 +50,8 @@ export function ChallengeCard({
       getChallengeProgress(challenge.id).then((result) => {
         setProgress(result.progress)
         setLoadingProgress(false)
+      }).catch(() => {
+        setLoadingProgress(false)
       })
     }
   }, [challenge.has_joined, challenge.id, currentUserId, progress])

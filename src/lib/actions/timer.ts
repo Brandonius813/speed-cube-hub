@@ -51,7 +51,7 @@ export async function getActiveTimerSession(
   // Find active timer session for this event
   const { data: session, error: sessionError } = await supabase
     .from("timer_sessions")
-    .select("*")
+    .select("id, user_id, event, mode, status, started_at, ended_at, session_id, created_at")
     .eq("user_id", user.id)
     .eq("event", event)
     .eq("status", "active")
@@ -70,7 +70,7 @@ export async function getActiveTimerSession(
   // Fetch solves for this session
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("*")
+    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
     .eq("timer_session_id", session.id)
     .order("solve_number", { ascending: true })
 
@@ -105,6 +105,18 @@ export async function addSolve(
 
   if (!user) {
     return { data: null, error: "Not authenticated" }
+  }
+
+  // Verify the timer session belongs to the current user
+  const { data: session, error: sessionError } = await supabase
+    .from("timer_sessions")
+    .select("id")
+    .eq("id", timerSessionId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (sessionError || !session) {
+    return { data: null, error: "Timer session not found or not yours" }
   }
 
   const { data: solve, error } = await supabase
@@ -202,7 +214,7 @@ export async function getSolvesByEvent(
 
   const { data, error } = await supabase
     .from("solves")
-    .select("*")
+    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
     .eq("user_id", user.id)
     .eq("event", event)
     .order("solved_at", { ascending: true })
@@ -231,7 +243,7 @@ export async function finalizeTimerSession(
   // Fetch the timer session
   const { data: timerSession, error: tsError } = await supabase
     .from("timer_sessions")
-    .select("*")
+    .select("id, user_id, event, mode, status, started_at, ended_at, session_id, created_at")
     .eq("id", timerSessionId)
     .eq("user_id", user.id)
     .single()
@@ -240,10 +252,15 @@ export async function finalizeTimerSession(
     return { error: "Timer session not found" }
   }
 
+  // Prevent double finalization (e.g., from a double-click)
+  if (timerSession.status === "completed") {
+    return {}
+  }
+
   // Fetch all solves
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("*")
+    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
     .eq("timer_session_id", timerSessionId)
     .order("solve_number", { ascending: true })
 
@@ -290,8 +307,12 @@ export async function finalizeTimerSession(
   )
 
   // Convert ms to decimal seconds for the sessions table
-  const avgTimeSeconds = avgTimeMs ? Math.round(avgTimeMs) / 1000 : null
-  const bestTimeSeconds = bestTimeMs ? bestTimeMs / 1000 : null
+  const avgTimeSeconds = avgTimeMs
+    ? Math.round(avgTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    : null
+  const bestTimeSeconds = bestTimeMs
+    ? Math.round(bestTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    : null
 
   // Today's date in YYYY-MM-DD format (Pacific Time, not UTC)
   const sessionDate = getTodayPacific()

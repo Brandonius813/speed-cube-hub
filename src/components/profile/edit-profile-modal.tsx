@@ -71,6 +71,23 @@ export function EditProfileModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Reset form fields whenever modal opens with fresh profile data
+  useEffect(() => {
+    if (open) {
+      setDisplayName(profile.display_name)
+      setHandle(profile.handle)
+      setBio(profile.bio ?? "")
+      setLocation(profile.location ?? "")
+      setSponsor(profile.sponsor ?? "")
+      setMainEvents(profile.main_events ?? [])
+      setAvatarBlob(null)
+      setAvatarPreview(null)
+      setSelectedDefault(null)
+      setRemoveAvatar(false)
+      setError(null)
+    }
+  }, [open, profile])
+
   // Revoke object URLs on cleanup to prevent memory leaks
   useEffect(() => {
     return () => {

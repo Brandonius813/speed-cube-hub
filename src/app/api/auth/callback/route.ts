@@ -91,12 +91,18 @@ export async function GET(request: NextRequest) {
         user.user_metadata?.picture ||
         null
 
-      await supabase.from("profiles").insert({
+      const { error: profileError } = await supabase.from("profiles").insert({
         id: user.id,
         display_name: fullName,
         handle,
         avatar_url: googleAvatarUrl,
       })
+
+      if (profileError) {
+        console.error("Google OAuth profile creation failed:", profileError.message)
+        // Still redirect — the user has an auth account, so they can try again.
+        // A DB trigger or next login attempt can create the missing profile.
+      }
     }
   }
 

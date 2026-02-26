@@ -25,10 +25,15 @@ export function FeedContent({
     if (!cursor || loading) return
     setLoading(true)
 
-    const result = await getFeed(cursor)
-    setItems((prev) => [...prev, ...result.items])
-    setCursor(result.nextCursor)
-    setLoading(false)
+    try {
+      const result = await getFeed(cursor)
+      setItems((prev) => [...prev, ...result.items])
+      setCursor(result.nextCursor)
+    } catch {
+      // Network error — fail silently, user can retry
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (items.length === 0) {

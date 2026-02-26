@@ -55,10 +55,16 @@ export function CommentSection({
   useEffect(() => {
     async function loadComments() {
       setLoading(true)
-      const result = await getComments(sessionId)
-      setComments(result.comments)
-      setLoaded(true)
-      setLoading(false)
+      try {
+        const result = await getComments(sessionId)
+        setComments(result.comments)
+        setLoaded(true)
+      } catch {
+        // Network error — show empty state
+        setLoaded(true)
+      } finally {
+        setLoading(false)
+      }
     }
     loadComments()
   }, [sessionId])
@@ -68,24 +74,34 @@ export function CommentSection({
     if (!inputValue.trim() || submitting || !currentUserId) return
 
     setSubmitting(true)
-    const result = await addComment(sessionId, inputValue)
+    try {
+      const result = await addComment(sessionId, inputValue)
 
-    if (result.comment) {
-      setComments((prev) => [...prev, result.comment!])
-      setInputValue("")
-      onCommentCountChange(1)
+      if (result.comment) {
+        setComments((prev) => [...prev, result.comment!])
+        setInputValue("")
+        onCommentCountChange(1)
+      }
+    } catch {
+      // Network error — silently fail
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   async function handleDelete(commentId: string) {
     setDeletingId(commentId)
-    const result = await deleteComment(commentId)
-    if (!result.error) {
-      setComments((prev) => prev.filter((c) => c.id !== commentId))
-      onCommentCountChange(-1)
+    try {
+      const result = await deleteComment(commentId)
+      if (!result.error) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId))
+        onCommentCountChange(-1)
+      }
+    } catch {
+      // Network error — silently fail
+    } finally {
+      setDeletingId(null)
     }
-    setDeletingId(null)
   }
 
   if (loading) {

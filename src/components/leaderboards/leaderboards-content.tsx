@@ -131,7 +131,9 @@ export function LeaderboardsContent({
   useEffect(() => { if (prefsLoaded) savePrefs(category, friendsOnly) }, [category, friendsOnly, prefsLoaded])
 
   useEffect(() => {
-    getSupabaseClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null))
+    getSupabaseClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null)).catch(() => {
+      // Auth check failed — keep userId as null (logged-out state)
+    })
   }, [])
 
   // Fetch practice data when cache misses

@@ -59,20 +59,24 @@ export function Navbar() {
 
     // Single server action replaces 3 separate calls + their internal getUser() calls
     async function loadNavbar() {
-      const data = await getNavbarData()
-      if (data.isLoggedIn) {
-        setIsLoggedIn(true)
-        setUserProfile({
-          avatar_url: data.avatarUrl,
-          display_name: data.displayName,
-        })
-        setUnreadCount(data.unreadCount)
-        setIsAdmin(data.isAdmin)
-      } else {
-        setIsLoggedIn(false)
-        setUserProfile(null)
-        setUnreadCount(0)
-        setIsAdmin(false)
+      try {
+        const data = await getNavbarData()
+        if (data.isLoggedIn) {
+          setIsLoggedIn(true)
+          setUserProfile({
+            avatar_url: data.avatarUrl,
+            display_name: data.displayName,
+          })
+          setUnreadCount(data.unreadCount)
+          setIsAdmin(data.isAdmin)
+        } else {
+          setIsLoggedIn(false)
+          setUserProfile(null)
+          setUnreadCount(0)
+          setIsAdmin(false)
+        }
+      } catch {
+        // Network error — keep showing logged-out state
       }
     }
 
@@ -99,6 +103,8 @@ export function Navbar() {
     function handleUpdate() {
       getNavbarData().then((data) => {
         if (data.isLoggedIn) setUnreadCount(data.unreadCount)
+      }).catch(() => {
+        // Notification count refresh failed — keep current count
       })
     }
     window.addEventListener("notifications-updated", handleUpdate)

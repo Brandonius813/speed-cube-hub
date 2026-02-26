@@ -74,7 +74,14 @@ export async function signup(formData: FormData) {
   })
 
   if (profileError) {
-    return { error: "Account created but profile setup failed. Please try logging in." }
+    // Clean up the orphaned auth account so the user can try again
+    try {
+      await admin.auth.admin.deleteUser(data.user.id)
+    } catch {
+      // If cleanup fails, the user can still try signing up again with the same email
+      console.error("Failed to clean up orphaned auth account:", data.user.id)
+    }
+    return { error: "Account setup failed. Please try again." }
   }
 
   return { success: true }

@@ -22,23 +22,27 @@ export function FollowButton({
   async function handleToggle() {
     setLoading(true)
 
-    if (following) {
-      const result = await unfollowUser(targetUserId)
-      if (result.success) {
-        setFollowing(false)
-        onFollowChange?.(false)
-        router.refresh()
+    try {
+      if (following) {
+        const result = await unfollowUser(targetUserId)
+        if (result.success) {
+          setFollowing(false)
+          onFollowChange?.(false)
+          router.refresh()
+        }
+      } else {
+        const result = await followUser(targetUserId)
+        if (result.success) {
+          setFollowing(true)
+          onFollowChange?.(true)
+          router.refresh()
+        }
       }
-    } else {
-      const result = await followUser(targetUserId)
-      if (result.success) {
-        setFollowing(true)
-        onFollowChange?.(true)
-        router.refresh()
-      }
+    } catch {
+      // Network error — silently fail, button returns to normal state
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (

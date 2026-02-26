@@ -98,16 +98,21 @@ export function CsTimerImport() {
       notes: "csTimer import",
     }));
 
-    const result = await createSessionsBulk(rows, { source: "csTimer" });
+    try {
+      const result = await createSessionsBulk(rows, { source: "csTimer" });
 
-    if (result.error) {
-      setImportError(result.error);
+      if (result.error) {
+        setImportError(result.error);
+        setState("previewing");
+        return;
+      }
+
+      setImportedCount(result.inserted);
+      setState("complete");
+    } catch {
+      setImportError("Something went wrong. Check your internet connection and try again.");
       setState("previewing");
-      return;
     }
-
-    setImportedCount(result.inserted);
-    setState("complete");
   }
 
   function handleReset() {

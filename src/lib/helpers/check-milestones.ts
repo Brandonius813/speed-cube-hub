@@ -21,7 +21,7 @@ export async function checkAndAwardMilestones(
   // Get all milestone badges
   const { data: milestoneBadges } = await admin
     .from("badges")
-    .select("*")
+    .select("id, name, description, icon, category, tier, criteria_type, criteria_value, verification")
     .eq("category", "milestone")
     .eq("verification", "auto");
 
@@ -76,7 +76,7 @@ export async function checkAndAwardMilestones(
       const curr = new Date(uniqueDates[i] + "T00:00:00");
       const diffDays =
         (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000);
-      if (diffDays === 1) {
+      if (Math.round(diffDays) === 1) {
         streak++;
       } else {
         longestStreak = Math.max(longestStreak, streak);

@@ -80,19 +80,24 @@ export function CsvImport() {
       notes: r.parsed.notes,
     }));
 
-    const result = await createSessionsBulk(sessionsToImport, { source: "CSV" });
+    try {
+      const result = await createSessionsBulk(sessionsToImport, { source: "CSV" });
 
-    if (result.error) {
-      setImportError(result.error);
+      if (result.error) {
+        setImportError(result.error);
+        setState("previewing");
+        return;
+      }
+
+      setImportResult({
+        imported: result.inserted,
+        skipped: invalidRows.length,
+      });
+      setState("complete");
+    } catch {
+      setImportError("Something went wrong. Check your internet connection and try again.");
       setState("previewing");
-      return;
     }
-
-    setImportResult({
-      imported: result.inserted,
-      skipped: invalidRows.length,
-    });
-    setState("complete");
   }
 
   function handleReset() {

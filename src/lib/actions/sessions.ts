@@ -35,7 +35,7 @@ export async function getSessionsByUserId(
 
   const { data, error } = await supabase
     .from("sessions")
-    .select("*")
+    .select("id, user_id, session_date, event, practice_type, num_solves, num_dnf, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at")
     .eq("user_id", userId)
     .order("session_date", { ascending: false })
     .limit(200);
@@ -128,7 +128,7 @@ export async function getSessions(filters?: {
   return fetchAllPages((from, to) => {
     let query = supabase
       .from("sessions")
-      .select("*")
+      .select("id, user_id, session_date, event, practice_type, num_solves, num_dnf, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at")
       .eq("user_id", user.id)
       .order("session_date", { ascending: false })
       .range(from, to);

@@ -22,7 +22,7 @@ export async function getProfile(): Promise<{
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
     .eq("id", user.id)
     .single()
 
@@ -41,7 +41,7 @@ export async function getProfileByHandle(handle: string): Promise<{
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
     .eq("handle", handle)
     .single()
 
@@ -72,7 +72,7 @@ export async function searchProfiles(
     return { profiles: [] }
   }
 
-  let qb = supabase.from("profiles").select("*")
+  let qb = supabase.from("profiles").select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
 
   // Filter by main event
   if (event) {
