@@ -853,6 +853,8 @@ export function TimerContent() {
 
     setTimerSessionId(null)
     setSolves([])
+    solveCaseMapRef.current.clear()
+    setSolveCaseMap(new Map())
     setLastTime(null)
     setShowSummary(false)
     setSaveError(null)
@@ -896,6 +898,8 @@ export function TimerContent() {
       if (updated) {
         setCurrentSession(updated)
         setSolves([])
+        solveCaseMapRef.current.clear()
+        setSolveCaseMap(new Map())
         setLastTime(null)
       }
     }
