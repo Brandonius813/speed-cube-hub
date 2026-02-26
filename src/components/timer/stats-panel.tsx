@@ -26,7 +26,7 @@ type StatsPanelProps = {
   currentCompSimProgress?: { current: number; total: number }
   solves?: Solve[]
   event?: string
-  onStatClick?: (statLabel: string, value: number | null) => void
+  onStatClick?: (statLabel: string, column: "current" | "best") => void
 }
 
 type ChartScope = "session" | "all"
@@ -184,16 +184,20 @@ export function StatsPanel({
             const isBestCurrent =
               row.best !== null && row.current !== null && row.best === row.current
             return (
-              <tr
-                key={row.label}
-                className="hover:bg-secondary/30 transition-colors cursor-pointer"
-                onClick={() => onStatClick?.(row.label, row.current)}
-              >
-                <td className="text-left text-muted-foreground py-0.5 px-1">{row.label}</td>
-                <td className="text-right py-0.5 px-1">
+              <tr key={row.label}>
+                <td className="text-left text-muted-foreground py-0.5 px-1">
+                  {row.label}
+                </td>
+                <td
+                  className="text-right py-0.5 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
+                  onClick={() => row.current !== null && onStatClick?.(row.label, "current")}
+                >
                   <StatValue value={row.current} />
                 </td>
-                <td className="text-right py-0.5 px-1">
+                <td
+                  className="text-right py-0.5 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
+                  onClick={() => row.best !== null && onStatClick?.(row.label, "best")}
+                >
                   <StatValue value={row.best} isBest={isBestCurrent} />
                 </td>
                 <td className="text-right py-0.5 px-1">

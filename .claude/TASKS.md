@@ -1941,7 +1941,7 @@ Let users configure which averages to track, exactly like csTimer:
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus-B |
 | **Dependencies** | T106 |
 | **Estimated scope** | 1-2 new files |

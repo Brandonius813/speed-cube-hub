@@ -9,6 +9,8 @@ import { TimerSidebar } from "@/components/timer/timer-sidebar"
 import { TimeInput } from "@/components/timer/time-input"
 import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
+import { StatDetailModal } from "@/components/timer/stat-detail-modal"
+import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
@@ -72,6 +74,9 @@ export function TimerContent() {
 
   // Solve detail modal
   const [selectedSolve, setSelectedSolve] = useState<Solve | null>(null)
+
+  // Stat detail modal
+  const [statDetail, setStatDetail] = useState<StatDetailInfo | null>(null)
 
   // Undo state
   const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
@@ -558,6 +563,10 @@ export function TimerContent() {
     setSelectedSolve(solve)
   }
 
+  const handleStatClick = (statLabel: string, column: "current" | "best") => {
+    setStatDetail({ label: statLabel, column })
+  }
+
   const sidebarPanel = sidebarPosition !== "hidden" && (
     <TimerSidebar
       sidebarPosition={sidebarPosition}
@@ -568,6 +577,7 @@ export function TimerContent() {
       onPenaltyChange={handlePenaltyChange}
       onDelete={handleDeleteSolve}
       onSolveClick={handleSolveClick}
+      onStatClick={handleStatClick}
     />
   )
 
@@ -683,6 +693,14 @@ export function TimerContent() {
         onPenaltyChange={handlePenaltyChange}
         onDelete={handleDeleteSolve}
         onNotesChange={handleNotesChange}
+      />
+
+      <StatDetailModal
+        isOpen={statDetail !== null}
+        onClose={() => setStatDetail(null)}
+        info={statDetail}
+        solves={solves}
+        onSolveClick={handleSolveClick}
       />
     </div>
   )
