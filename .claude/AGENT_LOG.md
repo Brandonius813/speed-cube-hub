@@ -518,3 +518,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The linter auto-applied several timer enhancements between sessions (undo, keyboard shortcuts, solve detail modal, notes). These are now committed and pushed.
 **Blockers:** User still needs to run `023_create_solve_sessions.sql` in Supabase SQL Editor.
 **Warnings:** None
+
+---
+
+### 2026-02-26 11:54 PT — Phase 14 Verification + Sync Session
+
+**Task:** Phase 14 (T96-T105) — Final verification and sync
+**Status:** Continued from compacted context. Verified Phase 14 is fully committed and pushed (commits 86ce5b3, 2d7f8ef, b2e8530, 997f459). TypeScript compiles clean (`npx tsc --noEmit` zero errors). Uncommitted changes on dev from other sessions (share card v2, stats panel redesign, solve detail modal) — left untouched. User requested migration SQL.
+**Files touched:** .claude/AGENT_LOG.md (this sync only)
+**Learnings:** `.next/lock` gets stuck when parallel sessions compete — `rm -rf .next` + `pkill -f "next"` is the standard fix.
+**Blockers:** User must run `023_create_solve_sessions.sql` in Supabase SQL Editor.
+**Warnings:** Uncommitted work on dev from other sessions: timer-content.tsx, timer-sidebar.tsx changes. Also untracked: `src/components/share/`, `src/components/timer/solve-detail-modal.tsx`. Don't revert these.
