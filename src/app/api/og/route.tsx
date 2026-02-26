@@ -38,12 +38,12 @@ function formatTime(seconds: number, eventId?: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
 
-  const type = searchParams.get("type") || "session" // "session" | "pb"
-  const name = searchParams.get("name") || "Cuber"
-  const event = searchParams.get("event") || "333"
-  const time = searchParams.get("time") // decimal seconds as string
-  const solves = searchParams.get("solves")
-  const handle = searchParams.get("handle") || ""
+  const type = (searchParams.get("type") || "session").slice(0, 10)
+  const name = (searchParams.get("name") || "Cuber").slice(0, 100)
+  const event = (searchParams.get("event") || "333").slice(0, 10)
+  const time = searchParams.get("time")?.slice(0, 20) ?? null
+  const solves = searchParams.get("solves")?.slice(0, 10) ?? null
+  const handle = (searchParams.get("handle") || "").slice(0, 30)
 
   const eventLabel = EVENT_LABELS[event] || event
   const isPB = type === "pb"

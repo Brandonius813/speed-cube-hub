@@ -108,3 +108,55 @@ export const updatePBSchema = z.object({
   mbld_solved: z.number().int().min(1).optional(),
   mbld_attempted: z.number().int().min(2).optional(),
 })
+
+// --- Timer schemas ---
+
+const validPenalties = ["+2", "DNF"] as const
+
+export const createTimerSessionSchema = z.object({
+  event: eventField,
+  mode: z.enum(["normal", "comp_sim"]).default("normal"),
+})
+
+export const addSolveSchema = z.object({
+  solve_number: z.number().int().min(1).max(10000),
+  time_ms: z.number().int().min(0).max(3600000),
+  penalty: z.enum(validPenalties).nullable(),
+  scramble: z.string().max(1000),
+  event: eventField,
+  comp_sim_group: z.number().int().min(1).nullable(),
+})
+
+export const updateSolveSchema = z.object({
+  penalty: z.enum(validPenalties).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+})
+
+// --- Goal schemas ---
+
+export const createGoalSchema = z.object({
+  event: eventField,
+  target_avg: z.number().positive().max(3600),
+  target_date: dateField,
+})
+
+export const updateGoalSchema = z.object({
+  event: eventField.optional(),
+  target_avg: z.number().positive().max(3600).optional(),
+  target_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format")
+    .optional(),
+})
+
+// --- Club schemas ---
+
+export const createClubSchema = z.object({
+  name: z.string().trim().min(1, "Club name is required").max(100, "Club name must be 100 characters or less"),
+  description: z.string().max(500).optional(),
+})
+
+export const updateClubSchema = z.object({
+  name: z.string().trim().min(1, "Club name is required").max(100, "Club name must be 100 characters or less").optional(),
+  description: z.string().max(500).optional(),
+})

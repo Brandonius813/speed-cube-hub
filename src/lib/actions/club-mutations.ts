@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createClubSchema, updateClubSchema, zodFirstError } from "@/lib/validations"
 
 /**
  * Create a new club. The creator is automatically added as the "owner" member.
@@ -10,12 +10,9 @@ export async function createClub(
   name: string,
   description?: string
 ): Promise<{ clubId?: string; error?: string }> {
-  const trimmedName = name.trim()
-  if (!trimmedName) {
-    return { error: "Club name is required" }
-  }
-  if (trimmedName.length > 100) {
-    return { error: "Club name must be 100 characters or less" }
+  const parsed = createClubSchema.safeParse({ name, description })
+  if (!parsed.success) {
+    return { error: zodFirstError(parsed.error) }
   }
 
   const supabase = await createClient()
@@ -30,8 +27,8 @@ export async function createClub(
   const { data: club, error: clubError } = await supabase
     .from("clubs")
     .insert({
-      name: trimmedName,
-      description: description?.trim() || null,
+      name: parsed.data.name,
+      description: parsed.data.description?.trim() || null,
       created_by: user.id,
     })
     .select("id")
@@ -101,25 +98,25 @@ export async function leaveClub(
     return { success: false, error: "Not authenticated" }
   }
 
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role")
-    .eq("club_id", clubId)
-    .eq("user_id", user.id)
-    .single()
-
-  if (membership?.role === "owner") {
-    const { count } = await supabase
+  // Fetch role + owner count in parallel (avoid sequential round-trips)
+  const [{ data: membership }, { count: ownerCount }] = await Promise.all([
+    supabase
       .from("club_members")
-      .select("*", { count: "exact", head: true })
+      .select("role")
       .eq("club_id", clubId)
-      .eq("role", "owner")
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("club_members")
+      .select("id", { count: "exact", head: true })
+      .eq("club_id", clubId)
+      .eq("role", "owner"),
+  ])
 
-    if ((count ?? 0) <= 1) {
-      return {
-        success: false,
-        error: "Cannot leave — you are the only owner. Delete the club or transfer ownership first.",
-      }
+  if (membership?.role === "owner" && (ownerCount ?? 0) <= 1) {
+    return {
+      success: false,
+      error: "Cannot leave — you are the only owner. Delete the club or transfer ownership first.",
     }
   }
 
@@ -152,9 +149,7 @@ export async function updateClub(
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-
-  const { data: membership } = await admin
+  const { data: membership } = await supabase
     .from("club_members")
     .select("role")
     .eq("club_id", clubId)
@@ -165,18 +160,20 @@ export async function updateClub(
     return { success: false, error: "Only owners and admins can update club details" }
   }
 
-  const updates: Record<string, string | null> = {}
-  if (fields.name !== undefined) {
-    const trimmed = fields.name.trim()
-    if (!trimmed) return { success: false, error: "Club name is required" }
-    if (trimmed.length > 100) return { success: false, error: "Club name must be 100 characters or less" }
-    updates.name = trimmed
-  }
-  if (fields.description !== undefined) {
-    updates.description = fields.description.trim() || null
+  const parsed = updateClubSchema.safeParse(fields)
+  if (!parsed.success) {
+    return { success: false, error: zodFirstError(parsed.error) }
   }
 
-  const { error } = await admin
+  const updates: Record<string, string | null> = {}
+  if (parsed.data.name !== undefined) {
+    updates.name = parsed.data.name
+  }
+  if (parsed.data.description !== undefined) {
+    updates.description = parsed.data.description?.trim() || null
+  }
+
+  const { error } = await supabase
     .from("clubs")
     .update(updates)
     .eq("id", clubId)
@@ -203,9 +200,7 @@ export async function deleteClub(
     return { success: false, error: "Not authenticated" }
   }
 
-  const admin = createAdminClient()
-
-  const { data: membership } = await admin
+  const { data: membership } = await supabase
     .from("club_members")
     .select("role")
     .eq("club_id", clubId)
@@ -216,7 +211,7 @@ export async function deleteClub(
     return { success: false, error: "Only the owner can delete this club" }
   }
 
-  const { error } = await admin.from("clubs").delete().eq("id", clubId)
+  const { error } = await supabase.from("clubs").delete().eq("id", clubId)
 
   if (error) {
     return { success: false, error: error.message }
