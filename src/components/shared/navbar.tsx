@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Box, LogOut, LayoutDashboard, Medal, Rss, Search, Shield, Timer, Trophy, User } from "lucide-react"
+import { Box, LogOut, LayoutDashboard, Medal, Rss, Search, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getNavbarData } from "@/lib/actions/auth"
@@ -23,8 +28,8 @@ function getInitials(name: string): string {
 export function Navbar() {
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [userProfile, setUserProfile] = useState<{
     avatar_url: string | null
     display_name: string
@@ -68,12 +73,10 @@ export function Navbar() {
             display_name: data.displayName,
           })
           setUnreadCount(data.unreadCount)
-          setIsAdmin(data.isAdmin)
         } else {
           setIsLoggedIn(false)
           setUserProfile(null)
           setUnreadCount(0)
-          setIsAdmin(false)
         }
       } catch {
         // Network error — keep showing logged-out state
@@ -91,7 +94,6 @@ export function Navbar() {
         setIsLoggedIn(false)
         setUserProfile(null)
         setUnreadCount(0)
-        setIsAdmin(false)
       }
     })
 
@@ -165,41 +167,72 @@ export function Navbar() {
               <LayoutDashboard className={cn(navIconClass("/practice-stats"), "sm:hidden")} />
               <span className={cn("hidden text-sm sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
             </Link>
-            {isAdmin && (
-              <Link
-                href="/admin/badges"
-                className={cn(
-                  "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
-                  isActive("/admin") ? "text-yellow-300" : "text-yellow-400 hover:text-yellow-300"
-                )}
-                aria-label="Admin"
-              >
-                <Shield className="h-4 w-4" />
-              </Link>
-            )}
             <NotificationPopup
               unreadCount={unreadCount}
               onUnreadCountChange={setUnreadCount}
             />
-            <Link
-              href="/profile"
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors hover:opacity-80 sm:min-h-0 sm:min-w-0"
-              aria-label="Profile"
-            >
-              <Avatar className={cn("h-7 w-7 border", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
-                {userProfile?.avatar_url && (
-                  <AvatarImage
-                    src={userProfile.avatar_url}
-                    alt={userProfile.display_name}
-                  />
-                )}
-                <AvatarFallback className="text-[10px]">
-                  {userProfile
-                    ? getInitials(userProfile.display_name)
-                    : <User className="h-3.5 w-3.5 text-muted-foreground" />}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
+            <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded-full transition-all hover:ring-4 hover:ring-white/10"
+                  aria-label="User menu"
+                >
+                  <Avatar className={cn("h-10 w-10 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
+                    {userProfile?.avatar_url && (
+                      <AvatarImage
+                        src={userProfile.avatar_url}
+                        alt={userProfile.display_name}
+                      />
+                    )}
+                    <AvatarFallback className="text-xs">
+                      {userProfile
+                        ? getInitials(userProfile.display_name)
+                        : <User className="h-4 w-4 text-muted-foreground" />}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                sideOffset={8}
+                className="w-56 rounded-lg border border-border/50 p-0 shadow-xl shadow-black/40"
+              >
+                {/* Display name */}
+                <div className="border-b border-border/50 px-4 py-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {userProfile?.display_name}
+                  </p>
+                </div>
+
+                {/* Menu items */}
+                <div className="py-1">
+                  <Link
+                    href="/profile"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/50"
+                  >
+                    Profile
+                  </Link>
+                </div>
+
+                {/* Bottom section — grayed out */}
+                <div className="border-t border-border/50 py-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setProfileOpen(false)
+                      const supabase = getSupabaseClient()
+                      await supabase.auth.signOut()
+                      window.location.href = "/"
+                    }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Link href="/log">
               <Button
                 size="sm"
