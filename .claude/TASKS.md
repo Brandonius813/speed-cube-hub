@@ -2174,11 +2174,18 @@ Added 4x4 (Edges, R,r,U,u, LL, ELL, Edge Only, Center Only, UD Centers, UD+3E, L
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
+| **Key files** | `src/components/timer/timer-display.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-detail-modal.tsx` |
 
-2-10 phases (Cross/F2L/OLL/PLL), key press for splits, JSONB column, phase breakdown in detail modal, per-phase stats.
+- ✅ 1-10 phases configurable in settings (PhaseCount type)
+- ✅ Key press/tap for splits during timing (recordSplit in timer-display)
+- ✅ phases column in solves table (JSONB array of ms durations)
+- ✅ Phase breakdown in solve detail modal with duration + percentage
+- ✅ Default labels: Cross/F2L/OLL/PLL for 4-phase, customizable labels
+- ✅ Phase display during timing shows current phase label
 
 ---
 
@@ -2257,11 +2264,16 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/actions/solve-session-merge.ts`, `src/components/timer/session-manager.tsx`, `src/components/timer/timer-content.tsx` |
 
-Merge two sessions, split at point, confirmation dialogs.
+- ✅ Merge two same-event sessions (moves solves, archives source)
+- ✅ Split session at solve number (creates new session, moves later solves)
+- ✅ Server actions with ownership verification
+- ✅ Integrated into session manager and timer content
 
 ---
 
