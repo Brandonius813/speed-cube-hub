@@ -75,7 +75,7 @@ export function SessionManager({
   const [splitNumber, setSplitNumber] = useState("")
 
   const eventLabel = (eventId: string) =>
-    WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+    ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
 
   // Group by event
   const grouped = sessions.reduce<Record<string, SolveSession[]>>(
@@ -88,7 +88,7 @@ export function SessionManager({
     {}
   )
 
-  const eventOrder: string[] = WCA_EVENTS.map((e) => e.id)
+  const eventOrder: string[] = ALL_TIMER_EVENTS.map((e) => e.id)
   const sortedEvents = Object.keys(grouped).sort(
     (a, b) => eventOrder.indexOf(a) - eventOrder.indexOf(b)
   )
@@ -354,6 +354,24 @@ export function SessionManager({
                           >
                             <Archive className="h-3.5 w-3.5" />
                           </button>
+                          {onMerge && sessions.filter((s) => s.event === session.event && s.id !== session.id).length > 0 && (
+                            <button
+                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                              onClick={() => setMergeSource(session)}
+                              title="Merge into another session"
+                            >
+                              <Merge className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {onSplit && (
+                            <button
+                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                              onClick={() => setSplitSession(session)}
+                              title="Split session"
+                            >
+                              <Scissors className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button
                             className="p-1 rounded hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
                             onClick={() =>
@@ -398,8 +416,8 @@ export function SessionManager({
                   if (e.key === "Escape") setShowCreate(false)
                 }}
               />
-              <div className="flex flex-wrap gap-1">
-                {WCA_EVENTS.map((e) => (
+              <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                {ALL_TIMER_EVENTS.map((e) => (
                   <Badge
                     key={e.id}
                     variant={newEvent === e.id ? "default" : "outline"}

@@ -38,6 +38,10 @@ import {
   archiveSolveSession,
   deleteSolveSession,
 } from "@/lib/actions/solve-sessions"
+import {
+  mergeSolveSessions,
+  splitSolveSession,
+} from "@/lib/actions/solve-session-merge"
 import { PBCelebration } from "@/components/share/pb-celebration"
 import { ShareModal } from "@/components/share/share-modal"
 import type { ShareCardData } from "@/components/share/share-card"
@@ -955,6 +959,25 @@ export function TimerContent() {
     }
   }
 
+  const handleManagerMerge = async (sourceId: string, targetId: string) => {
+    await mergeSolveSessions(sourceId, targetId)
+    await refreshSessions()
+    if (currentSession?.id === sourceId) {
+      const target = solveSessions.find((s) => s.id === targetId)
+      if (target) await handleSelectSession(target)
+    } else if (currentSession?.id === targetId) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
+  const handleManagerSplit = async (sessionId: string, splitAfter: number) => {
+    const result = await splitSolveSession(sessionId, splitAfter)
+    await refreshSessions()
+    if (result.newSession && currentSession?.id === sessionId) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
   // ---- Inspection ----
 
   useEffect(() => {
@@ -1189,6 +1212,8 @@ export function TimerContent() {
         onArchive={handleManagerArchive}
         onDelete={handleManagerDelete}
         onCreate={handleCreateSession}
+        onMerge={handleManagerMerge}
+        onSplit={handleManagerSplit}
       />
 
       <SolveDetailModal
