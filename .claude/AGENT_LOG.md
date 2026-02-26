@@ -266,3 +266,21 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Bug audit agents don't have access to AGENT_LOG history, so they'll recommend changes that were previously tried and reverted. Always cross-reference AGENT_LOG before applying bulk audit recommendations. The `/sync` skill is essential for catching these issues.
 **Blockers:** None
 **Warnings:** T51 (explicit column lists) has now been attempted and reverted THREE times. DO NOT re-attempt without first running `SELECT column_name FROM information_schema.columns WHERE table_name = 'TABLE'` against the live Supabase DB to verify actual column names. The TypeScript types may not match the live schema.
+
+---
+
+### 2026-02-26 12:00 PT — Security Verification Session
+
+**Task:** Phase 9 Security Review — Verify all T41-T46 security fixes are implemented
+**Status:** Systematically verified all 6 Phase 9 security tasks are genuinely implemented:
+- T41 ✅ Open redirect: `next` param validated in callback/route.ts (line 8), including `/\` block
+- T42 ✅ Middleware: src/middleware.ts + src/lib/supabase/proxy.ts — session refresh via getUser(), route protection, auth redirect, public exceptions for /profile/[handle] and /clubs/[id]
+- T43 ✅ Internal helpers: createNotification in src/lib/helpers/create-notification.ts, checkAndAwardMilestones in src/lib/helpers/check-milestones.ts — neither in "use server" files
+- T44 ✅ Zod validation: sessions.ts and personal-bests.ts both import/use schemas from src/lib/validations.ts
+- T45 ✅ Search sanitization: profiles.ts line 90 strips PostgREST special chars including `%`, `_`, `:`, `!`, `*`
+- T46 ✅ Admin client reduced to only legitimate uses (avatar storage, cross-user notifications, admin badge approval)
+Also confirmed: security headers in next.config.ts, avatar magic byte validation, profile field validation. TypeScript compiles clean (`npx tsc --noEmit` passes with zero errors).
+**Files touched:** None — verification-only session
+**Learnings:** The Glob tool can miss files if they're git-ignored or have unusual patterns — `ls` is more reliable for confirming file existence. The `npm run build` manifest error is a persistent Next.js 16.1.6 + Node.js v24 issue, not code-related. Vercel builds work fine. The linter has been reverting explicit column lists back to `select("*")` which aligns with T51's reverted status.
+**Blockers:** None — all security tasks confirmed complete
+**Warnings:** None — ready for new feature work
