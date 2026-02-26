@@ -2516,7 +2516,8 @@ Click scramble image → animated sequence, step-through moves.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
 
