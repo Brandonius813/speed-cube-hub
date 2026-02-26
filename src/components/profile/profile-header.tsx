@@ -76,10 +76,10 @@ export function ProfileHeader({
                 {(profile.main_events?.length > 0 ? profile.main_events : profile.main_event ? [profile.main_event] : []).map((eventId) => (
                   <EventBadge key={eventId} event={eventId} className="border-accent/30 bg-accent/10 text-accent" />
                 ))}
-                {profile.location && (
+                {displayLocation && (
                   <p className="flex items-center gap-1 text-sm text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5" />
-                    {profile.location}
+                    {displayLocation}
                   </p>
                 )}
               </div>

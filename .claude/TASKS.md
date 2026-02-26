@@ -1561,11 +1561,11 @@ Overview tab: ProfileHeader (mobile) → PracticeStreak → BadgesSection → Re
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T83 |
 | **Estimated scope** | 1 file |
 
-In `src/components/profile/tab-stats.tsx`: Remove `<PracticeHeatmap>` (second heatmap), keep `<PracticeStreak>`. Import `DashboardFilters` and add filter state (selectedEvents, selectedPracticeTypes, selectedRange, customRange). Add `filteredSessions` useMemo. Render filters at top. Pass `filteredSessions` to charts/session log, unfiltered `sessions` to PracticeStreak. This makes filters work on both own profile and public profiles since both use `TabStats`.
+Stats tab: PracticeStreak (unfiltered) → DashboardFilters → filtered charts + session log. Removed duplicate PracticeHeatmap and ProfileStats.
 
 ---
 
@@ -1573,11 +1573,11 @@ In `src/components/profile/tab-stats.tsx`: Remove `<PracticeHeatmap>` (second he
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-In `src/components/profile/profile-tabs.tsx`: Rename "Cubes" → "Main Puzzles", "Official" → "Official Results". In `src/components/profile/pb-progress-chart.tsx`: Rename "PB Progress" → "PB History".
+Tabs renamed: "Main Puzzles", "Official Results". Chart renamed: "PB History".
 
 ---
 
@@ -1585,11 +1585,11 @@ In `src/components/profile/profile-tabs.tsx`: Rename "Cubes" → "Main Puzzles",
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 4 files |
 
-In `edit-profile-modal.tsx`: Fetch country list via `getWcaCountries()`, replace location `<Input>` with searchable country `<Combobox>` (Shadcn Popover + Command), store in `country_id`. When US selected, show state dropdown (hardcoded list), store in `location` field. In `profiles.ts`: Add `country_id` to `updateProfile` accepted fields. In `profile-sidebar.tsx` and `profile-header.tsx`: Display country name + state instead of raw location.
+Searchable country combobox using `getWcaCountries()`. US state dropdown appears when US selected.
 
 ---
 
@@ -1597,11 +1597,11 @@ In `edit-profile-modal.tsx`: Fetch country list via `getWcaCountries()`, replace
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 3 files |
 
-Remove Sponsor input from `edit-profile-modal.tsx`. Remove sponsor display row (Star icon + text) from `profile-sidebar.tsx`. Remove sponsor from `profile-header.tsx` if present.
+Removed sponsor input from edit modal and sponsor display from sidebar/header.
 
 ---
 
@@ -1609,11 +1609,11 @@ Remove Sponsor input from `edit-profile-modal.tsx`. Remove sponsor display row (
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 
-In `edit-profile-modal.tsx`: Add "Social Links" section. Reuse existing `ProfileLink` type and `updateProfileLinks()` server action. UI: list current links with platform dropdown + URL input + delete button, plus "Add Link" button. Platforms: YouTube, Instagram, TikTok, X, Discord, WCA, Website.
+Social links section with platform dropdown + URL input + delete + "Add Link" button. Saves via `updateProfileLinks()`.
 
 ---
 
@@ -1621,11 +1621,11 @@ In `edit-profile-modal.tsx`: Add "Social Links" section. Reuse existing `Profile
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-In `pb-settings-modal.tsx`: Add counter "Main Events (2/3)" in section header. Disable "Add" buttons when 3 main events selected. Add up/down reorder buttons to "Other Events" section. When saving, concatenate `[...mainEvents, ...orderedOtherEvents]` into `pbs_main_events`. In `pbs-content.tsx`: Read `pbs_main_events` — first 3 = main events (pinned), rest = custom-ordered others. Events not in array appear last in WCA default order.
+3-event limit for main events with counter, reorderable other events, full order saved as concatenated array.
 
 ---
 
@@ -1633,11 +1633,11 @@ In `pb-settings-modal.tsx`: Add counter "Main Events (2/3)" in section header. D
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-In `navbar.tsx`: Add `useEffect` listener for `"profile-updated"` custom event (same pattern as existing `"notifications-updated"`). On event, re-call `getNavbarData()` and update state. In `edit-profile-modal.tsx`: After successful save, dispatch `window.dispatchEvent(new Event("profile-updated"))`.
+Navbar listens for "profile-updated" custom event, re-fetches avatar/name. Edit modal dispatches event after save.
 
 ---
 
