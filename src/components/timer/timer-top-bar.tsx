@@ -5,6 +5,7 @@ import { SessionSelector } from "@/components/timer/session-selector"
 import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
+import { SeedInput } from "@/components/timer/seed-input"
 import type { InputMode, SidebarPosition, AutoBackupInterval } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
@@ -47,6 +48,8 @@ export function TimerTopBar({
   trainingCstimerType,
   autoBackupInterval,
   onAutoBackupIntervalChange,
+  raceSeed,
+  onRaceSeedChange,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -85,6 +88,8 @@ export function TimerTopBar({
   trainingCstimerType?: string
   autoBackupInterval?: AutoBackupInterval
   onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
+  raceSeed?: string | null
+  onRaceSeedChange?: (seed: string | null) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -124,6 +129,9 @@ export function TimerTopBar({
               selectedCases={caseFilter ?? null}
               onSelectedCasesChange={onCaseFilterChange}
             />
+          )}
+          {onRaceSeedChange && (
+            <SeedInput seed={raceSeed ?? null} onSeedChange={onRaceSeedChange} />
           )}
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">

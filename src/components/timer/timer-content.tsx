@@ -1101,6 +1101,8 @@ export function TimerContent() {
         trainingCstimerType={trainingCstimerType}
         autoBackupInterval={autoBackupInterval}
         onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
+        raceSeed={raceSeed}
+        onRaceSeedChange={handleRaceSeedChange}
       />)}
 
       <div className={layoutClass}>
