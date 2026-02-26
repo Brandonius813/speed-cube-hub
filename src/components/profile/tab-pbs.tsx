@@ -1,18 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Trophy, Upload, Settings, Star } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
-import { getPBTypesForEvent } from "@/lib/constants"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import { LogPBModal } from "@/components/pbs/log-pb-modal"
 import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
 import { PBSettingsModal } from "@/components/pbs/pb-settings-modal"
-import { PBHistoryModal } from "@/components/pbs/pb-history-modal"
 import { PBProgressChart } from "@/components/profile/pb-progress-chart"
+import {
+  EventDetailModal,
+  getDefaultDisplayTypes,
+} from "@/components/profile/event-detail-modal"
+import { PBHistoryInline } from "@/components/profile/pb-history-inline"
 import type { Profile, PBRecord } from "@/lib/types"
 
 function getEventLabel(eventId: string): string {
@@ -63,12 +66,16 @@ export function TabPBs({
   onMainEventsChange?: (mainEvents: string[]) => void
 }) {
   const [pbs, setPbs] = useState<PBRecord[]>(initialPBs)
-  const [visibleTypes, setVisibleTypes] = useState<string[] | null>(
-    profile.pb_visible_types
-  )
   const [mainEvents, setMainEvents] = useState<string[] | null>(
     profile.pbs_main_events
   )
+
+  // Per-event display type overrides (in-memory, defaults from getDefaultDisplayTypes)
+  const [displayTypeOverrides, setDisplayTypeOverrides] = useState<
+    Record<string, string[]>
+  >({})
+
+  // Modals
   const [showLogModal, setShowLogModal] = useState(false)
   const [logModalDefaults, setLogModalDefaults] = useState<{
     event?: string
@@ -76,13 +83,18 @@ export function TabPBs({
   }>({})
   const [showImportModal, setShowImportModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [historyModal, setHistoryModal] = useState<{
+
+  // Event detail modal
+  const [detailEvent, setDetailEvent] = useState<string | null>(null)
+
+  // Inline history selection
+  const [selectedHistory, setSelectedHistory] = useState<{
     event: string
     pbType: string
   } | null>(null)
-  const [selectedEvent, setSelectedEvent] = useState<string | undefined>(
-    undefined
-  )
+
+  // For PB Progress Chart
+  const [chartEvent, setChartEvent] = useState<string | undefined>(undefined)
 
   async function reloadPBs() {
     const result = await getCurrentPBs()
@@ -94,10 +106,17 @@ export function TabPBs({
     setShowLogModal(true)
   }
 
-  function getFilteredPBTypes(eventId: string): string[] {
-    const allTypes = getPBTypesForEvent(eventId)
-    if (!visibleTypes) return allTypes
-    return allTypes.filter((t) => visibleTypes.includes(t))
+  function getDisplayTypesForEvent(eventId: string): string[] {
+    return displayTypeOverrides[eventId] ?? getDefaultDisplayTypes(eventId)
+  }
+
+  function handleDisplayTypesChange(eventId: string, types: string[]) {
+    setDisplayTypeOverrides((prev) => ({ ...prev, [eventId]: types }))
+  }
+
+  function handleSelectPBType(event: string, pbType: string) {
+    setSelectedHistory({ event, pbType })
+    setChartEvent(event)
   }
 
   // Group PBs by event — keep only the best per event+type
@@ -127,196 +146,163 @@ export function TabPBs({
   const hasMainEvents = mainEventIds.length > 0
   const otherEventIds = [...orderedOtherIds, ...unorderedIds]
 
-  // Owner view: full event card with CRUD
-  function renderEventCard(eventId: string) {
+  /** Compact event card — shows icon, name, and 1-2 display PB types */
+  function renderCompactCard(eventId: string) {
     const eventPBs = pbsByEvent[eventId]
-    const pbTypes = getFilteredPBTypes(eventId)
-    if (pbTypes.length === 0) return null
+    const displayTypes = getDisplayTypesForEvent(eventId)
 
     return (
-      <Card key={eventId} className="border-border/50 bg-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CubingIcon
-                event={eventId}
-                className="text-base text-muted-foreground"
-              />
-              <span className="font-mono text-lg tracking-tight text-foreground">
-                {getEventLabel(eventId)}
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAddPB(eventId)}
-              className="h-7 px-2 text-muted-foreground hover:text-foreground"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-1">
-            {pbTypes.map((type) => {
-              const pb = eventPBs[type]
-              return (
-                <div
-                  key={type}
-                  className={`flex items-center justify-between rounded px-2 py-1.5 transition ${
-                    pb ? "cursor-pointer hover:bg-secondary/80" : ""
-                  }`}
-                  onClick={
-                    pb
-                      ? () =>
-                          setHistoryModal({
-                            event: eventId,
-                            pbType: type,
-                          })
-                      : undefined
-                  }
-                >
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {type}
-                  </span>
-                  {pb ? (
-                    <div className="text-right">
-                      <div className="font-mono text-sm font-semibold text-foreground">
-                        {eventId === "333mbf"
-                          ? formatMBLD(pb)
-                          : formatTime(pb.time_seconds, eventId)}
-                      </div>
-                      <div className="font-mono text-[10px] uppercase text-muted-foreground/60">
-                        {new Date(
-                          pb.date_achieved + "T12:00:00"
-                        ).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAddPB(eventId, type)
-                      }}
-                      className="text-sm text-muted-foreground/40 transition hover:text-foreground"
-                    >
-                      — (not set)
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+      <div
+        key={eventId}
+        className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4 cursor-pointer transition hover:bg-secondary/80"
+        onClick={() => setDetailEvent(eventId)}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <CubingIcon
+            event={eventId}
+            className="shrink-0 text-base text-muted-foreground"
+          />
+          <span className="truncate font-medium text-foreground">
+            {getEventLabel(eventId)}
+          </span>
+        </div>
+        <div className="flex gap-4 text-right shrink-0">
+          {displayTypes.map((type) => {
+            const pb = eventPBs[type]
+            if (!pb) return null
+            return (
+              <div key={type}>
+                <p className="text-xs text-muted-foreground">{type}</p>
+                <p className="font-mono text-sm font-semibold text-foreground">
+                  {eventId === "333mbf"
+                    ? formatMBLD(pb)
+                    : formatTime(pb.time_seconds, eventId)}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Build the grid content
+  const gridContent =
+    allEventsWithPBs.length === 0 ? (
+      <Card className="border-border/50 bg-card">
+        <CardContent className="py-12 text-center">
+          <Trophy className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            No PBs logged yet.{" "}
+            {isOwner && "Start by logging your first personal best!"}
+          </p>
         </CardContent>
       </Card>
-    )
-  }
+    ) : hasMainEvents ? (
+      <>
+        {mainEventIds.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Star className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Main Events
+              </h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {mainEventIds.map(renderCompactCard)}
+            </div>
+          </div>
+        )}
 
-  // Visitor view: read-only grid
-  if (!isOwner) {
-    return (
-      <div className="flex flex-col gap-6">
-        <ReadOnlyPBGrid
-          pbs={pbs}
-          mainEvents={mainEvents}
-          onEventClick={setSelectedEvent}
-        />
-        <PBProgressChart
-          pbs={pbs}
-          userId={profile.id}
-          selectedEvent={selectedEvent}
-          onEventChange={setSelectedEvent}
-        />
+        {otherEventIds.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Other Events
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {otherEventIds.map(renderCompactCard)}
+            </div>
+          </div>
+        )}
+      </>
+    ) : (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {allEventsWithPBs.map(renderCompactCard)}
       </div>
     )
-  }
 
-  // Owner view
   return (
     <div className="flex flex-col gap-6">
-      {/* Action buttons */}
-      <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-        <Button
-          onClick={() => handleAddPB()}
-          className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Log New PB
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowImportModal(true)}
-          className="gap-2"
-        >
-          <Upload className="h-4 w-4" />
-          Bulk Import
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setShowSettingsModal(true)}
-          className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
-          title="Customize PB settings"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* PB cards */}
-      {allEventsWithPBs.length === 0 ? (
-        <Card className="border-border/50 bg-card">
-          <CardContent className="py-12 text-center">
-            <Trophy className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              No PBs logged yet. Start by logging your first personal best!
-            </p>
-          </CardContent>
-        </Card>
-      ) : hasMainEvents ? (
-        <>
-          {mainEventIds.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Star className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  Main Events
-                </h2>
-              </div>
-              <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                {mainEventIds.map(renderEventCard)}
-              </div>
-            </div>
-          )}
-
-          {otherEventIds.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Other Events
-              </h2>
-              <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                {otherEventIds.map(renderEventCard)}
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-          {allEventsWithPBs.map(renderEventCard)}
+      {/* Action buttons — owner only */}
+      {isOwner && (
+        <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+          <Button
+            onClick={() => handleAddPB()}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Log New PB
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            className="gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Bulk Import
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowSettingsModal(true)}
+            className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
+            title="Customize PB settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
-      {/* PB Progress Chart */}
+      {/* Compact PB grid */}
+      {gridContent}
+
+      {/* PB Progress Chart — inline */}
       <PBProgressChart
         pbs={pbs}
         userId={profile.id}
-        selectedEvent={selectedEvent}
-        onEventChange={setSelectedEvent}
+        selectedEvent={chartEvent}
+        onEventChange={(ev) => {
+          setChartEvent(ev)
+          setSelectedHistory(null)
+        }}
       />
+
+      {/* Inline PB history — shown when a specific PB type is selected */}
+      {selectedHistory && (
+        <PBHistoryInline
+          event={selectedHistory.event}
+          pbType={selectedHistory.pbType}
+          isOwner={isOwner}
+          onUpdate={reloadPBs}
+        />
+      )}
+
+      {/* Event Detail Modal */}
+      {detailEvent && (
+        <EventDetailModal
+          event={detailEvent}
+          open={!!detailEvent}
+          onOpenChange={(open) => {
+            if (!open) setDetailEvent(null)
+          }}
+          pbsByType={pbsByEvent[detailEvent] ?? {}}
+          isOwner={isOwner}
+          displayTypes={getDisplayTypesForEvent(detailEvent)}
+          onDisplayTypesChange={handleDisplayTypesChange}
+          onAddPB={handleAddPB}
+          onSelectPBType={handleSelectPBType}
+        />
+      )}
 
       {/* Modals */}
       <LogPBModal
@@ -342,142 +328,14 @@ export function TabPBs({
       <PBSettingsModal
         open={showSettingsModal}
         onOpenChange={setShowSettingsModal}
-        currentVisibleTypes={visibleTypes}
+        currentVisibleTypes={profile.pb_visible_types}
         currentMainEvents={mainEvents}
         onSaved={(types, main) => {
-          setVisibleTypes(types)
           setMainEvents(main)
-          // Notify parent so Official tab can update main events too
           const mainEventsOnly = (main ?? []).slice(0, 3)
           onMainEventsChange?.(mainEventsOnly)
         }}
       />
-
-      {historyModal && (
-        <PBHistoryModal
-          event={historyModal.event}
-          pbType={historyModal.pbType}
-          open={!!historyModal}
-          onOpenChange={(open) => {
-            if (!open) setHistoryModal(null)
-          }}
-          onUpdate={reloadPBs}
-        />
-      )}
-    </div>
-  )
-}
-
-/** Read-only PB display for visitors */
-function ReadOnlyPBGrid({
-  pbs,
-  mainEvents,
-  onEventClick,
-}: {
-  pbs: PBRecord[]
-  mainEvents: string[] | null
-  onEventClick?: (event: string) => void
-}) {
-  if (pbs.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No personal bests logged yet.
-      </p>
-    )
-  }
-
-  // Group PBs by event, keep best per type
-  const eventMap = new Map<string, PBRecord[]>()
-  const bestByEventType = new Map<string, PBRecord>()
-
-  for (const pb of pbs) {
-    const key = `${pb.event}:${pb.pb_type}`
-    const existing = bestByEventType.get(key)
-    if (!existing || pb.time_seconds < existing.time_seconds) {
-      bestByEventType.set(key, pb)
-    }
-  }
-
-  for (const pb of bestByEventType.values()) {
-    const existing = eventMap.get(pb.event) ?? []
-    existing.push(pb)
-    eventMap.set(pb.event, existing)
-  }
-
-  // Sort events by WCA order
-  const eventOrder = WCA_EVENTS.map((e) => String(e.id))
-  const sortedEvents = Array.from(eventMap.keys()).sort(
-    (a, b) => eventOrder.indexOf(a) - eventOrder.indexOf(b)
-  )
-
-  // Split into main events and other events
-  const mainEventIds = (mainEvents ?? []).slice(0, 3)
-  const mainSet = new Set(mainEventIds)
-  const mainEventsFiltered = mainEventIds.filter((id) => eventMap.has(id))
-  const otherEvents = sortedEvents.filter((id) => !mainSet.has(id))
-  const hasMainEvents = mainEventsFiltered.length > 0
-
-  function renderCard(eventId: string) {
-    const eventPbs = eventMap.get(eventId)!
-    return (
-      <Card
-        key={eventId}
-        className={`border-border/50 bg-card${onEventClick ? " cursor-pointer transition hover:bg-secondary/80" : ""}`}
-        onClick={onEventClick ? () => onEventClick(eventId) : undefined}
-      >
-        <CardContent className="p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <CubingIcon event={eventId} className="h-5 w-5" />
-            <span className="text-sm font-medium text-foreground">
-              {getEventLabel(eventId)}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {eventPbs.map((pb) => (
-              <div key={pb.id} className="text-sm">
-                <span className="text-muted-foreground">{pb.pb_type}: </span>
-                <span className="font-mono font-semibold text-foreground">
-                  {formatTime(pb.time_seconds, eventId)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (hasMainEvents) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Main Events
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {mainEventsFiltered.map(renderCard)}
-          </div>
-        </div>
-        {otherEvents.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              Other Events
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {otherEvents.map(renderCard)}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {sortedEvents.map(renderCard)}
     </div>
   )
 }
