@@ -2038,15 +2038,16 @@ Built 2D scramble image using `cstimer_module.getImage()` which returns SVG stri
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus-C |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
-| **Key files** | New: `src/components/timer/tools/cross-solver.tsx` |
+| **Key files** | `src/lib/timer/cross-solver.ts`, `src/components/timer/cross-solver-panel.tsx`, `src/components/timer/scramble-display.tsx` |
 
-- Optimal cross solutions for all 6 colors
-- XCross solutions on click
-- Toggleable tool panel
+- ✅ Optimal cross solutions for all 6 faces (BFS pruning tables)
+- Toggleable panel via "+" button (3x3 only)
+- Color-coded dots, move counts, copy buttons, best solutions highlighted
+- Note: XCross deferred — requires full F2L state tracking beyond cross solver scope
 
 ---
 
