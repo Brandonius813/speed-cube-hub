@@ -149,6 +149,21 @@ export const updateGoalSchema = z.object({
     .optional(),
 })
 
+// --- Solve Session schemas ---
+
+export const createSolveSessionSchema = z.object({
+  name: z.string().trim().min(1, "Session name is required").max(100, "Session name must be 100 characters or less"),
+  event: eventField,
+  is_tracked: z.boolean().default(true),
+})
+
+export const updateSolveSessionSchema = z.object({
+  name: z.string().trim().min(1, "Session name is required").max(100, "Session name must be 100 characters or less").optional(),
+  is_tracked: z.boolean().optional(),
+  is_archived: z.boolean().optional(),
+  sort_order: z.number().int().min(0).optional(),
+})
+
 // --- Club schemas ---
 
 export const createClubSchema = z.object({

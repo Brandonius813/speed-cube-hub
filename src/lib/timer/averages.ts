@@ -108,6 +108,7 @@ export function computeBPA(
     event: "",
     comp_sim_group: null,
     notes: null,
+    solve_session_id: null,
     solved_at: "",
     created_at: "",
   }))
@@ -139,11 +140,35 @@ export function computeWPA(
     event: "",
     comp_sim_group: null,
     notes: null,
+    solve_session_id: null,
     solved_at: "",
     created_at: "",
   }))
 
   return computeAoN([...solves, ...fakeSolves], n)
+}
+
+/**
+ * Compute standard deviation of the current AoN window's trimmed times (in ms).
+ * Returns null if there aren't enough solves or too many DNFs.
+ */
+export function computeAoNStdDev(solves: Solve[], n: number): number | null {
+  if (solves.length < n) return null
+
+  const window = solves.slice(-n)
+  const times = window.map(getEffectiveTime)
+  const dnfCount = times.filter((t) => t === Infinity).length
+  if (dnfCount > 1) return null
+
+  const sorted = [...times].sort((a, b) => a - b)
+  const trimmed = sorted.slice(1, -1)
+  if (trimmed.some((t) => t === Infinity)) return null
+  if (trimmed.length < 2) return null
+
+  const mean = trimmed.reduce((a, b) => a + b, 0) / trimmed.length
+  const variance =
+    trimmed.reduce((acc, t) => acc + (t - mean) ** 2, 0) / (trimmed.length - 1)
+  return Math.round(Math.sqrt(variance))
 }
 
 export type SessionStats = {

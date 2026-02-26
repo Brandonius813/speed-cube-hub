@@ -3,41 +3,47 @@
 import { Settings, X } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { WCA_EVENTS } from "@/lib/constants"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import {
+  HOLD_DURATION_OPTIONS,
+  type HoldDuration,
+} from "@/components/timer/timer-display"
 
 export type InputMode = "timer" | "typing"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
 
 type TimerSettingsProps = {
-  event: string
-  onEventChange: (eventId: string) => void
   mode: "normal" | "comp_sim"
   onModeChange: (mode: "normal" | "comp_sim") => void
   inspectionEnabled: boolean
   onInspectionChange: (enabled: boolean) => void
   showTimeWhileSolving: boolean
   onShowTimeChange: (show: boolean) => void
+  holdDuration?: HoldDuration
+  onHoldDurationChange?: (duration: HoldDuration) => void
   inputMode: InputMode
   onInputModeChange: (mode: InputMode) => void
   sidebarPosition: SidebarPosition
   onSidebarPositionChange: (position: SidebarPosition) => void
+  statIndicators: string
+  onStatIndicatorsChange: (indicators: string) => void
 }
 
 export function TimerSettings({
-  event,
-  onEventChange,
   mode,
   onModeChange,
   inspectionEnabled,
   onInspectionChange,
   showTimeWhileSolving,
   onShowTimeChange,
+  holdDuration,
+  onHoldDurationChange,
   inputMode,
   onInputModeChange,
   sidebarPosition,
   onSidebarPositionChange,
+  statIndicators,
+  onStatIndicatorsChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -75,30 +81,6 @@ export function TimerSettings({
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              </div>
-
-              {/* Event selector */}
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  Event
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {WCA_EVENTS.map((e) => (
-                    <Badge
-                      key={e.id}
-                      variant={event === e.id ? "default" : "outline"}
-                      className={cn(
-                        "cursor-pointer min-h-8 text-xs",
-                        event === e.id
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-secondary"
-                      )}
-                      onClick={() => onEventChange(e.id)}
-                    >
-                      {e.label}
-                    </Badge>
-                  ))}
-                </div>
               </div>
 
               {/* Mode toggle */}
@@ -142,6 +124,26 @@ export function TimerSettings({
                 onChange={onShowTimeChange}
               />
 
+              {/* Hold duration */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Hold Duration
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {HOLD_DURATION_OPTIONS.map((ms) => (
+                    <Button
+                      key={ms}
+                      variant={holdDuration === ms ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onHoldDurationChange?.(ms)}
+                    >
+                      {ms === 0 ? "None" : `${ms}ms`}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               {/* Input mode toggle */}
               <div className="space-y-2">
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
@@ -165,6 +167,23 @@ export function TimerSettings({
                     Typing
                   </Button>
                 </div>
+              </div>
+
+              {/* Statistics indicators */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Statistics
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Space-separated averages (e.g., mo3 ao5 ao12 ao50 ao100)
+                </p>
+                <input
+                  type="text"
+                  value={statIndicators}
+                  onChange={(e) => onStatIndicatorsChange(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="mo3 ao5 ao12 ao50 ao100"
+                />
               </div>
 
               {/* Sidebar position */}
@@ -236,60 +255,3 @@ function ToggleSetting({
   )
 }
 
-/**
- * Compact event selector shown in the top bar (not the full settings panel).
- * Shows current event as a badge with dropdown.
- */
-export function EventSelector({
-  event,
-  onEventChange,
-}: {
-  event: string
-  onEventChange: (eventId: string) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const currentEvent = WCA_EVENTS.find((e) => e.id === event)
-
-  return (
-    <div className="relative">
-      <Badge
-        variant="outline"
-        className="cursor-pointer min-h-8 text-sm font-medium"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {currentEvent?.label ?? event}
-      </Badge>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full mt-1 left-0 z-50 bg-card border border-border rounded-md shadow-lg p-2 min-w-48">
-            <div className="flex flex-wrap gap-1.5">
-              {WCA_EVENTS.map((e) => (
-                <Badge
-                  key={e.id}
-                  variant={event === e.id ? "default" : "outline"}
-                  className={cn(
-                    "cursor-pointer min-h-8 text-xs",
-                    event === e.id
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-secondary"
-                  )}
-                  onClick={() => {
-                    onEventChange(e.id)
-                    setIsOpen(false)
-                  }}
-                >
-                  {e.label}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}

@@ -6,22 +6,25 @@ import { cn } from "@/lib/utils"
 
 type TimerState = "idle" | "holding" | "ready" | "running" | "stopped"
 
+export const HOLD_DURATION_OPTIONS = [0, 100, 200, 300, 500, 1000] as const
+export type HoldDuration = (typeof HOLD_DURATION_OPTIONS)[number]
+export const DEFAULT_HOLD_DURATION: HoldDuration = 300
+
 type TimerDisplayProps = {
   onSolveComplete: (timeMs: number) => void
   lastTime: number | null
   showTimeWhileSolving: boolean
+  holdDuration?: HoldDuration
   disabled?: boolean
   inspectionActive?: boolean
   onStartInspection?: () => void
 }
 
-// Minimum hold time (ms) before timer is "ready" to start
-const HOLD_THRESHOLD = 300
-
 export function TimerDisplay({
   onSolveComplete,
   lastTime,
   showTimeWhileSolving,
+  holdDuration = DEFAULT_HOLD_DURATION,
   disabled = false,
   inspectionActive = false,
   onStartInspection,
@@ -81,12 +84,17 @@ export function TimerDisplay({
 
     // Start hold-to-ready: immediately go red, then green after threshold
     if (currentState === "idle" || currentState === "stopped") {
-      setTimerState("holding")
-      holdTimerRef.current = setTimeout(() => {
+      if (holdDuration === 0) {
+        // No hold delay — go straight to ready
         setTimerState("ready")
-      }, HOLD_THRESHOLD)
+      } else {
+        setTimerState("holding")
+        holdTimerRef.current = setTimeout(() => {
+          setTimerState("ready")
+        }, holdDuration)
+      }
     }
-  }, [disabled, inspectionActive, onStartInspection, stopTimer])
+  }, [disabled, inspectionActive, onStartInspection, stopTimer, holdDuration])
 
   const handleHoldEnd = useCallback(() => {
     // Clear hold timer

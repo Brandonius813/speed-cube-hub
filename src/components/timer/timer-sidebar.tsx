@@ -10,16 +10,26 @@ export function TimerSidebar({
   mode,
   solves,
   event,
+  statIndicators,
   onPenaltyChange,
   onDelete,
+  onSolveClick,
+  onShareSolve,
+  onBatchDelete,
+  onStatClick,
 }: {
   sidebarPosition: "left" | "right" | "bottom"
   stats: SessionStats
   mode: "normal" | "comp_sim"
   solves: Solve[]
   event: string
+  statIndicators?: string
   onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
   onDelete: (solveId: string) => void
+  onSolveClick: (solve: Solve) => void
+  onShareSolve?: (solve: Solve) => void
+  onBatchDelete?: (solveIds: string[]) => void
+  onStatClick?: (statLabel: string, column: "current" | "best") => void
 }) {
   const currentCompSimProgress =
     mode === "comp_sim"
@@ -45,13 +55,17 @@ export function TimerSidebar({
         }
         solves={solves}
         event={event}
+        statIndicators={statIndicators}
+        onStatClick={onStatClick}
       />
       <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
         <SolveList
           solves={solves}
-          onPenaltyChange={onPenaltyChange}
-          onDelete={onDelete}
+          onSolveClick={onSolveClick}
+          onShareSolve={onShareSolve}
+          onBatchDelete={onBatchDelete}
           mode={mode}
+          bestSingleTime={stats.best}
         />
       </div>
     </div>

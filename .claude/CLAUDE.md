@@ -130,7 +130,9 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager)
+- `src/lib/timer/cross-solver.ts` — Optimal cross solver (BFS pruning tables for all 6 faces, client-side)
+- `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel)
 - `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
