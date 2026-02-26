@@ -23,6 +23,33 @@ import { deleteSessionsBulk } from "@/lib/actions/sessions"
 
 const PAGE_SIZE = 20
 
+/** Build the list of page numbers to display, inserting "ellipsis" gaps when there are many pages */
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  // Show all pages if 7 or fewer
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+
+  const pages: (number | "ellipsis")[] = []
+
+  // Always show first page
+  pages.push(0)
+
+  // Left ellipsis
+  if (current > 3) pages.push("ellipsis")
+
+  // Pages around current
+  const start = Math.max(1, current - 1)
+  const end = Math.min(total - 2, current + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+
+  // Right ellipsis
+  if (current < total - 4) pages.push("ellipsis")
+
+  // Always show last page
+  pages.push(total - 1)
+
+  return pages
+}
+
 /** SSR-safe media query hook — returns null during SSR, true/false after hydration */
 const SM_QUERY = "(min-width: 640px)"
 function subscribeMedia(cb: () => void) {
@@ -210,7 +237,7 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
 
           {/* Pagination controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/50 pt-4 mt-4">
+            <div className="flex flex-col items-center gap-2 border-t border-border/50 pt-4 mt-4 sm:flex-row sm:justify-between">
               <span className="text-sm text-muted-foreground">
                 {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sessions.length)} of {sessions.length} sessions
               </span>
@@ -224,6 +251,21 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
+                {getPageNumbers(page, totalPages).map((p, i) =>
+                  p === "ellipsis" ? (
+                    <span key={`e${i}`} className="px-1 text-sm text-muted-foreground">…</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={p === page ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-8 w-8 p-0 text-xs"
+                      onClick={() => setPage(p)}
+                    >
+                      {p + 1}
+                    </Button>
+                  )
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
