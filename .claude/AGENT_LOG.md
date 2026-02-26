@@ -188,3 +188,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** When a file has been modified by a linter between reads, the Edit tool rejects changes — always re-read first. Check git log for specific files before assuming local changes are not committed.
 **Blockers:** No remaining tasks. All phases (1-11) complete.
 **Warnings:** None — ready for new feature work.
+
+---
+
+### 2026-02-26 10:30 PT — Phase 11 Polish Session (Continued)
+
+**Task:** T60-T63 — Phase 11 sidebar polish and layout fixes
+**Status:** Continued from a previous session that ran out of context. Verified all Phase 11 work is committed and pushed. Earlier in this session made three improvements to ProfileSidebar: (1) FollowListModal integration with clickable follower/following stats, (2) EditProfileModal self-management with backward-compatible onEditProfile callback pattern, (3) View Public eye-icon button for owner. Fixed layout in public-profile-content.tsx from flex to grid. Fixed TS error in tab-pbs.tsx (WCA_EVENTS indexOf type mismatch) using String(e.id). tsc --noEmit passes clean. All changes committed and pushed.
+**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/tab-pbs.tsx
+**Learnings:** Turbopack has persistent filesystem race condition on macOS (ENOENT errors during build) — not code-related. Vercel builds on Linux work fine. Use `npx tsc --noEmit` for local type checking.
+**Blockers:** No remaining tasks in TASKS.md. All phases (1-11) complete.
+**Warnings:** None — ready for new feature work.
