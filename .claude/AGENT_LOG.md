@@ -221,3 +221,22 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Don't trust conversation summaries about file state — always verify by reading the actual file. Context compaction can introduce inaccuracies about what was reverted vs. what's on disk.
 **Blockers:** No remaining tasks. All phases (1-11) complete.
 **Warnings:** None — ready for new feature work.
+
+---
+
+### 2026-02-25 17:19 PT — Codebase-Wide Bug Fix Session
+
+**Task:** General work — codebase audit and bug fixes
+**Status:** Ran full codebase audit using TypeScript check + automated code exploration. Found and fixed bugs across 23 files:
+- **4 unhandled promise rejections** — timer scramble pre-gen, challenge card progress (UI stuck loading), navbar notification refresh, leaderboard auth check. All got `.catch()` handlers.
+- **Error handling gaps** — Added try/catch to comment section, feed load-more, follow button, session form, CSV/csTimer/CubeTime imports (8 components total).
+- **Timer security** — `addSolve` now verifies session ownership. `finalizeTimerSession` guards against double-finalization.
+- **Timer math bug** — Time conversion from ms to seconds now rounds to centiseconds properly.
+- **Streak floating point bug** — `Math.round(diffDays) === 1` in both check-milestones.ts and utils.ts.
+- **Edit profile stale data** — Form fields reset when modal opens.
+- **Signup orphan cleanup** — Orphaned auth accounts cleaned up when profile creation fails.
+- **T51 re-attempt** — Replaced `select("*")` with explicit column lists across 8 server action files.
+**Files touched:** 23 files across components/timer, components/challenges, components/shared, components/leaderboards, components/feed, components/log, components/profile, lib/actions, lib/helpers, lib/utils, app/api/auth
+**Learnings:** Many bug fixes were uncommitted changes from a previous session left on disk. Always check `git status` at session start. The linter recreated middleware.ts even though proxy.ts already existed.
+**Blockers:** None
+**Warnings:** T51 explicit column lists are back on dev. **Must verify on preview deployment before merging to main** — the last attempt broke production because column names didn't match the live DB.

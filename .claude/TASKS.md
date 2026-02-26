@@ -800,7 +800,7 @@ Each RPC function should JOIN profiles for display_name, handle, avatar_url so o
 
 | | |
 |---|---|
-| **Status** | ⚠️ Reverted — caused production bug (column names didn't match live DB) |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 5-6 server action files |
@@ -1248,3 +1248,235 @@ T63 (Rewrite Content)        — T60, T61, T62
 ```
 
 **Recommended order:** T57 + T58 + T59 + T61 in parallel (4 independent tasks) → T60 → T62 → T63
+
+---
+
+## Phase 12 — Performance Optimization Sprint
+
+Full performance audit identified ~50 issues. Stream C (select("*") replacement) deferred until live schema audit. See `.claude/plans/golden-beaming-emerson.md` for full details.
+
+---
+
+### T64: Create RPC for Batch Like Counts
+
+| | |
+|---|---|
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
+| **Dependencies** | None |
+| **Estimated scope** | 1 migration SQL + 1 server action file |
+
+Replace JS counting in `getSessionLikeInfo()` with a PostgreSQL RPC that does `COUNT(*) GROUP BY session_id`.
+
+---
+
+### T65: Create RPC for Batch Comment Counts
+
+| | |
+|---|---|
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
+| **Dependencies** | None |
+| **Estimated scope** | 1 migration SQL + 1 server action file |
+
+Replace JS counting in `getCommentCounts()` with a PostgreSQL RPC that does `COUNT(*) GROUP BY session_id`.
+
+---
+
+### T66: Fix Club Member Counting
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action file |
+
+Replace JS member counting loops in `getClubs()` and `getUserClubs()` with Supabase count headers or RPC.
+
+---
+
+### T67: Fix Challenge Participant Counting
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action file |
+
+Replace JS counting in `getChallenges()` with efficient database counting.
+
+---
+
+### T68: Add Limit to Feed Follows Query
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action file |
+
+Add `.limit(1000)` + `.order("created_at", { ascending: false })` to the follows query in `getFeed()`.
+
+---
+
+### T69: Add Limits to Other Unbounded Queries
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T65, T66 |
+| **Estimated scope** | 3-4 server action files |
+
+Add `.limit()` safety nets to: `getDistinctLocations()`, and remaining unbounded queries.
+
+---
+
+### T73: Fix N+1 in Personal Bests Operations
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 server action file |
+
+Reduce round-trips in `deletePB()` and `updatePB()` by combining sequential queries.
+
+---
+
+### T74: Fix N+1 in Badge Claims and Club Mutations
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 server action files |
+
+Use `Promise.all()` in `claimCompetitionBadge()`, `claimSponsorBadge()`, and `leaveClub()`.
+
+---
+
+### T75: Parallelize Leaderboards WCA Query
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 page file |
+
+Move sequential WCA ID profile query into the initial `Promise.all()` on the leaderboards page.
+
+---
+
+### T76: Split import-pbs-modal.tsx (789 lines)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file split into 3-4 files |
+
+Split into: modal shell, manual entry section, CSV section, parse helpers utility.
+
+---
+
+### T77: Timer Memoization + Split
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file + 1 new file |
+
+Extract timer controls, wrap `computeSessionStats` in `useMemo`, fix suppressed deps.
+
+---
+
+### T78: Add React.memo/useMemo to Feed & Leaderboards
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 4 component files |
+
+Memoize feed items, loadMore callback, leaderboard computed values, WCA results sorting.
+
+---
+
+### T79: Fix Session Log Dual DOM Rendering
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 component file |
+
+Conditionally render only one layout (mobile cards OR desktop table) instead of both.
+
+---
+
+### T80: Add Revalidation to Homepage
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 page file |
+
+Replace `force-dynamic` with `revalidate = 300` (5-minute cache).
+
+---
+
+### T81: Fix Count Query Pattern
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 server action files |
+
+Change `.select("*", { count: "exact", head: true })` to `.select("id", { count: "exact", head: true })`.
+
+---
+
+### T82: Add Next.js Image Optimization Config
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 config file |
+
+Add `images.remotePatterns` for Supabase Storage domain to `next.config.ts`.
+
+---
+
+### Phase 12 Dependency Graph
+
+```
+Phase 12 — Performance Optimization Sprint
+
+Wave 1 (all parallel, no deps):
+T64 (Like counts RPC)         — no deps
+T65 (Comment counts RPC)      — no deps
+T66 (Club member counting)    — no deps
+T67 (Challenge counting)      — no deps
+T68 (Feed follows limit)      — no deps
+
+After Wave 1:
+T69 (Other limits)            — T65, T66
+
+Wave 2 (all parallel, no deps):
+T73 (PB N+1)                  — no deps
+T74 (Badge/Club N+1)          — no deps
+T75 (Leaderboards parallel)   — no deps
+T80 (Homepage cache)          — no deps
+T81 (Count pattern)           — no deps
+T82 (Image config)            — no deps
+
+Wave 3 (all parallel, no deps):
+T76 (Split import-pbs-modal)  — no deps
+T77 (Timer memoization)       — no deps
+T78 (Feed/LB memoization)     — no deps
+T79 (Session log dual DOM)    — no deps
+```
