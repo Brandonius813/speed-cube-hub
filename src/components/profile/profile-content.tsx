@@ -118,7 +118,7 @@ export function ProfileContent({
               <TabStats sessions={sessions} isOwner />
             )}
             {activeTab === "cubes" && (
-              <TabCubes cubes={profile.cubes ?? []} isOwner />
+              <TabCubes cubes={profile.cubes ?? []} cubeHistory={profile.cube_history ?? []} isOwner />
             )}
             {activeTab === "official" && (
               <TabOfficial

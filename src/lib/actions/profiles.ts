@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink } from "@/lib/types"
+import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink, CubeHistoryEntry } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 
 export async function getProfile(): Promise<{
@@ -566,7 +566,8 @@ export async function updateProfileAccomplishments(
 }
 
 export async function updateProfileCubes(
-  cubes: ProfileCube[]
+  cubes: ProfileCube[],
+  cubeHistory?: CubeHistoryEntry[]
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -591,16 +592,35 @@ export async function updateProfileCubes(
     }
   }
 
+  // Enforce one main per event
+  const events = cubes.map((c) => c.event.trim())
+  const uniqueEvents = new Set(events)
+  if (events.length !== uniqueEvents.size) {
+    return { success: false, error: "Only one main cube per event is allowed." }
+  }
+
+  const updateData: Record<string, unknown> = {
+    cubes: cubes.map((c) => ({
+      name: c.name.trim(),
+      setup: c.setup.trim(),
+      event: c.event.trim(),
+    })),
+    updated_at: new Date().toISOString(),
+  }
+
+  if (cubeHistory !== undefined) {
+    // Cap history at 100 entries to prevent unbounded growth
+    updateData.cube_history = cubeHistory.slice(0, 100).map((h) => ({
+      name: h.name.trim(),
+      setup: h.setup.trim(),
+      event: h.event.trim(),
+      retired_at: h.retired_at,
+    }))
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({
-      cubes: cubes.map((c) => ({
-        name: c.name.trim(),
-        setup: c.setup.trim(),
-        event: c.event.trim(),
-      })),
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", user.id)
 
   if (error) {

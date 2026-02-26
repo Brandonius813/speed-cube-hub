@@ -23,9 +23,10 @@ import {
   ChevronUp,
   ArrowUp,
   ArrowDown,
+  History,
 } from "lucide-react"
 import { updateProfileCubes } from "@/lib/actions/profiles"
-import type { ProfileCube } from "@/lib/types"
+import type { ProfileCube, CubeHistoryEntry } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 
@@ -33,13 +34,16 @@ const PREVIEW_COUNT = 3
 
 export function MainCubes({
   cubes: initial,
+  cubeHistory: initialHistory,
   isOwner,
 }: {
   cubes: ProfileCube[]
+  cubeHistory: CubeHistoryEntry[]
   isOwner: boolean
 }) {
   const router = useRouter()
   const [items, setItems] = useState(initial)
+  const [history, setHistory] = useState(initialHistory)
   const [editOpen, setEditOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [name, setName] = useState("")
@@ -49,8 +53,23 @@ export function MainCubes({
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
 
+  // History modal state
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyEvent, setHistoryEvent] = useState<string | null>(null)
+
   const visibleItems = expanded ? items : items.slice(0, PREVIEW_COUNT)
   const hiddenCount = items.length - PREVIEW_COUNT
+
+  function getEventLabel(eventId: string): string {
+    return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
+  }
+
+  // Get history entries for a specific event, sorted newest first
+  function getEventHistory(eventId: string): CubeHistoryEntry[] {
+    return history
+      .filter((h) => h.event === eventId)
+      .sort((a, b) => new Date(b.retired_at).getTime() - new Date(a.retired_at).getTime())
+  }
 
   function openAdd() {
     setEditIndex(null)
@@ -71,6 +90,23 @@ export function MainCubes({
     setEditOpen(true)
   }
 
+  function openHistory(eventId: string) {
+    setHistoryEvent(eventId)
+    setHistoryOpen(true)
+  }
+
+  // Find if there's already a main for this event (excluding the cube being edited)
+  function findExistingMain(eventId: string): { cube: ProfileCube; index: number } | null {
+    const idx = items.findIndex(
+      (c, i) => c.event === eventId && i !== editIndex
+    )
+    if (idx === -1) return null
+    return { cube: items[idx], index: idx }
+  }
+
+  // The replacement warning shown in the add/edit dialog
+  const existingMain = event ? findExistingMain(event) : null
+
   async function handleSave() {
     if (!name.trim()) {
       setError("Cube name is required.")
@@ -83,20 +119,39 @@ export function MainCubes({
     setSaving(true)
     setError(null)
 
-    const updated = [...items]
+    let updated = [...items]
+    let updatedHistory = [...history]
+
     const entry: ProfileCube = {
       name: name.trim(),
       setup: setup.trim(),
       event: event.trim(),
     }
 
+    // If there's an existing main for this event, archive it
+    if (existingMain) {
+      const archived: CubeHistoryEntry = {
+        name: existingMain.cube.name,
+        setup: existingMain.cube.setup,
+        event: existingMain.cube.event,
+        retired_at: new Date().toISOString(),
+      }
+      updatedHistory = [archived, ...updatedHistory]
+      // Remove the old main from the array
+      updated = updated.filter((_, i) => i !== existingMain.index)
+    }
+
     if (editIndex !== null) {
-      updated[editIndex] = entry
+      // Find the correct index after potential removal
+      const adjustedIndex = existingMain && existingMain.index < editIndex
+        ? editIndex - 1
+        : editIndex
+      updated[adjustedIndex] = entry
     } else {
       updated.push(entry)
     }
 
-    const result = await updateProfileCubes(updated)
+    const result = await updateProfileCubes(updated, updatedHistory)
     if (!result.success) {
       setError(result.error ?? "Something went wrong.")
       setSaving(false)
@@ -104,6 +159,7 @@ export function MainCubes({
     }
 
     setItems(updated)
+    setHistory(updatedHistory)
     setSaving(false)
     setEditOpen(false)
     router.refresh()
@@ -113,7 +169,7 @@ export function MainCubes({
     const updated = items.filter((_, i) => i !== index)
     setSaving(true)
 
-    const result = await updateProfileCubes(updated)
+    const result = await updateProfileCubes(updated, history)
     if (result.success) {
       setItems(updated)
       router.refresh()
@@ -131,7 +187,7 @@ export function MainCubes({
     // Optimistically update UI
     setItems(updated)
 
-    const result = await updateProfileCubes(updated)
+    const result = await updateProfileCubes(updated, history)
     if (!result.success) {
       // Revert on failure
       setItems(items)
@@ -140,12 +196,13 @@ export function MainCubes({
     }
   }
 
-  function getEventLabel(eventId: string): string {
-    return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
-  }
-
   // Don't render at all if not owner and no cubes
   if (!isOwner && items.length === 0) return null
+
+  const eventHistoryForModal = historyEvent ? getEventHistory(historyEvent) : []
+  const currentMainForModal = historyEvent
+    ? items.find((c) => c.event === historyEvent)
+    : null
 
   return (
     <>
@@ -177,62 +234,87 @@ export function MainCubes({
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                {visibleItems.map((cube, i) => (
-                  <div
-                    key={i}
-                    className="group flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/50 p-4"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <CubingIcon
-                        event={cube.event}
-                        className="text-lg text-primary"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">
-                        {cube.name}
-                      </p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                        {cube.setup || getEventLabel(cube.event)}
-                      </p>
-                    </div>
-                    {isOwner && (
-                      <div className="flex shrink-0 gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                        <button
-                          onClick={() => handleMove(i, "up")}
-                          disabled={i === 0 || saving}
-                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-                          aria-label="Move cube up"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleMove(i, "down")}
-                          disabled={i === items.length - 1 || saving}
-                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-                          aria-label="Move cube down"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => openEdit(i)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-                          aria-label="Edit cube"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(i)}
-                          disabled={saving}
-                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
-                          aria-label="Delete cube"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                {visibleItems.map((cube, i) => {
+                  const eventHistory = getEventHistory(cube.event)
+                  const hasHistory = eventHistory.length > 0
+
+                  return (
+                    <div
+                      key={i}
+                      className={`group flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/50 p-4 ${
+                        hasHistory ? "cursor-pointer transition-colors hover:border-primary/30" : ""
+                      }`}
+                      onClick={hasHistory ? () => openHistory(cube.event) : undefined}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <CubingIcon
+                          event={cube.event}
+                          className="text-lg text-primary"
+                        />
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">
+                          {cube.name}
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                          {cube.setup || getEventLabel(cube.event)}
+                        </p>
+                      </div>
+                      {hasHistory && !isOwner && (
+                        <div className="shrink-0">
+                          <History className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      {isOwner && (
+                        <div
+                          className="flex shrink-0 gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {hasHistory && (
+                            <button
+                              onClick={() => openHistory(cube.event)}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                              aria-label="View cube history"
+                            >
+                              <History className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleMove(i, "up")}
+                            disabled={i === 0 || saving}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+                            aria-label="Move cube up"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleMove(i, "down")}
+                            disabled={i === items.length - 1 || saving}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+                            aria-label="Move cube down"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => openEdit(i)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                            aria-label="Edit cube"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(i)}
+                            disabled={saving}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                            aria-label="Delete cube"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               {hiddenCount > 0 && (
@@ -259,6 +341,7 @@ export function MainCubes({
         </CardContent>
       </Card>
 
+      {/* Add / Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="border-border/50 bg-card">
           <DialogHeader>
@@ -286,6 +369,14 @@ export function MainCubes({
                 ))}
               </select>
             </div>
+
+            {/* Replacement warning */}
+            {existingMain && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-400">
+                This will replace your current {getEventLabel(event)} main:{" "}
+                <span className="font-medium">{existingMain.cube.name}</span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="cube-name">Cube Name</Label>
@@ -331,11 +422,88 @@ export function MainCubes({
               disabled={saving || !name.trim()}
               className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {saving ? "Saving..." : "Save"}
+              {saving
+                ? "Saving..."
+                : existingMain
+                  ? "Replace & Save"
+                  : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="border-border/50 bg-card max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {historyEvent && (
+                <CubingIcon event={historyEvent} className="text-lg text-primary" />
+              )}
+              {historyEvent ? getEventLabel(historyEvent) : ""} Main History
+            </DialogTitle>
+            <DialogDescription>
+              Your current and previous main cubes for this event.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3">
+            {/* Current main */}
+            {currentMainForModal && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                    Current
+                  </span>
+                </div>
+                <p className="font-medium text-foreground">{currentMainForModal.name}</p>
+                {currentMainForModal.setup && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {currentMainForModal.setup}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* History entries */}
+            {eventHistoryForModal.length > 0 ? (
+              eventHistoryForModal.map((entry, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg border border-border/50 bg-secondary/30 p-3"
+                >
+                  <p className="font-medium text-foreground">{entry.name}</p>
+                  {entry.setup && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {entry.setup}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Retired {formatRetiredDate(entry.retired_at)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground py-2">
+                No previous mains for this event.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
+}
+
+function formatRetiredDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  } catch {
+    return dateStr
+  }
 }

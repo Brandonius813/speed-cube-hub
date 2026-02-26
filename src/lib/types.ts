@@ -4,6 +4,13 @@ export type ProfileCube = {
   event: string;
 };
 
+export type CubeHistoryEntry = {
+  name: string;
+  setup: string;
+  event: string;
+  retired_at: string;
+};
+
 export type ProfileLink = {
   platform: string;
   url: string;
@@ -26,6 +33,7 @@ export type Profile = {
   sponsor: string | null;
   events: string[];
   cubes: ProfileCube[];
+  cube_history: CubeHistoryEntry[];
   links: ProfileLink[];
   accomplishments: ProfileAccomplishment[];
   country_id: string | null;

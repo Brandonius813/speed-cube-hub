@@ -91,7 +91,7 @@ export function PublicProfileContent({
             <TabStats sessions={sessions} isOwner={isOwner} />
           )}
           {activeTab === "cubes" && (
-            <TabCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
+            <TabCubes cubes={profile.cubes ?? []} cubeHistory={profile.cube_history ?? []} isOwner={isOwner} />
           )}
           {activeTab === "official" && (
             <TabOfficial
