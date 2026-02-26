@@ -235,6 +235,37 @@ export async function deleteSolve(
 }
 
 /**
+ * Delete multiple solves at once. Uses Supabase .in() for a single query.
+ */
+export async function deleteSolves(
+  solveIds: string[]
+): Promise<{ error?: string }> {
+  if (solveIds.length === 0) return {}
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Not authenticated" }
+  }
+
+  const { error } = await supabase
+    .from("solves")
+    .delete()
+    .in("id", solveIds)
+    .eq("user_id", user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {}
+}
+
+/**
  * Fetch solves for a named solve session (only those after active_from).
  * Used by the timer to load solves for the current session.
  */

@@ -24,6 +24,7 @@ import {
   addSolve,
   updateSolve,
   deleteSolve,
+  deleteSolves,
   finalizeTimerSession,
   getActiveTimerSession,
   getSolvesBySession,
@@ -41,6 +42,13 @@ import { PBCelebration } from "@/components/share/pb-celebration"
 import { ShareModal } from "@/components/share/share-modal"
 import type { ShareCardData } from "@/components/share/share-card"
 import { getEffectiveTime, bestAoN } from "@/lib/timer/averages"
+import {
+  solvesToCSV,
+  solvesToJSON,
+  solvesToCsTimerTxt,
+  statsToClipboard,
+  downloadFile,
+} from "@/lib/timer/export"
 import { getCurrentPBs, logNewPB } from "@/lib/actions/personal-bests"
 import { getProfile } from "@/lib/actions/profiles"
 import { getTodayPacific } from "@/lib/utils"
@@ -489,6 +497,17 @@ export function TimerContent() {
     }
   }
 
+  const handleBatchDelete = async (solveIds: string[]) => {
+    if (solveIds.length === 0) return
+    const idSet = new Set(solveIds)
+    setSolves((prev) => prev.filter((s) => !idSet.has(s.id)))
+
+    const result = await deleteSolves(solveIds)
+    if (result.error && currentSession) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
   const handleNotesChange = async (solveId: string, notes: string) => {
     setSolves((prev) =>
       prev.map((s) => (s.id === solveId ? { ...s, notes: notes || null } : s))
@@ -718,6 +737,37 @@ export function TimerContent() {
     inspectionPenaltyRef.current = penalty
   }
 
+  // ---- Export ----
+
+  const handleExport = async (format: "csv" | "json" | "txt" | "clipboard") => {
+    if (solves.length === 0) return
+    const sessionName = currentSession?.name ?? event
+    const timestamp = new Date().toISOString().slice(0, 10)
+
+    switch (format) {
+      case "csv": {
+        const csv = solvesToCSV(solves, event)
+        downloadFile(csv, `${sessionName}_${timestamp}.csv`, "text/csv")
+        break
+      }
+      case "json": {
+        const json = solvesToJSON(solves, event)
+        downloadFile(json, `${sessionName}_${timestamp}.json`, "application/json")
+        break
+      }
+      case "txt": {
+        const txt = solvesToCsTimerTxt(solves, event)
+        downloadFile(txt, `${sessionName}_${timestamp}.txt`, "text/plain")
+        break
+      }
+      case "clipboard": {
+        const text = statsToClipboard(solves, event)
+        await navigator.clipboard.writeText(text)
+        break
+      }
+    }
+  }
+
   // ---- Render ----
 
   const handleSolveClick = (solve: Solve) => {
@@ -740,6 +790,7 @@ export function TimerContent() {
       onDelete={handleDeleteSolve}
       onSolveClick={handleSolveClick}
       onShareSolve={handleShareSolve}
+      onBatchDelete={handleBatchDelete}
       onStatClick={handleStatClick}
     />
   )
@@ -783,6 +834,7 @@ export function TimerContent() {
         onStatIndicatorsChange={handleStatIndicatorsChange}
         solveCount={solves.length}
         onEndPractice={handleEndSession}
+        onExport={handleExport}
         saveError={saveError}
         onDismissError={() => setSaveError(null)}
       />

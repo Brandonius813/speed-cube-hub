@@ -2254,11 +2254,13 @@ Solve count per day/week/month/year, configurable week start, heatmap/bar chart.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-B |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/lib/timer/export.ts`, `src/components/timer/timer-top-bar.tsx` |
 
-CSV, JSON, csTimer .txt formats. Copy stats to clipboard.
+Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + Copy Stats to clipboard. Export utility at `src/lib/timer/export.ts` with `solvesToCSV()`, `solvesToJSON()`, `solvesToCsTimerTxt()`, `statsToClipboard()`, `downloadFile()`. Files named `{sessionName}_{date}.{ext}`.
 
 ---
 
@@ -2492,11 +2494,13 @@ Adjustable text size, mono font toggle, height limit, alignment, key move labels
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-B |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/components/timer/solve-list.tsx`, `src/lib/actions/timer.ts` |
 
-Batch delete mode, checkbox or sequential, confirmation dialog.
+Batch select mode in solve list. "Select" button appears above solves when 2+ solves exist. Tap to toggle checkboxes, "All" to select all, "Delete" to batch delete with confirmation dialog. Added `deleteSolves()` server action using Supabase `.in()` for single-query batch delete. Works in both Normal and Comp Sim modes.
 
 ---
 
