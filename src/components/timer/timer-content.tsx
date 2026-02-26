@@ -1284,6 +1284,7 @@ export function TimerContent() {
         onPenaltyChange={handlePenaltyChange}
         onDelete={handleDeleteSolve}
         onNotesChange={handleNotesChange}
+        phaseLabels={effectivePhaseLabels}
       />
 
       <StatDetailModal
