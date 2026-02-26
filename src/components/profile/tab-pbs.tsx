@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Trophy, Upload, Settings, Star } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
+import { updatePBDisplayTypes } from "@/lib/actions/profiles"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import { LogPBModal } from "@/components/pbs/log-pb-modal"
 import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
@@ -68,10 +69,10 @@ export function TabPBs({
     profile.pbs_main_events
   )
 
-  // Per-event display type overrides (in-memory, defaults from getDefaultDisplayTypes)
+  // Per-event display type overrides (persisted to profile.pb_display_types)
   const [displayTypeOverrides, setDisplayTypeOverrides] = useState<
     Record<string, string[]>
-  >({})
+  >(profile.pb_display_types ?? {})
 
   // Modals
   const [showLogModal, setShowLogModal] = useState(false)
@@ -101,7 +102,14 @@ export function TabPBs({
   }
 
   function handleDisplayTypesChange(eventId: string, types: string[]) {
-    setDisplayTypeOverrides((prev) => ({ ...prev, [eventId]: types }))
+    setDisplayTypeOverrides((prev) => {
+      const next = { ...prev, [eventId]: types }
+      // Save to database (fire-and-forget — optimistic update)
+      if (isOwner) {
+        updatePBDisplayTypes(next)
+      }
+      return next
+    })
   }
 
   // Group PBs by event — keep only the best per event+type
