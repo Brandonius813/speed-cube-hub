@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { SessionSelector } from "@/components/timer/session-selector"
 import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
+import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
@@ -41,6 +42,9 @@ export function TimerTopBar({
   onDismissError,
   scrambleTypeId,
   onScrambleTypeChange,
+  caseFilter,
+  onCaseFilterChange,
+  trainingCstimerType,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -74,6 +78,9 @@ export function TimerTopBar({
   onDismissError: () => void
   scrambleTypeId?: string
   onScrambleTypeChange?: (typeId: string) => void
+  caseFilter?: number[] | null
+  onCaseFilterChange?: (cases: number[] | null) => void
+  trainingCstimerType?: string
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -105,6 +112,13 @@ export function TimerTopBar({
               eventId={currentSession.event}
               selectedTypeId={scrambleTypeId}
               onTypeChange={onScrambleTypeChange}
+            />
+          )}
+          {trainingCstimerType && onCaseFilterChange && (
+            <CaseFilterPanel
+              cstimerType={trainingCstimerType}
+              selectedCases={caseFilter ?? null}
+              onSelectedCasesChange={onCaseFilterChange}
             />
           )}
           {mode === "comp_sim" && (

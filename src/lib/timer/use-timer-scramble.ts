@@ -14,10 +14,12 @@ export function useTimerScramble() {
   /**
    * Load a new scramble for the given event.
    * If trainingCstimerType is provided, generates a training scramble instead.
+   * If caseFilter is provided, picks from selected cases only.
    */
   const loadScramble = (
     eventId: WcaEventId,
-    trainingCstimerType?: string
+    trainingCstimerType?: string,
+    caseFilter?: number[] | null
   ) => {
     setIsManualScramble(false)
 
@@ -26,13 +28,13 @@ export function useTimerScramble() {
       setCurrentScramble(nextScrambleRef.current)
       nextScrambleRef.current = null
     } else if (trainingCstimerType) {
-      setCurrentScramble(generateTrainingScramble(trainingCstimerType))
+      setCurrentScramble(generateTrainingScramble(trainingCstimerType, caseFilter))
     } else {
       setCurrentScramble(generateScramble(eventId))
     }
 
     // Pre-generate the next scramble (synchronous, <50ms)
-    nextScrambleRef.current = preGenerateScramble(eventId, trainingCstimerType)
+    nextScrambleRef.current = preGenerateScramble(eventId, trainingCstimerType, caseFilter)
   }
 
   const setManualScramble = (scramble: string) => {

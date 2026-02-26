@@ -2136,11 +2136,18 @@ Added 4x4 (Edges, R,r,U,u, LL, ELL, Edge Only, Center Only, UD Centers, UD+3E, L
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus (parallel session) |
 | **Dependencies** | T116 |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/lib/timer/algorithm-cases.ts`, `src/components/timer/case-filter-panel.tsx` |
 
-Checkbox grid with algo diagrams, select/deselect, probability control, persist per type.
+- ✅ Case definitions for PLL (21), OLL (57), COLL (42), CLL (42), EG (42), EG-1/EG-2 (42 each), CMLL (42)
+- ✅ Checkbox grid with select/deselect all buttons
+- ✅ Case-specific scramble generation via cstimer_module's third parameter (case index)
+- ✅ Filter button in timer top bar (shown only for filterable training types)
+- ✅ Selected case count indicator (e.g., "8/21")
+- ✅ Persist case filter per training type in localStorage
 
 ---
 
@@ -2205,7 +2212,8 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
 

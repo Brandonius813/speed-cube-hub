@@ -59,6 +59,8 @@ import {
   getTrainingType,
   hasTrainingTypes,
 } from "@/lib/timer/training-scrambles"
+import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
+import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
 
 type PBDetection = {
   event: string
@@ -110,6 +112,14 @@ export function TimerContent() {
   // Resolve the cstimer type string for the current training type (null = normal)
   const trainingType = getTrainingType(event, scrambleTypeId)
   const trainingCstimerType = trainingType?.cstimerType
+
+  // Case filter for training scrambles (e.g., only certain PLL cases)
+  const [caseFilter, setCaseFilter] = useState<number[] | null>(() => {
+    if (typeof window !== "undefined" && trainingCstimerType) {
+      return loadCaseFilter(trainingCstimerType)
+    }
+    return null
+  })
 
   // Scramble management
   const { currentScramble, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
@@ -272,7 +282,9 @@ export function TimerContent() {
         ? localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
         : NORMAL_SCRAMBLE_ID
       const resolved = getTrainingType(session.event, savedType)
-      loadScramble(session.event as WcaEventId, resolved?.cstimerType)
+      const savedFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+      setCaseFilter(savedFilter)
+      loadScramble(session.event as WcaEventId, resolved?.cstimerType, savedFilter)
       await loadSessionSolves(session)
     } else {
       loadScramble("333" as WcaEventId)
@@ -354,7 +366,9 @@ export function TimerContent() {
       setScrambleTypeId(NORMAL_SCRAMBLE_ID)
       localStorage.setItem(SCRAMBLE_TYPE_KEY, NORMAL_SCRAMBLE_ID)
     }
-    loadScramble(session.event as WcaEventId, resolved?.cstimerType)
+    const newFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+    setCaseFilter(newFilter)
+    loadScramble(session.event as WcaEventId, resolved?.cstimerType, newFilter)
     await loadSessionSolves(session)
   }
 
@@ -521,13 +535,13 @@ export function TimerContent() {
     )
 
     saveSolve(timeMs, inspPenalty)
-    loadScramble(event as WcaEventId, trainingCstimerType)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
 
   const handleTypedTime = async (timeMs: number) => {
     setLastTime(timeMs)
     saveSolve(timeMs, null)
-    loadScramble(event as WcaEventId, trainingCstimerType)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
 
   const handlePenaltyChange = async (
@@ -720,10 +734,22 @@ export function TimerContent() {
     if (typeof window !== "undefined") {
       localStorage.setItem(SCRAMBLE_TYPE_KEY, typeId)
     }
-    // Immediately generate a new scramble with the new type
+    // Load persisted case filter for the new type
     clearNextScramble()
     const resolved = getTrainingType(event, typeId)
-    loadScramble(event as WcaEventId, resolved?.cstimerType)
+    const newFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+    setCaseFilter(newFilter)
+    loadScramble(event as WcaEventId, resolved?.cstimerType, newFilter)
+  }
+
+  const handleCaseFilterChange = (cases: number[] | null) => {
+    setCaseFilter(cases)
+    if (trainingCstimerType) {
+      saveCaseFilter(trainingCstimerType, cases)
+    }
+    // Generate a new scramble with the updated filter
+    clearNextScramble()
+    loadScramble(event as WcaEventId, trainingCstimerType, cases)
   }
 
   const handleEndSession = () => {
@@ -820,7 +846,7 @@ export function TimerContent() {
   useEffect(() => {
     if (inspection.state === "done" && inspectionEnabled) {
       saveSolve(0, "DNF")
-      loadScramble(event as WcaEventId, trainingCstimerType)
+      loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inspection.state])
@@ -876,7 +902,10 @@ export function TimerContent() {
     setStatDetail({ label: statLabel, column })
   }
 
-  const sidebarPanel = sidebarPosition !== "hidden" && (
+  // Focus mode: hide everything except time display while timer is running
+  const focusActive = hideWhileTiming && isTimerRunning
+
+  const sidebarPanel = sidebarPosition !== "hidden" && !focusActive && (
     <TimerSidebar
       sidebarPosition={sidebarPosition}
       stats={stats}
@@ -894,7 +923,7 @@ export function TimerContent() {
   )
 
   const layoutClass =
-    sidebarPosition === "hidden" || sidebarPosition === "bottom"
+    focusActive || sidebarPosition === "hidden" || sidebarPosition === "bottom"
       ? "flex-1 flex flex-col min-h-0 overflow-hidden"
       : sidebarPosition === "left"
         ? "flex-1 flex flex-col md:grid md:grid-cols-[320px_1fr] min-h-0 overflow-hidden"
@@ -910,7 +939,7 @@ export function TimerContent() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
-      <TimerTopBar
+      {!focusActive && (<TimerTopBar
         sessions={solveSessions}
         currentSession={currentSession}
         onSelectSession={handleSelectSession}
@@ -943,18 +972,23 @@ export function TimerContent() {
         onDismissError={() => setSaveError(null)}
         scrambleTypeId={scrambleTypeId}
         onScrambleTypeChange={handleScrambleTypeChange}
-      />
+        caseFilter={caseFilter}
+        onCaseFilterChange={handleCaseFilterChange}
+        trainingCstimerType={trainingCstimerType}
+      />)}
 
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
-          <ScrambleDisplay
-            scramble={currentScramble}
-            event={event}
-            isManualScramble={isManualScramble}
-            onManualScramble={setManualScramble}
-            onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType)}
-          />
+          {!focusActive && (
+            <ScrambleDisplay
+              scramble={currentScramble}
+              event={event}
+              isManualScramble={isManualScramble}
+              onManualScramble={setManualScramble}
+              onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
+            />
+          )}
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}
@@ -963,6 +997,7 @@ export function TimerContent() {
           ) : (
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
+              onRunningChange={setIsTimerRunning}
               lastTime={lastTime}
               timerUpdateMode={timerUpdateMode}
               timerSize={timerSize}
