@@ -62,6 +62,7 @@ import {
 import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
 import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
 import { SwipeFeedback } from "@/components/timer/swipe-feedback"
+import { TrainingCaseStats } from "@/components/timer/training-case-stats"
 import type { SwipeDirection } from "@/components/timer/timer-display"
 
 type PBDetection = {
@@ -125,8 +126,12 @@ export function TimerContent() {
   })
 
   // Scramble management
-  const { currentScramble, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
+  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
     useTimerScramble()
+
+  // Track which algorithm case each solve was for (solve ID → case index)
+  const solveCaseMapRef = useRef(new Map<string, number>())
+  const [solveCaseMap, setSolveCaseMap] = useState(new Map<string, number>())
 
   // Settings
   const [inspectionEnabled, setInspectionEnabled] = useState(false)
@@ -370,6 +375,8 @@ export function TimerContent() {
     setCurrentSession(session)
     saveLastSessionId(session.id)
     setSolves([])
+    solveCaseMapRef.current.clear()
+    setSolveCaseMap(new Map())
     setLastTime(null)
     setTimerSessionId(null)
     clearNextScramble()
@@ -503,6 +510,12 @@ export function TimerContent() {
     }
     setSolves((prev) => [...prev, optimisticSolve])
 
+    // Track case index for training case statistics
+    if (currentCaseIndex !== null) {
+      solveCaseMapRef.current.set(tempId, currentCaseIndex)
+      setSolveCaseMap(new Map(solveCaseMapRef.current))
+    }
+
     // Check for PBs optimistically (don't wait for server)
     const allSolvesNow = [...solves, optimisticSolve]
     checkForPB(allSolvesNow, optimisticSolve)
@@ -527,6 +540,13 @@ export function TimerContent() {
         setSolves((prev) =>
           prev.map((s) => (s.id === tempId ? result.data! : s))
         )
+        // Update case map with real solve ID
+        const caseIdx = solveCaseMapRef.current.get(tempId)
+        if (caseIdx !== undefined) {
+          solveCaseMapRef.current.delete(tempId)
+          solveCaseMapRef.current.set(result.data.id, caseIdx)
+          setSolveCaseMap(new Map(solveCaseMapRef.current))
+        }
       }
     } catch (err) {
       setSolves((prev) => prev.filter((s) => s.id !== tempId))
@@ -970,20 +990,29 @@ export function TimerContent() {
   const focusActive = hideWhileTiming && isTimerRunning
 
   const sidebarPanel = sidebarPosition !== "hidden" && !focusActive && (
-    <TimerSidebar
-      sidebarPosition={sidebarPosition}
-      stats={stats}
-      mode={mode}
-      solves={solves}
-      event={event}
-      statIndicators={statIndicators}
-      onPenaltyChange={handlePenaltyChange}
-      onDelete={handleDeleteSolve}
-      onSolveClick={handleSolveClick}
-      onShareSolve={handleShareSolve}
-      onBatchDelete={handleBatchDelete}
-      onStatClick={handleStatClick}
-    />
+    <div className="flex flex-col overflow-hidden">
+      <TimerSidebar
+        sidebarPosition={sidebarPosition}
+        stats={stats}
+        mode={mode}
+        solves={solves}
+        event={event}
+        statIndicators={statIndicators}
+        onPenaltyChange={handlePenaltyChange}
+        onDelete={handleDeleteSolve}
+        onSolveClick={handleSolveClick}
+        onShareSolve={handleShareSolve}
+        onBatchDelete={handleBatchDelete}
+        onStatClick={handleStatClick}
+      />
+      {trainingCstimerType && hasCaseFiltering(trainingCstimerType) && (
+        <TrainingCaseStats
+          solveCaseMap={solveCaseMap}
+          solves={solves}
+          cstimerType={trainingCstimerType}
+        />
+      )}
+    </div>
   )
 
   const layoutClass =

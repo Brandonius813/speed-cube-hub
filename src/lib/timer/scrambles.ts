@@ -87,6 +87,31 @@ export function generateTrainingScramble(
   }
 }
 
+export type ScrambleWithCase = {
+  scramble: string
+  caseIndex: number | null
+}
+
+/**
+ * Generate a training scramble and return both the scramble text and case index.
+ * Used by the timer to track which algorithm case each solve was for.
+ */
+export function generateTrainingScrambleWithCase(
+  cstimerType: string,
+  caseFilter?: number[] | null
+): ScrambleWithCase {
+  try {
+    if (caseFilter && caseFilter.length > 0) {
+      const caseIndex = caseFilter[Math.floor(Math.random() * caseFilter.length)]
+      return { scramble: cstimerGetScramble(cstimerType, 0, caseIndex), caseIndex }
+    }
+    return { scramble: cstimerGetScramble(cstimerType), caseIndex: null }
+  } catch (err) {
+    console.error("Training scramble generation failed:", err)
+    return { scramble: "Error generating scramble — try refreshing", caseIndex: null }
+  }
+}
+
 /**
  * Pre-generate a scramble (for caching one ahead).
  * Accepts an optional cstimer type override for training scrambles.
@@ -101,6 +126,24 @@ export function preGenerateScramble(
       return generateTrainingScramble(trainingCstimerType, caseFilter)
     }
     return generateScramble(eventId)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pre-generate a scramble with case index tracking.
+ */
+export function preGenerateScrambleWithCase(
+  eventId: WcaEventId,
+  trainingCstimerType?: string,
+  caseFilter?: number[] | null
+): ScrambleWithCase | null {
+  try {
+    if (trainingCstimerType) {
+      return generateTrainingScrambleWithCase(trainingCstimerType, caseFilter)
+    }
+    return { scramble: generateScramble(eventId), caseIndex: null }
   } catch {
     return null
   }
