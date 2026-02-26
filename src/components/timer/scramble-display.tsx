@@ -42,6 +42,7 @@ export function ScrambleDisplay({
   const settingsRef = useRef<HTMLDivElement>(null)
   const is3x3 = event === "333"
   const isRelay = event?.startsWith("relay")
+  const hasSolver = ["333", "333oh", "222", "pyram", "skewb"].includes(event ?? "")
 
   // Scramble display settings (persisted to localStorage)
   const [scrambleSize, setScrambleSize] = useState<ScrambleSize>(() => {
@@ -256,14 +257,14 @@ export function ScrambleDisplay({
                 <Pencil className="h-4 w-4" />
               </button>
             )}
-            {(is3x3 || event === "333oh") && (
+            {hasSolver && (
               <button
                 onClick={() => setShowSolver(!showSolver)}
                 className={cn(
                   "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
                   showSolver && "bg-secondary text-foreground"
                 )}
-                title={showSolver ? "Hide EOLine analysis" : "Show EOLine analysis (ZZ)"}
+                title={showSolver ? "Hide analysis" : "Show puzzle analysis"}
               >
                 <Zap className="h-4 w-4" />
               </button>
@@ -396,8 +397,8 @@ export function ScrambleDisplay({
       {showCross && is3x3 && scramble && (
         <CrossSolverPanel scramble={scramble} />
       )}
-      {showSolver && event && scramble && (
-        <SolverPanel scramble={scramble} event={event} />
+      {showSolver && hasSolver && scramble && (
+        <SolverPanel scramble={scramble} event={event!} />
       )}
     </div>
   )
