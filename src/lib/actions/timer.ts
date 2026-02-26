@@ -186,6 +186,35 @@ export async function deleteSolve(
   return {}
 }
 
+export async function getSolvesByEvent(
+  event: string,
+  limit = 5000
+): Promise<{ solves: Solve[]; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { solves: [], error: "Not authenticated" }
+  }
+
+  const { data, error } = await supabase
+    .from("solves")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .order("solved_at", { ascending: true })
+    .limit(limit)
+
+  if (error) {
+    return { solves: [], error: error.message }
+  }
+
+  return { solves: (data as Solve[]) || [] }
+}
+
 export async function finalizeTimerSession(
   timerSessionId: string
 ): Promise<{ error?: string }> {

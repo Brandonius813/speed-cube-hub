@@ -1116,3 +1116,128 @@ T56 (Solve Analytics Charts)  — no deps
 **Max parallelism:** Up to 3 agents. T55 is trivial — do it first then start T56.
 
 **Merge conflict note:** T54 and T55 both touch `src/lib/constants.ts`. T55 should commit first (tiny change). T54 agent should `git pull` before modifying constants.ts. T56 also adds to `dashboard-content.tsx` — if T54 runs in parallel, T54 does the restructure first, T56 adds solve charts after.
+
+---
+
+## Phase 11 — Profile Rework: 5-Tab Layout with Sidebar
+
+Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. On mobile, tabs are full-width and swipeable (Clash Royale-style). Applies to both `/profile` (own) and `/profile/[handle]` (public).
+
+**Tab order (left to right):** PBs | Stats | Overview (default) | Cubes | Official
+
+**Desktop:** Two-column grid — tabs + content on the left, sticky profile sidebar card on the right.
+**Mobile:** Full-width tabs with swipe navigation. Sidebar info lives in the Overview tab.
+
+---
+
+### T57: Schema Change — `main_events` (up to 3)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | SQL migration + 3 files |
+| **Priority** | HIGH — prerequisite for sidebar |
+
+Add `main_events text[]` column to `profiles` table. Migrate existing `main_event` data. Update `Profile` type, `EditProfileModal` (multi-select, max 3), and `updateProfile` server action. Keep old `main_event` column for backward compatibility.
+
+---
+
+### T58: Server Action — `getPBsByUserId`
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+| **Priority** | HIGH — prerequisite for PBs tab |
+
+Add `getPBsByUserId(userId)` to `src/lib/actions/personal-bests.ts`. Fetches current PBs (`is_current = true`) for any user — no auth gate, since profiles are public. Caller filters by `profile.pb_visible_types`.
+
+---
+
+### T59: SessionLog `readOnly` Prop
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+| **Priority** | HIGH — prerequisite for Stats tab |
+
+Add `readOnly?: boolean` prop to `src/components/dashboard/session-log.tsx`. When true, hide select mode button, edit/pencil buttons, and bulk delete bar.
+
+---
+
+### T60: Profile Sidebar Component
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T57 |
+| **Estimated scope** | 1 new file (~120 lines) |
+| **Priority** | HIGH |
+
+Create `src/components/profile/profile-sidebar.tsx` — Skool-style profile card. Contains: large avatar, up to 3 main event badges, display name + @handle, bio, meta rows (joined date, location, sponsor), 3-column stats (Followers / Following / Practice Time), Follow/Edit button, social link icons. Sticky on desktop (`sticky top-24`), hidden on mobile (`hidden lg:block`).
+
+---
+
+### T61: Profile Tabs Component
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 new file (~80 lines) |
+| **Priority** | HIGH |
+
+Create `src/components/profile/profile-tabs.tsx` — tab bar + swipe detection. Reads `?tab=` from URL, defaults to `"overview"`. 5 tab buttons with active indicator. Mobile swipe via touch events (60px threshold). Updates URL with `router.replace`.
+
+---
+
+### T62: Tab Content Components (5 tabs)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T58, T59, T60, T61 |
+| **Estimated scope** | 5 new files (~400 lines total) |
+| **Priority** | HIGH |
+
+Create the 5 tab content wrappers:
+- `tab-overview.tsx` (~90 lines) — Mobile: full ProfileHeader. Both: stat cards, badges, activity, YTD stats
+- `tab-pbs.tsx` (~120 lines) — Owner: existing `PBsContent`. Visitors: read-only PB grid. Both: PBProgressChart
+- `tab-stats.tsx` (~70 lines) — Stats cards, streak, heatmap, pie/bar charts, session log (readOnly for visitors)
+- `tab-cubes.tsx` (~20 lines) — Thin wrapper around existing `MainCubes`
+- `tab-official.tsx` (~110 lines) — WCA results (lazy-loaded), allrounding, accomplishments, upcoming competitions
+
+---
+
+### T63: Rewrite Profile Content Components
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T60, T61, T62 |
+| **Estimated scope** | 4 files (2 rewrites + 2 page updates) |
+| **Priority** | HIGH |
+
+Rewrite `public-profile-content.tsx` and `profile-content.tsx` to use the new grid + tabs layout. Update both page server components (`profile/[handle]/page.tsx` and `profile/page.tsx`) to fetch PB data and widen container to `max-w-6xl`.
+
+---
+
+### Phase 11 Dependency Graph
+
+```
+Phase 11 — Profile Rework:
+T57 (main_events schema)    — no deps
+T58 (getPBsByUserId)         — no deps
+T59 (SessionLog readOnly)   — no deps
+T61 (ProfileTabs)            — no deps
+
+T60 (ProfileSidebar)         — T57 (needs main_events)
+T62 (Tab Components)         — T58, T59, T60, T61
+T63 (Rewrite Content)        — T60, T61, T62
+```
+
+**Recommended order:** T57 + T58 + T59 + T61 in parallel (4 independent tasks) → T60 → T62 → T63

@@ -10,6 +10,7 @@ import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
+import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
 import type { Session } from "@/lib/types"
 
 export function DashboardContent({
@@ -39,6 +40,15 @@ export function DashboardContent({
       types.add(s.practice_type)
     }
     return Array.from(types).sort()
+  }, [initialSessions])
+
+  // Derive practiced events for solve analytics
+  const practicedEvents = useMemo(() => {
+    const events = new Set<string>()
+    for (const s of initialSessions) {
+      events.add(s.event)
+    }
+    return Array.from(events)
   }, [initialSessions])
 
   const filteredSessions = useMemo(() => {
