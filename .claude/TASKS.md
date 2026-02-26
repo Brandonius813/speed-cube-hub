@@ -2525,12 +2525,17 @@ Click scramble image → animated sequence, step-through moves.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/timer-display.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-content.tsx` |
 
-Hide everything while timer runs, restore on stop.
+- ✅ "Focus Mode" toggle in timer settings
+- ✅ Hides top bar, scramble display, and stats sidebar while timer runs
+- ✅ Timer display fills full screen in focus mode
+- ✅ Everything restores when timer stops
+- ✅ Setting persists to localStorage (`sch_hide_while_timing`)
 
 ---
 
