@@ -233,7 +233,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Manual scramble input mode (T128)
 
 **Phase 18 — Session Data Features — T129-T133:**
-- [ ] Session merge & split (T129)
+- [x] Session merge & split (T129)
 - [x] Cross-session statistics with filters (T130)
 - [x] Daily statistics (solves per day/week/month) (T131)
 - [x] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
@@ -242,9 +242,9 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 **Phase 19 — Advanced Tools — T134-T138:**
 - [x] Batch scramble generator (up to 999) (T134)
 - [x] Metronome tool (T135)
-- [ ] Shared scramble seed (race friends) (T136)
-- [ ] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
-- [ ] BLD helper tool (T138)
+- [x] Shared scramble seed (race friends) (T136)
+- [x] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
+- [x] BLD helper tool (T138)
 
 **Phase 20 — Non-WCA Puzzles & Relays — T139-T143:**
 - [x] Big cubes 8x8-11x11 + custom NxN (T139)
