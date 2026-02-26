@@ -411,3 +411,17 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** None new
 **Blockers:** User needs to run SQL in Supabase: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cube_history jsonb DEFAULT '[]'::jsonb;`
 **Warnings:** The `cube_history` column must exist before the preview deploy works. Without it, cube saves will fail with a column-not-found error.
+
+---
+
+### 2026-02-28 09:30 PT — Profile Consolidation Session
+
+**Task:** General work — Consolidate PBs + Stats pages onto profile tabs
+**Status:** Completed three changes:
+1. **Profile PBs tab now has full PBs page functionality:** Log New PB button, Bulk Import, Settings (visible types + main events), event cards with per-type rows and dates, clickable PBs open History modal with edit/delete, "(not set)" placeholders, PB Progress Chart. Visitors see read-only grid respecting main events.
+2. **Main events are now profile-wide:** `updatePBMainEvents` saves to both `pbs_main_events` AND `main_events` columns simultaneously. Changes in PB Settings propagate live to Official Results tab via `profileMainEvents` state in profile-content.tsx.
+3. **Profile Stats tab now includes 3 missing charts:** Stats Cards (session count + total practice time), Event Pie Chart (time distribution), Solve Analytics (timer-level distribution + trend charts, owner only).
+**Files touched:** src/components/profile/tab-pbs.tsx (rewritten), src/components/profile/tab-stats.tsx (updated), src/components/profile/profile-content.tsx (added mainEvents state), src/components/profile/tab-official.tsx (added mainEventsOverride prop), src/lib/actions/profiles.ts (updatePBMainEvents saves to both columns)
+**Learnings:** The `pbs_main_events` and `main_events` were separate DB columns serving similar purposes — now unified by saving to both in a single update.
+**Blockers:** None
+**Warnings:** None
