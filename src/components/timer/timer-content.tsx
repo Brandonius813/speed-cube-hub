@@ -12,6 +12,7 @@ import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
 import { useTimerScramble } from "@/lib/timer/use-timer-scramble"
@@ -39,6 +40,7 @@ import type { Solve, SolveSession } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
 
 const LAST_SESSION_KEY = "sch_last_solve_session_id"
+const STAT_INDICATORS_KEY = "sch_stat_indicators"
 
 export function TimerContent() {
   const router = useRouter()
@@ -65,6 +67,12 @@ export function TimerContent() {
   const [showTimeWhileSolving, setShowTimeWhileSolving] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
+  const [statIndicators, setStatIndicators] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(STAT_INDICATORS_KEY) ?? DEFAULT_STAT_INDICATORS
+    }
+    return DEFAULT_STAT_INDICATORS
+  })
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
@@ -402,7 +410,7 @@ export function TimerContent() {
         return
       }
 
-      if (showSummary || showManager || selectedSolve) return
+      if (showSummary || showManager || selectedSolve || statDetail) return
 
       // Ctrl+Z = Undo last solve
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
@@ -434,7 +442,7 @@ export function TimerContent() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [showSummary, showManager, selectedSolve, solves, handleUndoLastSolve])
+  }, [showSummary, showManager, selectedSolve, statDetail, solves, handleUndoLastSolve])
 
   const handleModeChange = (newMode: "normal" | "comp_sim") => {
     if (newMode === mode) return

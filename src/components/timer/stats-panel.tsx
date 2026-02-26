@@ -20,12 +20,15 @@ import { TimeTrendChart } from "@/components/shared/time-trend-chart"
 import { getSolvesByEvent } from "@/lib/actions/timer"
 import type { Solve } from "@/lib/types"
 
+export const DEFAULT_STAT_INDICATORS = "mo3 ao5 ao12 ao50 ao100"
+
 type StatsPanelProps = {
   stats: SessionStats
   mode: "normal" | "comp_sim"
   currentCompSimProgress?: { current: number; total: number }
   solves?: Solve[]
   event?: string
+  statIndicators?: string
   onStatClick?: (statLabel: string, column: "current" | "best") => void
 }
 
@@ -73,12 +76,33 @@ function moNStdDev(solves: Solve[], n: number): number | null {
   return Math.round(Math.sqrt(variance))
 }
 
+/**
+ * Parse a stat indicators string (e.g., "mo3 ao5 ao12 ao50 ao100") into
+ * an array of { type: "ao" | "mo", n: number } entries.
+ * Invalid tokens are silently ignored.
+ */
+function parseIndicators(input: string): { type: "ao" | "mo"; n: number }[] {
+  return input
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => {
+      const match = token.match(/^(ao|mo)(\d+)$/)
+      if (!match) return null
+      const n = parseInt(match[2], 10)
+      if (n < 2 || n > 10000) return null
+      return { type: match[1] as "ao" | "mo", n }
+    })
+    .filter((x): x is { type: "ao" | "mo"; n: number } => x !== null)
+}
+
 export function StatsPanel({
   stats,
   mode,
   currentCompSimProgress,
   solves = [],
   event,
+  statIndicators = DEFAULT_STAT_INDICATORS,
   onStatClick,
 }: StatsPanelProps) {
   const [showCharts, setShowCharts] = useState(false)
@@ -109,21 +133,42 @@ export function StatsPanel({
 
   const chartSolves = chartScope === "session" ? solves : (allTimeSolves ?? [])
 
-  // Build stat rows: single, mo3, ao5, ao12, ao50, ao100
+  // Build stat rows dynamically from user's configured indicators
+  const indicators = parseIndicators(statIndicators)
+
   const statRows: StatRow[] = [
+    // Single is always first
     { label: "single", current: stats.best, best: stats.best, sigma: null },
-    { label: "mo3", current: computeMoN(solves, 3), best: bestMoN(solves, 3), sigma: moNStdDev(solves, 3) },
-    { label: "ao5", current: stats.ao5, best: stats.bestAo5, sigma: computeAoNStdDev(solves, 5) },
-    { label: "ao12", current: stats.ao12, best: stats.bestAo12, sigma: computeAoNStdDev(solves, 12) },
-    { label: "ao50", current: stats.ao50, best: bestAoN(solves, 50), sigma: computeAoNStdDev(solves, 50) },
-    { label: "ao100", current: stats.ao100, best: bestAoN(solves, 100), sigma: computeAoNStdDev(solves, 100) },
+    // Dynamic rows from user config
+    ...indicators.map((ind) => {
+      const label = `${ind.type}${ind.n}`
+      if (ind.type === "mo") {
+        return {
+          label,
+          current: computeMoN(solves, ind.n),
+          best: bestMoN(solves, ind.n),
+          sigma: moNStdDev(solves, ind.n),
+        }
+      }
+      // ao type
+      return {
+        label,
+        current: computeAoN(solves, ind.n),
+        best: bestAoN(solves, ind.n),
+        sigma: computeAoNStdDev(solves, ind.n),
+      }
+    }),
   ]
 
   const sessionStdDev = computeSessionStdDev(solves)
 
-  // BPA/WPA for Ao5 when window is incomplete (1-4 solves)
-  const bpa5 = solves.length > 0 && solves.length < 5 ? computeBPA(solves, 5) : null
-  const wpa5 = solves.length > 0 && solves.length < 5 ? computeWPA(solves, 5) : null
+  // BPA/WPA for the smallest ao indicator when window is incomplete
+  const smallestAo = indicators.find((i) => i.type === "ao")
+  const bpaN = smallestAo && solves.length > 0 && solves.length < smallestAo.n
+    ? computeBPA(solves, smallestAo.n) : null
+  const wpaN = smallestAo && solves.length > 0 && solves.length < smallestAo.n
+    ? computeWPA(solves, smallestAo.n) : null
+  const bpaWpaLabel = smallestAo ? `ao${smallestAo.n}` : ""
 
   return (
     <div className="p-2 space-y-1.5">
@@ -209,11 +254,11 @@ export function StatsPanel({
         </tbody>
       </table>
 
-      {/* BPA / WPA for Ao5 when window is incomplete */}
-      {(bpa5 !== null || wpa5 !== null) && (
+      {/* BPA / WPA for smallest ao when window is incomplete */}
+      {(bpaN !== null || wpaN !== null) && (
         <div className="flex items-center gap-3 px-1 text-xs font-mono tabular-nums text-muted-foreground/60">
-          {bpa5 !== null && <span>BPA: {formatTimeMs(bpa5)}</span>}
-          {wpa5 !== null && <span>WPA: {formatTimeMs(wpa5)}</span>}
+          {bpaN !== null && <span>BPA({bpaWpaLabel}): {formatTimeMs(bpaN)}</span>}
+          {wpaN !== null && <span>WPA({bpaWpaLabel}): {formatTimeMs(wpaN)}</span>}
         </div>
       )}
 

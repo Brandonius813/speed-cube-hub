@@ -54,7 +54,7 @@ export function StatDetailModal({
   const isSingle = label === "single"
 
   // Get the window of solves for this stat
-  const window = isSingle
+  const solveWindow = isSingle
     ? getBestSingleWindow(solves)
     : column === "current"
       ? getCurrentWindow(solves, n)
@@ -62,10 +62,10 @@ export function StatDetailModal({
         ? getBestMoNWindow(solves, n)
         : getBestAoNWindow(solves, n)
 
-  if (window.length === 0) return null
+  if (solveWindow.length === 0) return null
 
   // Compute the average/mean value and identify trimmed solves
-  const times = window.map(getEffectiveTime)
+  const times = solveWindow.map(getEffectiveTime)
   let displayValue: string
   let trimmedIndices = new Set<number>()
   let sigma: number | null = null
@@ -108,7 +108,7 @@ export function StatDetailModal({
   const headerLabel = `${column === "best" ? "Best " : ""}${label}`
 
   const handleCopy = async () => {
-    const text = buildCsTimerText(headerLabel, displayValue, window, trimmedIndices)
+    const text = buildCsTimerText(headerLabel, displayValue, solveWindow, trimmedIndices)
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -158,7 +158,7 @@ export function StatDetailModal({
 
           {/* Solve list */}
           <div className="overflow-y-auto flex-1 min-h-0">
-            {window.map((solve, idx) => {
+            {solveWindow.map((solve, idx) => {
               const isTrimmed = trimmedIndices.has(idx)
               const effective = getEffectiveTime(solve)
               const isDNF = solve.penalty === "DNF"

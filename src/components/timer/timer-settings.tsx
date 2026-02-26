@@ -4,6 +4,10 @@ import { Settings, X } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  HOLD_DURATION_OPTIONS,
+  type HoldDuration,
+} from "@/components/timer/timer-display"
 
 export type InputMode = "timer" | "typing"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
@@ -15,10 +19,14 @@ type TimerSettingsProps = {
   onInspectionChange: (enabled: boolean) => void
   showTimeWhileSolving: boolean
   onShowTimeChange: (show: boolean) => void
+  holdDuration: HoldDuration
+  onHoldDurationChange: (duration: HoldDuration) => void
   inputMode: InputMode
   onInputModeChange: (mode: InputMode) => void
   sidebarPosition: SidebarPosition
   onSidebarPositionChange: (position: SidebarPosition) => void
+  statIndicators: string
+  onStatIndicatorsChange: (indicators: string) => void
 }
 
 export function TimerSettings({
@@ -28,10 +36,14 @@ export function TimerSettings({
   onInspectionChange,
   showTimeWhileSolving,
   onShowTimeChange,
+  holdDuration,
+  onHoldDurationChange,
   inputMode,
   onInputModeChange,
   sidebarPosition,
   onSidebarPositionChange,
+  statIndicators,
+  onStatIndicatorsChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -112,6 +124,26 @@ export function TimerSettings({
                 onChange={onShowTimeChange}
               />
 
+              {/* Hold duration */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Hold Duration
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {HOLD_DURATION_OPTIONS.map((ms) => (
+                    <Button
+                      key={ms}
+                      variant={holdDuration === ms ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onHoldDurationChange(ms)}
+                    >
+                      {ms === 0 ? "None" : `${ms}ms`}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               {/* Input mode toggle */}
               <div className="space-y-2">
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
@@ -135,6 +167,23 @@ export function TimerSettings({
                     Typing
                   </Button>
                 </div>
+              </div>
+
+              {/* Statistics indicators */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Statistics
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Space-separated averages (e.g., mo3 ao5 ao12 ao50 ao100)
+                </p>
+                <input
+                  type="text"
+                  value={statIndicators}
+                  onChange={(e) => onStatIndicatorsChange(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="mo3 ao5 ao12 ao50 ao100"
+                />
               </div>
 
               {/* Sidebar position */}

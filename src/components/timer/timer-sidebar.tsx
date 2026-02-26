@@ -10,6 +10,7 @@ export function TimerSidebar({
   mode,
   solves,
   event,
+  statIndicators,
   onPenaltyChange,
   onDelete,
   onSolveClick,
@@ -20,6 +21,7 @@ export function TimerSidebar({
   mode: "normal" | "comp_sim"
   solves: Solve[]
   event: string
+  statIndicators?: string
   onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
   onDelete: (solveId: string) => void
   onSolveClick: (solve: Solve) => void
@@ -49,6 +51,7 @@ export function TimerSidebar({
         }
         solves={solves}
         event={event}
+        statIndicators={statIndicators}
         onStatClick={onStatClick}
       />
       <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
