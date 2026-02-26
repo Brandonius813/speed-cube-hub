@@ -540,3 +540,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `sessions` table does NOT have a `timer_session_id` column in the live DB — this was in the TypeScript types but never added via SQL. Always verify column existence against live DB before writing migration SQL that references them.
 **Blockers:** None — migration is applied, Phase 14 is fully live.
 **Warnings:** `sessions.timer_session_id` does NOT exist in production. Any code referencing it will fail at the DB level. The TypeScript `Session` type has it as optional (`timer_session_id?: string | null`) but the column was never created.
+
+---
+
+### 2026-02-26 12:30 PT — Context Recovery + Cleanup Session
+
+**Task:** Phase 14 (T96-T105) final verification + uncommitted work cleanup
+**Status:** Resumed from compacted context. Phase 14 was already fully committed and pushed. Found uncommitted changes from previous sessions: undo solve (Ctrl+Z with 5s toast), keyboard penalty shortcuts (Ctrl+1/2/3), solve detail modal lifted to timer-content level, and timer-sidebar simplified. Committed and pushed these as separate commits. Also synced TASKS.md to mark T106, T109, T110, T111, T112, T113, T114 as Done. Updated PRD Phase 15 checkboxes.
+**Files touched:** src/components/timer/timer-content.tsx, src/components/timer/timer-sidebar.tsx, .claude/TASKS.md, .claude/SPEED_CUBE_HUB_PRD.md, .claude/AGENT_LOG.md
+**Learnings:** Local `npm run build` has persistent issues with zombie processes auto-recreating `.next/` — something in the environment keeps spawning builds. `npx tsc --noEmit` is the reliable local check. Vercel builds fine.
+**Blockers:** None
+**Warnings:** Phase 15 is 7/10 done (T107, T108, T115 remaining). Available tasks: T107 (customizable stats), T108 (stat detail popup), T115 (cross solver).

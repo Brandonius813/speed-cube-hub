@@ -204,15 +204,15 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Update docs (T105)
 
 **Phase 15 — Core UX (csTimer Parity Baseline) — T106-T115:**
-- [ ] csTimer-style stats panel (compact table with current/best columns, sigma, target time) (T106)
+- [x] csTimer-style stats panel (compact table with current/best columns, sigma, target time) (T106)
 - [ ] Customizable statistical indicators (user picks any aoX/moX combo, configurable trim %) (T107)
 - [ ] Statistics detail popup (click any average → see all solves, trimmed marked) (T108)
-- [ ] Solve detail modal (beautiful card: time, scramble, date, notes, penalties, delete) (T109)
-- [ ] Time list redesign (compact rows, click-to-detail, PB highlighting, DNF styling) (T110)
-- [ ] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)
-- [ ] Undo last solve with toast notification (T112)
-- [ ] Solve notes/comments UI in detail modal (T113)
-- [ ] 2D scramble image visualization (T114)
+- [x] Solve detail modal (beautiful card: time, scramble, date, notes, penalties, delete) (T109)
+- [x] Time list redesign (compact rows, click-to-detail, PB highlighting, DNF styling) (T110)
+- [x] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)
+- [x] Undo last solve with toast notification (T112)
+- [x] Solve notes/comments UI in detail modal (T113)
+- [x] 2D scramble image visualization (T114)
 - [ ] Cross solver tool (T115)
 
 **Phase 16 — Training Scrambles — T116-T123:**
