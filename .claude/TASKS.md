@@ -1672,7 +1672,7 @@ T89 (Stats tab filters + dedup)  — T83 (needs clean streak component)
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 SQL migration file |
 
@@ -1691,7 +1691,7 @@ Create `supabase/migrations/023_create_solve_sessions.sql`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T96 |
 | **Estimated scope** | 2 files |
 
@@ -1707,7 +1707,7 @@ Create `supabase/migrations/023_create_solve_sessions.sql`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T97 |
 | **Estimated scope** | 1 new file |
 
@@ -1729,7 +1729,7 @@ Create `src/lib/actions/solve-sessions.ts` with:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T98 |
 | **Estimated scope** | 1 file |
 
@@ -1748,7 +1748,7 @@ Update `src/lib/actions/timer.ts`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T98 |
 | **Estimated scope** | 1 new file |
 
@@ -1768,7 +1768,7 @@ Build `src/components/timer/session-selector.tsx`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T100 |
 | **Estimated scope** | 1 new file |
 
@@ -1788,7 +1788,7 @@ Build `src/components/timer/session-manager.tsx`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T99, T100, T101 |
 | **Estimated scope** | 4 files |
 
@@ -1819,7 +1819,7 @@ Update `timer-settings.tsx`:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T102 |
 | **Estimated scope** | 2 files |
 
@@ -1836,7 +1836,7 @@ Handle edge cases for new/returning users:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T102 |
 | **Estimated scope** | 2 files |
 
@@ -1853,7 +1853,7 @@ Handle edge cases for new/returning users:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T104 |
 | **Estimated scope** | 2 files |
 
@@ -1896,4 +1896,670 @@ T104 (Reset & throwaway)         — T102
 
 Wave 8 (after T104):
 T105 (Docs update)               — T104
+```
+
+---
+
+## Phase 15 — Timer Core UX (csTimer Parity Baseline)
+
+Goal: Make Speed Cube Hub's timer feel like csTimer to experienced cubers. The time list + stats panel should match csTimer's familiar layout. Every modal/popup should have dramatically better UI (CubeDesk-inspired).
+
+### T106: Redesign Stats Panel to Match csTimer Layout
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 files |
+| **Key files** | `src/components/timer/stats-panel.tsx`, `src/components/timer/solve-list.tsx` |
+
+Rebuild the stats panel above the time list to match csTimer's familiar layout:
+- Two-column table: label (single, mo3, ao5, ao12, ao50, ao100), columns = current / best
+- Show sigma (σ) standard deviation next to each average
+- Show "target time" column (exact time needed to beat session best)
+- Compact, information-dense layout — tight table like csTimer, NOT big cards
+- "This Session" / "All Time" scope toggle stays
+- BPA/WPA values shown for incomplete windows
+
+---
+
+### T107: Customizable Statistical Indicators
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T106 |
+| **Estimated scope** | 3-4 files |
+| **Key files** | `src/lib/timer/averages.ts`, `src/components/timer/stats-panel.tsx`, `src/components/timer/timer-settings.tsx` |
+
+Let users configure which averages to track, exactly like csTimer:
+- Settings field: `mo3 ao5 ao12 ao25 ao50 ao100 ao500 ao1000` (free text, any aoX or moX)
+- Default: `mo3 ao5 ao12 ao50 ao100`
+- Stats panel dynamically renders whatever the user configured
+- Persist to localStorage
+- Configurable trim percentage: 0%, 1%, 5% (default), 10%, 20%, median
+
+---
+
+### T108: Statistics Detail Popup (Click Any Average)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T106 |
+| **Estimated scope** | 1-2 new files |
+| **Key files** | New: `src/components/timer/stat-detail-modal.tsx` |
+
+Click any stat → beautiful modal showing:
+- All solves in that average window
+- Trimmed solves marked with parentheses: `(7.12)`
+- Each solve clickable → opens solve detail
+- Copy button (csTimer text format)
+- Standard deviation
+- For "Best" stats: shows best window ever in session
+
+---
+
+### T109: Solve Detail Modal (Better Than csTimer)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 new files |
+| **Key files** | New: `src/components/timer/solve-detail-modal.tsx` |
+
+Click any time → polished modal card:
+- Large time display (mono font)
+- Scramble text (copyable)
+- Date/time solved
+- Notes field (editable, existing `notes` column)
+- Penalty toggles: OK / +2 / DNF
+- Delete button (confirmation)
+- Copy all info button
+
+Replaces current expandable row approach.
+
+---
+
+### T110: Redesign Time List to Match csTimer Feel
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T109 |
+| **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/solve-list.tsx` |
+
+- Compact rows: solve number + time (mono), penalty indicator
+- Click row → solve detail modal (T109)
+- Summary stats at top (count, mean, best, worst)
+- PB solves highlighted (green)
+- DNF solves grayed out with strikethrough
+- Comp Sim: grouped by Ao5 with headers
+
+---
+
+### T111: Keyboard Shortcuts
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/timer-content.tsx` |
+
+- Ctrl+1 = OK, Ctrl+2 = +2, Ctrl+3 = DNF (last solve)
+- Ctrl+Z = Undo (delete) last solve
+- Alt+Left/Right = prev/next scramble
+- Alt+2-7 = switch to 2x2-7x7
+- Alt+P/M/C/S = Pyra/Mega/Clock/Skewb
+- Escape = close modals
+- Shortcut reference in settings
+
+---
+
+### T112: Undo Last Solve
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T111 |
+| **Estimated scope** | 2 files |
+
+- Ctrl+Z instantly removes most recent solve
+- Toast with 5-second "Undo" restore button
+- Works in Normal and Comp Sim modes
+
+---
+
+### T113: Solve Notes/Comments UI
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T109 |
+| **Estimated scope** | 2 files |
+
+- Editable notes field in solve detail modal
+- Save to `notes` column in solves table
+- Small icon on time list rows with notes
+
+---
+
+### T114: 2D Scramble Image Visualization
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 new files |
+| **Key files** | New: `src/components/timer/scramble-image.tsx` |
+
+- 2D color diagram of scrambled state (like csTimer "Draw Scramble")
+- Support: 3x3, 2x2, 4x4-7x7, Pyra, Mega, Skewb, SQ1, Clock
+- cubing.js TwistyPlayer or custom SVG
+- Toggleable, compact display below scramble text
+
+---
+
+### T115: Cross Solver Tool
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 files |
+| **Key files** | New: `src/components/timer/tools/cross-solver.tsx` |
+
+- Optimal cross solutions for all 6 colors
+- XCross solutions on click
+- Toggleable tool panel
+
+---
+
+## Phase 16 — Training Scrambles
+
+### T116: 3x3 CFOP Training Scrambles (Core Set)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 files |
+| **Key files** | `src/lib/timer/scrambles.ts`, New: `src/lib/timer/training-scrambles.ts` |
+
+PLL (21 cases), OLL (57 cases), Last Layer, Cross solved / F2L, LSLL, Easy cross. Case filtering UI. Sub-options under 3x3.
+
+---
+
+### T117: 3x3 Advanced Training Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 2-3 files |
+
+ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross, Easy xcross.
+
+---
+
+### T118: 3x3 Roux + Mehta Training Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 1-2 files |
+
+Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, TTLL.
+
+---
+
+### T119: 3x3 Move Subset Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 1-2 files |
+
+2-gen R,U / L,U / M,U. 3-gen F,R,U / R,U,L / R,r,U. Domino subgroup, half turns, edges only, corners only.
+
+---
+
+### T120: 2x2 Training Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 1-2 files |
+
+Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
+
+---
+
+### T121: 4x4+ Training Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 1-2 files |
+
+4x4: edges, R,r,U,u, LL, ELL, edge-only, center-only, Yau/Hoya stages. 5x5-7x7: edge-only, notation variants.
+
+---
+
+### T122: Training Case Filtering UI
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 2-3 new files |
+
+Checkbox grid with algo diagrams, select/deselect, probability control, persist per type.
+
+---
+
+### T123: Training Case Statistics
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116, T122 |
+| **Estimated scope** | 2-3 files |
+
+Best/mean time per case, attempt count, bar chart, weakest case identification.
+
+---
+
+## Phase 17 — Timer Modes & Advanced Input
+
+### T124: Multi-Phase Timing
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 files |
+
+2-10 phases (Cross/F2L/OLL/PLL), key press for splits, JSONB column, phase breakdown in detail modal, per-phase stats.
+
+---
+
+### T125: Configurable Timer Hold Duration
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms.
+
+---
+
+### T126: Timer Display Customization
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Font selection, size, small decimals, update mode (real-time/every-second/hidden), ms toggle, time format.
+
+---
+
+### T127: Mobile Swipe Gestures
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 files |
+
+8-direction: up-left=DNF, up=+2, up-right=OK, left=prev, right=next, down-left=comment, down=delete, down-right=inspect.
+
+---
+
+### T128: Manual Scramble Input
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Custom scramble mode, notation validation, image updates from input.
+
+---
+
+## Phase 18 — Timer Session Data Features
+
+### T129: Session Merge & Split
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T96-T105 |
+| **Estimated scope** | 2-3 files |
+
+Merge two sessions, split at point, confirmation dialogs.
+
+---
+
+### T130: Cross-Session Statistics
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T96-T105 |
+| **Estimated scope** | 2-3 new files |
+
+Aggregate stats across sessions with date/event/name filters.
+
+---
+
+### T131: Daily Statistics
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 new files |
+
+Solve count per day/week/month/year, configurable week start, heatmap/bar chart.
+
+---
+
+### T132: Export Timer Data
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+CSV, JSON, csTimer .txt formats. Copy stats to clipboard.
+
+---
+
+### T133: Import Timer Data
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T96-T105 |
+| **Estimated scope** | 2-3 files |
+
+Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
+
+---
+
+## Phase 19 — Advanced Tools
+
+### T134: Batch Scramble Generator
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 new files |
+
+Generate 1-999 scrambles, copy or download.
+
+---
+
+### T135: Metronome Tool
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 new files |
+
+Adjustable BPM, beep-at-seconds mode, Web Audio API.
+
+---
+
+### T136: Shared Scramble Seed
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Seed → deterministic scrambles. Same seed = same scrambles for racing.
+
+---
+
+### T137: Additional Solvers
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T115 |
+| **Estimated scope** | 3-4 files |
+
+EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face solvers.
+
+---
+
+### T138: BLD Helper Tool
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 new files |
+
+Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
+
+---
+
+## Phase 20 — Non-WCA Puzzles & Relays
+
+### T139: Big Cubes (8x8-11x11 + Custom NxN)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+8x8-11x11 + custom NxN, random-move scrambles.
+
+---
+
+### T140: Non-WCA Puzzle Scrambles (Popular Subset)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 files |
+
+Mirror Blocks, Gear Cube, Ivy, Redi, Kilominx, Master Pyra, FTO, cuboids.
+
+---
+
+### T141: Remaining Non-WCA Puzzles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T140 |
+| **Estimated scope** | 2-3 files |
+
+Dino, Helicopter, Curvy Copter, Gigaminx, Pyraminx Crystal, Siamese, Square-2, Super SQ1, Super Floppy, UFO, Cmetrick, Crazy 3x3, bandaged, Icosamate, 8/15 puzzles.
+
+---
+
+### T142: Relay Scrambles
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 files |
+
+Multi-3x3, 234/2345/23456/234567, Mini Guildford. Sequential display, single time.
+
+---
+
+### T143: Other Event Training Variants
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T116 |
+| **Estimated scope** | 2-3 files |
+
+Clock, Mega, Pyra, Skewb, SQ1 training variants (optimal, subset, case-specific).
+
+---
+
+## Phase 21 — Hardware Integration
+
+### T144: Virtual Cube (3D Interactive)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 new files |
+
+3D cube (cubing.js/Three.js), keyboard + mouse, adjustable speed, auto multi-phase, TPS + reconstruction.
+
+---
+
+### T145: Bluetooth Smart Cube Support
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 4-5 new files |
+
+Web Bluetooth for GAN/GoCube/Giiker/Moyu. Real-time state, battery, reconstruction, CFOP segmentation.
+
+---
+
+### T146: Stackmat Timer Support
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2-3 files |
+
+Microphone/audio input, signal decode, Gen 3/4/5 support.
+
+---
+
+## Phase 22 — Online & Social Timer Features
+
+### T147: Online Battle Mode
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T136 |
+| **Estimated scope** | 4-5 files |
+
+Battle rooms, Supabase Realtime, shared scrambles, win/loss, spectator mode.
+
+---
+
+### T148: Scramble Animation
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T114 |
+| **Estimated scope** | 1-2 files |
+
+Click scramble image → animated sequence, step-through moves.
+
+---
+
+## Phase 23 — Timer Polish & Display Options
+
+### T149: Hide All Elements During Timing
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 files |
+
+Hide everything while timer runs, restore on stop.
+
+---
+
+### T150: Scramble Display Options
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1-2 files |
+
+Adjustable text size, mono font toggle, height limit, alignment, key move labels.
+
+---
+
+### T151: Multiple Solve Deletion
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Batch delete mode, checkbox or sequential, confirmation dialog.
+
+---
+
+### T152: Auto-Backup / Auto-Export
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T132 |
+| **Estimated scope** | 1-2 files |
+
+Auto-export every N solves, configurable, keep last 10 backups.
+
+---
+
+### Timer Parity Dependency Graph
+
+```
+Phase 15 — Core UX (start here):
+
+Wave 1 (all parallel, no deps):
+T106 (Stats panel redesign)       — no deps
+T109 (Solve detail modal)         — no deps
+T111 (Keyboard shortcuts)         — no deps
+T114 (2D scramble image)          — no deps
+T115 (Cross solver)               — no deps
+
+Wave 2 (after wave 1):
+T107 (Custom stat indicators)     — T106
+T108 (Stat detail popup)          — T106
+T110 (Time list redesign)         — T109
+T112 (Undo last solve)            — T111
+T113 (Solve notes UI)             — T109
+
+Phase 16: T116 (CFOP core) — no deps; T117-T123 — T116
+Phase 17: All no deps, fully parallel
+Phase 18: T129/T130/T133 need Phase 14 (T96-T105)
+Phases 19-23: See individual task deps
 ```

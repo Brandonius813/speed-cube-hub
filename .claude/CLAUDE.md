@@ -116,11 +116,12 @@ Each page uses a two-file pattern:
 - `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
 - `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
 - `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)
-- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent)
+- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent, getSolvesBySession)
+- `src/lib/actions/solve-sessions.ts` — Solve session CRUD (getUserSolveSessions, getSolveSession, createSolveSession, updateSolveSession, resetSolveSession, archiveSolveSession, deleteSolveSession, getOrCreateDefaultSession)
 - `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal)
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 

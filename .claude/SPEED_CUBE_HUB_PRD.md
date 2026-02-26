@@ -172,40 +172,101 @@ Rework the profile page from a flat vertical stack into a 5-tab layout with a pe
 - Coaching notes per student (stored after each session/call)
 - Potential integration with cubing.gg's existing coaching workflows
 
-### Built-In Timer — V1 (In Progress)
+### Built-In Timer — Full csTimer Parity (In Progress)
 
-Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csTimer, deeply integrated with Speed Cube Hub profiles.
+Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csTimer with **complete feature parity**. The time list and stats panel match csTimer's familiar layout (muscle memory for cubers), while every modal and detail view has dramatically better UI (CubeDesk-inspired: clean, dark, card-based). Deeply integrated with Speed Cube Hub profiles.
 
-**V1 Features:**
-- Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
-- ✅ NxN scrambles (2x2–7x7) via `cubing` library — WCA-standard random-state for all events via server-side API route (`/api/scramble`), with random-move fallback
-- Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
-- Running averages: Ao5, Ao12, Mo100, BPA, WPA, best single, best Ao5, session mean
-- WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
-- Competition simulation mode: solves grouped in Ao5 sets (trimmed mean)
-- Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
-- Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop
-- Event selector for all 17 WCA events
+**V1 Features (Complete):**
+- [x] Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
+- [x] NxN scrambles (2x2–7x7) via `cubing` library — WCA-standard random-state for all events via server-side API route (`/api/scramble`), with random-move fallback
+- [x] Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
+- [x] Running averages: Ao5, Ao12, Ao50, Ao100, BPA, WPA, best single, best Ao5, best Ao12, session mean
+- [x] WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
+- [x] Competition simulation mode: solves grouped in Ao5 sets (trimmed mean)
+- [x] Typing input mode (stackmat-style digit entry)
+- [x] Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
+- [x] Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop
+- [x] Event selector for all 17 WCA events
+- [x] Time Distribution + Time Trend charts
+- [x] Sidebar position options (right/left/bottom/hidden)
+- [x] Show/hide time while solving
 
-**Future Timer Features (not in V1):**
-- GAN Timer / Rubik's Timer Bluetooth support
-- Smart cube support (Moyu, GAN) with auto-breakdown
-- StackMat support on Mac
-- Typed time input (enter times like a stackmat display)
-- Scramble visualization / draw scramble overlay
-- Reconstructions tied to scramble/solve (like cube.db)
-- Streamer view (clean OBS-friendly layout with stats + scramble + timer)
-- 1-click share a PB or great session (screenshot + post to feed)
-- Share great sessions as visual cards (Spotify Wrapped style)
-- Light mode, dark mode, custom color schemes
-- Verbal inspection warnings
-- Settings search
-- Dope keyboard shortcuts (customizable)
-- Session break/resume within a session
-- Toggle between today's session vs all-time view (like csTimer)
-- Stats/draw scramble overlays (like csTimer panels)
+**Phase 14 — Named Session Management — T96-T105:** ✅ Complete
+- [x] Database migration for `solve_sessions` table (T96)
+- [x] Types & validation schemas (T97)
+- [x] Server actions — solve session CRUD (T98)
+- [x] Update timer server actions (T99)
+- [x] Session selector component (T100)
+- [x] Session manager modal (T101)
+- [x] Timer integration — wire up named sessions (T102)
+- [x] First-time defaults & auto-create (T103)
+- [x] Reset & throwaway behavior (T104)
+- [x] Update docs (T105)
 
-**NOT planned:** Native alg training in the timer (other tools do this better; will revisit long-term)
+**Phase 15 — Core UX (csTimer Parity Baseline) — T106-T115:**
+- [ ] csTimer-style stats panel (compact table with current/best columns, sigma, target time) (T106)
+- [ ] Customizable statistical indicators (user picks any aoX/moX combo, configurable trim %) (T107)
+- [ ] Statistics detail popup (click any average → see all solves, trimmed marked) (T108)
+- [ ] Solve detail modal (beautiful card: time, scramble, date, notes, penalties, delete) (T109)
+- [ ] Time list redesign (compact rows, click-to-detail, PB highlighting, DNF styling) (T110)
+- [ ] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)
+- [ ] Undo last solve with toast notification (T112)
+- [ ] Solve notes/comments UI in detail modal (T113)
+- [ ] 2D scramble image visualization (T114)
+- [ ] Cross solver tool (T115)
+
+**Phase 16 — Training Scrambles — T116-T123:**
+- [ ] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) with case filtering (T116)
+- [ ] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross) (T117)
+- [ ] 3x3 Roux + Mehta training scrambles (T118)
+- [ ] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
+- [ ] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
+- [ ] 4x4+ training (edges, centers, Yau/Hoya stages) (T121)
+- [ ] Case filtering UI (checkbox grid, probability control) (T122)
+- [ ] Per-case performance statistics (T123)
+
+**Phase 17 — Timer Modes & Advanced Input — T124-T128:**
+- [ ] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
+- [ ] Configurable timer hold duration (T125)
+- [ ] Timer display customization (font, size, update mode, milliseconds) (T126)
+- [ ] Mobile swipe gestures (8-direction, matching csTimer) (T127)
+- [ ] Manual scramble input mode (T128)
+
+**Phase 18 — Session Data Features — T129-T133:**
+- [ ] Session merge & split (T129)
+- [ ] Cross-session statistics with filters (T130)
+- [ ] Daily statistics (solves per day/week/month) (T131)
+- [ ] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
+- [ ] Import from csTimer and other timers (T133)
+
+**Phase 19 — Advanced Tools — T134-T138:**
+- [ ] Batch scramble generator (up to 999) (T134)
+- [ ] Metronome tool (T135)
+- [ ] Shared scramble seed (race friends) (T136)
+- [ ] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
+- [ ] BLD helper tool (T138)
+
+**Phase 20 — Non-WCA Puzzles & Relays — T139-T143:**
+- [ ] Big cubes 8x8-11x11 + custom NxN (T139)
+- [ ] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
+- [ ] Remaining non-WCA puzzles (~20 more types) (T141)
+- [ ] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
+- [ ] Other event training variants (Clock, Mega, Pyra, Skewb, SQ1) (T143)
+
+**Phase 21 — Hardware Integration — T144-T146:**
+- [ ] Virtual cube (3D interactive with keyboard/mouse controls) (T144)
+- [ ] Bluetooth smart cube (GAN, GoCube, Giiker, Moyu) (T145)
+- [ ] Stackmat timer support (T146)
+
+**Phase 22 — Online & Social Timer — T147-T148:**
+- [ ] Online battle mode (rooms, real-time, shared scrambles) (T147)
+- [ ] Scramble animation (step-through 3D) (T148)
+
+**Phase 23 — Polish & Display — T149-T152:**
+- [ ] Hide all elements during timing (T149)
+- [ ] Scramble display options (size, font, alignment) (T150)
+- [ ] Multiple solve deletion (batch select) (T151)
+- [ ] Auto-backup / auto-export (T152)
 
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
