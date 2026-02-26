@@ -1261,12 +1261,12 @@ Full performance audit identified ~50 issues. Stream C (select("*") replacement)
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 migration SQL + 1 server action file |
 
-Replace JS counting in `getSessionLikeInfo()` with a PostgreSQL RPC that does `COUNT(*) GROUP BY session_id`.
+Created `get_batch_like_counts` RPC. `getSessionLikeInfo()` now uses batch RPC instead of JS counting.
 
 ---
 
@@ -1274,12 +1274,12 @@ Replace JS counting in `getSessionLikeInfo()` with a PostgreSQL RPC that does `C
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 migration SQL + 1 server action file |
 
-Replace JS counting in `getCommentCounts()` with a PostgreSQL RPC that does `COUNT(*) GROUP BY session_id`.
+Created `get_batch_comment_counts` RPC. `getCommentCounts()` now uses batch RPC instead of JS counting.
 
 ---
 
@@ -1287,11 +1287,11 @@ Replace JS counting in `getCommentCounts()` with a PostgreSQL RPC that does `COU
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file |
 
-Replace JS member counting loops in `getClubs()` and `getUserClubs()` with Supabase count headers or RPC.
+Uses `get_batch_club_member_counts` RPC in `getClubs()` and `getUserClubs()`. No JS counting loops.
 
 ---
 
@@ -1299,11 +1299,11 @@ Replace JS member counting loops in `getClubs()` and `getUserClubs()` with Supab
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file |
 
-Replace JS counting in `getChallenges()` with efficient database counting.
+Uses `get_batch_challenge_participant_counts` RPC in `getChallenges()`. No JS counting loops.
 
 ---
 
@@ -1311,11 +1311,11 @@ Replace JS counting in `getChallenges()` with efficient database counting.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file |
 
-Add `.limit(1000)` + `.order("created_at", { ascending: false })` to the follows query in `getFeed()`.
+Follows query in `getFeed()` has `.limit(1000)` and `.order("created_at", { ascending: false })`.
 
 ---
 
@@ -1323,11 +1323,11 @@ Add `.limit(1000)` + `.order("created_at", { ascending: false })` to the follows
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | T65, T66 |
 | **Estimated scope** | 3-4 server action files |
 
-Add `.limit()` safety nets to: `getDistinctLocations()`, and remaining unbounded queries.
+Limits added: `getDistinctLocations()` has `.limit(5000)`, `searchProfiles()` has `.limit(20)`, and other queries bounded.
 
 ---
 
