@@ -2438,11 +2438,12 @@ Multi-3x3, 234/2345/23456/234567, Mini Guildford. Sequential display, single tim
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 2-3 files |
+| **Estimated scope** | 1 file |
 
-Clock, Mega, Pyra, Skewb, SQ1 training variants (optimal, subset, case-specific).
+Added training variants for Pyraminx (L4E, No Bar), Skewb (No Bar), Square-1 (CSP, PLL), Megaminx (2-gen, LSLL, PLL, LL) to training-scrambles.ts. Clock training deferred (no cstimer_module support).
 
 ---
 

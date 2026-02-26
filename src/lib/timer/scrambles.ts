@@ -65,9 +65,21 @@ export function generateScramble(eventId: WcaEventId): string {
  * Generate a training scramble using a cstimer_module type string directly.
  * Training types (PLL, OLL, F2L, etc.) use different scramble generators
  * than the standard event scrambles.
+ *
+ * @param cstimerType - The cstimer scramble type (e.g., "pll", "oll")
+ * @param caseFilter - Optional array of case indices to pick from.
+ *                     If provided, picks a random case from the array.
+ *                     If null/undefined, generates a random case.
  */
-export function generateTrainingScramble(cstimerType: string): string {
+export function generateTrainingScramble(
+  cstimerType: string,
+  caseFilter?: number[] | null
+): string {
   try {
+    if (caseFilter && caseFilter.length > 0) {
+      const caseIndex = caseFilter[Math.floor(Math.random() * caseFilter.length)]
+      return cstimerGetScramble(cstimerType, 0, caseIndex)
+    }
     return cstimerGetScramble(cstimerType)
   } catch (err) {
     console.error("Training scramble generation failed:", err)
@@ -81,11 +93,12 @@ export function generateTrainingScramble(cstimerType: string): string {
  */
 export function preGenerateScramble(
   eventId: WcaEventId,
-  trainingCstimerType?: string
+  trainingCstimerType?: string,
+  caseFilter?: number[] | null
 ): string | null {
   try {
     if (trainingCstimerType) {
-      return generateTrainingScramble(trainingCstimerType)
+      return generateTrainingScramble(trainingCstimerType, caseFilter)
     }
     return generateScramble(eventId)
   } catch {

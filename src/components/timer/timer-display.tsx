@@ -27,6 +27,7 @@ const SMALL_DECIMAL_SIZE: Record<TimerSize, string> = {
 
 type TimerDisplayProps = {
   onSolveComplete: (timeMs: number) => void
+  onRunningChange?: (isRunning: boolean) => void
   lastTime: number | null
   timerUpdateMode?: TimerUpdateMode
   timerSize?: TimerSize
@@ -39,6 +40,7 @@ type TimerDisplayProps = {
 
 export function TimerDisplay({
   onSolveComplete,
+  onRunningChange,
   lastTime,
   timerUpdateMode = "realtime",
   timerSize = "large",
@@ -59,6 +61,11 @@ export function TimerDisplay({
   useEffect(() => {
     timerStateRef.current = timerState
   }, [timerState])
+
+  // Notify parent when timer starts/stops running
+  useEffect(() => {
+    onRunningChange?.(timerState === "running")
+  }, [timerState, onRunningChange])
 
   const stopTimer = useCallback(() => {
     if (animFrameRef.current) {

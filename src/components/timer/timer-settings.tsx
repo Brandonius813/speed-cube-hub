@@ -25,6 +25,8 @@ type TimerSettingsProps = {
   onTimerSizeChange: (size: TimerSize) => void
   smallDecimals: boolean
   onSmallDecimalsChange: (enabled: boolean) => void
+  hideWhileTiming?: boolean
+  onHideWhileTimingChange?: (enabled: boolean) => void
   holdDuration?: HoldDuration
   onHoldDurationChange?: (duration: HoldDuration) => void
   inputMode: InputMode
@@ -46,6 +48,8 @@ export function TimerSettings({
   onTimerSizeChange,
   smallDecimals,
   onSmallDecimalsChange,
+  hideWhileTiming,
+  onHideWhileTimingChange,
   holdDuration,
   onHoldDurationChange,
   inputMode,
@@ -186,6 +190,14 @@ export function TimerSettings({
                 description="Show decimal digits in a smaller font"
                 enabled={smallDecimals}
                 onChange={onSmallDecimalsChange}
+              />
+
+              {/* Focus mode toggle */}
+              <ToggleSetting
+                label="Focus Mode"
+                description="Hide everything except time while solving"
+                enabled={hideWhileTiming ?? false}
+                onChange={onHideWhileTimingChange ?? (() => {})}
               />
 
               {/* Hold duration */}

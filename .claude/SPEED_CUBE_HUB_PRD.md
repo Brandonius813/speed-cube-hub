@@ -237,7 +237,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [ ] Cross-session statistics with filters (T130)
 - [ ] Daily statistics (solves per day/week/month) (T131)
 - [x] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
-- [ ] Import from csTimer and other timers (T133)
+- [x] Import from csTimer, CubeTime, Twisty Timer, generic CSV, AI fallback (T133)
 
 **Phase 19 — Advanced Tools — T134-T138:**
 - [x] Batch scramble generator (up to 999) (T134)
@@ -251,7 +251,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [ ] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
 - [ ] Remaining non-WCA puzzles (~20 more types) (T141)
 - [ ] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
-- [ ] Other event training variants (Clock, Mega, Pyra, Skewb, SQ1) (T143)
+- [x] Other event training variants (Mega, Pyra, Skewb, SQ1 — Clock deferred) (T143)
 
 **Phase 21 — Hardware Integration — T144-T146:**
 - [ ] Virtual cube (3D interactive with keyboard/mouse controls) (T144)

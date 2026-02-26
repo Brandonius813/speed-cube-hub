@@ -80,6 +80,7 @@ const HOLD_DURATION_KEY = "sch_hold_duration"
 const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
 const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
+const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 
 export function TimerContent() {
@@ -136,6 +137,13 @@ export function TimerContent() {
     }
     return false
   })
+  const [hideWhileTiming, setHideWhileTiming] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(HIDE_WHILE_TIMING_KEY) === "true"
+    }
+    return false
+  })
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
   const [statIndicators, setStatIndicators] = useState(() => {
@@ -700,6 +708,13 @@ export function TimerContent() {
     }
   }
 
+  const handleHideWhileTimingChange = (enabled: boolean) => {
+    setHideWhileTiming(enabled)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(HIDE_WHILE_TIMING_KEY, String(enabled))
+    }
+  }
+
   const handleScrambleTypeChange = (typeId: string) => {
     setScrambleTypeId(typeId)
     if (typeof window !== "undefined") {
@@ -913,6 +928,8 @@ export function TimerContent() {
         onTimerSizeChange={handleTimerSizeChange}
         smallDecimals={smallDecimals}
         onSmallDecimalsChange={handleSmallDecimalsChange}
+        hideWhileTiming={hideWhileTiming}
+        onHideWhileTimingChange={handleHideWhileTimingChange}
         holdDuration={holdDuration}
         onHoldDurationChange={handleHoldDurationChange}
         sidebarPosition={sidebarPosition}

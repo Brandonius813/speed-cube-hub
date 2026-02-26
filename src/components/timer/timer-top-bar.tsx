@@ -26,6 +26,8 @@ export function TimerTopBar({
   onTimerSizeChange,
   smallDecimals,
   onSmallDecimalsChange,
+  hideWhileTiming,
+  onHideWhileTimingChange,
   holdDuration,
   onHoldDurationChange,
   sidebarPosition,
@@ -57,6 +59,8 @@ export function TimerTopBar({
   onTimerSizeChange: (size: TimerSize) => void
   smallDecimals: boolean
   onSmallDecimalsChange: (enabled: boolean) => void
+  hideWhileTiming?: boolean
+  onHideWhileTimingChange?: (enabled: boolean) => void
   holdDuration?: HoldDuration
   onHoldDurationChange?: (duration: HoldDuration) => void
   sidebarPosition: SidebarPosition
@@ -172,6 +176,8 @@ export function TimerTopBar({
             onTimerSizeChange={onTimerSizeChange}
             smallDecimals={smallDecimals}
             onSmallDecimalsChange={onSmallDecimalsChange}
+            hideWhileTiming={hideWhileTiming}
+            onHideWhileTimingChange={onHideWhileTimingChange}
             holdDuration={holdDuration}
             onHoldDurationChange={onHoldDurationChange}
             inputMode={inputMode}
