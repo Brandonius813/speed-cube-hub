@@ -38,7 +38,7 @@ function ReadOnlyPBGrid({ pbs }: { pbs: PBRecord[] }) {
   }
 
   // Sort events by WCA order
-  const eventOrder: string[] = WCA_EVENTS.map((e) => e.id)
+  const eventOrder = WCA_EVENTS.map((e) => String(e.id))
   const sortedEvents = Array.from(eventMap.keys()).sort(
     (a, b) => eventOrder.indexOf(a) - eventOrder.indexOf(b)
   )
