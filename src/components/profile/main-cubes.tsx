@@ -19,8 +19,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronDown,
-  ChevronUp,
   ArrowUp,
   ArrowDown,
   History,
@@ -29,8 +27,6 @@ import { updateProfileCubes } from "@/lib/actions/profiles"
 import type { ProfileCube, CubeHistoryEntry } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
-
-const PREVIEW_COUNT = 3
 
 export function MainCubes({
   cubes: initial,
@@ -51,7 +47,6 @@ export function MainCubes({
   const [event, setEvent] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
   const [editMode, setEditMode] = useState(false)
 
   // History modal state
@@ -64,8 +59,6 @@ export function MainCubes({
   const [historySetup, setHistorySetup] = useState("")
   const [historyDate, setHistoryDate] = useState("")
 
-  const visibleItems = expanded ? items : items.slice(0, PREVIEW_COUNT)
-  const hiddenCount = items.length - PREVIEW_COUNT
 
   function getEventLabel(eventId: string): string {
     return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
@@ -353,7 +346,7 @@ export function MainCubes({
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                {visibleItems.map((cube, i) => {
+                {items.map((cube, i) => {
                   const eventHistory = getEventHistory(cube.event)
                   const hasHistory = eventHistory.length > 0
                   const isClickable = hasHistory && !editMode
@@ -444,25 +437,6 @@ export function MainCubes({
                 })}
               </div>
 
-              {hiddenCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded(!expanded)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                >
-                  {expanded ? (
-                    <>
-                      Show less
-                      <ChevronUp className="h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Show all {items.length} cubes
-                      <ChevronDown className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              )}
             </>
           )}
         </CardContent>
