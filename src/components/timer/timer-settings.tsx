@@ -3,16 +3,12 @@
 import { Settings, X } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { WCA_EVENTS } from "@/lib/constants"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export type InputMode = "timer" | "typing"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
 
 type TimerSettingsProps = {
-  event: string
-  onEventChange: (eventId: string) => void
   mode: "normal" | "comp_sim"
   onModeChange: (mode: "normal" | "comp_sim") => void
   inspectionEnabled: boolean
@@ -26,8 +22,6 @@ type TimerSettingsProps = {
 }
 
 export function TimerSettings({
-  event,
-  onEventChange,
   mode,
   onModeChange,
   inspectionEnabled,
@@ -75,30 +69,6 @@ export function TimerSettings({
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              </div>
-
-              {/* Event selector */}
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  Event
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {WCA_EVENTS.map((e) => (
-                    <Badge
-                      key={e.id}
-                      variant={event === e.id ? "default" : "outline"}
-                      className={cn(
-                        "cursor-pointer min-h-8 text-xs",
-                        event === e.id
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-secondary"
-                      )}
-                      onClick={() => onEventChange(e.id)}
-                    >
-                      {e.label}
-                    </Badge>
-                  ))}
-                </div>
               </div>
 
               {/* Mode toggle */}
@@ -236,60 +206,3 @@ function ToggleSetting({
   )
 }
 
-/**
- * Compact event selector shown in the top bar (not the full settings panel).
- * Shows current event as a badge with dropdown.
- */
-export function EventSelector({
-  event,
-  onEventChange,
-}: {
-  event: string
-  onEventChange: (eventId: string) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const currentEvent = WCA_EVENTS.find((e) => e.id === event)
-
-  return (
-    <div className="relative">
-      <Badge
-        variant="outline"
-        className="cursor-pointer min-h-8 text-sm font-medium"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {currentEvent?.label ?? event}
-      </Badge>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full mt-1 left-0 z-50 bg-card border border-border rounded-md shadow-lg p-2 min-w-48">
-            <div className="flex flex-wrap gap-1.5">
-              {WCA_EVENTS.map((e) => (
-                <Badge
-                  key={e.id}
-                  variant={event === e.id ? "default" : "outline"}
-                  className={cn(
-                    "cursor-pointer min-h-8 text-xs",
-                    event === e.id
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-secondary"
-                  )}
-                  onClick={() => {
-                    onEventChange(e.id)
-                    setIsOpen(false)
-                  }}
-                >
-                  {e.label}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}

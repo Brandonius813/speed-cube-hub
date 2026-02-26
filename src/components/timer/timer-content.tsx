@@ -7,11 +7,10 @@ import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import { TimerTopBar } from "@/components/timer/timer-top-bar"
 import { TimerSidebar } from "@/components/timer/timer-sidebar"
 import { TimeInput } from "@/components/timer/time-input"
+import { SessionManager } from "@/components/timer/session-manager"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
-import { SessionSelector } from "@/components/timer/session-selector"
-import { SessionManager } from "@/components/timer/session-manager"
 import { useTimerScramble } from "@/lib/timer/use-timer-scramble"
 import { computeSessionStats } from "@/lib/timer/averages"
 import { useInspection } from "@/lib/timer/inspection"
@@ -36,25 +35,25 @@ import {
 import type { Solve, SolveSession } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
 
-const LAST_SESSION_KEY = "speedcubehub_last_session_id"
+const LAST_SESSION_KEY = "sch_last_solve_session_id"
 
 export function TimerContent() {
   const router = useRouter()
 
-  // Named session state
+  // Named solve session state
   const [solveSessions, setSolveSessions] = useState<SolveSession[]>([])
   const [currentSession, setCurrentSession] = useState<SolveSession | null>(null)
   const [showManager, setShowManager] = useState(false)
 
-  // Timer session state (the active "sitting" within a solve session)
+  // Timer session state (per-sitting, linked to solve session)
   const [mode, setMode] = useState<"normal" | "comp_sim">("normal")
   const [timerSessionId, setTimerSessionId] = useState<string | null>(null)
   const [solves, setSolves] = useState<Solve[]>([])
 
-  // Derive event from current session
+  // Derived event from current session
   const event = currentSession?.event ?? "333"
 
-  // Scramble management (extracted hook)
+  // Scramble management
   const { currentScramble, loadScramble, clearNextScramble } =
     useTimerScramble()
 
@@ -74,7 +73,7 @@ export function TimerContent() {
   const inspection = useInspection()
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
 
-  // Compute stats from current solves (React Compiler auto-memoizes this)
+  // Compute stats from current solves
   const stats = computeSessionStats(solves)
 
   // Session duration
@@ -89,13 +88,14 @@ export function TimerContent() {
       )
     : 0
 
-  // Initialize: load sessions and select the last-used one
+  // ---- Initialization ----
+
   useEffect(() => {
-    initializeSessions()
+    initializeSession()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const initializeSessions = async () => {
+  const initializeSession = async () => {
     setIsLoading(true)
 
     // Load all user sessions
@@ -103,40 +103,50 @@ export function TimerContent() {
     setSolveSessions(sessions)
 
     // Try to restore last-used session from localStorage
-    const lastId = localStorage.getItem(LAST_SESSION_KEY)
-    let selected = lastId ? sessions.find((s) => s.id === lastId) : null
+    const lastId = typeof window !== "undefined"
+      ? localStorage.getItem(LAST_SESSION_KEY)
+      : null
 
-    if (!selected) {
-      // No saved session or it was archived/deleted — get or create default
-      const { data: defaultSession } = await getOrCreateDefaultSession("333")
-      if (defaultSession) {
-        selected = defaultSession
-        // Refresh session list if we just created one
-        if (!sessions.find((s) => s.id === defaultSession.id)) {
+    let session: SolveSession | null = null
+
+    if (lastId) {
+      session = sessions.find((s) => s.id === lastId) ?? null
+    }
+
+    // If no saved session, get or create default for 3x3
+    if (!session) {
+      const result = await getOrCreateDefaultSession("333")
+      if (result.data) {
+        session = result.data
+        // Refresh session list if we created a new one
+        if (!sessions.find((s) => s.id === session!.id)) {
           const { data: refreshed } = await getUserSolveSessions()
           setSolveSessions(refreshed)
         }
       }
     }
 
-    if (selected) {
-      await switchToSession(selected)
+    if (session) {
+      setCurrentSession(session)
+      saveLastSessionId(session.id)
+      loadScramble(session.event as WcaEventId)
+      await loadSessionSolves(session)
+    } else {
+      loadScramble("333" as WcaEventId)
     }
 
     setIsLoading(false)
   }
 
-  /** Switch to a different solve session — loads its solves and active timer session */
-  const switchToSession = async (session: SolveSession) => {
-    // Save to localStorage
-    localStorage.setItem(LAST_SESSION_KEY, session.id)
-    setCurrentSession(session)
-    setTimerSessionId(null)
-    setSolves([])
-    setLastTime(null)
-    clearNextScramble()
-    loadScramble(session.event as WcaEventId)
+  // ---- Session management helpers ----
 
+  const saveLastSessionId = (id: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LAST_SESSION_KEY, id)
+    }
+  }
+
+  const loadSessionSolves = async (session: SolveSession) => {
     // Check for an active timer session linked to this solve session
     const activeResult = await getActiveTimerSession(session.event, session.id)
     if (activeResult.data) {
@@ -144,39 +154,79 @@ export function TimerContent() {
       setSolves(activeResult.data.solves)
       setMode(activeResult.data.mode)
       if (activeResult.data.solves.length > 0) {
-        const lastSolve = activeResult.data.solves[activeResult.data.solves.length - 1]
+        const last = activeResult.data.solves[activeResult.data.solves.length - 1]
         setLastTime(
-          lastSolve.penalty === "+2"
-            ? lastSolve.time_ms + 2000
-            : lastSolve.penalty === "DNF"
+          last.penalty === "+2"
+            ? last.time_ms + 2000
+            : last.penalty === "DNF"
               ? null
-              : lastSolve.time_ms
+              : last.time_ms
         )
       }
-    } else {
-      // No active timer session — load persisted solves for this session (after active_from)
-      const { solves: sessionSolves } = await getSolvesBySession(
-        session.id,
-        session.active_from
+      return
+    }
+
+    // No active timer session — load solves from solve_session (after active_from)
+    const { solves: sessionSolves } = await getSolvesBySession(
+      session.id,
+      session.active_from
+    )
+    setSolves(sessionSolves)
+    setTimerSessionId(null)
+    if (sessionSolves.length > 0) {
+      const last = sessionSolves[sessionSolves.length - 1]
+      setLastTime(
+        last.penalty === "+2"
+          ? last.time_ms + 2000
+          : last.penalty === "DNF"
+            ? null
+            : last.time_ms
       )
-      setSolves(sessionSolves)
-      if (sessionSolves.length > 0) {
-        const lastSolve = sessionSolves[sessionSolves.length - 1]
-        setLastTime(
-          lastSolve.penalty === "+2"
-            ? lastSolve.time_ms + 2000
-            : lastSolve.penalty === "DNF"
-              ? null
-              : lastSolve.time_ms
-        )
-      }
+    } else {
+      setLastTime(null)
     }
   }
+
+  const refreshSessions = async () => {
+    const { data } = await getUserSolveSessions()
+    setSolveSessions(data)
+  }
+
+  // ---- Session switching ----
+
+  const handleSelectSession = async (session: SolveSession) => {
+    if (session.id === currentSession?.id) return
+
+    // Finalize current timer session if there are solves
+    if (timerSessionId && solves.length > 0) {
+      await finalizeTimerSession(timerSessionId)
+    }
+
+    setCurrentSession(session)
+    saveLastSessionId(session.id)
+    setSolves([])
+    setLastTime(null)
+    setTimerSessionId(null)
+    clearNextScramble()
+    loadScramble(session.event as WcaEventId)
+    await loadSessionSolves(session)
+  }
+
+  const handleCreateSession = async (name: string, eventId: string, isTracked: boolean) => {
+    const result = await createSolveSession(name, eventId, isTracked)
+    if (result.data) {
+      await refreshSessions()
+      await handleSelectSession(result.data)
+    }
+  }
+
+  // ---- Timer session management ----
 
   const ensureTimerSession = async (): Promise<string> => {
     if (timerSessionId) return timerSessionId
 
-    const result = await createTimerSession(event, mode, currentSession?.id)
+    const solveSessionId = currentSession?.id
+    const result = await createTimerSession(event, mode, solveSessionId)
     if (result.error || !result.data) {
       throw new Error(result.error ?? "Failed to create timer session")
     }
@@ -185,14 +235,14 @@ export function TimerContent() {
     return result.data.id
   }
 
-  // Save a solve: optimistic update first, then persist to server
+  // ---- Solve handling ----
+
   const saveSolve = async (timeMs: number, penalty: "+2" | "DNF" | null) => {
     const solveNumber = solves.length + 1
     const compSimGroup =
       mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
     const tempId = `temp-${Date.now()}`
 
-    // Optimistic update — show solve instantly
     const optimisticSolve: Solve = {
       id: tempId,
       timer_session_id: timerSessionId ?? "",
@@ -210,7 +260,6 @@ export function TimerContent() {
     }
     setSolves((prev) => [...prev, optimisticSolve])
 
-    // Persist to server in background
     try {
       setSaveError(null)
       const sessionId = await ensureTimerSession()
@@ -271,7 +320,7 @@ export function TimerContent() {
 
     const result = await updateSolve(solveId, { penalty })
     if (result.error && currentSession) {
-      switchToSession(currentSession)
+      await loadSessionSolves(currentSession)
     }
   }
 
@@ -280,7 +329,7 @@ export function TimerContent() {
 
     const result = await deleteSolve(solveId)
     if (result.error && currentSession) {
-      switchToSession(currentSession)
+      await loadSessionSolves(currentSession)
     }
   }
 
@@ -296,7 +345,7 @@ export function TimerContent() {
     setTimerSessionId(null)
   }
 
-  const handleEndPractice = () => {
+  const handleEndSession = () => {
     if (solves.length === 0) return
     setShowSummary(true)
   }
@@ -323,132 +372,70 @@ export function TimerContent() {
     setShowSummary(false)
   }
 
-  // --- Session management callbacks ---
+  // ---- Session manager callbacks ----
 
-  const handleSessionSelect = async (session: SolveSession) => {
-    if (session.id === currentSession?.id) return
-
-    // Finalize current timer session if it has solves
-    if (timerSessionId && solves.length > 0) {
-      await finalizeTimerSession(timerSessionId)
-    }
-
-    await switchToSession(session)
-  }
-
-  const handleSessionCreate = async (
-    name: string,
-    sessionEvent: string,
-    isTracked: boolean
-  ) => {
-    const { data: newSession, error } = await createSolveSession(
-      name,
-      sessionEvent,
-      isTracked
-    )
-    if (error || !newSession) {
-      setSaveError(`Failed to create session: ${error}`)
-      return
-    }
-
-    // Refresh session list and switch to the new one
-    const { data: refreshed } = await getUserSolveSessions()
-    setSolveSessions(refreshed)
-
-    // Finalize current if needed
-    if (timerSessionId && solves.length > 0) {
-      await finalizeTimerSession(timerSessionId)
-    }
-
-    await switchToSession(newSession)
-  }
-
-  const handleSessionRename = async (id: string, name: string) => {
+  const handleManagerRename = async (id: string, name: string) => {
     await updateSolveSession(id, { name })
-    setSolveSessions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, name } : s))
-    )
+    await refreshSessions()
     if (currentSession?.id === id) {
-      setCurrentSession((prev) => (prev ? { ...prev, name } : prev))
+      setCurrentSession((prev) => prev ? { ...prev, name } : prev)
     }
   }
 
-  const handleSessionToggleTracked = async (
-    id: string,
-    isTracked: boolean
-  ) => {
+  const handleManagerToggleTracked = async (id: string, isTracked: boolean) => {
     await updateSolveSession(id, { is_tracked: isTracked })
-    setSolveSessions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, is_tracked: isTracked } : s))
-    )
+    await refreshSessions()
     if (currentSession?.id === id) {
-      setCurrentSession((prev) =>
-        prev ? { ...prev, is_tracked: isTracked } : prev
-      )
+      setCurrentSession((prev) => prev ? { ...prev, is_tracked: isTracked } : prev)
     }
   }
 
-  const handleSessionReset = async (id: string) => {
+  const handleManagerReset = async (id: string) => {
+    if (currentSession?.id === id && timerSessionId) {
+      await finalizeTimerSession(timerSessionId)
+      setTimerSessionId(null)
+    }
+
     await resetSolveSession(id)
+    await refreshSessions()
 
-    // Refresh session list to get updated active_from
-    const { data: refreshed } = await getUserSolveSessions()
-    setSolveSessions(refreshed)
-
-    // If resetting current session, reload with empty solve list
     if (currentSession?.id === id) {
-      const updated = refreshed.find((s) => s.id === id)
+      const { data: sessions } = await getUserSolveSessions()
+      const updated = sessions.find((s) => s.id === id)
       if (updated) {
         setCurrentSession(updated)
-        setTimerSessionId(null)
         setSolves([])
         setLastTime(null)
       }
     }
   }
 
-  const handleSessionArchive = async (id: string) => {
+  const handleManagerArchive = async (id: string) => {
     await archiveSolveSession(id)
-    setSolveSessions((prev) => prev.filter((s) => s.id !== id))
-
-    // If archiving current session, switch to another
+    await refreshSessions()
     if (currentSession?.id === id) {
-      const remaining = solveSessions.filter((s) => s.id !== id)
-      if (remaining.length > 0) {
-        await switchToSession(remaining[0])
-      } else {
-        // Create a new default
-        const { data: newDefault } = await getOrCreateDefaultSession("333")
-        if (newDefault) {
-          const { data: refreshed } = await getUserSolveSessions()
-          setSolveSessions(refreshed)
-          await switchToSession(newDefault)
-        }
+      const result = await getOrCreateDefaultSession("333")
+      if (result.data) {
+        await refreshSessions()
+        await handleSelectSession(result.data)
       }
     }
   }
 
-  const handleSessionDelete = async (id: string) => {
+  const handleManagerDelete = async (id: string) => {
     await deleteSolveSession(id)
-    setSolveSessions((prev) => prev.filter((s) => s.id !== id))
-
-    // If deleting current session, switch to another
+    await refreshSessions()
     if (currentSession?.id === id) {
-      const remaining = solveSessions.filter((s) => s.id !== id)
-      if (remaining.length > 0) {
-        await switchToSession(remaining[0])
-      } else {
-        const { data: newDefault } = await getOrCreateDefaultSession("333")
-        if (newDefault) {
-          const { data: refreshed } = await getUserSolveSessions()
-          setSolveSessions(refreshed)
-          await switchToSession(newDefault)
-        }
+      const result = await getOrCreateDefaultSession("333")
+      if (result.data) {
+        await refreshSessions()
+        await handleSelectSession(result.data)
       }
     }
   }
 
-  // Handle inspection auto-DNF: when inspection exceeds 17s, record a DNF solve
+  // ---- Inspection ----
+
   useEffect(() => {
     if (inspection.state === "done" && inspectionEnabled) {
       saveSolve(0, "DNF")
@@ -467,16 +454,8 @@ export function TimerContent() {
     inspectionPenaltyRef.current = penalty
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex flex-col h-[calc(100vh-64px)] items-center justify-center">
-        <div className="text-muted-foreground text-sm">Loading timer...</div>
-      </div>
-    )
-  }
+  // ---- Render ----
 
-  // Sidebar panel (shared between all positions)
   const sidebarPanel = sidebarPosition !== "hidden" && (
     <TimerSidebar
       sidebarPosition={sidebarPosition}
@@ -489,7 +468,6 @@ export function TimerContent() {
     />
   )
 
-  // Layout class based on sidebar position
   const layoutClass =
     sidebarPosition === "hidden" || sidebarPosition === "bottom"
       ? "flex-1 flex flex-col min-h-0 overflow-hidden"
@@ -497,11 +475,22 @@ export function TimerContent() {
         ? "flex-1 flex flex-col md:grid md:grid-cols-[320px_1fr] min-h-0 overflow-hidden"
         : "flex-1 flex flex-col md:grid md:grid-cols-[1fr_320px] min-h-0 overflow-hidden"
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-64px)] items-center justify-center">
+        <div className="text-muted-foreground text-sm">Loading timer...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       <TimerTopBar
-        event={event}
-        onEventChange={() => {}} // Event changes handled by session selector now
+        sessions={solveSessions}
+        currentSession={currentSession}
+        onSelectSession={handleSelectSession}
+        onCreateSession={handleCreateSession}
+        onManageSessions={() => setShowManager(true)}
         mode={mode}
         onModeChange={handleModeChange}
         inputMode={inputMode}
@@ -513,21 +502,11 @@ export function TimerContent() {
         sidebarPosition={sidebarPosition}
         onSidebarPositionChange={setSidebarPosition}
         solveCount={solves.length}
-        onEndSession={handleEndPractice}
+        onEndPractice={handleEndSession}
         saveError={saveError}
         onDismissError={() => setSaveError(null)}
-        sessionSelector={
-          <SessionSelector
-            sessions={solveSessions}
-            currentSessionId={currentSession?.id ?? null}
-            onSelect={handleSessionSelect}
-            onCreate={handleSessionCreate}
-            onManage={() => setShowManager(true)}
-          />
-        }
       />
 
-      {/* Main content — layout depends on sidebar position */}
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
@@ -573,13 +552,13 @@ export function TimerContent() {
         onClose={() => setShowManager(false)}
         sessions={solveSessions}
         currentSessionId={currentSession?.id ?? null}
-        onSelect={handleSessionSelect}
-        onRename={handleSessionRename}
-        onToggleTracked={handleSessionToggleTracked}
-        onReset={handleSessionReset}
-        onArchive={handleSessionArchive}
-        onDelete={handleSessionDelete}
-        onCreate={handleSessionCreate}
+        onSelect={handleSelectSession}
+        onRename={handleManagerRename}
+        onToggleTracked={handleManagerToggleTracked}
+        onReset={handleManagerReset}
+        onArchive={handleManagerArchive}
+        onDelete={handleManagerDelete}
+        onCreate={handleCreateSession}
       />
     </div>
   )

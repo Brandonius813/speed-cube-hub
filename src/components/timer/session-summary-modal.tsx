@@ -58,7 +58,7 @@ export function SessionSummaryModal({
         <div className="bg-card border border-border rounded-xl max-w-sm w-full p-6 space-y-5">
           {/* Header */}
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Session Complete</h2>
+            <h2 className="text-lg font-semibold">Practice Saved!</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {eventLabel} · {mode === "comp_sim" ? "Comp Sim" : "Normal"} ·{" "}
               {formatDuration(durationMinutes)}

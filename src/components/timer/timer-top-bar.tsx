@@ -1,11 +1,16 @@
 import { Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { EventSelector, TimerSettings } from "@/components/timer/timer-settings"
+import { SessionSelector } from "@/components/timer/session-selector"
+import { TimerSettings } from "@/components/timer/timer-settings"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import type { SolveSession } from "@/lib/types"
 
 export function TimerTopBar({
-  event,
-  onEventChange,
+  sessions,
+  currentSession,
+  onSelectSession,
+  onCreateSession,
+  onManageSessions,
   mode,
   onModeChange,
   inputMode,
@@ -17,12 +22,15 @@ export function TimerTopBar({
   sidebarPosition,
   onSidebarPositionChange,
   solveCount,
-  onEndSession,
+  onEndPractice,
   saveError,
   onDismissError,
 }: {
-  event: string
-  onEventChange: (event: string) => void
+  sessions: SolveSession[]
+  currentSession: SolveSession | null
+  onSelectSession: (session: SolveSession) => void
+  onCreateSession: (name: string, event: string, isTracked: boolean) => void
+  onManageSessions: () => void
   mode: "normal" | "comp_sim"
   onModeChange: (mode: "normal" | "comp_sim") => void
   inputMode: InputMode
@@ -34,7 +42,7 @@ export function TimerTopBar({
   sidebarPosition: SidebarPosition
   onSidebarPositionChange: (position: SidebarPosition) => void
   solveCount: number
-  onEndSession: () => void
+  onEndPractice: () => void
   saveError: string | null
   onDismissError: () => void
 }) {
@@ -42,7 +50,13 @@ export function TimerTopBar({
     <>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
-          <EventSelector event={event} onEventChange={onEventChange} />
+          <SessionSelector
+            sessions={sessions}
+            currentSessionId={currentSession?.id ?? null}
+            onSelect={onSelectSession}
+            onCreate={onCreateSession}
+            onManage={onManageSessions}
+          />
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim
@@ -61,15 +75,13 @@ export function TimerTopBar({
               variant="outline"
               size="sm"
               className="h-8 text-xs gap-1.5"
-              onClick={onEndSession}
+              onClick={onEndPractice}
             >
               <Square className="h-3 w-3 fill-current" />
-              End Session
+              End Practice
             </Button>
           )}
           <TimerSettings
-            event={event}
-            onEventChange={onEventChange}
             mode={mode}
             onModeChange={onModeChange}
             inspectionEnabled={inspectionEnabled}
