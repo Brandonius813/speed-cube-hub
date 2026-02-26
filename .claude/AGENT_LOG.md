@@ -103,3 +103,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** The old Supabase stored events by display name (e.g., "3x3", "Megaminx") while Speed Cube Hub uses WCA event IDs ("333", "minx"). Any future data migration must map these. The `personal_bests` table has no RLS policies — reads work because data is fetched server-side via authenticated client, but this should be addressed in T46.
 **Blockers:** User needs to run `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pbs_main_events text[] DEFAULT NULL;` in Supabase SQL Editor before the event ordering feature works.
 **Warnings:** New column `pbs_main_events` added to profiles table — any code that uses explicit column lists for profiles will need updating (though currently all use `select("*")`).
+
+---
+
+### 2026-02-25 19:30 PT — Sync-only Session
+
+**Task:** Attempted T54 (Practice Stats Overhaul), discovered already completed
+**Status:** Claimed T54 but found it was already built and committed by Claude-Opus (commit `0b5a560`). Verified all T54 files are present and correct: practice-streak.tsx, heatmap-tooltip.tsx, time-by-event-chart.tsx, event-breakdown-table.tsx, updated filters.tsx, stats-cards.tsx, daily-bar-chart.tsx, dashboard-content.tsx, constants.ts. Deleted orphaned streak-card.tsx (already removed from git by T54 commit). Ran `npx tsc --noEmit` — passes clean. No remaining available tasks in TASKS.md.
+**Files touched:** .claude/TASKS.md (claimed T54, but it was already done)
+**Learnings:** Always check `git log` before claiming a task — another session may have completed and committed it even if TASKS.md showed Available when you first read it. The `npm run build` command requires significant memory and can get killed (exit 137) or timeout on this machine; use `npx tsc --noEmit` as a lighter alternative for type verification.
+**Blockers:** No available tasks remain. T56 is in progress by Claude-Opus.
+**Warnings:** None — all tasks except T56 are done. T56 has local uncommitted changes in `src/lib/actions/timer.ts` (29 lines for `getSolvesByEvent`).
