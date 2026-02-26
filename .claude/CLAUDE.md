@@ -138,7 +138,12 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
 - `src/lib/timer/cross-solver.ts` — Optimal cross solver (BFS pruning tables for all 6 faces, client-side)
+- `src/lib/timer/eoline-solver.ts` — EOLine analyzer + optimal solver for ZZ method
+- `src/lib/timer/puzzle-analyzers.ts` — Roux FB, 2x2 face, Pyraminx V, Skewb face analyzers
+- `src/lib/timer/stackmat.ts` — Stackmat timer RS-232 audio decoder (Web Audio API)
+- `src/lib/timer/use-stackmat.ts` — React hook for Stackmat timer integration
 - `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
+- `src/lib/bld/letter-scheme.ts` — BLD letter scheme data (Speffz), memo parser, parity detection
 - `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel, scramble-type-selector)
 - `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
@@ -202,6 +207,8 @@ See `.env.local.example` for required variables:
 /timer               → Built-in cubing timer [protected]
 /tools/scrambles     → Batch scramble generator (1-999 scrambles) [public]
 /tools/metronome     → Metronome tool (BPM + seconds mode) [public]
+/tools/bld           → BLD helper (letter scheme, memo practice, parity check) [public]
+/tools/virtual-cube  → 3D interactive virtual cube [public]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
