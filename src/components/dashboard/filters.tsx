@@ -21,8 +21,8 @@ const dateRanges = [
   { label: "7d", value: "7d" as const },
   { label: "30d", value: "30d" as const },
   { label: "90d", value: "90d" as const },
-  { label: "1y", value: "1y" as const },
   { label: "365d", value: "365d" as const },
+  { label: "YTD", value: "1y" as const },
   { label: "All", value: "all" as const },
 ]
 
