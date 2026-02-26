@@ -37,7 +37,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
-export function SessionLog({ sessions }: { sessions: Session[] }) {
+export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]; readOnly?: boolean }) {
   const router = useRouter()
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [selectMode, setSelectMode] = useState(false)
@@ -122,21 +122,23 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
       <Card className="border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-foreground">Session Log</CardTitle>
-          <Button
-            variant={selectMode ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={toggleSelectMode}
-          >
-            {selectMode ? (
-              <>
-                <X className="mr-1 h-3.5 w-3.5" />
-                Cancel
-              </>
-            ) : (
-              "Select"
-            )}
-          </Button>
+          {!readOnly && (
+            <Button
+              variant={selectMode ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 text-xs"
+              onClick={toggleSelectMode}
+            >
+              {selectMode ? (
+                <>
+                  <X className="mr-1 h-3.5 w-3.5" />
+                  Cancel
+                </>
+              ) : (
+                "Select"
+              )}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           {deleteError && (
@@ -201,7 +203,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                         <div className="text-[10px] text-muted-foreground">avg</div>
                       </div>
                     </div>
-                    {!selectMode && (
+                    {!readOnly && !selectMode && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -254,7 +256,7 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                   <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
                     Avg
                   </th>
-                  <th className="w-10 pb-3" />
+                  {!readOnly && <th className="w-10 pb-3" />}
                 </tr>
               </thead>
               <tbody>
@@ -307,18 +309,20 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
                     <td className="py-3 text-right font-mono text-sm text-foreground">
                       {formatAvg(session.avg_time)}
                     </td>
-                    <td className="py-3 text-center">
-                      {!selectMode && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-                          onClick={() => setEditingSession(session)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </td>
+                    {!readOnly && (
+                      <td className="py-3 text-center">
+                        {!selectMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+                            onClick={() => setEditingSession(session)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -327,56 +331,60 @@ export function SessionLog({ sessions }: { sessions: Session[] }) {
         </CardContent>
       </Card>
 
-      {/* Floating bulk action bar */}
-      {selectMode && selectedIds.size > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:rounded-lg sm:border sm:px-6">
-          <div className="flex items-center justify-between gap-4 sm:justify-center">
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size} session{selectedIds.size !== 1 ? "s" : ""} selected
-            </span>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete
-            </Button>
-          </div>
-        </div>
-      )}
+      {!readOnly && (
+        <>
+          {/* Floating bulk action bar */}
+          {selectMode && selectedIds.size > 0 && (
+            <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:rounded-lg sm:border sm:px-6">
+              <div className="flex items-center justify-between gap-4 sm:justify-center">
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size} session{selectedIds.size !== 1 ? "s" : ""} selected
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
 
-      {/* Bulk delete confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} session{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove {selectedIds.size} practice session{selectedIds.size !== 1 ? "s" : ""}. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "Deleting..." : "Delete Sessions"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          {/* Bulk delete confirmation */}
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {selectedIds.size} session{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove {selectedIds.size} practice session{selectedIds.size !== 1 ? "s" : ""}. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBulkDelete}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Deleting..." : "Delete Sessions"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
-      {editingSession && (
-        <EditSessionModal
-          open={!!editingSession}
-          onOpenChange={(open) => {
-            if (!open) setEditingSession(null)
-          }}
-          session={editingSession}
-          onSaved={handleSaved}
-        />
+          {editingSession && (
+            <EditSessionModal
+              open={!!editingSession}
+              onOpenChange={(open) => {
+                if (!open) setEditingSession(null)
+              }}
+              session={editingSession}
+              onSaved={handleSaved}
+            />
+          )}
+        </>
       )}
     </>
   )

@@ -57,6 +57,26 @@ export async function getCurrentPBs(): Promise<{
   return { data: (data || []).map(mapPBRow) }
 }
 
+/** Fetch current PBs for any user (public — no auth required) */
+export async function getPBsByUserId(
+  userId: string
+): Promise<{ data: PBRecord[]; error?: string }> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("personal_bests")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_current", true)
+    .order("event")
+
+  if (error) {
+    return { data: [], error: error.message }
+  }
+
+  return { data: (data || []).map(mapPBRow) }
+}
+
 export async function logNewPB(fields: {
   event: string
   pb_type: string
