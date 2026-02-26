@@ -192,7 +192,7 @@ export function MainCubes({
                       <p className="truncate font-medium text-foreground">
                         {cube.name}
                       </p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                         {cube.setup || getEventLabel(cube.event)}
                       </p>
                     </div>
