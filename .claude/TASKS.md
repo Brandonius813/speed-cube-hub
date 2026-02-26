@@ -2057,12 +2057,13 @@ Built 2D scramble image using `cstimer_module.getImage()` which returns SVG stri
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
-| **Key files** | `src/lib/timer/scrambles.ts`, New: `src/lib/timer/training-scrambles.ts` |
+| **Key files** | `src/lib/timer/scrambles.ts`, `src/lib/timer/training-scrambles.ts`, `src/components/timer/scramble-type-selector.tsx` |
 
-PLL (21 cases), OLL (57 cases), Last Layer, Cross solved / F2L, LSLL, Easy cross. Case filtering UI. Sub-options under 3x3.
+Built training scramble types for 3x3 and 3x3 OH: PLL (21 cases), OLL (57 cases), Last Layer, F2L, LSLL. Scramble type selector dropdown in timer top bar. Training type persisted to localStorage. Easy Cross removed (not supported by cstimer_module). Case filtering UI deferred to T122.
 
 ---
 

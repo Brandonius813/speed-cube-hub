@@ -133,12 +133,13 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/app/api/import/parse/route.ts` — AI parsing API route (Claude Haiku for unknown formats)
 - `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent, getSolvesBySession)
 - `src/lib/actions/solve-sessions.ts` — Solve session CRUD (getUserSolveSessions, getSolveSession, createSolveSession, updateSolveSession, resetSolveSession, archiveSolveSession, deleteSolveSession, getOrCreateDefaultSession)
-- `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
+- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module — random-state for supported events, training scrambles)
+- `src/lib/timer/training-scrambles.ts` — Training scramble type definitions (PLL, OLL, F2L, Last Layer, LSLL) per event
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
 - `src/lib/timer/cross-solver.ts` — Optimal cross solver (BFS pruning tables for all 6 faces, client-side)
 - `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel)
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel, scramble-type-selector)
 - `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
