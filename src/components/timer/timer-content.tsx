@@ -347,6 +347,8 @@ export function TimerContent() {
         currentCompSimProgress={
           mode === "comp_sim" ? currentCompSimProgress : undefined
         }
+        solves={solves}
+        event={event}
       />
       <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
         <SolveList
