@@ -2419,11 +2419,12 @@ Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-8x8-11x11 + custom NxN, random-move scrambles.
+Added 8x8-11x11 to EXTRA_EVENTS and CSTIMER_TYPE_MAP. Session selector and batch scramble generator now show all events.
 
 ---
 
@@ -2431,11 +2432,12 @@ Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
 
-Mirror Blocks, Gear Cube, Ivy, Redi, Kilominx, Master Pyra, FTO, cuboids.
+Gear Cube, Ivy, Redi, FTO, Master Pyraminx, Helicopter, Curvy Copter, Square-2 added to EXTRA_EVENTS with cstimer type mappings.
 
 ---
 
@@ -2443,11 +2445,12 @@ Mirror Blocks, Gear Cube, Ivy, Redi, Kilominx, Master Pyra, FTO, cuboids.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T140 |
 | **Estimated scope** | 2-3 files |
 
-Dino, Helicopter, Curvy Copter, Gigaminx, Pyraminx Crystal, Siamese, Square-2, Super SQ1, Super Floppy, UFO, Cmetrick, Crazy 3x3, bandaged, Icosamate, 8/15 puzzles.
+Cuboids (2x2x3, 2x3x3, 3x3x4, 3x3x5), Gigaminx, Icosamate, UFO, 15 Puzzle added to EXTRA_EVENTS.
 
 ---
 
@@ -2455,11 +2458,14 @@ Dino, Helicopter, Curvy Copter, Gigaminx, Pyraminx Crystal, Siamese, Square-2, S
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
 
-Multi-3x3, 234/2345/23456/234567, Mini Guildford. Sequential display, single time.
+- ✅ 2-3-4, 2-3-4-5, 2-3-4-5-6, 2-3-4-5-6-7 relay events added
+- ✅ Multi-line scramble display with cube size labels (e.g., "2x2", "3x3", "4x4")
+- ✅ Scramble image button hidden for relay events (no single image possible)
 
 ---
 
