@@ -15,7 +15,7 @@ export async function getBadgeDefinitions(): Promise<{
 
   const { data, error } = await supabase
     .from("badges")
-    .select("*")
+    .select("id, name, description, icon, category, tier, criteria_type, criteria_value, verification")
     .order("category")
     .order("tier");
 

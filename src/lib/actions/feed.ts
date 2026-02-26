@@ -46,7 +46,7 @@ export async function getFeed(cursor?: string): Promise<{
   let query = supabase
     .from("sessions")
     .select(`
-      *,
+      id, user_id, session_date, event, practice_type, num_solves, num_dnf, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at,
       profile:profiles(
         display_name,
         handle,
