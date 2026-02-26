@@ -1134,7 +1134,8 @@ Rework the profile page from a flat vertical stack into a 5-tab layout with a pe
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | SQL migration + 3 files |
 | **Priority** | HIGH — prerequisite for sidebar |
@@ -1147,7 +1148,8 @@ Add `main_events text[]` column to `profiles` table. Migrate existing `main_even
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 | **Priority** | HIGH — prerequisite for PBs tab |
@@ -1160,7 +1162,8 @@ Add `getPBsByUserId(userId)` to `src/lib/actions/personal-bests.ts`. Fetches cur
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 | **Priority** | HIGH — prerequisite for Stats tab |
@@ -1173,7 +1176,8 @@ Add `readOnly?: boolean` prop to `src/components/dashboard/session-log.tsx`. Whe
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T57 |
 | **Estimated scope** | 1 new file (~120 lines) |
 | **Priority** | HIGH |
@@ -1186,7 +1190,8 @@ Create `src/components/profile/profile-sidebar.tsx` — Skool-style profile card
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 new file (~80 lines) |
 | **Priority** | HIGH |
