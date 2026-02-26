@@ -2027,15 +2027,13 @@ Editable notes field in solve detail modal with pencil icon toggle, inline texta
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 new files |
-| **Key files** | New: `src/components/timer/scramble-image.tsx` |
+| **Key files** | `src/components/timer/scramble-image.tsx`, `src/components/timer/scramble-display.tsx` |
 
-- 2D color diagram of scrambled state (like csTimer "Draw Scramble")
-- Support: 3x3, 2x2, 4x4-7x7, Pyra, Mega, Skewb, SQ1, Clock
-- cubing.js TwistyPlayer or custom SVG
-- Toggleable, compact display below scramble text
+Built 2D scramble image using `cstimer_module.getImage()` which returns SVG strings for all events (3x3, 2x2, 4x4-7x7, Pyra, Mega, Skewb, SQ1, Clock). Toggle button (Image icon) in scramble display area. Image renders inline below scramble text. Same csTimer rendering engine used for scramble generation.
 
 ---
 

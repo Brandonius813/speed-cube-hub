@@ -1,15 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check } from "lucide-react"
+import { Copy, Check, Image } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ScrambleImage } from "@/components/timer/scramble-image"
 
 type ScrambleDisplayProps = {
   scramble: string | null
+  event?: string
 }
 
-export function ScrambleDisplay({ scramble }: ScrambleDisplayProps) {
+export function ScrambleDisplay({ scramble, event }: ScrambleDisplayProps) {
   const [copied, setCopied] = useState(false)
+  const [showImage, setShowImage] = useState(false)
 
   const handleCopy = async () => {
     if (!scramble) return
@@ -41,7 +44,7 @@ export function ScrambleDisplay({ scramble }: ScrambleDisplayProps) {
   }
 
   return (
-    <div className="w-full px-4 py-3">
+    <div className="w-full px-4 py-3 space-y-2">
       <div className="flex items-start justify-center gap-2">
         <p
           className={cn(
@@ -51,18 +54,33 @@ export function ScrambleDisplay({ scramble }: ScrambleDisplayProps) {
         >
           {scramble}
         </p>
-        <button
-          onClick={handleCopy}
-          className="shrink-0 p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-          title="Copy scramble"
-        >
-          {copied ? (
-            <Check className="h-4 w-4 text-green-400" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex shrink-0 gap-0.5">
+          <button
+            onClick={() => setShowImage(!showImage)}
+            className={cn(
+              "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
+              showImage && "bg-secondary text-foreground"
+            )}
+            title={showImage ? "Hide scramble image" : "Show scramble image"}
+          >
+            <Image className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            title="Copy scramble"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-400" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
+      {showImage && event && (
+        <ScrambleImage scramble={scramble} event={event} />
+      )}
     </div>
   )
 }

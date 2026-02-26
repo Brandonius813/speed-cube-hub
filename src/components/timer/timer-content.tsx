@@ -613,7 +613,7 @@ export function TimerContent() {
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
-          <ScrambleDisplay scramble={currentScramble} />
+          <ScrambleDisplay scramble={currentScramble} event={event} />
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}
