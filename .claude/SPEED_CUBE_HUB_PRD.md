@@ -234,7 +234,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 18 — Session Data Features — T129-T133:**
 - [ ] Session merge & split (T129)
-- [ ] Cross-session statistics with filters (T130)
+- [x] Cross-session statistics with filters (T130)
 - [x] Daily statistics (solves per day/week/month) (T131)
 - [x] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
 - [x] Import from csTimer, CubeTime, Twisty Timer, generic CSV, AI fallback (T133)
