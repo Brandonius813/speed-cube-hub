@@ -205,8 +205,8 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 15 — Core UX (csTimer Parity Baseline) — T106-T115:**
 - [x] csTimer-style stats panel (compact table with current/best columns, sigma, target time) (T106)
-- [ ] Customizable statistical indicators (user picks any aoX/moX combo, configurable trim %) (T107)
-- [ ] Statistics detail popup (click any average → see all solves, trimmed marked) (T108)
+- [x] Customizable statistical indicators (user picks any aoX/moX combo, configurable trim %) (T107)
+- [x] Statistics detail popup (click any average → see all solves, trimmed marked) (T108)
 - [x] Solve detail modal (beautiful card: time, scramble, date, notes, penalties, delete) (T109)
 - [x] Time list redesign (compact rows, click-to-detail, PB highlighting, DNF styling) (T110)
 - [x] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)

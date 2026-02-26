@@ -1922,18 +1922,13 @@ Rebuilt stats panel from card grid to csTimer-style compact table. Columns: labe
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus-C |
 | **Dependencies** | T106 |
 | **Estimated scope** | 3-4 files |
 | **Key files** | `src/lib/timer/averages.ts`, `src/components/timer/stats-panel.tsx`, `src/components/timer/timer-settings.tsx` |
 
-Let users configure which averages to track, exactly like csTimer:
-- Settings field: `mo3 ao5 ao12 ao25 ao50 ao100 ao500 ao1000` (free text, any aoX or moX)
-- Default: `mo3 ao5 ao12 ao50 ao100`
-- Stats panel dynamically renders whatever the user configured
-- Persist to localStorage
-- Configurable trim percentage: 0%, 1%, 5% (default), 10%, 20%, median
+Built customizable stat indicators. Users type any combination of `aoX` or `moX` (e.g., `mo3 ao5 ao12 ao50 ao100 ao500`) in a text field in Settings. Stats panel dynamically renders rows for each indicator with current/best/σ columns. Single row always shown at top. BPA/WPA auto-adapts to the smallest ao indicator. Persisted to localStorage under `sch_stat_indicators`. Default: `mo3 ao5 ao12 ao50 ao100`. **Note:** Configurable trim percentage deferred — currently uses standard WCA 5% trim (drop best + worst).
 
 ---
 
