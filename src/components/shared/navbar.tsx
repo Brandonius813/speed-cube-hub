@@ -143,6 +143,10 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
+            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
+              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
+            </Link>
             <Link href="/log">
               <Button
                 size="sm"
@@ -151,29 +155,25 @@ export function Navbar() {
                 Log Session
               </Button>
             </Link>
-            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
-              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
-            </Link>
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
             </Link>
             <Link href="/discover" className={navLinkClass("/discover")} aria-label="Discover">
               <Search className={cn(navIconClass("/discover"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
             </Link>
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
             <Link href="/pbs" className={navLinkClass("/pbs")} aria-label="Personal Bests">
               <Medal className={cn(navIconClass("/pbs"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
             </Link>
             <Link href="/practice-stats" className={navLinkClass("/practice-stats")} aria-label="Practice Stats">
               <LayoutDashboard className={cn(navIconClass("/practice-stats"), "sm:hidden")} />
-              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
             </Link>
             <NotificationPopup
               unreadCount={unreadCount}
