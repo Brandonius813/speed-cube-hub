@@ -623,3 +623,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Recent sessions completed T125 (hold duration), T126 (display customization), T128 (manual scramble), T132 (export), T134 (batch scramble generator), T135 (metronome). Phases 1-15 + most of 16-23 prerequisites are done.
 **Blockers:** None
 **Warnings:** Staged import feature files (src/components/import/, src/lib/import/) from another session — don't modify or commit these unless completing the import feature. Untracked `src/lib/timer/training-scrambles.ts` may be early T116 work from another session.
+
+---
+
+### 2026-02-26 12:56 PT — timer_session_id Fix + Sync Session
+
+**Task:** General — Fix sessions.timer_session_id missing column
+**Status:** Diagnosed and fixed the `sessions.timer_session_id` column missing from the live Supabase database. The column was defined in migration 013 SQL and TypeScript types, and code in `timer.ts` was writing it, but Supabase silently dropped the unknown field. User ran `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS timer_session_id uuid REFERENCES timer_sessions(id) ON DELETE SET NULL;` successfully. No code changes needed — the TypeScript types and server actions already referenced it correctly.
+**Files touched:** None — database-only fix
+**Learnings:** Supabase/PostgREST silently drops unknown columns on insert — no error is thrown. This means code can appear to work while data is being lost. Always verify columns exist in the live DB, not just in migration files or TypeScript types.
+**Blockers:** None
+**Warnings:** None — `sessions.timer_session_id` now exists in production. Future `finalizeTimerSession()` and `importSolvesToSession()` calls will correctly persist the FK link.
