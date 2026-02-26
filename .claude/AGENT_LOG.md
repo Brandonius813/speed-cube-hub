@@ -142,6 +142,22 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
+### 2026-02-25 21:45 PT — Phase 11 Profile Rework Session
+
+**Task:** T57–T63 (Phase 11 — Profile Rework: 5-Tab Layout with Sidebar)
+**Status:** Completed all 7 Phase 11 tasks. Most code was pre-built by a parallel session; this session verified, filled gaps, and wired everything together:
+- T57: main_events schema — migration SQL existed, wired type/action/modal (multi-select chips UI)
+- T58: getPBsByUserId — already built by prior session
+- T59: SessionLog readOnly — added prop + conditional rendering (hides Select button, edit pencils, bulk delete)
+- T60: Profile sidebar — already built by prior session
+- T61: Profile tabs — created profile-tabs.tsx (5 tabs, swipe, URL sync)
+- T62: 5 tab content components — all pre-built by prior session
+- T63: Rewrote profile-content.tsx + public-profile-content.tsx to grid+tabs layout, widened pages to max-w-6xl, added PB data fetching
+**Files touched:** src/components/dashboard/session-log.tsx, src/components/profile/profile-tabs.tsx (created), src/components/profile/profile-content.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/edit-profile-modal.tsx, src/lib/types.ts, src/lib/actions/profiles.ts, src/app/(main)/profile/page.tsx, src/app/(main)/profile/[handle]/page.tsx, .claude/CLAUDE.md, .claude/SPEED_CUBE_HUB_PRD.md
+**Learnings:** The linter auto-applies changes and sometimes creates commits, which can cause `git add` to silently no-op when files were already staged/committed. Always check `git status` + `git log` to verify actual state before committing. Layout uses `grid gap-6 lg:grid-cols-[1fr_320px]` for proper sidebar sizing.
+**Blockers:** None — Phase 11 complete. No remaining tasks on the board.
+**Warnings:** User needs to run `supabase/migrations/018_add_main_events.sql` in Supabase SQL Editor for the main_events feature to work. The profile pages now use `max-w-6xl` instead of `max-w-4xl`.
+
 ### 2026-02-25 21:30 PT — Phase 11 Profile Rework Session
 
 **Task:** T57–T63 — Full Phase 11 Profile Rework
