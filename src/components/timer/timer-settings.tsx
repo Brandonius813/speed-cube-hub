@@ -19,8 +19,8 @@ type TimerSettingsProps = {
   onInspectionChange: (enabled: boolean) => void
   showTimeWhileSolving: boolean
   onShowTimeChange: (show: boolean) => void
-  holdDuration: HoldDuration
-  onHoldDurationChange: (duration: HoldDuration) => void
+  holdDuration?: HoldDuration
+  onHoldDurationChange?: (duration: HoldDuration) => void
   inputMode: InputMode
   onInputModeChange: (mode: InputMode) => void
   sidebarPosition: SidebarPosition
@@ -136,7 +136,7 @@ export function TimerSettings({
                       variant={holdDuration === ms ? "default" : "outline"}
                       size="sm"
                       className="text-xs"
-                      onClick={() => onHoldDurationChange(ms)}
+                      onClick={() => onHoldDurationChange?.(ms)}
                     >
                       {ms === 0 ? "None" : `${ms}ms`}
                     </Button>

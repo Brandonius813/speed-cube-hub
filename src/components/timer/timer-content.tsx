@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { TimerDisplay } from "@/components/timer/timer-display"
+import { TimerDisplay, DEFAULT_HOLD_DURATION } from "@/components/timer/timer-display"
+import type { HoldDuration } from "@/components/timer/timer-display"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import { TimerTopBar } from "@/components/timer/timer-top-bar"
 import { TimerSidebar } from "@/components/timer/timer-sidebar"
@@ -36,11 +37,33 @@ import {
   archiveSolveSession,
   deleteSolveSession,
 } from "@/lib/actions/solve-sessions"
-import type { Solve, SolveSession } from "@/lib/types"
+import { PBCelebration } from "@/components/share/pb-celebration"
+import { ShareModal } from "@/components/share/share-modal"
+import type { ShareCardData } from "@/components/share/share-card"
+import { getEffectiveTime, bestAoN } from "@/lib/timer/averages"
+import { getCurrentPBs, logNewPB } from "@/lib/actions/personal-bests"
+import { getProfile } from "@/lib/actions/profiles"
+import { getTodayPacific } from "@/lib/utils"
+import type { Solve, SolveSession, PBRecord } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
+
+type PBDetection = {
+  event: string
+  pbType: string
+  newTimeMs: number
+  previousTimeMs?: number
+  scramble?: string
+}
+
+type UserInfo = {
+  userName: string
+  handle: string
+  avatarUrl: string | null
+}
 
 const LAST_SESSION_KEY = "sch_last_solve_session_id"
 const STAT_INDICATORS_KEY = "sch_stat_indicators"
+const HOLD_DURATION_KEY = "sch_hold_duration"
 
 export function TimerContent() {
   const router = useRouter()
@@ -73,6 +96,18 @@ export function TimerContent() {
     }
     return DEFAULT_STAT_INDICATORS
   })
+  const [holdDuration, setHoldDuration] = useState<HoldDuration>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(HOLD_DURATION_KEY)
+      if (stored) {
+        const parsed = parseInt(stored, 10)
+        if ([0, 100, 200, 300, 500, 1000].includes(parsed)) {
+          return parsed as HoldDuration
+        }
+      }
+    }
+    return DEFAULT_HOLD_DURATION
+  })
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
@@ -85,6 +120,12 @@ export function TimerContent() {
 
   // Stat detail modal
   const [statDetail, setStatDetail] = useState<StatDetailInfo | null>(null)
+
+  // PB detection + share state
+  const pbMapRef = useRef<Map<string, number>>(new Map())
+  const userInfoRef = useRef<UserInfo | null>(null)
+  const [celebration, setCelebration] = useState<PBDetection | null>(null)
+  const [shareVariant, setShareVariant] = useState<ShareCardData | null>(null)
 
   // Undo state
   const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
@@ -119,7 +160,31 @@ export function TimerContent() {
   const initializeSession = async () => {
     setIsLoading(true)
 
-    const { data: sessions } = await getUserSolveSessions()
+    // Load PBs and profile in parallel with sessions
+    const [{ data: sessions }, pbResult, profileResult] = await Promise.all([
+      getUserSolveSessions(),
+      getCurrentPBs(),
+      getProfile(),
+    ])
+
+    // Build PB map: "event|pbType" → time in ms
+    if (pbResult.data) {
+      const map = new Map<string, number>()
+      for (const pb of pbResult.data) {
+        map.set(`${pb.event}|${pb.pb_type}`, pb.time_seconds * 1000)
+      }
+      pbMapRef.current = map
+    }
+
+    // Store user info for share cards
+    if (profileResult.profile) {
+      const p = profileResult.profile
+      userInfoRef.current = {
+        userName: p.display_name,
+        handle: p.handle,
+        avatarUrl: p.avatar_url,
+      }
+    }
     setSolveSessions(sessions)
 
     const lastId = typeof window !== "undefined"
@@ -247,6 +312,76 @@ export function TimerContent() {
 
     setTimerSessionId(result.data.id)
     return result.data.id
+  }
+
+  // ---- PB detection ----
+
+  const checkForPB = (allSolves: Solve[], latestSolve: Solve) => {
+    if (latestSolve.penalty === "DNF") return
+    const effectiveMs = getEffectiveTime(latestSolve)
+    const map = pbMapRef.current
+    const singleKey = `${event}|Single`
+    const curSingle = map.get(singleKey)
+    if (curSingle === undefined || effectiveMs < curSingle) {
+      firePBDetection("Single", effectiveMs, curSingle, latestSolve.scramble)
+      return
+    }
+    if (allSolves.length >= 5) {
+      const ao5 = bestAoN(allSolves, 5)
+      if (ao5 !== null) {
+        const prev = map.get(`${event}|Ao5`)
+        if (prev === undefined || ao5 < prev) { firePBDetection("Ao5", ao5, prev, latestSolve.scramble); return }
+      }
+    }
+    if (allSolves.length >= 12) {
+      const ao12 = bestAoN(allSolves, 12)
+      if (ao12 !== null) {
+        const prev = map.get(`${event}|Ao12`)
+        if (prev === undefined || ao12 < prev) { firePBDetection("Ao12", ao12, prev); return }
+      }
+    }
+  }
+
+  const firePBDetection = (pbType: string, newTimeMs: number, previousTimeMs?: number, scramble?: string) => {
+    pbMapRef.current.set(`${event}|${pbType}`, newTimeMs)
+    setCelebration({ event, pbType, newTimeMs, previousTimeMs, scramble })
+    logNewPB({ event, pb_type: pbType, time_seconds: newTimeMs / 1000, date_achieved: getTodayPacific() })
+  }
+
+  // ---- Share handlers ----
+
+  const handleShareSession = () => {
+    const user = userInfoRef.current
+    setShareVariant({
+      variant: "session", event, practiceType: mode === "comp_sim" ? "Comp Sim" : "Normal",
+      numSolves: stats.count, avgTime: stats.mean ? stats.mean / 1000 : null,
+      bestTime: stats.best ? stats.best / 1000 : null, durationMinutes,
+      sessionDate: new Date().toLocaleDateString(),
+      userName: user?.userName ?? "Cuber", handle: user?.handle ?? "cuber", avatarUrl: user?.avatarUrl ?? null,
+    })
+  }
+
+  const handleShareSolve = (solve: Solve) => {
+    const user = userInfoRef.current
+    setShareVariant({
+      variant: "solve", event: solve.event,
+      timeMs: solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms,
+      penalty: solve.penalty, scramble: solve.scramble, solveNumber: solve.solve_number,
+      solvedAt: solve.solved_at,
+      userName: user?.userName ?? "Cuber", handle: user?.handle ?? "cuber", avatarUrl: user?.avatarUrl ?? null,
+    })
+  }
+
+  const handleSharePB = () => {
+    if (!celebration) return
+    const user = userInfoRef.current
+    setShareVariant({
+      variant: "pb", event: celebration.event, pbType: celebration.pbType,
+      timeSeconds: celebration.newTimeMs / 1000, dateAchieved: new Date().toLocaleDateString(),
+      userName: user?.userName ?? "Cuber", handle: user?.handle ?? "cuber", avatarUrl: user?.avatarUrl ?? null,
+      previousTimeSeconds: celebration.previousTimeMs ? celebration.previousTimeMs / 1000 : undefined,
+    })
+    setCelebration(null)
   }
 
   // ---- Solve handling ----
@@ -456,6 +591,20 @@ export function TimerContent() {
     setTimerSessionId(null)
   }
 
+  const handleStatIndicatorsChange = (indicators: string) => {
+    setStatIndicators(indicators)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STAT_INDICATORS_KEY, indicators)
+    }
+  }
+
+  const handleHoldDurationChange = (duration: HoldDuration) => {
+    setHoldDuration(duration)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(HOLD_DURATION_KEY, String(duration))
+    }
+  }
+
   const handleEndSession = () => {
     if (solves.length === 0) return
     setShowSummary(true)
@@ -582,6 +731,7 @@ export function TimerContent() {
       mode={mode}
       solves={solves}
       event={event}
+      statIndicators={statIndicators}
       onPenaltyChange={handlePenaltyChange}
       onDelete={handleDeleteSolve}
       onSolveClick={handleSolveClick}
@@ -620,8 +770,12 @@ export function TimerContent() {
         onInspectionChange={setInspectionEnabled}
         showTimeWhileSolving={showTimeWhileSolving}
         onShowTimeChange={setShowTimeWhileSolving}
+        holdDuration={holdDuration}
+        onHoldDurationChange={handleHoldDurationChange}
         sidebarPosition={sidebarPosition}
         onSidebarPositionChange={setSidebarPosition}
+        statIndicators={statIndicators}
+        onStatIndicatorsChange={handleStatIndicatorsChange}
         solveCount={solves.length}
         onEndPractice={handleEndSession}
         saveError={saveError}
@@ -642,6 +796,7 @@ export function TimerContent() {
               onSolveComplete={handleSolveComplete}
               lastTime={lastTime}
               showTimeWhileSolving={showTimeWhileSolving}
+              holdDuration={holdDuration}
               disabled={showSummary || inspection.isInspecting}
               inspectionActive={inspectionEnabled && !inspection.isInspecting}
               onStartInspection={handleStartInspection}

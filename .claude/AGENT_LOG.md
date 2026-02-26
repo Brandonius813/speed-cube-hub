@@ -551,3 +551,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Local `npm run build` has persistent issues with zombie processes auto-recreating `.next/` — something in the environment keeps spawning builds. `npx tsc --noEmit` is the reliable local check. Vercel builds fine.
 **Blockers:** None
 **Warnings:** Phase 15 is 7/10 done (T107, T108, T115 remaining). Available tasks: T107 (customizable stats), T108 (stat detail popup), T115 (cross solver).
+
+---
+
+### 2026-02-26 12:09 PT — Build Cost Optimization Session
+
+**Task:** General — Reduce Vercel build minutes by batching pushes
+**Status:** Updated 3 rule/config files to change agent behavior from "push after every feature" to "commit locally, push only when asked." Created `vercel.json` to limit Vercel builds to `main` and `dev` branches only. This should reduce build minutes by 70-80%.
+**Files touched:** .claude/Rules/commit-workflow.md, .claude/Rules/always-move-forward.md, .claude/CLAUDE.md, vercel.json (new)
+**Learnings:** Every `git push` to any branch triggers a Vercel build. With 5 parallel Claude sessions each pushing after every feature, build minutes stack up fast. Batching pushes is the single biggest cost reducer.
+**Blockers:** None
+**Warnings:** All agent sessions will now commit locally but NOT auto-push. If you need to test on the preview domain, explicitly push or tell the user "ready to push." The `vercel.json` file must be pushed to take effect.

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { SessionSelector } from "@/components/timer/session-selector"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import type { HoldDuration } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
 export function TimerTopBar({
@@ -19,8 +20,12 @@ export function TimerTopBar({
   onInspectionChange,
   showTimeWhileSolving,
   onShowTimeChange,
+  holdDuration,
+  onHoldDurationChange,
   sidebarPosition,
   onSidebarPositionChange,
+  statIndicators,
+  onStatIndicatorsChange,
   solveCount,
   onEndPractice,
   saveError,
@@ -39,8 +44,12 @@ export function TimerTopBar({
   onInspectionChange: (enabled: boolean) => void
   showTimeWhileSolving: boolean
   onShowTimeChange: (show: boolean) => void
+  holdDuration?: HoldDuration
+  onHoldDurationChange?: (duration: HoldDuration) => void
   sidebarPosition: SidebarPosition
   onSidebarPositionChange: (position: SidebarPosition) => void
+  statIndicators: string
+  onStatIndicatorsChange: (indicators: string) => void
   solveCount: number
   onEndPractice: () => void
   saveError: string | null
@@ -88,10 +97,14 @@ export function TimerTopBar({
             onInspectionChange={onInspectionChange}
             showTimeWhileSolving={showTimeWhileSolving}
             onShowTimeChange={onShowTimeChange}
+            holdDuration={holdDuration}
+            onHoldDurationChange={onHoldDurationChange}
             inputMode={inputMode}
             onInputModeChange={onInputModeChange}
             sidebarPosition={sidebarPosition}
             onSidebarPositionChange={onSidebarPositionChange}
+            statIndicators={statIndicators}
+            onStatIndicatorsChange={onStatIndicatorsChange}
           />
         </div>
       </div>

@@ -23,7 +23,7 @@ There are no tests configured in this project yet.
 - **Production URL:** `https://www.speedcubehub.com`
 - **`dev` branch:** All new work goes here. Push triggers Vercel preview deployment.
 - **`main` branch:** Production. Push auto-deploys to speedcubehub.com.
-- **Workflow:** Commit and push to `dev` after every working feature. When user says "go live," merge `dev` into `main` and push.
+- **Workflow:** Commit after every working feature. Push to `dev` only when asked, or in batches when a session ends (each push triggers a Vercel build that costs build minutes). When user says "go live," merge `dev` into `main` and push.
 
 ## Architecture Overview
 
