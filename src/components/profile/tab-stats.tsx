@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { PracticeStreak } from "@/components/dashboard/practice-streak"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
 import { StatsCards } from "@/components/dashboard/stats-cards"
@@ -102,12 +101,6 @@ export function TabStats({
 
   return (
     <div className="flex flex-col gap-6">
-      <PracticeStreak
-        sessions={sessions}
-        currentStreak={allStats.currentStreak}
-        longestStreak={allStats.longestStreak}
-      />
-
       <DashboardFilters
         selectedEvents={selectedEvents}
         selectedRange={selectedRange}
