@@ -507,3 +507,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Local `npm run build` has persistent lock file issues when multiple builds get triggered in quick succession. Kill all `next build` processes, `rm -rf .next`, then retry. Running build in background helps avoid duplicate execution from tool retries.
 **Blockers:** User still needs to run `023_create_solve_sessions.sql` in Supabase SQL Editor.
 **Warnings:** None — Phase 14 is fully complete and pushed.
+
+---
+
+### 2026-02-26 12:10 PT — Stats Panel Redesign + Sync
+
+**Task:** General — Stats panel redesign + build verification
+**Status:** Committed and pushed stats-panel.tsx redesign (csTimer-style table with current/best/σ columns, BPA/WPA for incomplete Ao5 windows). Also committed linter-applied changes: undo support (Ctrl+Z), keyboard penalty shortcuts (Ctrl+1/2/3), solve detail modal, and notes support. Build passes clean.
+**Files touched:** src/components/timer/stats-panel.tsx
+**Learnings:** The linter auto-applied several timer enhancements between sessions (undo, keyboard shortcuts, solve detail modal, notes). These are now committed and pushed.
+**Blockers:** User still needs to run `023_create_solve_sessions.sql` in Supabase SQL Editor.
+**Warnings:** None
