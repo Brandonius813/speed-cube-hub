@@ -54,7 +54,7 @@ export function Navbar() {
   // Mobile icon classes (brighter when active)
   function navIconClass(href: string) {
     return cn(
-      "h-4 w-4",
+      "h-5 w-5",
       isActive(href) ? "text-foreground" : ""
     )
   }
@@ -143,29 +143,37 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
+            <Link href="/log">
+              <Button
+                size="sm"
+                className="bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:text-base"
+              >
+                Log Session
+              </Button>
+            </Link>
             <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
               <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
             </Link>
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
             </Link>
             <Link href="/discover" className={navLinkClass("/discover")} aria-label="Discover">
               <Search className={cn(navIconClass("/discover"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
             </Link>
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
             <Link href="/pbs" className={navLinkClass("/pbs")} aria-label="Personal Bests">
               <Medal className={cn(navIconClass("/pbs"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/pbs") && "border-b-2 border-primary pb-0.5")}>PBs</span>
             </Link>
             <Link href="/practice-stats" className={navLinkClass("/practice-stats")} aria-label="Practice Stats">
               <LayoutDashboard className={cn(navIconClass("/practice-stats"), "sm:hidden")} />
-              <span className={cn("hidden text-sm sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
+              <span className={cn("hidden text-base font-semibold sm:inline", isActive("/practice-stats") && "border-b-2 border-primary pb-0.5")}>Practice Stats</span>
             </Link>
             <NotificationPopup
               unreadCount={unreadCount}
@@ -178,17 +186,17 @@ export function Navbar() {
                   className="rounded-full transition-all hover:ring-4 hover:ring-white/10"
                   aria-label="User menu"
                 >
-                  <Avatar className={cn("h-10 w-10 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
+                  <Avatar className={cn("h-14 w-14 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
                     {userProfile?.avatar_url && (
                       <AvatarImage
                         src={userProfile.avatar_url}
                         alt={userProfile.display_name}
                       />
                     )}
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="text-sm">
                       {userProfile
                         ? getInitials(userProfile.display_name)
-                        : <User className="h-4 w-4 text-muted-foreground" />}
+                        : <User className="h-5 w-5 text-muted-foreground" />}
                     </AvatarFallback>
                   </Avatar>
                 </button>
@@ -233,14 +241,6 @@ export function Navbar() {
                 </div>
               </PopoverContent>
             </Popover>
-            <Link href="/log">
-              <Button
-                size="sm"
-                className="bg-primary text-xs text-primary-foreground hover:bg-primary/90 sm:text-sm"
-              >
-                Log Session
-              </Button>
-            </Link>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
