@@ -1,51 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Swords, Loader2 } from "lucide-react"
+import { Swords } from "lucide-react"
 import { useBattle } from "@/lib/battle/use-battle"
-import { getSupabaseClient } from "@/lib/supabase/client"
 import type { BattlePlayer } from "@/lib/battle/battle-room"
 import { BattleLobby, BattleWaiting } from "@/components/tools/battle-lobby"
 import { BattleSolving } from "@/components/tools/battle-solving"
 import { BattleRoundResult, BattleMatchResult } from "@/components/tools/battle-results"
 
-export function BattleContent() {
-  const [player, setPlayer] = useState<BattlePlayer | null>(null)
-  const [loading, setLoading] = useState(true)
+type BattleContentProps = {
+  player: BattlePlayer | null
+}
 
-  // Load current user
-  useEffect(() => {
-    const loadUser = async () => {
-      const supabase = getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, avatar_url")
-          .eq("user_id", user.id)
-          .single()
-        setPlayer({
-          userId: user.id,
-          displayName: profile
-            ? `${profile.first_name} ${profile.last_name}`.trim()
-            : "Anonymous",
-          avatarUrl: profile?.avatar_url ?? undefined,
-        })
-      }
-      setLoading(false)
-    }
-    loadUser()
-  }, [])
-
+export function BattleContent({ player }: BattleContentProps) {
   const battle = useBattle(player)
-
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-      </div>
-    )
-  }
 
   if (!player) {
     return (

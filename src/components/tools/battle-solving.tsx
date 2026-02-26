@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -13,37 +13,44 @@ export function BattleSolving({ battle }: { battle: UseBattleReturn }) {
   const [displayMs, setDisplayMs] = useState(0)
   const startTimeRef = useRef(0)
   const rafRef = useRef(0)
-  const holdStartRef = useRef(0)
+  const timerStateRef = useRef<"idle" | "ready" | "running" | "stopped">("idle")
+  const battleRef = useRef(battle)
+  battleRef.current = battle
+
+  useEffect(() => {
+    timerStateRef.current = timerState
+  }, [timerState])
 
   const roundNum = battle.scrambleIndex + 1
   const event = battle.roomState?.eventId ?? "333"
 
-  // Timer loop
-  const tick = useCallback(() => {
+  function tick() {
     if (startTimeRef.current > 0) {
-      setDisplayMs(Date.now() - startTimeRef.current)
+      setDisplayMs(performance.now() - startTimeRef.current)
       rafRef.current = requestAnimationFrame(tick)
     }
-  }, [])
+  }
 
   // Keyboard controls
   useEffect(() => {
-    if (battle.myResult) return // already submitted
+    if (battle.myResult) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key !== " " || e.repeat) return
       e.preventDefault()
 
-      if (timerState === "idle") {
-        holdStartRef.current = Date.now()
+      if (timerStateRef.current === "idle" || timerStateRef.current === "stopped") {
+        timerStateRef.current = "ready"
         setTimerState("ready")
-      } else if (timerState === "running") {
-        const elapsed = Date.now() - startTimeRef.current
+      } else if (timerStateRef.current === "running") {
+        const elapsed = Math.round(performance.now() - startTimeRef.current)
         cancelAnimationFrame(rafRef.current)
         startTimeRef.current = 0
         setDisplayMs(elapsed)
+        timerStateRef.current = "stopped"
         setTimerState("stopped")
-        battle.submitResult(elapsed, null)
+        battleRef.current.submitResult(elapsed, null)
       }
     }
 
@@ -51,10 +58,10 @@ export function BattleSolving({ battle }: { battle: UseBattleReturn }) {
       if (e.key !== " ") return
       e.preventDefault()
 
-      if (timerState === "ready") {
-        const now = Date.now()
-        startTimeRef.current = now
+      if (timerStateRef.current === "ready") {
+        startTimeRef.current = performance.now()
         setDisplayMs(0)
+        timerStateRef.current = "running"
         setTimerState("running")
         rafRef.current = requestAnimationFrame(tick)
       }
@@ -66,34 +73,39 @@ export function BattleSolving({ battle }: { battle: UseBattleReturn }) {
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
     }
-  }, [timerState, battle, tick])
+  }, [battle.myResult])
 
   // Touch controls
-  const handleTouchStart = useCallback(() => {
+  function handleTouchStart(e: React.TouchEvent) {
     if (battle.myResult) return
-    if (timerState === "idle") {
-      holdStartRef.current = Date.now()
+    e.preventDefault()
+
+    if (timerStateRef.current === "idle" || timerStateRef.current === "stopped") {
+      timerStateRef.current = "ready"
       setTimerState("ready")
-    } else if (timerState === "running") {
-      const elapsed = Date.now() - startTimeRef.current
+    } else if (timerStateRef.current === "running") {
+      const elapsed = Math.round(performance.now() - startTimeRef.current)
       cancelAnimationFrame(rafRef.current)
       startTimeRef.current = 0
       setDisplayMs(elapsed)
+      timerStateRef.current = "stopped"
       setTimerState("stopped")
-      battle.submitResult(elapsed, null)
+      battleRef.current.submitResult(elapsed, null)
     }
-  }, [timerState, battle])
+  }
 
-  const handleTouchEnd = useCallback(() => {
+  function handleTouchEnd(e: React.TouchEvent) {
     if (battle.myResult) return
-    if (timerState === "ready") {
-      const now = Date.now()
-      startTimeRef.current = now
+    e.preventDefault()
+
+    if (timerStateRef.current === "ready") {
+      startTimeRef.current = performance.now()
       setDisplayMs(0)
+      timerStateRef.current = "running"
       setTimerState("running")
       rafRef.current = requestAnimationFrame(tick)
     }
-  }, [timerState, tick])
+  }
 
   // Cleanup
   useEffect(() => {
@@ -102,6 +114,7 @@ export function BattleSolving({ battle }: { battle: UseBattleReturn }) {
 
   // Reset timer state when new round starts
   useEffect(() => {
+    timerStateRef.current = "idle"
     setTimerState("idle")
     setDisplayMs(0)
     startTimeRef.current = 0
@@ -163,7 +176,7 @@ export function BattleSolving({ battle }: { battle: UseBattleReturn }) {
                 timerState === "idle" && "text-muted-foreground"
               )}
             >
-              {formatTimeMs(displayMs)}
+              {formatTimeMs(Math.round(displayMs))}
             </p>
             <p className="text-xs text-muted-foreground mt-3">
               {timerState === "idle" && "Hold Space to start"}
