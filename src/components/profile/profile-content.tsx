@@ -48,6 +48,9 @@ export function ProfileContent({
     parseTabParam(searchParams.get("tab"))
   )
   const [editOpen, setEditOpen] = useState(false)
+  const [profileMainEvents, setProfileMainEvents] = useState<string[]>(
+    profile.main_events ?? []
+  )
   const [wcaMessage, setWcaMessage] = useState<{
     type: "success" | "error"
     text: string
@@ -112,6 +115,7 @@ export function ProfileContent({
                 sessions={sessions}
                 pbs={pbs}
                 isOwner
+                onMainEventsChange={setProfileMainEvents}
               />
             )}
             {activeTab === "stats" && (
@@ -126,6 +130,7 @@ export function ProfileContent({
                 isOwner
                 sorKinchStats={sorKinchStats}
                 onWcaUpdate={() => router.refresh()}
+                mainEventsOverride={profileMainEvents}
               />
             )}
           </div>

@@ -673,10 +673,14 @@ export async function updatePBMainEvents(
     return { success: false, error: "Not authenticated" }
   }
 
+  // Extract the first 3 as the profile-wide main_events
+  const mainEventsOnly = (events ?? []).slice(0, 3)
+
   const { error } = await supabase
     .from("profiles")
     .update({
       pbs_main_events: events,
+      main_events: mainEventsOnly,
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -686,6 +690,7 @@ export async function updatePBMainEvents(
   }
 
   revalidatePath("/pbs")
+  revalidatePath("/profile")
   return { success: true }
 }
 

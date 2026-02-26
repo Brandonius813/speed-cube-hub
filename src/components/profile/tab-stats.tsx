@@ -4,55 +4,15 @@ import { useState, useMemo } from "react"
 import { PracticeStreak } from "@/components/dashboard/practice-streak"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
+import { StatsCards } from "@/components/dashboard/stats-cards"
+import { EventPieChart } from "@/components/dashboard/event-pie-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
+import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
+import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
-
-/** Compute current and longest streaks from sessions */
-function computeStreaks(sessions: Session[]): {
-  currentStreak: number
-  longestStreak: number
-} {
-  if (sessions.length === 0) return { currentStreak: 0, longestStreak: 0 }
-
-  const dates = [...new Set(sessions.map((s) => s.session_date))].sort(
-    (a, b) => b.localeCompare(a)
-  )
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const dayMs = 86400000
-
-  const daySet = new Set(
-    dates.map((d) => {
-      const date = new Date(d + "T00:00:00")
-      return Math.round((today.getTime() - date.getTime()) / dayMs)
-    })
-  )
-
-  let currentStreak = 0
-  const start = daySet.has(0) ? 0 : daySet.has(1) ? 1 : -1
-  if (start >= 0) {
-    for (let i = start; daySet.has(i); i++) currentStreak++
-  }
-
-  const sortedDays = [...daySet].sort((a, b) => a - b)
-  let longestStreak = 0
-  let streak = 1
-  for (let i = 1; i < sortedDays.length; i++) {
-    if (sortedDays[i] === sortedDays[i - 1] + 1) {
-      streak++
-    } else {
-      longestStreak = Math.max(longestStreak, streak)
-      streak = 1
-    }
-  }
-  longestStreak = Math.max(longestStreak, streak)
-
-  return { currentStreak, longestStreak }
-}
 
 export function TabStats({
   sessions,
@@ -61,8 +21,8 @@ export function TabStats({
   sessions: Session[]
   isOwner: boolean
 }) {
-  const { currentStreak, longestStreak } = useMemo(
-    () => computeStreaks(sessions),
+  const allStats = useMemo(
+    () => computeSessionStats(sessions),
     [sessions]
   )
 
@@ -76,6 +36,13 @@ export function TabStats({
     const types = new Set<string>()
     for (const s of sessions) types.add(s.practice_type)
     return Array.from(types).sort()
+  }, [sessions])
+
+  // Derive practiced events for solve analytics (only for owner)
+  const practicedEvents = useMemo(() => {
+    const events = new Set<string>()
+    for (const s of sessions) events.add(s.event)
+    return Array.from(events)
   }, [sessions])
 
   const filteredSessions = useMemo(() => {
@@ -121,6 +88,11 @@ export function TabStats({
     return result
   }, [sessions, selectedEvents, selectedPracticeTypes, selectedRange, customRange])
 
+  const filteredStats = useMemo(
+    () => computeSessionStats(filteredSessions),
+    [filteredSessions]
+  )
+
   function handleClearFilters() {
     setSelectedEvents([])
     setSelectedPracticeTypes([])
@@ -132,8 +104,8 @@ export function TabStats({
     <div className="flex flex-col gap-6">
       <PracticeStreak
         sessions={sessions}
-        currentStreak={currentStreak}
-        longestStreak={longestStreak}
+        currentStreak={allStats.currentStreak}
+        longestStreak={allStats.longestStreak}
       />
 
       <DashboardFilters
@@ -149,9 +121,24 @@ export function TabStats({
         onClearFilters={handleClearFilters}
       />
 
+      {/* Stats Cards (session count + total practice time) */}
+      <StatsCards
+        stats={{ ...filteredStats, sessionsThisWeek: filteredSessions.length }}
+        selectedRange={selectedRange}
+      />
+
+      {/* Charts grid: Time by Event + Event Pie */}
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
+        <TimeByEventChart sessions={filteredSessions} />
+        <EventPieChart sessions={filteredSessions} />
+      </div>
+
       <DailyBarChart sessions={filteredSessions} />
-      <TimeByEventChart sessions={filteredSessions} />
       <EventBreakdownTable sessions={filteredSessions} />
+
+      {/* Solve Analytics (timer solve-level charts) — owner only */}
+      {isOwner && <SolveAnalytics practicedEvents={practicedEvents} />}
+
       <SessionLog sessions={filteredSessions} readOnly={!isOwner} />
     </div>
   )

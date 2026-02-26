@@ -16,11 +16,13 @@ export function TabOfficial({
   isOwner,
   sorKinchStats,
   onWcaUpdate,
+  mainEventsOverride,
 }: {
   profile: Profile
   isOwner: boolean
   sorKinchStats?: UserSorKinchStats | null
   onWcaUpdate?: (newWcaId: string | null) => void
+  mainEventsOverride?: string[]
 }) {
   const [wcaId, setWcaId] = useState(profile.wca_id)
   const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
@@ -69,7 +71,7 @@ export function TabOfficial({
           wcaId={wcaId}
           isOwner={isOwner}
           customEventOrder={profile.wca_event_order}
-          mainEvents={profile.main_events ?? []}
+          mainEvents={mainEventsOverride ?? profile.main_events ?? []}
         />
       )}
 
