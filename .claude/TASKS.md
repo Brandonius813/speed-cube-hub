@@ -2212,12 +2212,17 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/timer/swipe-directions.ts`, `src/components/timer/swipe-feedback.tsx`, `src/components/timer/timer-display.tsx` |
 
-8-direction: up-left=DNF, up=+2, up-right=OK, left=prev, right=next, down-left=comment, down=delete, down-right=inspect.
+- ✅ 8-direction swipe on timer display area (after solving)
+- ✅ ↑ = +2, ↗ = OK, ↖ = DNF, ← = Undo, → = Skip scramble, ↙ = Note, ↓ = Delete, ↘ = Toggle inspection
+- ✅ Swipe vs. hold differentiation (40px threshold cancels hold, fires swipe)
+- ✅ Visual feedback overlay showing action name + directional arrow
+- ✅ Hint text updated on mobile: "Hold to start · Swipe for actions"
 
 ---
 
@@ -2571,12 +2576,13 @@ Batch select mode in solve list. "Select" button appears above solves when 2+ so
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | T132 |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/timer-content.tsx`, `src/components/timer/timer-settings.tsx` |
 
-Auto-export every N solves, configurable, keep last 10 backups.
+Auto-download JSON backup every N solves (Off/10/25/50/100). Setting in timer settings popover, persisted to localStorage. Trigger in `saveSolve()` downloads JSON file when solve count hits interval.
 
 ---
 

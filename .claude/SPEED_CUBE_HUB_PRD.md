@@ -222,14 +222,14 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
 - [x] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
 - [x] 4x4+ training (edges, centers, Yau/Hoya stages) + Pyra, Skewb, SQ1, Mega training (T121)
-- [ ] Case filtering UI (checkbox grid, probability control) (T122)
+- [x] Case filtering UI (checkbox grid, probability control) (T122)
 - [ ] Per-case performance statistics (T123)
 
 **Phase 17 — Timer Modes & Advanced Input — T124-T128:**
 - [ ] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
 - [x] Configurable timer hold duration (T125)
 - [x] Timer display customization (size, small decimals, update mode) (T126)
-- [ ] Mobile swipe gestures (8-direction, matching csTimer) (T127)
+- [x] Mobile swipe gestures (8-direction, matching csTimer) (T127)
 - [x] Manual scramble input mode (T128)
 
 **Phase 18 — Session Data Features — T129-T133:**
@@ -266,7 +266,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Hide all elements during timing (T149)
 - [x] Scramble display options (size, font, alignment) (T150)
 - [x] Multiple solve deletion (batch select) (T151)
-- [ ] Auto-backup / auto-export (T152)
+- [x] Auto-backup / auto-export (T152)
 
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
