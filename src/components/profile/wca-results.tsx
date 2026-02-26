@@ -316,8 +316,8 @@ export function WcaResults({
               <SegmentedToggle
                 options={[
                   { value: "world", label: "WR" },
-                  { value: "national", label: "NR" },
                   { value: "continental", label: "CR" },
+                  { value: "national", label: "NR" },
                 ]}
                 value={rankType}
                 onChange={(v) => setRankType(v as RankType)}
