@@ -165,6 +165,7 @@ export function WcaResults({
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sortBy, setSortBy] = useState<SortMode>("default")
+  const [sortField, setSortField] = useState<"single" | "average">("single")
   const [rankType, setRankType] = useState<RankType>("world")
   const [customOrder, setCustomOrder] = useState<string[]>(
     customEventOrder ?? []
@@ -183,15 +184,15 @@ export function WcaResults({
   const sortedEvents = (() => {
     if (sortBy === "rank") {
       return [...events].sort((a, b) => {
-        const aRank = getRankValue(a.single, rankType) ?? 999999
-        const bRank = getRankValue(b.single, rankType) ?? 999999
+        const aRank = getRankValue(a[sortField], rankType) ?? 999999
+        const bRank = getRankValue(b[sortField], rankType) ?? 999999
         return aRank - bRank
       })
     }
     if (sortBy === "time") {
       return [...events].sort((a, b) => {
-        const aTime = a.single?.best ?? 999999
-        const bTime = b.single?.best ?? 999999
+        const aTime = a[sortField]?.best ?? 999999
+        const bTime = b[sortField]?.best ?? 999999
         return aTime - bTime
       })
     }
@@ -327,6 +328,19 @@ export function WcaResults({
                 onChange={(v) => setRankType(v as RankType)}
               />
             </div>
+            {(sortBy === "rank" || sortBy === "time") && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">By:</span>
+                <SegmentedToggle
+                  options={[
+                    { value: "single", label: "Single" },
+                    { value: "average", label: "Avg" },
+                  ]}
+                  value={sortField}
+                  onChange={(v) => setSortField(v as "single" | "average")}
+                />
+              </div>
+            )}
           </div>
         )}
 
