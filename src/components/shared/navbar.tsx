@@ -143,10 +143,6 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
-            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
-              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
-            </Link>
             <Link href="/log">
               <Button
                 size="sm"
@@ -154,6 +150,10 @@ export function Navbar() {
               >
                 Log Session
               </Button>
+            </Link>
+            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
+              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
             </Link>
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
@@ -183,7 +183,7 @@ export function Navbar() {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="rounded-full transition-all hover:ring-4 hover:ring-white/10"
+                  className="rounded-full p-1 transition-all hover:bg-white/10"
                   aria-label="User menu"
                 >
                   <Avatar className={cn("h-14 w-14 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
