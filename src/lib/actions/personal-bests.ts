@@ -349,6 +349,36 @@ export async function getPBHistory(
   return { data: (data || []).map(mapPBRow) }
 }
 
+/** Fetch all PB records for a given event (all pb_types). Public — works for any userId. */
+export async function getPBHistoryForEvent(
+  event: string,
+  userId?: string
+): Promise<{ data: PBRecord[]; error?: string }> {
+  const supabase = await createClient()
+
+  let uid = userId
+  if (!uid) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { data: [], error: "Not authenticated" }
+    uid = user.id
+  }
+
+  const { data, error } = await supabase
+    .from("personal_bests")
+    .select("*")
+    .eq("user_id", uid)
+    .eq("event", event)
+    .order("date_achieved", { ascending: true })
+
+  if (error) {
+    return { data: [], error: error.message }
+  }
+
+  return { data: (data || []).map(mapPBRow) }
+}
+
 export async function deletePB(
   pbId: string
 ): Promise<{ success: boolean; error?: string }> {

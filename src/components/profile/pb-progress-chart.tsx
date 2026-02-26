@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   LineChart,
   Line,
@@ -22,14 +22,16 @@ import {
 import { TrendingDown } from "lucide-react"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import { WCA_EVENTS } from "@/lib/constants"
-import type { Session } from "@/lib/types"
+import { getPBHistoryForEvent } from "@/lib/actions/personal-bests"
+import type { PBRecord } from "@/lib/types"
 
 function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
 }
 
 function formatTime(seconds: number, eventId?: string): string {
-  if (eventId === "333fm") return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
+  if (eventId === "333fm")
+    return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
   if (seconds >= 60) {
     const min = Math.floor(seconds / 60)
     const sec = (seconds % 60).toFixed(2)
@@ -38,131 +40,201 @@ function formatTime(seconds: number, eventId?: string): string {
   return `${seconds.toFixed(2)}s`
 }
 
-type ChartPoint = {
-  date: string
-  displayDate: string
-  runningSingle: number | null
-  runningAvg: number | null
+/** Colors for different PB types */
+const PB_TYPE_COLORS: Record<string, string> = {
+  Single: "#22D3EE",
+  Ao5: "#6366F1",
+  Ao12: "#F97316",
+  Ao25: "#10B981",
+  Ao50: "#EC4899",
+  Ao100: "#F59E0B",
+  Ao200: "#A855F7",
+  Ao1000: "#EF4444",
+  Mo3: "#6366F1",
 }
 
-function CustomTooltip({
+function getTypeColor(pbType: string): string {
+  return PB_TYPE_COLORS[pbType] ?? "#8B8BA3"
+}
+
+function ChartTooltip({
   active,
   payload,
   label,
   eventId,
 }: {
   active?: boolean
-  payload?: Array<{ dataKey: string; value: number | null; color: string; name: string }>
+  payload?: Array<{
+    dataKey: string
+    value: number | null
+    color: string
+    name: string
+  }>
   label?: string
   eventId?: string
 }) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-        <p className="mb-1 font-medium text-foreground">{label}</p>
-        {payload.map(
-          (entry) =>
-            entry.value !== null && (
-              <div key={entry.dataKey} className="flex items-center gap-2">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="text-muted-foreground">
-                  {entry.name}: <span className="font-mono text-foreground">{formatTime(entry.value, eventId)}</span>
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 font-medium text-foreground">{label}</p>
+      {payload.map(
+        (entry) =>
+          entry.value !== null && (
+            <div key={entry.dataKey} className="flex items-center gap-2">
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-muted-foreground">
+                {entry.name}:{" "}
+                <span className="font-mono text-foreground">
+                  {formatTime(entry.value, eventId)}
                 </span>
-              </div>
-            )
-        )}
-      </div>
-    )
-  }
-  return null
+              </span>
+            </div>
+          )
+      )}
+    </div>
+  )
 }
 
-export function PBProgressChart({ sessions }: { sessions: Session[] }) {
-  // Find events that have at least one time value (single or avg)
-  const eventsWithTimes = useMemo(() => {
+export function PBProgressChart({
+  pbs,
+  userId,
+  selectedEvent: externalEvent,
+  onEventChange,
+}: {
+  pbs: PBRecord[]
+  userId?: string
+  selectedEvent?: string
+  onEventChange?: (event: string) => void
+}) {
+  // Derive available events from current PB records
+  const eventsWithPBs = useMemo(() => {
     const eventSet = new Set<string>()
-    for (const s of sessions) {
-      if (s.best_time !== null || s.avg_time !== null) {
-        eventSet.add(s.event)
-      }
+    for (const pb of pbs) {
+      eventSet.add(pb.event)
     }
-    // Sort by WCA event order
     return Array.from(eventSet).sort((a, b) => {
       const aIdx = WCA_EVENTS.findIndex((e) => e.id === a)
       const bIdx = WCA_EVENTS.findIndex((e) => e.id === b)
       return aIdx - bIdx
     })
-  }, [sessions])
+  }, [pbs])
 
-  const [selectedEvent, setSelectedEvent] = useState<string>(
-    eventsWithTimes[0] ?? ""
+  const [internalEvent, setInternalEvent] = useState<string>(
+    eventsWithPBs[0] ?? ""
   )
 
-  // Compute running PB minimums for the selected event
-  const chartData: ChartPoint[] = useMemo(() => {
-    if (!selectedEvent) return []
+  // Use external event if provided, otherwise internal
+  const selectedEvent = externalEvent ?? internalEvent
 
-    // Filter sessions for this event that have at least one time, sort chronologically
-    const eventSessions = sessions
-      .filter(
-        (s) =>
-          s.event === selectedEvent &&
-          (s.best_time !== null || s.avg_time !== null)
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.session_date).getTime() - new Date(b.session_date).getTime()
-      )
+  // Sync internal state when external event changes
+  useEffect(() => {
+    if (externalEvent && eventsWithPBs.includes(externalEvent)) {
+      setInternalEvent(externalEvent)
+    }
+  }, [externalEvent, eventsWithPBs])
 
-    let runningSingle: number | null = null
-    let runningAvg: number | null = null
-    const points: ChartPoint[] = []
+  function handleEventChange(event: string) {
+    setInternalEvent(event)
+    onEventChange?.(event)
+  }
 
-    for (const session of eventSessions) {
-      let changed = false
+  // Fetch PB history for the selected event
+  const [history, setHistory] = useState<PBRecord[]>([])
+  const [loading, setLoading] = useState(false)
 
-      if (
-        session.best_time !== null &&
-        (runningSingle === null || session.best_time < runningSingle)
-      ) {
-        runningSingle = session.best_time
-        changed = true
+  useEffect(() => {
+    if (!selectedEvent) return
+
+    let cancelled = false
+    setLoading(true)
+
+    getPBHistoryForEvent(selectedEvent, userId).then((result) => {
+      if (!cancelled) {
+        setHistory(result.data)
+        setLoading(false)
       }
+    })
 
-      if (
-        session.avg_time !== null &&
-        (runningAvg === null || session.avg_time < runningAvg)
-      ) {
-        runningAvg = session.avg_time
-        changed = true
-      }
+    return () => {
+      cancelled = true
+    }
+  }, [selectedEvent, userId])
 
-      // Only add a point when a PB was broken (or for the first session)
-      if (changed) {
-        const d = new Date(session.session_date + "T00:00:00")
-        points.push({
-          date: session.session_date,
-          displayDate: d.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          runningSingle,
-          runningAvg,
-        })
-      }
+  // Group history by pb_type and build chart data
+  const { chartData, pbTypes } = useMemo(() => {
+    if (history.length === 0) return { chartData: [], pbTypes: [] }
+
+    // Group by pbType
+    const byType: Record<string, PBRecord[]> = {}
+    for (const pb of history) {
+      if (!byType[pb.pb_type]) byType[pb.pb_type] = []
+      byType[pb.pb_type].push(pb)
     }
 
-    return points
-  }, [sessions, selectedEvent])
+    // Get all unique dates across all types, sorted chronologically
+    const allDates = new Set<string>()
+    for (const records of Object.values(byType)) {
+      for (const pb of records) {
+        allDates.add(pb.date_achieved)
+      }
+    }
+    const sortedDates = Array.from(allDates).sort()
 
-  // Don't render at all if there are no events with times
-  if (eventsWithTimes.length === 0) return null
+    // Build the running-best per type at each date
+    const types = Object.keys(byType)
 
-  const hasSingles = chartData.some((p) => p.runningSingle !== null)
-  const hasAvgs = chartData.some((p) => p.runningAvg !== null)
+    // For each type, sort records by date and compute running best
+    const runningBests: Record<string, Map<string, number>> = {}
+    for (const type of types) {
+      const records = byType[type].sort(
+        (a, b) =>
+          new Date(a.date_achieved).getTime() -
+          new Date(b.date_achieved).getTime()
+      )
+      let best: number | null = null
+      const bestMap = new Map<string, number>()
+
+      for (const pb of records) {
+        if (best === null || pb.time_seconds < best) {
+          best = pb.time_seconds
+        }
+        bestMap.set(pb.date_achieved, best)
+      }
+      runningBests[type] = bestMap
+    }
+
+    // Build chart points — one per date, with the running best per type
+    const points: Record<string, unknown>[] = []
+    const lastKnown: Record<string, number | null> = {}
+    for (const type of types) lastKnown[type] = null
+
+    for (const date of sortedDates) {
+      const d = new Date(date + "T12:00:00")
+      const point: Record<string, unknown> = {
+        displayDate: d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+      }
+
+      for (const type of types) {
+        const val = runningBests[type].get(date)
+        if (val !== undefined) lastKnown[type] = val
+        point[type] = lastKnown[type]
+      }
+
+      points.push(point)
+    }
+
+    return { chartData: points, pbTypes: types }
+  }, [history])
+
+  if (eventsWithPBs.length === 0) return null
+
+  const hasEnoughData = chartData.length >= 2
 
   return (
     <Card className="border-border/50 bg-card">
@@ -172,12 +244,12 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
             <TrendingDown className="h-5 w-5 text-primary" />
             PB History
           </CardTitle>
-          <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+          <Select value={selectedEvent} onValueChange={handleEventChange}>
             <SelectTrigger className="min-h-11 w-full border-border bg-secondary/50 sm:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-border bg-card">
-              {eventsWithTimes.map((eventId) => (
+              {eventsWithPBs.map((eventId) => (
                 <SelectItem key={eventId} value={eventId}>
                   <span className="flex items-center gap-2">
                     <CubingIcon event={eventId} className="text-sm" />
@@ -190,9 +262,12 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        {chartData.length < 2 ? (
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : !hasEnoughData ? (
           <p className="text-sm text-muted-foreground">
-            Log more sessions with times for {getEventLabel(selectedEvent)} to see your PB progression.
+            Log more PBs for {getEventLabel(selectedEvent)} to see your
+            progression.
           </p>
         ) : (
           <div className="h-[250px]">
@@ -216,32 +291,24 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
                   tickFormatter={(v) => formatTime(v, selectedEvent)}
                   domain={["dataMin", "dataMax"]}
                 />
-                <Tooltip content={<CustomTooltip eventId={selectedEvent} />} />
+                <Tooltip
+                  content={<ChartTooltip eventId={selectedEvent} />}
+                />
                 <Legend
                   wrapperStyle={{ fontSize: 12, color: "#8B8BA3" }}
                 />
-                {hasSingles && (
+                {pbTypes.map((type) => (
                   <Line
+                    key={type}
                     type="stepAfter"
-                    dataKey="runningSingle"
-                    name="Best Single"
-                    stroke="#22D3EE"
+                    dataKey={type}
+                    name={type}
+                    stroke={getTypeColor(type)}
                     strokeWidth={2}
-                    dot={{ r: 3, fill: "#22D3EE" }}
+                    dot={{ r: 3, fill: getTypeColor(type) }}
                     connectNulls
                   />
-                )}
-                {hasAvgs && (
-                  <Line
-                    type="stepAfter"
-                    dataKey="runningAvg"
-                    name="Best Avg"
-                    stroke="#6366F1"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: "#6366F1" }}
-                    connectNulls
-                  />
-                )}
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>

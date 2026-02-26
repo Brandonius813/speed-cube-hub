@@ -25,10 +25,12 @@ export function PBGrid({
   sessions,
   displayName,
   handle,
+  onEventClick,
 }: {
   sessions: Session[]
   displayName?: string
   handle?: string
+  onEventClick?: (event: string) => void
 }) {
   // Compute best singles and averages per event from session data
   const eventBests: Record<string, { bestSingle: number | null; bestAvg: number | null }> = {}
@@ -96,7 +98,8 @@ export function PBGrid({
           {pbs.map((pb) => (
             <div
               key={pb.event}
-              className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4"
+              className={`flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4${onEventClick ? " cursor-pointer transition hover:bg-secondary/80" : ""}`}
+              onClick={onEventClick ? () => onEventClick(pb.event) : undefined}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <CubingIcon event={pb.event} className="shrink-0 text-base text-muted-foreground" />

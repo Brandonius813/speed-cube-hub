@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { PBGrid } from "@/components/profile/pb-grid"
 import { PBProgressChart } from "@/components/profile/pb-progress-chart"
 import type { Profile, Session, PBRecord } from "@/lib/types"
@@ -22,7 +23,13 @@ function formatTime(seconds: number, eventId?: string): string {
 }
 
 /** Read-only PB display for visitors (no edit/delete/add) */
-function ReadOnlyPBGrid({ pbs }: { pbs: PBRecord[] }) {
+function ReadOnlyPBGrid({
+  pbs,
+  onEventClick,
+}: {
+  pbs: PBRecord[]
+  onEventClick?: (event: string) => void
+}) {
   if (pbs.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">No personal bests logged yet.</p>
@@ -48,7 +55,11 @@ function ReadOnlyPBGrid({ pbs }: { pbs: PBRecord[] }) {
       {sortedEvents.map((eventId) => {
         const eventPbs = eventMap.get(eventId)!
         return (
-          <Card key={eventId} className="border-border/50 bg-card">
+          <Card
+            key={eventId}
+            className={`border-border/50 bg-card${onEventClick ? " cursor-pointer transition hover:bg-secondary/80" : ""}`}
+            onClick={onEventClick ? () => onEventClick(eventId) : undefined}
+          >
             <CardContent className="p-4">
               <div className="mb-2 flex items-center gap-2">
                 <CubingIcon event={eventId} className="h-5 w-5" />
@@ -85,6 +96,10 @@ export function TabPBs({
   pbs?: PBRecord[]
   isOwner: boolean
 }) {
+  const [selectedEvent, setSelectedEvent] = useState<string | undefined>(
+    undefined
+  )
+
   return (
     <div className="flex flex-col gap-6">
       {isOwner ? (
@@ -92,11 +107,17 @@ export function TabPBs({
           sessions={sessions}
           displayName={profile.display_name}
           handle={profile.handle}
+          onEventClick={setSelectedEvent}
         />
       ) : (
-        <ReadOnlyPBGrid pbs={pbs} />
+        <ReadOnlyPBGrid pbs={pbs} onEventClick={setSelectedEvent} />
       )}
-      <PBProgressChart sessions={sessions} />
+      <PBProgressChart
+        pbs={pbs}
+        userId={profile.id}
+        selectedEvent={selectedEvent}
+        onEventChange={setSelectedEvent}
+      />
     </div>
   )
 }
