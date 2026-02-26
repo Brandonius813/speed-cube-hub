@@ -57,6 +57,10 @@ export function MainCubes({
   // History modal state
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyEvent, setHistoryEvent] = useState<string | null>(null)
+  // Index into the full `history` array for the entry being edited (null = not editing)
+  const [editingHistoryIdx, setEditingHistoryIdx] = useState<number | null>(null)
+  const [historyName, setHistoryName] = useState("")
+  const [historySetup, setHistorySetup] = useState("")
 
   const visibleItems = expanded ? items : items.slice(0, PREVIEW_COUNT)
   const hiddenCount = items.length - PREVIEW_COUNT
@@ -66,8 +70,10 @@ export function MainCubes({
   }
 
   // Get history entries for a specific event, sorted newest first
-  function getEventHistory(eventId: string): CubeHistoryEntry[] {
+  // Returns each entry along with its real index in the full `history` array
+  function getEventHistory(eventId: string): (CubeHistoryEntry & { _idx: number })[] {
     return history
+      .map((h, idx) => ({ ...h, _idx: idx }))
       .filter((h) => h.event === eventId)
       .sort((a, b) => new Date(b.retired_at).getTime() - new Date(a.retired_at).getTime())
   }
@@ -195,6 +201,54 @@ export function MainCubes({
     } else {
       router.refresh()
     }
+  }
+
+  function startEditHistory(realIdx: number) {
+    const entry = history[realIdx]
+    setEditingHistoryIdx(realIdx)
+    setHistoryName(entry.name)
+    setHistorySetup(entry.setup ?? "")
+  }
+
+  function cancelEditHistory() {
+    setEditingHistoryIdx(null)
+    setHistoryName("")
+    setHistorySetup("")
+  }
+
+  async function saveEditHistory() {
+    if (editingHistoryIdx === null) return
+    if (!historyName.trim()) return
+    setSaving(true)
+
+    const updated = [...history]
+    updated[editingHistoryIdx] = {
+      ...updated[editingHistoryIdx],
+      name: historyName.trim(),
+      setup: historySetup.trim(),
+    }
+
+    const result = await updateProfileCubes(items, updated)
+    if (result.success) {
+      setHistory(updated)
+      setEditingHistoryIdx(null)
+      router.refresh()
+    }
+    setSaving(false)
+  }
+
+  async function deleteHistoryEntry(realIdx: number) {
+    setSaving(true)
+    const updated = history.filter((_, i) => i !== realIdx)
+
+    const result = await updateProfileCubes(items, updated)
+    if (result.success) {
+      setHistory(updated)
+      // If we were editing this entry, clear the edit state
+      if (editingHistoryIdx === realIdx) setEditingHistoryIdx(null)
+      router.refresh()
+    }
+    setSaving(false)
   }
 
   // Don't render at all if not owner and no cubes
@@ -461,7 +515,13 @@ export function MainCubes({
       </Dialog>
 
       {/* History Dialog */}
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+      <Dialog
+        open={historyOpen}
+        onOpenChange={(open) => {
+          setHistoryOpen(open)
+          if (!open) cancelEditHistory()
+        }}
+      >
         <DialogContent className="border-border/50 bg-card max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -495,22 +555,95 @@ export function MainCubes({
 
             {/* History entries */}
             {eventHistoryForModal.length > 0 ? (
-              eventHistoryForModal.map((entry, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg border border-border/50 bg-secondary/30 p-3"
-                >
-                  <p className="font-medium text-foreground">{entry.name}</p>
-                  {entry.setup && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {entry.setup}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Retired {formatRetiredDate(entry.retired_at)}
-                  </p>
-                </div>
-              ))
+              eventHistoryForModal.map((entry) => {
+                const isEditing = editingHistoryIdx === entry._idx
+
+                if (isEditing) {
+                  return (
+                    <div
+                      key={entry._idx}
+                      className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-secondary/30 p-3"
+                    >
+                      <Input
+                        value={historyName}
+                        onChange={(e) => setHistoryName(e.target.value)}
+                        placeholder="Cube name"
+                        className="min-h-9 text-sm"
+                        maxLength={100}
+                      />
+                      <Input
+                        value={historySetup}
+                        onChange={(e) => setHistorySetup(e.target.value)}
+                        placeholder="Setup (optional)"
+                        className="min-h-9 text-sm"
+                        maxLength={200}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Retired {formatRetiredDate(entry.retired_at)}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={saveEditHistory}
+                          disabled={saving || !historyName.trim()}
+                          className="min-h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          {saving ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelEditHistory}
+                          disabled={saving}
+                          className="min-h-8 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div
+                    key={entry._idx}
+                    className="rounded-lg border border-border/50 bg-secondary/30 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">{entry.name}</p>
+                        {entry.setup && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {entry.setup}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Retired {formatRetiredDate(entry.retired_at)}
+                        </p>
+                      </div>
+                      {isOwner && (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            onClick={() => startEditHistory(entry._idx)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                            aria-label="Edit history entry"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteHistoryEntry(entry._idx)}
+                            disabled={saving}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                            aria-label="Delete history entry"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
             ) : (
               <p className="text-sm text-muted-foreground py-2">
                 No previous mains for this event.
