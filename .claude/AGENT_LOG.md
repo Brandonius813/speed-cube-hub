@@ -588,3 +588,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** BFS pruning tables for 4-edge cross state (24^4 = 331K entries) build in <100ms per face and give O(1) optimal solutions. Much better than IDA* for this small state space. The `npm run build` lock file issue persists — `rm -rf .next` + `pkill -f "next"` is the standard fix.
 **Blockers:** None
 **Warnings:** Phase 15 is fully done. Phase 16 (Training Scrambles) and beyond are all Available. XCross was deferred from T115 — it requires full F2L state tracking beyond just cross edges.
+
+---
+
+### 2026-02-26 14:30 PT — T115 Finalization + Sync Session
+
+**Task:** T115 (Cross Solver Tool) — finalization and docs
+**Status:** Continued from compacted context. Verified T115 cross solver was already committed (4811f16) along with export (T132) and batch delete (T151) by Claude-Opus-B (5846ec3). Updated PRD to mark T115 as done, added cross-solver.ts and export.ts to CLAUDE.md key files. Build passes clean. Reverted accidental `@anthropic-ai/sdk` re-add in package.json.
+**Files touched:** .claude/SPEED_CUBE_HUB_PRD.md, .claude/CLAUDE.md
+**Learnings:** The linter auto-commits changes between context switches — always check `git log` to see what was already committed before attempting to commit.
+**Blockers:** None
+**Warnings:** Another session has uncommitted navbar changes (import link) and untracked `src/app/(main)/import/` route — work in progress, don't touch.
