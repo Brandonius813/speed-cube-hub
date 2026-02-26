@@ -425,3 +425,18 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `pbs_main_events` and `main_events` were separate DB columns serving similar purposes — now unified by saving to both in a single update.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-02-28 10:15 PT — PBs Tab Redesign Session
+
+**Task:** General work — Redesign PBs tab: compact grid + click-to-expand + inline history
+**Status:** Completed full PBs tab redesign per user feedback:
+1. **Compact grid view:** Each event shows as a small row-style card with icon, name, and 1-2 key PB values (defaults: Single + Ao5, or Single + Mo3 for BLD/6x6/7x7). Much more compact than the previous full-card layout.
+2. **EventDetailModal:** Clicking an event card opens a modal showing ALL PB types with times, dates, "add" buttons for missing types. Eye icon toggles let owners customize which types display on the front grid.
+3. **Inline PB history:** Selecting a PB type in the EventDetailModal closes the modal and shows the history inline below the PB Progress Chart — progression line chart + full record list with edit/delete and "Current PB" badge. Replaces the old PBHistoryModal popup approach.
+4. Also merged to main for production deployment.
+**Files touched:** src/components/profile/tab-pbs.tsx (rewritten), src/components/profile/event-detail-modal.tsx (new), src/components/profile/pb-history-inline.tsx (new)
+**Learnings:** The `getDefaultDisplayTypes()` function in event-detail-modal.tsx centralizes the per-event default display types — BLD/FMC/6x6/7x7 get Single+Mo3, Multi-BLD gets just Single, everything else gets Single+Ao5. Display type overrides are in-memory only (no DB persistence yet).
+**Blockers:** None
+**Warnings:** None
