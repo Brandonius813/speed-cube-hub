@@ -136,12 +136,12 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Make createNotification/checkAndAwardMilestones internal helpers (T43)
 - [x] Add Zod input validation to session/PB server actions (T44)
 - [x] Sanitize PostgREST search filter in searchProfiles (T45)
-- [ ] Reduce admin client overuse — fix RLS policies (T46)
-- [ ] Fix leaderboards — move aggregation to database (T47)
-- [ ] Fix landing page stats — use database aggregation (T48)
-- [ ] Fix navbar — reduce server calls from 8 to 1 (T49)
-- [ ] Fix dashboard — deduplicate session fetches + add limits (T50)
-- [ ] Replace select("*") with explicit column lists (T51)
+- [x] Reduce admin client overuse — fix RLS policies (T46)
+- [x] Fix leaderboards — move aggregation to database (T47)
+- [x] Fix landing page stats — use database aggregation (T48)
+- [x] Fix navbar — reduce server calls from 8 to 1 (T49)
+- [x] Fix dashboard — deduplicate session fetches + add limits (T50)
+- [x] Replace select("*") with explicit column lists (T51)
 
 ### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
 

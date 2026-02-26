@@ -61,7 +61,7 @@ export async function submitFeedback(
   }
 
   // Send email notification (don't block the response on failure)
-  const displayName = profile?.display_name ?? "Unknown User"
+  const displayName = (profile?.display_name ?? "Unknown User").replace(/[\r\n]/g, " ")
   const handle = profile?.handle ? `@${profile.handle}` : ""
 
   getResend().emails

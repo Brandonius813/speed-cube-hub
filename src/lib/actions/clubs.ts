@@ -29,7 +29,10 @@ export async function getClubs(query?: string): Promise<{
     .order("created_at", { ascending: false })
 
   if (query && query.trim()) {
-    clubQuery = clubQuery.ilike("name", `%${query.trim()}%`)
+    const safe = query.trim().replace(/[,.()"\\%_]/g, "")
+    if (safe.length >= 1) {
+      clubQuery = clubQuery.ilike("name", `%${safe}%`)
+    }
   }
 
   const { data: clubs, error } = await clubQuery

@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get("code")
   const rawNext = searchParams.get("next") ?? "/practice-stats"
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/practice-stats"
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/practice-stats"
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url))

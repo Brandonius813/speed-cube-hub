@@ -87,7 +87,7 @@ export async function searchProfiles(
   // Text search across name, handle, and location
   // Sanitize input: strip PostgREST filter syntax chars to prevent filter injection via .or()
   if (trimmed.length >= 2) {
-    const safe = trimmed.replace(/[,.()"\\]/g, "")
+    const safe = trimmed.replace(/[,.()"\\:!*%_]/g, "")
     if (safe.length >= 2) {
       const searchTerm = `%${safe}%`
       qb = qb.or(
