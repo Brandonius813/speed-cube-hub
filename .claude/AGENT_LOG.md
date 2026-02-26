@@ -599,3 +599,16 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The linter auto-commits changes between context switches — always check `git log` to see what was already committed before attempting to commit.
 **Blockers:** None
 **Warnings:** Another session has uncommitted navbar changes (import link) and untracked `src/app/(main)/import/` route — work in progress, don't touch.
+
+---
+
+### 2026-02-26 14:45 PT — Timer Export + Batch Delete Session
+
+**Task:** T132 (Export Timer Data) + T151 (Multiple Solve Deletion)
+**Status:** Completed both tasks (committed in 5846ec3):
+- **T132:** Created `src/lib/timer/export.ts` with 4 export formats (CSV, JSON, csTimer TXT, clipboard stats). Added export dropdown button (download icon) in `timer-top-bar.tsx` next to "End Practice". Files named `{sessionName}_{date}.{ext}`.
+- **T151:** Added batch select mode to `solve-list.tsx` — "Select" button appears with 2+ solves, checkbox UI, "All" + "Delete" actions, confirmation dialog. Created `deleteSolves()` server action in `timer.ts` using Supabase `.in()` for single-query batch delete. Works in Normal + Comp Sim modes.
+**Files touched:** src/lib/timer/export.ts (new), src/components/timer/timer-top-bar.tsx, src/components/timer/timer-content.tsx, src/components/timer/timer-sidebar.tsx, src/components/timer/solve-list.tsx, src/lib/actions/timer.ts, .claude/TASKS.md
+**Learnings:** Dev branch build fails due to untracked local files from other sessions (import feature, cross solver). `npx tsc --noEmit` on specific files is the safe way to verify your own code compiles.
+**Blockers:** None
+**Warnings:** Untracked files on disk from other sessions cause Next.js build failures. Don't commit `src/app/api/import/`, `src/components/import/` unless completing those features.
