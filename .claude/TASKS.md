@@ -2571,7 +2571,8 @@ Batch select mode in solve list. "Select" button appears above solves when 2+ so
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T132 |
 | **Estimated scope** | 1-2 files |
 

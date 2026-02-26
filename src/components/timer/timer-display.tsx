@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { formatTimeMs } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
+import {
+  getSwipeDirection,
+  SWIPE_THRESHOLD,
+  type SwipeDirection,
+} from "@/lib/timer/swipe-directions"
 
 type TimerState = "idle" | "holding" | "ready" | "running" | "stopped"
 
@@ -25,9 +30,12 @@ const SMALL_DECIMAL_SIZE: Record<TimerSize, string> = {
   large: "text-4xl sm:text-5xl md:text-6xl lg:text-7xl",
 }
 
+export type { SwipeDirection }
+
 type TimerDisplayProps = {
   onSolveComplete: (timeMs: number) => void
   onRunningChange?: (isRunning: boolean) => void
+  onSwipe?: (direction: SwipeDirection) => void
   lastTime: number | null
   timerUpdateMode?: TimerUpdateMode
   timerSize?: TimerSize
@@ -36,11 +44,14 @@ type TimerDisplayProps = {
   disabled?: boolean
   inspectionActive?: boolean
   onStartInspection?: () => void
+  /** Whether there are solves to apply swipe actions to */
+  hasSolves?: boolean
 }
 
 export function TimerDisplay({
   onSolveComplete,
   onRunningChange,
+  onSwipe,
   lastTime,
   timerUpdateMode = "realtime",
   timerSize = "large",
@@ -49,6 +60,7 @@ export function TimerDisplay({
   disabled = false,
   inspectionActive = false,
   onStartInspection,
+  hasSolves = false,
 }: TimerDisplayProps) {
   const [timerState, setTimerState] = useState<TimerState>("idle")
   const [displayTime, setDisplayTime] = useState(0)
@@ -56,6 +68,10 @@ export function TimerDisplay({
   const animFrameRef = useRef<number | null>(null)
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerStateRef = useRef<TimerState>("idle")
+
+  // Swipe gesture tracking
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const isSwipingRef = useRef(false)
 
   // Keep ref in sync with state for event handlers
   useEffect(() => {
@@ -249,6 +265,7 @@ export function TimerDisplay({
     switch (timerState) {
       case "idle":
         if (inspectionActive) return "Press space to start inspection"
+        if (hasSolves && onSwipe) return "Hold to start · Swipe for actions"
         return "Hold space to start"
       case "holding":
         return "Keep holding..."
@@ -257,21 +274,83 @@ export function TimerDisplay({
       case "running":
         return "Press any key to stop"
       case "stopped":
+        if (hasSolves && onSwipe) return "Hold for next · Swipe for actions"
         return "Hold space for next solve"
     }
   }
 
+  // Touch handlers with swipe detection
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const touch = e.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    isSwipingRef.current = false
+
+    // If running, always stop immediately (no swipe check)
+    if (timerStateRef.current === "running") {
+      handleHoldStart()
+      return
+    }
+
+    handleHoldStart()
+  }, [handleHoldStart])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    if (!touchStartRef.current || isSwipingRef.current) return
+
+    // Swipe only works when timer is idle or stopped AND there are solves
+    const state = timerStateRef.current
+    if (state !== "idle" && state !== "stopped" && state !== "holding") return
+    if (!hasSolves || !onSwipe) return
+
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    if (dist >= SWIPE_THRESHOLD) {
+      // Movement exceeded threshold — this is a swipe, cancel hold
+      isSwipingRef.current = true
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current)
+        holdTimerRef.current = null
+      }
+      // Reset timer state since we're swiping, not starting
+      if (state === "holding") {
+        setTimerState("idle")
+      }
+    }
+  }, [hasSolves, onSwipe])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+
+    if (isSwipingRef.current && touchStartRef.current && onSwipe) {
+      // Compute swipe direction from start to end
+      const touch = e.changedTouches[0]
+      const dx = touch.clientX - touchStartRef.current.x
+      const dy = touch.clientY - touchStartRef.current.y
+      const direction = getSwipeDirection(dx, dy)
+      if (direction) {
+        onSwipe(direction)
+      }
+      touchStartRef.current = null
+      isSwipingRef.current = false
+      return
+    }
+
+    touchStartRef.current = null
+    isSwipingRef.current = false
+    handleHoldEnd()
+  }, [handleHoldEnd, onSwipe])
+
   return (
     <div
       className="flex flex-col items-center justify-center flex-1 select-none touch-none"
-      onTouchStart={(e) => {
-        e.preventDefault()
-        handleHoldStart()
-      }}
-      onTouchEnd={(e) => {
-        e.preventDefault()
-        handleHoldEnd()
-      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Big time display */}
       <div

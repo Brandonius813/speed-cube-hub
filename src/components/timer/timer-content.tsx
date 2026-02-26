@@ -12,7 +12,7 @@ import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
-import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, AutoBackupInterval } from "@/components/timer/timer-settings"
 import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
@@ -61,6 +61,8 @@ import {
 } from "@/lib/timer/training-scrambles"
 import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
 import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
+import { SwipeFeedback } from "@/components/timer/swipe-feedback"
+import type { SwipeDirection } from "@/components/timer/timer-display"
 
 type PBDetection = {
   event: string
@@ -83,6 +85,7 @@ const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
 const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
 const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
+const AUTO_BACKUP_INTERVAL_KEY = "sch_auto_backup_interval"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 
 export function TimerContent() {
@@ -154,6 +157,13 @@ export function TimerContent() {
     return false
   })
   const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem(AUTO_BACKUP_INTERVAL_KEY) ?? "0", 10)
+      if ([0, 10, 25, 50, 100].includes(stored)) return stored as AutoBackupInterval
+    }
+    return 0
+  })
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
   const [statIndicators, setStatIndicators] = useState(() => {
@@ -196,6 +206,9 @@ export function TimerContent() {
   // Undo state
   const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Swipe gesture feedback
+  const [swipeFeedback, setSwipeFeedback] = useState<SwipeDirection | null>(null)
 
   // Inspection hook
   const inspection = useInspection()
@@ -520,6 +533,14 @@ export function TimerContent() {
       const message = err instanceof Error ? err.message : "Unknown error"
       setSaveError(`Failed to save solve: ${message}`)
     }
+
+    // Auto-backup: download JSON every N solves
+    if (autoBackupInterval > 0 && solveNumber % autoBackupInterval === 0) {
+      const sessionName = currentSession?.name ?? event
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+      const json = solvesToJSON(allSolvesNow, event)
+      downloadFile(json, `backup_${sessionName}_${timestamp}.json`, "application/json")
+    }
   }
 
   const handleSolveComplete = async (timeMs: number) => {
@@ -630,6 +651,42 @@ export function TimerContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [undoSolve])
 
+  // ---- Mobile swipe gesture handler ----
+
+  const handleSwipe = (direction: SwipeDirection) => {
+    if (solves.length === 0) return
+    const lastSolve = solves[solves.length - 1]
+
+    setSwipeFeedback(direction)
+
+    switch (direction) {
+      case "up": // +2
+        handlePenaltyChange(lastSolve.id, lastSolve.penalty === "+2" ? null : "+2")
+        break
+      case "up-right": // OK (remove penalty)
+        handlePenaltyChange(lastSolve.id, null)
+        break
+      case "up-left": // DNF
+        handlePenaltyChange(lastSolve.id, lastSolve.penalty === "DNF" ? null : "DNF")
+        break
+      case "left": // Undo
+        handleUndoLastSolve()
+        break
+      case "right": // Skip (new scramble)
+        loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+        break
+      case "down": // Delete
+        handleDeleteSolve(lastSolve.id)
+        break
+      case "down-left": // Note — open solve detail
+        setSelectedSolve(lastSolve)
+        break
+      case "down-right": // Inspect (toggle inspection)
+        setInspectionEnabled((prev) => !prev)
+        break
+    }
+  }
+
   // ---- Keyboard shortcuts ----
 
   useEffect(() => {
@@ -726,6 +783,13 @@ export function TimerContent() {
     setHideWhileTiming(enabled)
     if (typeof window !== "undefined") {
       localStorage.setItem(HIDE_WHILE_TIMING_KEY, String(enabled))
+    }
+  }
+
+  const handleAutoBackupIntervalChange = (interval: AutoBackupInterval) => {
+    setAutoBackupInterval(interval)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(AUTO_BACKUP_INTERVAL_KEY, String(interval))
     }
   }
 
@@ -998,6 +1062,7 @@ export function TimerContent() {
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
               onRunningChange={setIsTimerRunning}
+              onSwipe={handleSwipe}
               lastTime={lastTime}
               timerUpdateMode={timerUpdateMode}
               timerSize={timerSize}
@@ -1006,6 +1071,7 @@ export function TimerContent() {
               disabled={showSummary || inspection.isInspecting}
               inspectionActive={inspectionEnabled && !inspection.isInspecting}
               onStartInspection={handleStartInspection}
+              hasSolves={solves.length > 0}
             />
           )}
         </div>
@@ -1024,6 +1090,11 @@ export function TimerContent() {
           </button>
         </div>
       )}
+
+      <SwipeFeedback
+        direction={swipeFeedback}
+        onDone={() => setSwipeFeedback(null)}
+      />
 
       <InspectionOverlay
         secondsLeft={inspection.secondsLeft}
