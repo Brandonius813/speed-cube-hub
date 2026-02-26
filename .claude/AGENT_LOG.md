@@ -326,3 +326,18 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `/dashboard` route is a duplicate of `/practice-stats` — both render the same `DashboardContent`. May be worth removing one. The `.next` cache frequently corrupts on macOS — `rm -rf .next` before build is often needed.
 **Blockers:** None
 **Warnings:** Only 3 tasks remain: T80 (homepage revalidation), T81 (count query fix), T82 (image optimization config).
+
+---
+
+### 2026-02-26 18:00 PT — Phase 13 QoL Completion + T91 Bug Fix Session
+
+**Task:** T83–T95 (Phase 13 — QoL Improvements Sprint) — verification and bug fixes
+**Status:** Verified all 13 Phase 13 tasks by reading each source file. Found 9 of 13 already done by prior sessions. Fixed remaining gaps:
+- T91: `country_id` wasn't being passed in `updateProfile` call — added to accepted fields in `profiles.ts`. Composed display location string ("California, USA" or country name) in `handleSave`. Fixed state picker initialization to parse state from composed location on modal reopen.
+- T91: Added scrolling to edit-profile-modal (`max-h-[90vh]` + `overflow-y-auto`)
+- Profile header + sidebar: Linter auto-added country name lookup from `country_id` via `getWcaCountries()` for cases where `profile.location` is empty but `country_id` exists
+- All 13 tasks confirmed complete. TypeScript compiles clean (`npx tsc --noEmit` passes).
+**Files touched:** src/lib/actions/profiles.ts, src/components/profile/edit-profile-modal.tsx, src/components/profile/profile-header.tsx, src/components/profile/profile-sidebar.tsx, .claude/TASKS.md
+**Learnings:** The `country_id` field was accepted in the UI (country dropdown existed) but never actually saved to the database — the `updateProfile` server action didn't include it in its accepted fields. Always verify the full data flow (UI → action → DB) when checking a feature is "done."
+**Blockers:** None — all Phase 12 and Phase 13 tasks are complete.
+**Warnings:** No remaining available tasks in TASKS.md. All phases (1-13) complete.
