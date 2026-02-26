@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check, Image } from "lucide-react"
+import { Copy, Check, Image, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrambleImage } from "@/components/timer/scramble-image"
+import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
 
 type ScrambleDisplayProps = {
   scramble: string | null
@@ -13,6 +14,8 @@ type ScrambleDisplayProps = {
 export function ScrambleDisplay({ scramble, event }: ScrambleDisplayProps) {
   const [copied, setCopied] = useState(false)
   const [showImage, setShowImage] = useState(false)
+  const [showCross, setShowCross] = useState(false)
+  const is3x3 = event === "333"
 
   const handleCopy = async () => {
     if (!scramble) return
@@ -55,6 +58,18 @@ export function ScrambleDisplay({ scramble, event }: ScrambleDisplayProps) {
           {scramble}
         </p>
         <div className="flex shrink-0 gap-0.5">
+          {is3x3 && (
+            <button
+              onClick={() => setShowCross(!showCross)}
+              className={cn(
+                "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
+                showCross && "bg-secondary text-foreground"
+              )}
+              title={showCross ? "Hide cross solutions" : "Show cross solutions"}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => setShowImage(!showImage)}
             className={cn(
@@ -80,6 +95,9 @@ export function ScrambleDisplay({ scramble, event }: ScrambleDisplayProps) {
       </div>
       {showImage && event && (
         <ScrambleImage scramble={scramble} event={event} />
+      )}
+      {showCross && is3x3 && (
+        <CrossSolverPanel scramble={scramble} />
       )}
     </div>
   )
