@@ -38,6 +38,7 @@ export async function followUser(
   await createNotification(followingId, "follow", user.id)
 
   revalidatePath("/feed")
+  revalidatePath("/profile")
   return { success: true }
 }
 
@@ -65,6 +66,7 @@ export async function unfollowUser(
   }
 
   revalidatePath("/feed")
+  revalidatePath("/profile")
   return { success: true }
 }
 
@@ -76,11 +78,11 @@ export async function getFollowCounts(
   const [followersResult, followingResult] = await Promise.all([
     supabase
       .from("follows")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("following_id", userId),
     supabase
       .from("follows")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("follower_id", userId),
   ])
 
