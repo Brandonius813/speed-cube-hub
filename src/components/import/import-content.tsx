@@ -266,7 +266,7 @@ export function ImportContent() {
           setState("previewing")
           return
         }
-        count += result.count ?? sessions.length
+        count += result.inserted ?? sessions.length
       }
 
       if (pbs.length > 0) {
@@ -276,7 +276,7 @@ export function ImportContent() {
           setState("previewing")
           return
         }
-        count += result.count ?? pbs.length
+        count += result.imported ?? pbs.length
       }
 
       setImportedCount(count)
