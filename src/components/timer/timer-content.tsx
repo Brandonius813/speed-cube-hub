@@ -333,6 +333,17 @@ export function TimerContent() {
     }
   }
 
+  const handleNotesChange = async (solveId: string, notes: string) => {
+    setSolves((prev) =>
+      prev.map((s) => (s.id === solveId ? { ...s, notes: notes || null } : s))
+    )
+
+    const result = await updateSolve(solveId, { notes: notes || null })
+    if (result.error && currentSession) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
   const handleModeChange = (newMode: "normal" | "comp_sim") => {
     if (newMode === mode) return
 
@@ -465,6 +476,7 @@ export function TimerContent() {
       event={event}
       onPenaltyChange={handlePenaltyChange}
       onDelete={handleDeleteSolve}
+      onNotesChange={handleNotesChange}
     />
   )
 

@@ -1,27 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { StickyNote } from "lucide-react"
 import { formatTimeMs, getEffectiveTime } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import type { Solve } from "@/lib/types"
 
 type SolveListProps = {
   solves: Solve[]
-  onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
-  onDelete: (solveId: string) => void
+  onSolveClick: (solve: Solve) => void
   mode: "normal" | "comp_sim"
+  bestSingleTime?: number | null
 }
 
 export function SolveList({
   solves,
-  onPenaltyChange,
-  onDelete,
+  onSolveClick,
   mode,
+  bestSingleTime,
 }: SolveListProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-
   if (solves.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4">
@@ -33,31 +29,28 @@ export function SolveList({
   // Reverse for display (most recent first)
   const displaySolves = [...solves].reverse()
 
-  // Group by comp_sim_group if in comp sim mode
   if (mode === "comp_sim") {
     return (
       <CompSimSolveList
         solves={displaySolves}
-        expandedId={expandedId}
-        setExpandedId={setExpandedId}
-        onPenaltyChange={onPenaltyChange}
-        onDelete={onDelete}
+        onSolveClick={onSolveClick}
+        bestSingleTime={bestSingleTime}
       />
     )
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border/50 overflow-y-auto max-h-full">
+    <div className="flex flex-col overflow-y-auto max-h-full">
       {displaySolves.map((solve) => (
         <SolveRow
           key={solve.id}
           solve={solve}
-          isExpanded={expandedId === solve.id}
-          onToggle={() =>
-            setExpandedId(expandedId === solve.id ? null : solve.id)
+          onClick={() => onSolveClick(solve)}
+          isPB={
+            bestSingleTime != null &&
+            getEffectiveTime(solve) === bestSingleTime &&
+            solve.penalty !== "DNF"
           }
-          onPenaltyChange={onPenaltyChange}
-          onDelete={onDelete}
         />
       ))}
     </div>
@@ -66,125 +59,52 @@ export function SolveList({
 
 function SolveRow({
   solve,
-  isExpanded,
-  onToggle,
-  onPenaltyChange,
-  onDelete,
+  onClick,
+  isPB,
 }: {
   solve: Solve
-  isExpanded: boolean
-  onToggle: () => void
-  onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
-  onDelete: (solveId: string) => void
+  onClick: () => void
+  isPB: boolean
 }) {
   const effectiveTime = getEffectiveTime(solve)
   const isDNF = solve.penalty === "DNF"
   const isPlus2 = solve.penalty === "+2"
+  const hasNotes = !!solve.notes
 
   return (
-    <div className="px-3 py-2">
-      <button
-        onClick={onToggle}
-        className="flex items-center w-full gap-2 text-left min-h-11"
-      >
-        <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums font-mono">
-          {solve.solve_number}.
-        </span>
-        <span
-          className={cn(
-            "font-mono text-sm tabular-nums flex-1",
-            isDNF && "text-destructive",
-            isPlus2 && "text-yellow-400"
-          )}
-        >
-          {isDNF ? "DNF" : formatTimeMs(effectiveTime)}
-          {isPlus2 && <span className="text-xs ml-0.5">+</span>}
-        </span>
-        {isExpanded ? (
-          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+    <button
+      onClick={onClick}
+      className="flex items-center w-full gap-2 px-3 py-1.5 text-left hover:bg-secondary/30 transition-colors min-h-[36px]"
+    >
+      <span className="text-[11px] text-muted-foreground/60 w-7 shrink-0 tabular-nums font-mono text-right">
+        {solve.solve_number}.
+      </span>
+      <span
+        className={cn(
+          "font-mono text-sm tabular-nums flex-1",
+          isDNF && "text-destructive line-through",
+          isPlus2 && "text-yellow-400",
+          isPB && !isDNF && !isPlus2 && "text-green-400"
         )}
-      </button>
-
-      {isExpanded && (
-        <div className="pl-10 pb-2 space-y-2">
-          {/* Scramble */}
-          <p className="text-xs text-muted-foreground font-mono break-all leading-relaxed">
-            {solve.scramble}
-          </p>
-
-          {/* Penalty + Delete controls */}
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant={solve.penalty === null ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs px-2"
-              onClick={() => onPenaltyChange(solve.id, null)}
-            >
-              OK
-            </Button>
-            <Button
-              variant={solve.penalty === "+2" ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "h-7 text-xs px-2",
-                solve.penalty === "+2" && "bg-yellow-600 hover:bg-yellow-700"
-              )}
-              onClick={() =>
-                onPenaltyChange(
-                  solve.id,
-                  solve.penalty === "+2" ? null : "+2"
-                )
-              }
-            >
-              +2
-            </Button>
-            <Button
-              variant={solve.penalty === "DNF" ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "h-7 text-xs px-2",
-                solve.penalty === "DNF" &&
-                  "bg-destructive hover:bg-destructive/90"
-              )}
-              onClick={() =>
-                onPenaltyChange(
-                  solve.id,
-                  solve.penalty === "DNF" ? null : "DNF"
-                )
-              }
-            >
-              DNF
-            </Button>
-            <div className="flex-1" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs px-2 text-destructive hover:text-destructive"
-              onClick={() => onDelete(solve.id)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
+      >
+        {isDNF ? "DNF" : formatTimeMs(effectiveTime)}
+        {isPlus2 && <span className="text-[10px] ml-0.5">+</span>}
+      </span>
+      {hasNotes && (
+        <StickyNote className="h-3 w-3 text-muted-foreground/40 shrink-0" />
       )}
-    </div>
+    </button>
   )
 }
 
 function CompSimSolveList({
   solves,
-  expandedId,
-  setExpandedId,
-  onPenaltyChange,
-  onDelete,
+  onSolveClick,
+  bestSingleTime,
 }: {
   solves: Solve[]
-  expandedId: string | null
-  setExpandedId: (id: string | null) => void
-  onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
-  onDelete: (solveId: string) => void
+  onSolveClick: (solve: Solve) => void
+  bestSingleTime?: number | null
 }) {
   // Group solves by comp_sim_group
   const groups = new Map<number, Solve[]>()
@@ -198,7 +118,7 @@ function CompSimSolveList({
   const sortedGroups = [...groups.entries()].sort(([a], [b]) => b - a)
 
   return (
-    <div className="flex flex-col divide-y divide-border overflow-y-auto max-h-full">
+    <div className="flex flex-col overflow-y-auto max-h-full">
       {sortedGroups.map(([groupNum, groupSolves]) => {
         // Compute group average (trimmed mean of 5)
         const times = groupSolves.map(getEffectiveTime)
@@ -223,26 +143,25 @@ function CompSimSolveList({
         }
 
         return (
-          <div key={groupNum} className="py-1">
-            <div className="px-3 py-1.5 flex items-center justify-between bg-secondary/30">
-              <span className="text-xs font-medium text-muted-foreground">
+          <div key={groupNum}>
+            <div className="px-3 py-1 flex items-center justify-between bg-secondary/30">
+              <span className="text-[11px] font-medium text-muted-foreground">
                 Ao5 #{groupNum}
               </span>
-              <span className="text-xs font-mono tabular-nums">
+              <span className="text-[11px] font-mono tabular-nums">
                 {groupAvg}
               </span>
             </div>
-            {/* Show solves within group in original order */}
             {[...groupSolves].reverse().map((solve) => (
               <SolveRow
                 key={solve.id}
                 solve={solve}
-                isExpanded={expandedId === solve.id}
-                onToggle={() =>
-                  setExpandedId(expandedId === solve.id ? null : solve.id)
+                onClick={() => onSolveClick(solve)}
+                isPB={
+                  bestSingleTime != null &&
+                  getEffectiveTime(solve) === bestSingleTime &&
+                  solve.penalty !== "DNF"
                 }
-                onPenaltyChange={onPenaltyChange}
-                onDelete={onDelete}
               />
             ))}
           </div>

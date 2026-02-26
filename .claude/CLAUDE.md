@@ -44,6 +44,15 @@ Each page uses a two-file pattern:
 1. **`page.tsx`** (server component) — Fetches data on the server via `Promise.all`, passes results as props. No `force-dynamic` — Next.js auto-detects dynamic pages based on cookie/auth usage.
 2. **`*-content.tsx`** (client component) — Receives initial data as props (no loading spinner), handles interactivity (filters, modals, admin controls). Auth check runs in a `useEffect` to determine `isAdmin` for showing edit/delete buttons.
 
+### Timer Data Hierarchy
+
+The timer uses a three-level data model:
+- **`solve_sessions`** — Persistent, named, event-locked containers (like csTimer sessions). Each has `active_from` (reset point) and `is_tracked` (throwaway toggle).
+- **`timer_sessions`** — Individual practice sittings within a solve session. Created lazily on first solve, finalized on "End Practice."
+- **`sessions`** — Practice log entries for feed/stats/streaks. Created by `finalizeTimerSession` only for tracked solve sessions.
+
+Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`). New users get "Session 1" for 3x3 auto-created on first visit.
+
 ### Server Actions vs Client-Side Supabase
 
 - **Server actions** (`src/lib/actions/*.ts`): Use `"use server"` directive. Called from server components (initial data fetch) and client components (mutations, filtered queries).
@@ -122,6 +131,7 @@ Each page uses a two-file pattern:
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
 - `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager)
+- `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 
