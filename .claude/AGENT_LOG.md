@@ -393,3 +393,21 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The linter properly fixed the `style` prop issue by adding it to all icon components — better than my initial span wrapper approach.
 **Blockers:** None
 **Warnings:** There are 6 uncommitted modified files + 1 untracked SQL migration on dev from a previous session (cube history feature). Don't revert these — they're intentional work that hasn't been committed yet.
+
+---
+
+### 2026-02-27 18:30 PT — Cube History + One-Per-Event Session
+
+**Task:** General work — One main cube per event enforcement + main cube history
+**Status:** Implemented two features:
+1. **One main per event:** When adding a cube for an event that already has a main, the old one is automatically replaced. The add/edit dialog shows a yellow warning ("This will replace your current 3x3 main: GAN 13 MagLev") and the save button changes to "Replace & Save." Server action also enforces uniqueness as a safety net.
+2. **Main cube history:** Replaced mains are archived with a retirement date. Clicking a cube card (if it has history) opens a modal showing the current main + all previous mains sorted newest to oldest. Works for both profile owners and visitors.
+- Added `cube_history` JSONB column to profiles table (migration 022)
+- Added `CubeHistoryEntry` type, updated `Profile` type
+- Updated `updateProfileCubes` server action to accept and save history (capped at 100 entries)
+- Rewrote `main-cubes.tsx` with replacement logic, history modal, and click-to-view
+- Threaded `cubeHistory` prop through `tab-cubes.tsx`, `profile-content.tsx`, `public-profile-content.tsx`
+**Files touched:** src/lib/types.ts, src/lib/actions/profiles.ts, src/components/profile/main-cubes.tsx, src/components/profile/tab-cubes.tsx, src/components/profile/profile-content.tsx, src/components/profile/public-profile-content.tsx, supabase/migrations/022_add_cube_history.sql
+**Learnings:** None new
+**Blockers:** User needs to run SQL in Supabase: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cube_history jsonb DEFAULT '[]'::jsonb;`
+**Warnings:** The `cube_history` column must exist before the preview deploy works. Without it, cube saves will fail with a column-not-found error.
