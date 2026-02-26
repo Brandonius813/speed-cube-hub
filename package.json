@@ -20,6 +20,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "cstimer_module": "^0.1.4",
+    "cubing": "^0.63.3",
     "date-fns": "^4.1.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.575.0",
