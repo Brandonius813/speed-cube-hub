@@ -23,7 +23,7 @@ There are no tests configured in this project yet.
 - **Production URL:** `https://www.speedcubehub.com`
 - **`dev` branch:** All new work goes here. Push triggers Vercel preview deployment.
 - **`main` branch:** Production. Push auto-deploys to speedcubehub.com.
-- **Workflow:** Commit and push to `dev` after every working feature. When user says "go live," merge `dev` into `main` and push.
+- **Workflow:** Commit after every working feature. Push to `dev` only when asked, or in batches when a session ends (each push triggers a Vercel build that costs build minutes). When user says "go live," merge `dev` into `main` and push.
 
 ## Architecture Overview
 
@@ -43,6 +43,15 @@ Each page uses a two-file pattern:
 
 1. **`page.tsx`** (server component) — Fetches data on the server via `Promise.all`, passes results as props. No `force-dynamic` — Next.js auto-detects dynamic pages based on cookie/auth usage.
 2. **`*-content.tsx`** (client component) — Receives initial data as props (no loading spinner), handles interactivity (filters, modals, admin controls). Auth check runs in a `useEffect` to determine `isAdmin` for showing edit/delete buttons.
+
+### Timer Data Hierarchy
+
+The timer uses a three-level data model:
+- **`solve_sessions`** — Persistent, named, event-locked containers (like csTimer sessions). Each has `active_from` (reset point) and `is_tracked` (throwaway toggle).
+- **`timer_sessions`** — Individual practice sittings within a solve session. Created lazily on first solve, finalized on "End Practice."
+- **`sessions`** — Practice log entries for feed/stats/streaks. Created by `finalizeTimerSession` only for tracked solve sessions.
+
+Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`). New users get "Session 1" for 3x3 auto-created on first visit.
 
 ### Server Actions vs Client-Side Supabase
 
@@ -88,7 +97,7 @@ Each page uses a two-file pattern:
 - `src/components/profile/tab-cubes.tsx` — Cubes tab (wrapper around MainCubes)
 - `src/components/profile/tab-official.tsx` — Official tab (WCA results, allrounding, accomplishments)
 - `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, share-button, following-sidebar)
-- `src/app/api/scramble/route.ts` — WCA-standard scramble generation API (runs cubing.js server-side to avoid Turbopack Web Worker issues)
+- `src/lib/timer/scrambles.ts` — Client-side scramble generation using cstimer_module (random-state for 3x3, 2x2, pyraminx, skewb, clock, sq1; random-move for big cubes + megaminx)
 - `src/app/api/og/route.tsx` — OG image generation API (share cards for sessions/PBs, uses @vercel/og)
 - `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components
@@ -116,11 +125,13 @@ Each page uses a two-file pattern:
 - `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
 - `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
 - `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)
-- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent)
+- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent, getSolvesBySession)
+- `src/lib/actions/solve-sessions.ts` — Solve session CRUD (getUserSolveSessions, getSolveSession, createSolveSession, updateSolveSession, resetSolveSession, archiveSolveSession, deleteSolveSession, getOrCreateDefaultSession)
 - `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal)
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager)
+- `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
 
