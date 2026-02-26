@@ -2,23 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ProfileHeader } from "@/components/profile/profile-header"
-import { ProfileStats } from "@/components/profile/profile-stats"
-import { MainCubes } from "@/components/profile/main-cubes"
-import { Accomplishments } from "@/components/profile/accomplishments"
-import { PBGrid } from "@/components/profile/pb-grid"
-import { YtdStats } from "@/components/profile/ytd-stats"
-import { LinksSponsors } from "@/components/profile/links-sponsors"
-import { RecentActivity } from "@/components/profile/recent-activity"
-import { WcaResults } from "@/components/profile/wca-results"
-import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
-import { WcaLink } from "@/components/profile/wca-link"
-import { AllroundingResults } from "@/components/profile/allrounding-results"
-import { BadgesSection } from "@/components/profile/badges-section"
-import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
-import { getWcaResults } from "@/lib/actions/wca"
-import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
-import type { WcaPersonResult } from "@/lib/actions/wca"
+import { EditProfileModal } from "@/components/profile/edit-profile-modal"
+import { ProfileSidebar } from "@/components/profile/profile-sidebar"
+import { ProfileTabs, parseTabParam } from "@/components/profile/profile-tabs"
+import type { ProfileTab } from "@/components/profile/profile-tabs"
+import { TabOverview } from "@/components/profile/tab-overview"
+import { TabPBs } from "@/components/profile/tab-pbs"
+import { TabStats } from "@/components/profile/tab-stats"
+import { TabCubes } from "@/components/profile/tab-cubes"
+import { TabOfficial } from "@/components/profile/tab-official"
+import type { Profile, Session, UserBadge, Badge, PBRecord } from "@/lib/types"
+import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
 
 const WCA_ERROR_MESSAGES: Record<string, string> = {
   denied: "WCA authorization was cancelled.",
@@ -29,17 +23,14 @@ const WCA_ERROR_MESSAGES: Record<string, string> = {
   unknown: "Something went wrong. Please try again.",
 }
 
-import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
-
-type SorKinchStats = UserSorKinchStats | null
-
 export function ProfileContent({
   profile,
   sessions,
-  followerCount,
-  followingCount,
+  followerCount = 0,
+  followingCount = 0,
   userBadges = [],
   allBadges = [],
+  pbs = [],
   sorKinchStats,
 }: {
   profile: Profile
@@ -48,77 +39,47 @@ export function ProfileContent({
   followingCount?: number
   userBadges?: UserBadge[]
   allBadges?: Badge[]
-  sorKinchStats?: SorKinchStats
+  pbs?: PBRecord[]
+  sorKinchStats?: UserSorKinchStats | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [wcaId, setWcaId] = useState(profile.wca_id)
-  const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
-  const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
-  const [wcaError, setWcaError] = useState(false)
+  const [activeTab, setActiveTab] = useState<ProfileTab>(
+    parseTabParam(searchParams.get("tab"))
+  )
+  const [editOpen, setEditOpen] = useState(false)
   const [wcaMessage, setWcaMessage] = useState<{
     type: "success" | "error"
     text: string
   } | null>(null)
 
-  // Fetch WCA data client-side so it doesn't block page load
-  useEffect(() => {
-    if (!wcaId) {
-      setWcaData(null)
-      setWcaLoading(false)
-      return
-    }
-
-    setWcaLoading(true)
-    setWcaError(false)
-    getWcaResults(wcaId)
-      .then((result) => {
-        setWcaData(result.data ?? null)
-        setWcaLoading(false)
-      })
-      .catch(() => {
-        setWcaLoading(false)
-        setWcaError(true)
-      })
-  }, [wcaId])
-
-  // Handle OAuth callback query params
+  // Handle WCA OAuth callback query params
   useEffect(() => {
     const wcaLinked = searchParams.get("wca_linked")
-    const wcaError = searchParams.get("wca_error")
+    const wcaErr = searchParams.get("wca_error")
 
     if (wcaLinked === "true") {
       setWcaMessage({ type: "success", text: "WCA account linked successfully!" })
-      // Clean up the URL
       router.replace("/profile", { scroll: false })
-    } else if (wcaError) {
+    } else if (wcaErr) {
       setWcaMessage({
         type: "error",
-        text: WCA_ERROR_MESSAGES[wcaError] || WCA_ERROR_MESSAGES.unknown,
+        text: WCA_ERROR_MESSAGES[wcaErr] || WCA_ERROR_MESSAGES.unknown,
       })
       router.replace("/profile", { scroll: false })
     }
   }, [searchParams, router])
 
-  function handleWcaUpdate(newWcaId: string | null) {
-    setWcaId(newWcaId)
-    setWcaMessage(null)
-    router.refresh()
-  }
+  const totalPracticeMinutes = sessions.reduce(
+    (sum, s) => sum + s.duration_minutes,
+    0
+  )
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
-      <ProfileHeader
-        profile={profile}
-        isOwner
-        followerCount={followerCount}
-        followingCount={followingCount}
-      />
-      <ProfileStats sessions={sessions} />
-
+    <>
       {wcaMessage && (
         <div
-          className={`rounded-lg border p-3 text-sm ${
+          className={`mb-4 rounded-lg border p-3 text-sm ${
             wcaMessage.type === "success"
               ? "border-green-500/30 bg-green-500/10 text-green-400"
               : "border-destructive/30 bg-destructive/10 text-destructive"
@@ -128,36 +89,64 @@ export function ProfileContent({
         </div>
       )}
 
-      <WcaLink currentWcaId={wcaId} onUpdate={handleWcaUpdate} />
-      {wcaLoading && <WcaResultsSkeleton />}
-      {wcaError && !wcaLoading && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          Failed to load WCA results. Please try refreshing the page.
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        {/* Main content — tabs + active tab */}
+        <div className="min-w-0">
+          <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+          <div className="mt-6">
+            {activeTab === "overview" && (
+              <TabOverview
+                profile={profile}
+                sessions={sessions}
+                isOwner
+                userBadges={userBadges}
+                allBadges={allBadges}
+                followerCount={followerCount}
+                followingCount={followingCount}
+              />
+            )}
+            {activeTab === "pbs" && (
+              <TabPBs
+                profile={profile}
+                sessions={sessions}
+                pbs={pbs}
+                isOwner
+              />
+            )}
+            {activeTab === "stats" && (
+              <TabStats sessions={sessions} isOwner />
+            )}
+            {activeTab === "cubes" && (
+              <TabCubes cubes={profile.cubes ?? []} isOwner />
+            )}
+            {activeTab === "official" && (
+              <TabOfficial
+                profile={profile}
+                isOwner
+                sorKinchStats={sorKinchStats}
+                onWcaUpdate={() => router.refresh()}
+              />
+            )}
+          </div>
         </div>
-      )}
-      {wcaData && (
-        <WcaResults
-          personalRecords={wcaData.personal_records}
-          competitionCount={wcaData.competition_count}
-          wcaId={wcaId}
+
+        {/* Desktop sidebar */}
+        <ProfileSidebar
+          profile={profile}
           isOwner
-          customEventOrder={profile.wca_event_order}
+          followerCount={followerCount}
+          followingCount={followingCount}
+          totalPracticeMinutes={totalPracticeMinutes}
+          onEditProfile={() => setEditOpen(true)}
         />
-      )}
-      {sorKinchStats && <AllroundingResults stats={sorKinchStats} />}
-      <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
-      <YtdStats sessions={sessions} />
-      <MainCubes cubes={profile.cubes ?? []} isOwner />
-      <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner />
-      <BadgesSection
-        userBadges={userBadges}
-        allBadges={allBadges}
-        isOwner
-        isAdmin={false}
+      </div>
+
+      <EditProfileModal
+        profile={profile}
+        open={editOpen}
+        onOpenChange={setEditOpen}
       />
-      <LinksSponsors links={profile.links} isOwner />
-      <PracticeHeatmap sessions={sessions} />
-      <RecentActivity sessions={sessions.slice(0, 10)} />
-    </div>
+    </>
   )
 }

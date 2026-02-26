@@ -1,27 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ProfileHeader } from "@/components/profile/profile-header"
-import { ProfileStats } from "@/components/profile/profile-stats"
-import { MainCubes } from "@/components/profile/main-cubes"
-import { Accomplishments } from "@/components/profile/accomplishments"
-import { PBGrid } from "@/components/profile/pb-grid"
-import { YtdStats } from "@/components/profile/ytd-stats"
-import { LinksSponsors } from "@/components/profile/links-sponsors"
-import { RecentActivity } from "@/components/profile/recent-activity"
-import { WcaResults } from "@/components/profile/wca-results"
-import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
+import { useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { ProfileSidebar } from "@/components/profile/profile-sidebar"
+import { ProfileTabs, parseTabParam } from "@/components/profile/profile-tabs"
+import type { ProfileTab } from "@/components/profile/profile-tabs"
+import { TabOverview } from "@/components/profile/tab-overview"
+import { TabPBs } from "@/components/profile/tab-pbs"
+import { TabStats } from "@/components/profile/tab-stats"
+import { TabCubes } from "@/components/profile/tab-cubes"
+import { TabOfficial } from "@/components/profile/tab-official"
 import { FollowButton } from "@/components/profile/follow-button"
-import { AllroundingResults } from "@/components/profile/allrounding-results"
-import { BadgesSection } from "@/components/profile/badges-section"
-import { PracticeHeatmap } from "@/components/dashboard/practice-heatmap"
-import { getWcaResults } from "@/lib/actions/wca"
-import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
-import type { WcaPersonResult } from "@/lib/actions/wca"
-
+import type { Profile, Session, UserBadge, Badge, PBRecord } from "@/lib/types"
 import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
-
-type SorKinchStats = UserSorKinchStats | null
 
 export function PublicProfileContent({
   profile,
@@ -34,6 +25,7 @@ export function PublicProfileContent({
   userBadges = [],
   allBadges = [],
   isAdmin = false,
+  pbs = [],
   sorKinchStats,
 }: {
   profile: Profile
@@ -46,26 +38,13 @@ export function PublicProfileContent({
   userBadges?: UserBadge[]
   allBadges?: Badge[]
   isAdmin?: boolean
-  sorKinchStats?: SorKinchStats
+  pbs?: PBRecord[]
+  sorKinchStats?: UserSorKinchStats | null
 }) {
-  const [wcaData, setWcaData] = useState<WcaPersonResult | null>(null)
-  const [wcaLoading, setWcaLoading] = useState(!!profile.wca_id)
-  const [wcaError, setWcaError] = useState(false)
-
-  // Fetch WCA data client-side so it doesn't block page load
-  useEffect(() => {
-    if (!profile.wca_id) return
-
-    getWcaResults(profile.wca_id)
-      .then((result) => {
-        setWcaData(result.data ?? null)
-        setWcaLoading(false)
-      })
-      .catch(() => {
-        setWcaLoading(false)
-        setWcaError(true)
-      })
-  }, [profile.wca_id])
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<ProfileTab>(
+    parseTabParam(searchParams.get("tab"))
+  )
 
   const followButton =
     !isOwner && isLoggedIn ? (
@@ -75,45 +54,64 @@ export function PublicProfileContent({
       />
     ) : undefined
 
+  const totalPracticeMinutes = sessions.reduce(
+    (sum, s) => sum + s.duration_minutes,
+    0
+  )
+
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
-      <ProfileHeader
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      {/* Main content — tabs + active tab */}
+      <div className="min-w-0">
+        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+        <div className="mt-6">
+          {activeTab === "overview" && (
+            <TabOverview
+              profile={profile}
+              sessions={sessions}
+              isOwner={isOwner}
+              isAdmin={isAdmin}
+              userBadges={userBadges}
+              allBadges={allBadges}
+              followerCount={followerCount}
+              followingCount={followingCount}
+              followButton={followButton}
+            />
+          )}
+          {activeTab === "pbs" && (
+            <TabPBs
+              profile={profile}
+              sessions={sessions}
+              pbs={pbs}
+              isOwner={isOwner}
+            />
+          )}
+          {activeTab === "stats" && (
+            <TabStats sessions={sessions} isOwner={isOwner} />
+          )}
+          {activeTab === "cubes" && (
+            <TabCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
+          )}
+          {activeTab === "official" && (
+            <TabOfficial
+              profile={profile}
+              isOwner={isOwner}
+              sorKinchStats={sorKinchStats}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Desktop sidebar */}
+      <ProfileSidebar
         profile={profile}
         isOwner={isOwner}
-        followButton={followButton}
         followerCount={followerCount}
         followingCount={followingCount}
+        totalPracticeMinutes={totalPracticeMinutes}
+        followButton={followButton}
       />
-      <ProfileStats sessions={sessions} />
-      {wcaLoading && <WcaResultsSkeleton />}
-      {wcaError && !wcaLoading && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          Failed to load WCA results. Please try refreshing the page.
-        </div>
-      )}
-      {wcaData && (
-        <WcaResults
-          personalRecords={wcaData.personal_records}
-          competitionCount={wcaData.competition_count}
-          wcaId={profile.wca_id}
-          isOwner={isOwner}
-          customEventOrder={profile.wca_event_order}
-        />
-      )}
-      {sorKinchStats && <AllroundingResults stats={sorKinchStats} />}
-      <PBGrid sessions={sessions} displayName={profile.display_name} handle={profile.handle} />
-      <YtdStats sessions={sessions} />
-      <MainCubes cubes={profile.cubes ?? []} isOwner={isOwner} />
-      <Accomplishments accomplishments={profile.accomplishments ?? []} isOwner={isOwner} />
-      <BadgesSection
-        userBadges={userBadges}
-        allBadges={allBadges}
-        isOwner={isOwner}
-        isAdmin={isAdmin}
-      />
-      <LinksSponsors links={profile.links} isOwner={isOwner} />
-      <PracticeHeatmap sessions={sessions} />
-      <RecentActivity sessions={sessions.slice(0, 10)} />
     </div>
   )
 }

@@ -1,16 +1,21 @@
 "use client"
 
+import { useState } from "react"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Calendar,
   ExternalLink,
+  Eye,
   Globe,
   MapPin,
   Pencil,
   Star,
 } from "lucide-react"
 import { EventBadge } from "@/components/shared/event-badge"
+import { EditProfileModal } from "@/components/profile/edit-profile-modal"
+import { FollowListModal } from "@/components/profile/follow-list-modal"
 import type { Profile } from "@/lib/types"
 
 function getInitials(name: string): string {
@@ -64,6 +69,10 @@ export function ProfileSidebar({
   followButton?: React.ReactNode
   onEditProfile?: () => void
 }) {
+  const [editOpen, setEditOpen] = useState(false)
+  const [followListOpen, setFollowListOpen] = useState(false)
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers")
+
   const mainEvents =
     profile.main_events?.length > 0
       ? profile.main_events
@@ -136,18 +145,24 @@ export function ProfileSidebar({
 
         {/* Stats row: Followers / Following / Practice Time */}
         <div className="grid grid-cols-3 gap-2 border-y border-border/50 py-3">
-          <div className="text-center">
-            <div className="font-mono text-base font-bold text-foreground">
+          <button
+            onClick={() => { setFollowListTab("followers"); setFollowListOpen(true) }}
+            className="flex flex-col items-center gap-0.5 text-center transition-colors hover:text-foreground"
+          >
+            <span className="font-mono text-base font-bold text-foreground">
               {followerCount}
-            </div>
-            <div className="text-[11px] text-muted-foreground">Followers</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-base font-bold text-foreground">
+            </span>
+            <span className="text-[11px] text-muted-foreground">Followers</span>
+          </button>
+          <button
+            onClick={() => { setFollowListTab("following"); setFollowListOpen(true) }}
+            className="flex flex-col items-center gap-0.5 text-center transition-colors hover:text-foreground"
+          >
+            <span className="font-mono text-base font-bold text-foreground">
               {followingCount}
-            </div>
-            <div className="text-[11px] text-muted-foreground">Following</div>
-          </div>
+            </span>
+            <span className="text-[11px] text-muted-foreground">Following</span>
+          </button>
           <div className="text-center">
             <div className="font-mono text-base font-bold text-foreground">
               {formatPracticeTime(totalPracticeMinutes)}
@@ -157,16 +172,28 @@ export function ProfileSidebar({
         </div>
 
         {/* Follow / Edit button */}
-        {isOwner && onEditProfile ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEditProfile}
-            className="min-h-9 w-full gap-1.5 border-border/50"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit Profile
-          </Button>
+        {isOwner ? (
+          <div className="flex w-full gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEditProfile ?? (() => setEditOpen(true))}
+              className="min-h-9 flex-1 gap-1.5 border-border/50"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit Profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="min-h-9 gap-1.5 border-border/50"
+            >
+              <Link href={`/profile/${profile.handle}`}>
+                <Eye className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
         ) : (
           followButton && <div className="w-full">{followButton}</div>
         )}
@@ -197,6 +224,21 @@ export function ProfileSidebar({
           </div>
         )}
       </div>
+
+      {isOwner && !onEditProfile && (
+        <EditProfileModal
+          profile={profile}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
+
+      <FollowListModal
+        userId={profile.id}
+        open={followListOpen}
+        onOpenChange={setFollowListOpen}
+        tab={followListTab}
+      />
     </div>
   )
 }

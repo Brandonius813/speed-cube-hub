@@ -147,18 +147,18 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
 
-- [ ] Schema: `main_events text[]` (up to 3 main events, replaces single `main_event`)
-- [ ] Server action: `getPBsByUserId` (public PB fetch for any user)
-- [ ] SessionLog `readOnly` prop (for public profile Stats tab)
-- [ ] Profile sidebar component (Skool-style card: avatar, name, main events, bio, meta, stats, follow, social links)
-- [ ] Profile tabs component (tab bar + swipe detection + URL integration)
-- [ ] 5 tab content components:
+- [x] Schema: `main_events text[]` (up to 3 main events, replaces single `main_event`)
+- [x] Server action: `getPBsByUserId` (public PB fetch for any user)
+- [x] SessionLog `readOnly` prop (for public profile Stats tab)
+- [x] Profile sidebar component (Skool-style card: avatar, name, main events, bio, meta, stats, follow, social links)
+- [x] Profile tabs component (tab bar + swipe detection + URL integration)
+- [x] 5 tab content components:
   - **PBs** — read-only PB grid for visitors, full CRUD for owner, PB progression chart
   - **Stats** — practice heatmap, streak, charts, session log
   - **Overview** (default) — profile header (mobile), stat cards, badges, recent activity
   - **Cubes** — main cubes grid (existing component)
   - **Official** — WCA results (lazy-loaded), allrounding, accomplishments, upcoming competitions
-- [ ] Rewrite profile content components with grid + tabs layout
+- [x] Rewrite profile content components with grid + tabs layout
 - [ ] Activate unused components: `UpcomingCompetitions`, `PBProgressChart` (on profile)
 
 ### Coaching Platform (Future)

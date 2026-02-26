@@ -4,6 +4,7 @@ import { getSessions } from "@/lib/actions/sessions"
 import { getFollowCounts } from "@/lib/actions/follows"
 import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
 import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
+import { getCurrentPBs } from "@/lib/actions/personal-bests"
 
 export default async function ProfilePage() {
   const [profileResult, sessionsResult] = await Promise.all([
@@ -13,7 +14,7 @@ export default async function ProfilePage() {
 
   if (!profileResult.profile) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <p className="text-muted-foreground">
           Profile not found. Please log in to view your profile.
         </p>
@@ -21,19 +22,20 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch follow counts, badges, badge definitions, and SOR/Kinch in parallel
-  const [followCounts, badgesResult, badgeDefsResult, sorKinchStats] =
+  // Fetch follow counts, badges, badge definitions, PBs, and SOR/Kinch in parallel
+  const [followCounts, badgesResult, badgeDefsResult, pbsResult, sorKinchStats] =
     await Promise.all([
       getFollowCounts(profileResult.profile.id),
       getUserBadges(profileResult.profile.id),
       getBadgeDefinitions(),
+      getCurrentPBs(),
       profileResult.profile.wca_id
         ? getUserSorKinchStats(profileResult.profile.wca_id)
         : Promise.resolve(null),
     ])
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <ProfileContent
         profile={profileResult.profile}
         sessions={sessionsResult.data}
@@ -41,6 +43,7 @@ export default async function ProfilePage() {
         followingCount={followCounts.following}
         userBadges={badgesResult.data}
         allBadges={badgeDefsResult.data}
+        pbs={pbsResult.data}
         sorKinchStats={sorKinchStats}
       />
     </main>

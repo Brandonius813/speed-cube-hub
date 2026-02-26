@@ -1176,7 +1176,7 @@ Add `readOnly?: boolean` prop to `src/components/dashboard/session-log.tsx`. Whe
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | T57 |
 | **Estimated scope** | 1 new file (~120 lines) |
@@ -1204,7 +1204,8 @@ Create `src/components/profile/profile-tabs.tsx` — tab bar + swipe detection. 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T58, T59, T60, T61 |
 | **Estimated scope** | 5 new files (~400 lines total) |
 | **Priority** | HIGH |
@@ -1222,7 +1223,8 @@ Create the 5 tab content wrappers:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T60, T61, T62 |
 | **Estimated scope** | 4 files (2 rewrites + 2 page updates) |
 | **Priority** | HIGH |
