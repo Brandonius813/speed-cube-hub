@@ -199,3 +199,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Turbopack has persistent filesystem race condition on macOS (ENOENT errors during build) — not code-related. Vercel builds on Linux work fine. Use `npx tsc --noEmit` for local type checking.
 **Blockers:** No remaining tasks in TASKS.md. All phases (1-11) complete.
 **Warnings:** None — ready for new feature work.
+
+---
+
+### 2026-02-26 10:45 PT — Build Investigation + T56 Session
+
+**Task:** T56 (Solve Analytics) + Build infrastructure investigation
+**Status:** Completed T56 — created solve-analytics.tsx wrapper and integrated into dashboard-content.tsx. Investigated persistent `npm run build` failures: found two root causes — (1) TypeScript error in tab-pbs.tsx (indexOf type mismatch with WcaEventId), fixed and pushed; (2) OOM kills (exit 137) from 8 parallel Claude sessions exhausting 16GB RAM. Fixed TS error, documented OOM workaround.
+**Files touched:** src/components/dashboard/solve-analytics.tsx (created), src/components/dashboard/dashboard-content.tsx (modified), src/components/profile/tab-pbs.tsx (fixed TS error)
+**Learnings:** `npx tsc --noEmit` is the only reliable local type-check when multiple Claude sessions are running — `npm run build` OOM-kills with 8+ sessions on 16GB RAM.
+**Blockers:** None — all phases complete.
+**Warnings:** None.
