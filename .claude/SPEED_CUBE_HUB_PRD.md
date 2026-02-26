@@ -216,7 +216,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Cross solver tool (T115)
 
 **Phase 16 — Training Scrambles — T116-T123:**
-- [ ] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) with case filtering (T116)
+- [x] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) — scramble type selector in timer (T116)
 - [ ] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross) (T117)
 - [ ] 3x3 Roux + Mehta training scrambles (T118)
 - [ ] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
