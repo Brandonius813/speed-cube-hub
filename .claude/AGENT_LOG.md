@@ -240,3 +240,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Many bug fixes were uncommitted changes from a previous session left on disk. Always check `git status` at session start. The linter recreated middleware.ts even though proxy.ts already existed.
 **Blockers:** None
 **Warnings:** T51 explicit column lists are back on dev. **Must verify on preview deployment before merging to main** — the last attempt broke production because column names didn't match the live DB.
+
+---
+
+### 2026-02-25 17:22 PT — T51 Re-verification + Security Cleanup Session
+
+**Task:** T51 (select("*") cleanup) + security fixes + proxy→middleware rename
+**Status:** Audited all remaining `select("*")` calls. Found most were already fixed by the prior codebase-wide bug fix session (commit 2e3e194). The only file still using `select("*")` was clubs.ts (3 instances) — fixed those. Also committed several uncommitted security improvements from prior sessions: (1) clubs.ts search sanitization (strips `%`, `_`, `:`, `!`, `*` from ilike input), (2) profiles.ts search sanitization (same additional chars), (3) feedback.ts display name newline stripping (prevents email header injection), (4) OAuth callback additional `/\` redirect block. Renamed proxy.ts → middleware.ts to fix Next.js 16 deprecation warning. Marked T46-T51 complete in PRD. Build passes clean.
+**Files touched:** src/lib/actions/clubs.ts, src/lib/actions/profiles.ts, src/lib/actions/feedback.ts, src/app/api/auth/callback/route.ts, src/middleware.ts (renamed from proxy.ts), .claude/SPEED_CUBE_HUB_PRD.md, .claude/TASKS.md
+**Learnings:** The prior "codebase-wide bug fix" session (commit 2e3e194) already replaced select("*") in most files but left clubs.ts untouched. Always verify with `grep` after bulk changes. TypeScript types in types.ts are the safest source of truth for column names — they match what the code expects, which mirrors the DB schema.
+**Blockers:** None — all tasks in TASKS.md are Done.
+**Warnings:** T51 explicit column lists are now on dev again. The prior production bug was caused by column names not matching the live DB. This re-attempt uses column names derived from the TypeScript types (which were built to match the DB). **Must verify on Vercel preview before merging to main.**
