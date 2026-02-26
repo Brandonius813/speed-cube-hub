@@ -128,3 +128,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** The `timer_sessions` and `solves` tables were referenced in code but never created in Supabase — this was the root cause of timer solves not saving. The error banner we added immediately surfaced the real error message. `.next/lock` contention continues to be an issue with parallel builds — `npx tsc --noEmit` is a reliable alternative.
 **Blockers:** None
 **Warnings:** Two new tables (`timer_sessions`, `solves`) were created in Supabase via SQL. Any future schema changes to these tables need to be done in the Supabase dashboard.
+
+---
+
+### 2026-02-25 20:30 PT — T54 + T56 Completion Session
+
+**Task:** T54 (Practice Stats Overhaul) + T56 (Solve Analytics Charts)
+**Status:** Both tasks were already committed by prior sessions. This session verified the integration, fixed stash-related regressions (dashboard-content.tsx and stats-panel.tsx lost edits during a git stash/checkout cycle), confirmed TypeScript compiles clean, and ensured all changes are pushed to dev. Also completed T53 (Navbar Active Tab + Notification Popup) and T55 (PB Ao5 Fix) earlier in this session and pushed those to main.
+**Files touched:** src/components/dashboard/dashboard-content.tsx, src/components/dashboard/solve-analytics.tsx (created), src/components/timer/stats-panel.tsx, src/components/shared/time-distribution-chart.tsx, src/components/shared/time-trend-chart.tsx
+**Learnings:** `npm run build` has a persistent Next.js 16 infrastructure bug (`pages-manifest.json` not found) that affects both dev and main branches — it's not caused by code changes. Use `npx tsc --noEmit` as the reliable compile check. Git stash/checkout can silently lose uncommitted edits in files that were modified by the linter after your edit — always re-verify file contents after stash operations.
+**Blockers:** None — `npm run build` fails on both dev and main due to Next.js infrastructure issue, but Vercel builds work fine.
+**Warnings:** Phase 10 (T53-T56) is fully complete. Phase 11 (Profile Rework, T57-T63) has 7 available tasks. The `npm run build` issue should be investigated separately — it may be a Node.js version or Next.js 16.1.6 Turbopack bug.
