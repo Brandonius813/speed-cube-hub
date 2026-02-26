@@ -2550,11 +2550,18 @@ Battle rooms, Supabase Realtime, shared scrambles, win/loss, spectator mode.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T114 |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/scramble-animator.tsx`, `src/components/timer/scramble-display.tsx` |
 
-Click scramble image → animated sequence, step-through moves.
+- ✅ Move-by-move scramble animation with play/pause/step controls
+- ✅ Speed control (0.5x, 1x, 2x, 4x)
+- ✅ Click on individual moves to jump to that step
+- ✅ Keyboard shortcuts (←→ step, Space play/pause, Home/End reset/end)
+- ✅ Cube state rendered at each step via cstimer_module getImage()
+- ✅ Toggle button integrated in scramble display toolbar
 
 ---
 
