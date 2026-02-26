@@ -156,7 +156,10 @@ export function DashboardContent({
       {/* 6. Event Breakdown Table */}
       <EventBreakdownTable sessions={filteredSessions} />
 
-      {/* 7. Session Log */}
+      {/* 7. Solve Analytics (timer solve-level charts) */}
+      <SolveAnalytics practicedEvents={practicedEvents} />
+
+      {/* 8. Session Log */}
       <SessionLog sessions={filteredSessions} />
     </div>
   )

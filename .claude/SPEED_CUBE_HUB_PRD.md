@@ -143,6 +143,24 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [ ] Fix dashboard — deduplicate session fetches + add limits (T50)
 - [ ] Replace select("*") with explicit column lists (T51)
 
+### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
+
+Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
+
+- [ ] Schema: `main_events text[]` (up to 3 main events, replaces single `main_event`)
+- [ ] Server action: `getPBsByUserId` (public PB fetch for any user)
+- [ ] SessionLog `readOnly` prop (for public profile Stats tab)
+- [ ] Profile sidebar component (Skool-style card: avatar, name, main events, bio, meta, stats, follow, social links)
+- [ ] Profile tabs component (tab bar + swipe detection + URL integration)
+- [ ] 5 tab content components:
+  - **PBs** — read-only PB grid for visitors, full CRUD for owner, PB progression chart
+  - **Stats** — practice heatmap, streak, charts, session log
+  - **Overview** (default) — profile header (mobile), stat cards, badges, recent activity
+  - **Cubes** — main cubes grid (existing component)
+  - **Official** — WCA results (lazy-loaded), allrounding, accomplishments, upcoming competitions
+- [ ] Rewrite profile content components with grid + tabs layout
+- [ ] Activate unused components: `UpcomingCompetitions`, `PBProgressChart` (on profile)
+
 ### Coaching Platform (Future)
 - Coach role with student management
 - Assign homework (e.g., "do 100 solves of 3x3 this week" or "practice F2L for 30 min daily")
@@ -211,7 +229,8 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 | sponsor | text | Sponsor name (nullable) |
 | country_id | text | WCA country ID (set via WCA OAuth callback, nullable) |
 | events | text[] | WCA events the user practices |
-| main_event | text | Primary/main WCA event (nullable) |
+| main_event | text | Primary/main WCA event (nullable, deprecated — use main_events) |
+| main_events | text[] | Up to 3 main WCA events (default '{}') |
 | wca_event_order | text[] | Custom event display ordering on profile (nullable) |
 | pb_visible_types | text[] | Which PB types to show on profile (nullable) |
 | cubes | jsonb | Array of {name, setup, event} |
