@@ -34,8 +34,8 @@ import {
 import { Camera, Check, ChevronsUpDown, X, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { updateProfile, uploadAvatar, deleteAvatar, updateProfileLinks } from "@/lib/actions/profiles"
-import { getWcaCountries } from "@/lib/actions/sor-kinch"
-import type { WcaCountry } from "@/lib/actions/sor-kinch"
+import { COUNTRIES } from "@/lib/countries"
+import type { Country } from "@/lib/countries"
 import { WCA_EVENTS } from "@/lib/constants"
 import { DEFAULT_AVATARS } from "@/lib/avatar-defaults"
 import { AvatarCropModal } from "@/components/profile/avatar-crop-modal"
@@ -132,7 +132,7 @@ export function EditProfileModal({
   const [bio, setBio] = useState(profile.bio ?? "")
   const [location, setLocation] = useState(profile.location ?? "")
   const [countryId, setCountryId] = useState(profile.country_id ?? "")
-  const [countries, setCountries] = useState<WcaCountry[]>([])
+  const countries = COUNTRIES
   const [countryOpen, setCountryOpen] = useState(false)
   const [mainEvents, setMainEvents] = useState<string[]>(profile.main_events ?? [])
   const [links, setLinks] = useState<ProfileLink[]>(profile.links ?? [])
@@ -172,10 +172,6 @@ export function EditProfileModal({
       setRemoveAvatar(false)
       setError(null)
 
-      // Fetch countries list for the dropdown
-      if (countries.length === 0) {
-        getWcaCountries().then((data) => setCountries(data))
-      }
     }
   }, [open, profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
