@@ -69,8 +69,6 @@ export function TabOfficial({
           personalRecords={wcaData.personal_records}
           competitionCount={wcaData.competition_count}
           wcaId={wcaId}
-          isOwner={isOwner}
-          customEventOrder={profile.wca_event_order}
           mainEvents={mainEventsOverride ?? profile.main_events ?? []}
         />
       )}

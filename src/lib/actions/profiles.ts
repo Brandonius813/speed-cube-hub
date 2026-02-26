@@ -694,8 +694,8 @@ export async function updatePBMainEvents(
   return { success: true }
 }
 
-export async function updateWcaEventOrder(
-  order: string[]
+export async function updatePBDisplayTypes(
+  displayTypes: Record<string, string[]> | null
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -707,14 +707,10 @@ export async function updateWcaEventOrder(
     return { success: false, error: "Not authenticated" }
   }
 
-  if (order.length > 50) {
-    return { success: false, error: "Too many events." }
-  }
-
   const { error } = await supabase
     .from("profiles")
     .update({
-      wca_event_order: order,
+      pb_display_types: displayTypes,
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)
@@ -723,7 +719,7 @@ export async function updateWcaEventOrder(
     return { success: false, error: error.message }
   }
 
-  revalidatePath("/profile")
   return { success: true }
 }
+
 

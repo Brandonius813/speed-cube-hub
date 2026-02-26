@@ -2,18 +2,12 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import {
   ExternalLink,
   Medal,
-  ArrowUp,
-  ArrowDown,
-  Pencil,
-  Check,
 } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
-import { updateWcaEventOrder } from "@/lib/actions/profiles"
 import type { WcaPersonalRecords, WcaRecord } from "@/lib/actions/wca"
 
 /** Legacy/retired WCA events that can still appear in profiles */
@@ -110,26 +104,9 @@ function getRankValue(
   }
 }
 
-/** Sort events using saved custom order, falling back to default WCA order */
-function sortByCustomOrder(
-  events: ProcessedEvent[],
-  customOrder: string[]
-): ProcessedEvent[] {
+/** Sort events by official WCA order */
+function sortByWcaOrder(events: ProcessedEvent[]): ProcessedEvent[] {
   return [...events].sort((a, b) => {
-    if (customOrder.length > 0) {
-      const aIdx = customOrder.indexOf(a.eventId)
-      const bIdx = customOrder.indexOf(b.eventId)
-      const aPos =
-        aIdx !== -1
-          ? aIdx
-          : 1000 + (WCA_EVENTS.findIndex((e) => e.id === a.eventId) ?? 999)
-      const bPos =
-        bIdx !== -1
-          ? bIdx
-          : 1000 + (WCA_EVENTS.findIndex((e) => e.id === b.eventId) ?? 999)
-      return aPos - bPos
-    }
-    // Default WCA order
     const aIdx = WCA_EVENTS.findIndex((e) => e.id === a.eventId)
     const bIdx = WCA_EVENTS.findIndex((e) => e.id === b.eventId)
     return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx)
@@ -149,24 +126,16 @@ export function WcaResults({
   personalRecords,
   competitionCount,
   wcaId,
-  isOwner = false,
-  customEventOrder,
   mainEvents = [],
 }: {
   personalRecords: WcaPersonalRecords
   competitionCount: number
   wcaId?: string | null
-  isOwner?: boolean
-  customEventOrder?: string[] | null
   mainEvents?: string[]
 }) {
-  const [editing, setEditing] = useState(false)
   const [sortBy, setSortBy] = useState<SortMode>("default")
   const [sortField, setSortField] = useState<"single" | "average">("single")
   const [rankType, setRankType] = useState<RankType>("world")
-  const [customOrder, setCustomOrder] = useState<string[]>(
-    customEventOrder ?? []
-  )
 
   const events: ProcessedEvent[] = Object.entries(personalRecords).map(
     ([eventId, records]) => ({
@@ -177,7 +146,6 @@ export function WcaResults({
     })
   )
 
-  // "Default" uses the custom order (if set), rank/time override it
   const sortedEvents = (() => {
     if (sortBy === "rank") {
       return [...events].sort((a, b) => {
@@ -193,57 +161,11 @@ export function WcaResults({
         return aTime - bTime
       })
     }
-    // Default: use custom order (or WCA order if no custom order saved)
-    return sortByCustomOrder(events, customOrder)
+    // Default: official WCA order
+    return sortByWcaOrder(events)
   })()
 
-  const visibleEvents = sortedEvents
   const mainEventSet = new Set(mainEvents)
-
-  async function handleMove(eventId: string, direction: "up" | "down") {
-    // Build the current order from sortedEvents if no custom order yet
-    const currentOrder =
-      customOrder.length > 0
-        ? [...customOrder]
-        : sortedEvents.map((e) => e.eventId)
-
-    const idx = currentOrder.indexOf(eventId)
-    if (idx === -1) return
-
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1
-    if (swapIdx < 0 || swapIdx >= currentOrder.length) return
-
-    ;[currentOrder[idx], currentOrder[swapIdx]] = [
-      currentOrder[swapIdx],
-      currentOrder[idx],
-    ]
-
-    // Optimistically update
-    setCustomOrder(currentOrder)
-
-    const result = await updateWcaEventOrder(currentOrder)
-    if (!result.success) {
-      // Revert on failure
-      setCustomOrder(customOrder)
-    }
-  }
-
-  function startEditing() {
-    // Initialize custom order from current display order if not set yet
-    if (customOrder.length === 0) {
-      const baseOrder = sortByCustomOrder(events, [])
-      const initialOrder = baseOrder.map((e) => e.eventId)
-      setCustomOrder(initialOrder)
-      updateWcaEventOrder(initialOrder)
-    }
-    // Switch to default sort so the user sees their custom order
-    setSortBy("default")
-    setEditing(true)
-  }
-
-  function stopEditing() {
-    setEditing(false)
-  }
 
   if (events.length === 0) return null
 
@@ -259,28 +181,6 @@ export function WcaResults({
             <span className="text-xs text-muted-foreground">
               {competitionCount} comp{competitionCount !== 1 ? "s" : ""}
             </span>
-            {isOwner && !editing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={startEditing}
-                className="min-h-9 gap-1.5 border-border/50"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Order
-              </Button>
-            )}
-            {isOwner && editing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={stopEditing}
-                className="min-h-9 gap-1.5 border-border/50"
-              >
-                <Check className="h-3.5 w-3.5" />
-                Done
-              </Button>
-            )}
             {wcaId && (
               <a
                 href={`https://www.worldcubeassociation.org/persons/${wcaId}`}
@@ -297,68 +197,53 @@ export function WcaResults({
       </CardHeader>
       <CardContent>
         {/* Controls: Sort + Rank type */}
-        {!editing && (
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Sort:</span>
-              <SegmentedToggle
-                options={[
-                  { value: "default", label: "Default" },
-                  { value: "rank", label: "Rank" },
-                  { value: "time", label: "Time" },
-                ]}
-                value={sortBy}
-                onChange={(v) => setSortBy(v as SortMode)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Rank:</span>
-              <SegmentedToggle
-                options={[
-                  { value: "world", label: "WR" },
-                  { value: "continental", label: "CR" },
-                  { value: "national", label: "NR" },
-                ]}
-                value={rankType}
-                onChange={(v) => setRankType(v as RankType)}
-              />
-            </div>
-            {(sortBy === "rank" || sortBy === "time") && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">By:</span>
-                <SegmentedToggle
-                  options={[
-                    { value: "single", label: "Single" },
-                    { value: "average", label: "Avg" },
-                  ]}
-                  value={sortField}
-                  onChange={(v) => setSortField(v as "single" | "average")}
-                />
-              </div>
-            )}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sort:</span>
+            <SegmentedToggle
+              options={[
+                { value: "default", label: "Default" },
+                { value: "rank", label: "Rank" },
+                { value: "time", label: "Time" },
+              ]}
+              value={sortBy}
+              onChange={(v) => setSortBy(v as SortMode)}
+            />
           </div>
-        )}
-
-        {editing && (
-          <p className="mb-4 text-xs text-muted-foreground">
-            Use the arrows to reorder your events.
-          </p>
-        )}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Rank:</span>
+            <SegmentedToggle
+              options={[
+                { value: "world", label: "WR" },
+                { value: "continental", label: "CR" },
+                { value: "national", label: "NR" },
+              ]}
+              value={rankType}
+              onChange={(v) => setRankType(v as RankType)}
+            />
+          </div>
+          {(sortBy === "rank" || sortBy === "time") && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">By:</span>
+              <SegmentedToggle
+                options={[
+                  { value: "single", label: "Single" },
+                  { value: "average", label: "Avg" },
+                ]}
+                value={sortField}
+                onChange={(v) => setSortField(v as "single" | "average")}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Event grid */}
         <div className="grid gap-3 sm:grid-cols-2">
-          {visibleEvents.map((event) => (
+          {sortedEvents.map((event) => (
             <EventCard
               key={event.eventId}
               event={event}
               rankType={rankType}
-              showReorder={editing}
-              isFirst={sortedEvents[0]?.eventId === event.eventId}
-              isLast={
-                sortedEvents[sortedEvents.length - 1]?.eventId ===
-                event.eventId
-              }
-              onMove={(dir) => handleMove(event.eventId, dir)}
               isMainEvent={mainEventSet.has(event.eventId)}
             />
           ))}
@@ -403,18 +288,10 @@ function SegmentedToggle({
 function EventCard({
   event,
   rankType,
-  showReorder = false,
-  isFirst = false,
-  isLast = false,
-  onMove,
   isMainEvent = false,
 }: {
   event: ProcessedEvent
   rankType: RankType
-  showReorder?: boolean
-  isFirst?: boolean
-  isLast?: boolean
-  onMove?: (direction: "up" | "down") => void
   isMainEvent?: boolean
 }) {
   const singleRank = getRankValue(event.single, rankType)
@@ -428,26 +305,6 @@ function EventCard({
         : "border-border/50 bg-secondary/50"
     }`}>
       <div className="flex items-center gap-3">
-        {showReorder && (
-          <div className="flex flex-col gap-0.5">
-            <button
-              onClick={() => onMove?.("up")}
-              disabled={isFirst}
-              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-              aria-label="Move event up"
-            >
-              <ArrowUp className="h-3 w-3" />
-            </button>
-            <button
-              onClick={() => onMove?.("down")}
-              disabled={isLast}
-              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-              aria-label="Move event down"
-            >
-              <ArrowDown className="h-3 w-3" />
-            </button>
-          </div>
-        )}
         <CubingIcon
           event={event.eventId}
           className={`shrink-0 text-base ${isMainEvent ? "text-primary" : "text-muted-foreground"}`}
@@ -459,36 +316,34 @@ function EventCard({
           </span>
         )}
       </div>
-      {!showReorder && (
-        <div className="flex gap-6 text-right">
-          {event.single && (
-            <div>
-              <p className="text-xs text-muted-foreground">Single</p>
-              <p className="font-mono text-sm font-semibold text-foreground">
-                {formatWcaTime(event.single.best, event.eventId, "single")}
+      <div className="flex gap-6 text-right">
+        {event.single && (
+          <div>
+            <p className="text-xs text-muted-foreground">Single</p>
+            <p className="font-mono text-sm font-semibold text-foreground">
+              {formatWcaTime(event.single.best, event.eventId, "single")}
+            </p>
+            {singleRank != null && (
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {label} #{singleRank.toLocaleString()}
               </p>
-              {singleRank != null && (
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  {label} #{singleRank.toLocaleString()}
-                </p>
-              )}
-            </div>
-          )}
-          {event.average && (
-            <div>
-              <p className="text-xs text-muted-foreground">Average</p>
-              <p className="font-mono text-sm font-semibold text-foreground">
-                {formatWcaTime(event.average.best, event.eventId, "average")}
+            )}
+          </div>
+        )}
+        {event.average && (
+          <div>
+            <p className="text-xs text-muted-foreground">Average</p>
+            <p className="font-mono text-sm font-semibold text-foreground">
+              {formatWcaTime(event.average.best, event.eventId, "average")}
+            </p>
+            {avgRank != null && (
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {label} #{avgRank.toLocaleString()}
               </p>
-              {avgRank != null && (
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  {label} #{avgRank.toLocaleString()}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
