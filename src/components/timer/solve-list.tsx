@@ -1,6 +1,6 @@
 "use client"
 
-import { StickyNote } from "lucide-react"
+import { Share2, StickyNote } from "lucide-react"
 import { formatTimeMs, getEffectiveTime } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import type { Solve } from "@/lib/types"
@@ -8,6 +8,7 @@ import type { Solve } from "@/lib/types"
 type SolveListProps = {
   solves: Solve[]
   onSolveClick: (solve: Solve) => void
+  onShareSolve?: (solve: Solve) => void
   mode: "normal" | "comp_sim"
   bestSingleTime?: number | null
 }
@@ -15,6 +16,7 @@ type SolveListProps = {
 export function SolveList({
   solves,
   onSolveClick,
+  onShareSolve,
   mode,
   bestSingleTime,
 }: SolveListProps) {
@@ -34,6 +36,7 @@ export function SolveList({
       <CompSimSolveList
         solves={displaySolves}
         onSolveClick={onSolveClick}
+        onShareSolve={onShareSolve}
         bestSingleTime={bestSingleTime}
       />
     )
@@ -46,6 +49,7 @@ export function SolveList({
           key={solve.id}
           solve={solve}
           onClick={() => onSolveClick(solve)}
+          onShare={onShareSolve ? () => onShareSolve(solve) : undefined}
           isPB={
             bestSingleTime != null &&
             getEffectiveTime(solve) === bestSingleTime &&
@@ -60,10 +64,12 @@ export function SolveList({
 function SolveRow({
   solve,
   onClick,
+  onShare,
   isPB,
 }: {
   solve: Solve
   onClick: () => void
+  onShare?: () => void
   isPB: boolean
 }) {
   const effectiveTime = getEffectiveTime(solve)
@@ -74,7 +80,7 @@ function SolveRow({
   return (
     <button
       onClick={onClick}
-      className="flex items-center w-full gap-2 px-3 py-1.5 text-left hover:bg-secondary/30 transition-colors min-h-[36px]"
+      className="group flex items-center w-full gap-2 px-3 py-1.5 text-left hover:bg-secondary/30 transition-colors min-h-[36px]"
     >
       <span className="text-[11px] text-muted-foreground/60 w-7 shrink-0 tabular-nums font-mono text-right">
         {solve.solve_number}.
@@ -93,6 +99,19 @@ function SolveRow({
       {hasNotes && (
         <StickyNote className="h-3 w-3 text-muted-foreground/40 shrink-0" />
       )}
+      {onShare && (
+        <span
+          role="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation()
+            onShare()
+          }}
+          className="hidden group-hover:flex h-6 w-6 items-center justify-center rounded-md hover:bg-secondary/60 shrink-0"
+        >
+          <Share2 className="h-3 w-3 text-muted-foreground" />
+        </span>
+      )}
     </button>
   )
 }
@@ -100,10 +119,12 @@ function SolveRow({
 function CompSimSolveList({
   solves,
   onSolveClick,
+  onShareSolve,
   bestSingleTime,
 }: {
   solves: Solve[]
   onSolveClick: (solve: Solve) => void
+  onShareSolve?: (solve: Solve) => void
   bestSingleTime?: number | null
 }) {
   // Group solves by comp_sim_group
@@ -157,6 +178,7 @@ function CompSimSolveList({
                 key={solve.id}
                 solve={solve}
                 onClick={() => onSolveClick(solve)}
+                onShare={onShareSolve ? () => onShareSolve(solve) : undefined}
                 isPB={
                   bestSingleTime != null &&
                   getEffectiveTime(solve) === bestSingleTime &&

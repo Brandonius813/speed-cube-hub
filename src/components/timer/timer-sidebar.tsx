@@ -14,6 +14,7 @@ export function TimerSidebar({
   onPenaltyChange,
   onDelete,
   onSolveClick,
+  onShareSolve,
   onStatClick,
 }: {
   sidebarPosition: "left" | "right" | "bottom"
@@ -25,6 +26,7 @@ export function TimerSidebar({
   onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
   onDelete: (solveId: string) => void
   onSolveClick: (solve: Solve) => void
+  onShareSolve?: (solve: Solve) => void
   onStatClick?: (statLabel: string, column: "current" | "best") => void
 }) {
   const currentCompSimProgress =
@@ -58,6 +60,7 @@ export function TimerSidebar({
         <SolveList
           solves={solves}
           onSolveClick={onSolveClick}
+          onShareSolve={onShareSolve}
           mode={mode}
           bestSingleTime={stats.best}
         />

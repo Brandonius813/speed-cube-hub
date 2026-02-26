@@ -409,6 +409,10 @@ export function TimerContent() {
     }
     setSolves((prev) => [...prev, optimisticSolve])
 
+    // Check for PBs optimistically (don't wait for server)
+    const allSolvesNow = [...solves, optimisticSolve]
+    checkForPB(allSolvesNow, optimisticSolve)
+
     try {
       setSaveError(null)
       const sessionId = await ensureTimerSession()
@@ -735,6 +739,7 @@ export function TimerContent() {
       onPenaltyChange={handlePenaltyChange}
       onDelete={handleDeleteSolve}
       onSolveClick={handleSolveClick}
+      onShareSolve={handleShareSolve}
       onStatClick={handleStatClick}
     />
   )
@@ -833,6 +838,7 @@ export function TimerContent() {
         durationMinutes={durationMinutes}
         onSaveAndClose={handleSaveAndClose}
         onKeepGoing={handleKeepGoing}
+        onShare={handleShareSession}
       />
 
       <SessionManager
@@ -865,6 +871,29 @@ export function TimerContent() {
         solves={solves}
         onSolveClick={handleSolveClick}
       />
+
+      {celebration && (
+        <PBCelebration
+          isOpen
+          onClose={() => setCelebration(null)}
+          event={celebration.event}
+          pbType={celebration.pbType}
+          newTimeMs={celebration.newTimeMs}
+          previousTimeMs={celebration.previousTimeMs}
+          scramble={celebration.scramble}
+          userName={userInfoRef.current?.userName ?? "Cuber"}
+          handle={userInfoRef.current?.handle ?? "cuber"}
+          avatarUrl={userInfoRef.current?.avatarUrl ?? null}
+        />
+      )}
+
+      {shareVariant && (
+        <ShareModal
+          isOpen
+          onClose={() => setShareVariant(null)}
+          data={shareVariant}
+        />
+      )}
     </div>
   )
 }

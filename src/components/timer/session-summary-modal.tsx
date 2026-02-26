@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatTimeMs } from "@/lib/timer/averages"
 import type { SessionStats } from "@/lib/timer/averages"
@@ -14,6 +15,7 @@ type SessionSummaryModalProps = {
   durationMinutes: number
   onSaveAndClose: () => Promise<void>
   onKeepGoing: () => void
+  onShare?: () => void
 }
 
 export function SessionSummaryModal({
@@ -24,6 +26,7 @@ export function SessionSummaryModal({
   durationMinutes,
   onSaveAndClose,
   onKeepGoing,
+  onShare,
 }: SessionSummaryModalProps) {
   const [isSaving, setIsSaving] = useState(false)
 
@@ -103,6 +106,17 @@ export function SessionSummaryModal({
 
           {/* Actions */}
           <div className="flex gap-3">
+            {onShare && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onShare}
+                disabled={isSaving}
+                title="Share session"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
               className="flex-1"
