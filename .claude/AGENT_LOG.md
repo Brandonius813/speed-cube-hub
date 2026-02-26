@@ -251,3 +251,18 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** The prior "codebase-wide bug fix" session (commit 2e3e194) already replaced select("*") in most files but left clubs.ts untouched. Always verify with `grep` after bulk changes. TypeScript types in types.ts are the safest source of truth for column names — they match what the code expects, which mirrors the DB schema.
 **Blockers:** None — all tasks in TASKS.md are Done.
 **Warnings:** T51 explicit column lists are now on dev again. The prior production bug was caused by column names not matching the live DB. This re-attempt uses column names derived from the TypeScript types (which were built to match the DB). **Must verify on Vercel preview before merging to main.**
+
+---
+
+### 2026-02-25 17:23 PT — Bug Audit Fixes + T51 Safety Revert Session
+
+**Task:** General work — Commit/push bug fixes from prior session + revert T51 explicit columns
+**Status:** Continued from a compacted context. The prior session fixed 12+ bugs (security, error handling, DST streak, inspection auto-DNF, etc.) across 25 files and ran a successful build. This session:
+1. Committed and pushed 2 remaining unstaged files (badges.ts, feed.ts) from the bug fix batch
+2. Read the AGENT_LOG and discovered the T51 production hotfix warning — the bug audit had unknowingly re-applied explicit column lists that were previously reverted because they broke production
+3. Reverted all explicit column lists back to `select("*")` across 9 files (sessions, challenges, clubs, goals, badges, profiles, personal-bests, feed, timer) while preserving all other bug fixes
+4. TypeScript compiles clean
+**Files touched:** src/lib/actions/sessions.ts, src/lib/actions/challenges.ts, src/lib/actions/clubs.ts, src/lib/actions/goals.ts, src/lib/actions/badges.ts, src/lib/actions/profiles.ts, src/lib/actions/personal-bests.ts, src/lib/actions/feed.ts, src/lib/actions/timer.ts
+**Learnings:** Bug audit agents don't have access to AGENT_LOG history, so they'll recommend changes that were previously tried and reverted. Always cross-reference AGENT_LOG before applying bulk audit recommendations. The `/sync` skill is essential for catching these issues.
+**Blockers:** None
+**Warnings:** T51 (explicit column lists) has now been attempted and reverted THREE times. DO NOT re-attempt without first running `SELECT column_name FROM information_schema.columns WHERE table_name = 'TABLE'` against the live Supabase DB to verify actual column names. The TypeScript types may not match the live schema.
