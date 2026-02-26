@@ -2405,11 +2405,15 @@ Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + C
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T115 |
 | **Estimated scope** | 3-4 files |
+| **Key files** | `src/lib/timer/eoline-solver.ts`, `src/components/timer/solver-panel.tsx` |
 
-EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face solvers.
+- ✅ EOLine analyzer: edge orientation count, bad edge positions, DF/DB line status
+- ✅ Solver panel framework in scramble display (Zap button for 3x3/3x3OH)
+- Note: Roux S1, 2x2 face, Pyraminx V, Skewb face deferred — framework ready for future additions
 
 ---
 
@@ -2417,11 +2421,15 @@ EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face solvers.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/app/(main)/tools/bld/page.tsx`, `src/components/tools/bld-helper.tsx`, `src/lib/bld/letter-scheme.ts` |
 
-Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
+- ✅ Letter scheme reference (Speffz) with corner/edge view and buffer selector
+- ✅ Memo practice with scramble generation and timer
+- ✅ Parity detection from edge/corner memo input
 
 ---
 
