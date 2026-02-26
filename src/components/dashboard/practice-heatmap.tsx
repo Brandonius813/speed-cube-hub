@@ -94,7 +94,15 @@ export function PracticeHeatmap({ sessions }: { sessions: Session[] }) {
       }
     }
 
-    return { weeks: weekList, monthLabels: labels }
+    // Remove labels that are too close together (< 3 columns apart) to prevent overlap
+    const filtered: typeof labels = []
+    for (const lbl of labels) {
+      if (filtered.length === 0 || lbl.col - filtered[filtered.length - 1].col >= 3) {
+        filtered.push(lbl)
+      }
+    }
+
+    return { weeks: weekList, monthLabels: filtered }
   }, [sessions])
 
   return (
