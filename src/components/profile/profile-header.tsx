@@ -73,9 +73,6 @@ export function ProfileHeader({
                 <h1 className="text-2xl font-bold text-foreground">
                   {profile.display_name}
                 </h1>
-                {(profile.main_events?.length > 0 ? profile.main_events : profile.main_event ? [profile.main_event] : []).map((eventId) => (
-                  <EventBadge key={eventId} event={eventId} className="border-accent/30 bg-accent/10 text-accent" />
-                ))}
                 {displayLocation && (
                   <p className="flex items-center gap-1 text-sm text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5" />
@@ -133,6 +130,17 @@ export function ProfileHeader({
             <p className="mt-3 max-w-lg whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground/80">
               {profile.bio}
             </p>
+          )}
+          {/* Main event badges */}
+          {(profile.main_events?.length > 0 ? profile.main_events : profile.main_event ? [profile.main_event] : []).length > 0 && (
+            <div className="mt-3 flex flex-col items-center gap-1.5 sm:items-start">
+              <span className="text-xs font-medium text-muted-foreground">Main Events</span>
+              <div className="flex flex-wrap justify-center gap-1.5 sm:justify-start">
+                {(profile.main_events?.length > 0 ? profile.main_events : profile.main_event ? [profile.main_event] : []).map((eventId) => (
+                  <EventBadge key={eventId} event={eventId} className="border-accent/30 bg-accent/10 text-accent" />
+                ))}
+              </div>
+            </div>
           )}
           {profile.events.length > 0 && (
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">

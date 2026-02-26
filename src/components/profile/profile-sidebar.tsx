@@ -98,19 +98,6 @@ export function ProfileSidebar({
           </Avatar>
         </div>
 
-        {/* Main event badges */}
-        {mainEvents.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {mainEvents.map((eventId) => (
-              <EventBadge
-                key={eventId}
-                event={eventId}
-                className="border-accent/30 bg-accent/10 text-accent"
-              />
-            ))}
-          </div>
-        )}
-
         {/* Name + handle */}
         <div className="text-center">
           <h2 className="text-lg font-bold text-foreground">
@@ -126,8 +113,24 @@ export function ProfileSidebar({
           </p>
         )}
 
+        {/* Main event badges */}
+        {mainEvents.length > 0 && (
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Main Events</span>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {mainEvents.map((eventId) => (
+                <EventBadge
+                  key={eventId}
+                  event={eventId}
+                  className="border-accent/30 bg-accent/10 text-accent"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Meta rows */}
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 shrink-0" />
             <span>Joined {formatJoinDate(profile.created_at)}</span>
