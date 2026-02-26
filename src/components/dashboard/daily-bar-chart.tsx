@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   BarChart,
   Bar,
@@ -11,20 +12,8 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
-import { WCA_EVENTS } from "@/lib/constants"
+import { EVENT_COLORS, getEventLabel } from "@/lib/constants"
 import { formatDuration } from "@/lib/utils"
-
-const EVENT_COLORS: Record<string, string> = {
-  "333": "#EF4444",
-  "444": "#6366F1",
-  "555": "#F97316",
-  "222": "#22D3EE",
-  minx: "#A855F7",
-}
-
-function getEventLabel(eventId: string): string {
-  return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
-}
 
 function CustomTooltip({
   active,
@@ -46,7 +35,7 @@ function CustomTooltip({
               style={{ backgroundColor: entry.color }}
             />
             <span className="text-muted-foreground">
-              {entry.dataKey}: {formatDuration(entry.value)}
+              {getEventLabel(entry.dataKey) || entry.dataKey}: {formatDuration(entry.value)}
             </span>
           </div>
         ))}
@@ -56,59 +45,96 @@ function CustomTooltip({
   return null
 }
 
+type GroupMode = "daily" | "weekly" | "monthly"
+
+function getGroupMode(sessions: Session[]): GroupMode {
+  if (sessions.length === 0) return "daily"
+  const dates = sessions.map((s) => new Date(s.session_date + "T00:00:00").getTime())
+  const minDate = Math.min(...dates)
+  const maxDate = Math.max(...dates)
+  const daySpan = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1
+  if (daySpan <= 14) return "daily"
+  if (daySpan <= 90) return "weekly"
+  return "monthly"
+}
+
+function getGroupKey(dateStr: string, mode: GroupMode): string {
+  const date = new Date(dateStr + "T00:00:00")
+  if (mode === "daily") {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`
+  }
+  if (mode === "weekly") {
+    // Start of week (Sunday)
+    const start = new Date(date)
+    start.setDate(start.getDate() - start.getDay())
+    return `${start.getMonth() + 1}/${start.getDate()}`
+  }
+  // Monthly
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`
+}
+
 export function DailyBarChart({ sessions }: { sessions: Session[] }) {
-  // Group sessions by day and event
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const last7Days: Record<string, Record<string, number>> = {}
+  const { chartData, topEvents, title } = useMemo(() => {
+    if (sessions.length === 0) return { chartData: [], topEvents: [], title: "Practice Over Time" }
 
-  // Build the last 7 days
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    const key = date.toISOString().split("T")[0]
-    last7Days[key] = {}
-  }
-
-  // Find top events for chart bars
-  const eventTotals: Record<string, number> = {}
-  for (const session of sessions) {
-    eventTotals[session.event] =
-      (eventTotals[session.event] || 0) + session.duration_minutes
-  }
-  const topEvents = Object.entries(eventTotals)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id]) => id)
-
-  // Fill in session data
-  for (const session of sessions) {
-    const dateKey = session.session_date
-    if (dateKey in last7Days) {
-      const event = topEvents.includes(session.event)
-        ? session.event
-        : "other"
-      last7Days[dateKey][event] =
-        (last7Days[dateKey][event] || 0) + session.duration_minutes
+    const mode = getGroupMode(sessions)
+    const titleMap: Record<GroupMode, string> = {
+      daily: "Daily Practice",
+      weekly: "Weekly Practice",
+      monthly: "Monthly Practice",
     }
-  }
 
-  const chartData = Object.entries(last7Days).map(([dateStr, events]) => {
-    const date = new Date(dateStr + "T00:00:00")
-    return {
-      day: dayNames[date.getDay()],
-      ...events,
+    // Find top 3 events
+    const eventTotals: Record<string, number> = {}
+    for (const s of sessions) {
+      eventTotals[s.event] = (eventTotals[s.event] || 0) + s.duration_minutes
     }
-  })
+    const top = Object.entries(eventTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => id)
+
+    // Group by time period
+    const groups: Record<string, Record<string, number>> = {}
+    const groupOrder: string[] = []
+
+    for (const s of sessions) {
+      const key = getGroupKey(s.session_date, mode)
+      if (!groups[key]) {
+        groups[key] = {}
+        groupOrder.push(key)
+      }
+      const event = top.includes(s.event) ? s.event : "other"
+      groups[key][event] = (groups[key][event] || 0) + s.duration_minutes
+    }
+
+    // De-dupe order (in case sessions aren't sorted)
+    const seen = new Set<string>()
+    const uniqueOrder = groupOrder.filter((k) => {
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+
+    const data = uniqueOrder.map((key) => ({
+      label: key,
+      ...groups[key],
+    }))
+
+    return { chartData: data, topEvents: top, title: titleMap[mode] }
+  }, [sessions])
 
   if (sessions.length === 0) {
     return (
       <Card className="border-border/50 bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground">Daily Practice</CardTitle>
+          <CardTitle className="text-foreground">Practice Over Time</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No sessions yet. Log your first session to see daily practice chart.
+            No sessions yet. Log your first session to see practice chart.
           </p>
         </CardContent>
       </Card>
@@ -118,7 +144,7 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader>
-        <CardTitle className="text-foreground">Daily Practice</CardTitle>
+        <CardTitle className="text-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[200px]">
@@ -130,13 +156,13 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
                 vertical={false}
               />
               <XAxis
-                dataKey="day"
-                tick={{ fill: "#8B8BA3", fontSize: 12 }}
+                dataKey="label"
+                tick={{ fill: "#8B8BA3", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "#8B8BA3", fontSize: 12 }}
+                tick={{ fill: "#8B8BA3", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => formatDuration(v)}

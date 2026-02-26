@@ -100,6 +100,37 @@ export function getPBTypesForEvent(eventId: string): string[] {
 }
 
 /**
+ * Shared color palette for event charts/visualizations.
+ * Used by event-pie-chart, daily-bar-chart, time-by-event-chart, etc.
+ */
+export const EVENT_COLORS: Record<string, string> = {
+  "222": "#22D3EE",
+  "333": "#EF4444",
+  "444": "#6366F1",
+  "555": "#F97316",
+  "666": "#10B981",
+  "777": "#EC4899",
+  "333bf": "#8B5CF6",
+  "444bf": "#A78BFA",
+  "555bf": "#C4B5FD",
+  "333mbf": "#7C3AED",
+  "333oh": "#F59E0B",
+  minx: "#A855F7",
+  pyram: "#14B8A6",
+  clock: "#06B6D4",
+  skewb: "#F97316",
+  sq1: "#6366F1",
+  "333fm": "#84CC16",
+}
+
+/**
+ * Helper to get event label by ID.
+ */
+export function getEventLabel(eventId: string): string {
+  return WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+}
+
+/**
  * Default total seconds per solve for csTimer imports.
  * Includes inspection, scrambling, picking up the cube, and rest between solves.
  * Roughly 2-3x the actual solve time. Users can adjust before importing.

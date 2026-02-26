@@ -1,27 +1,14 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions } from "@/lib/actions/sessions"
-import { getGoals, checkGoalProgress } from "@/lib/actions/goals"
 import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
 export default async function DashboardPage() {
-  // Check for expired/achieved goals (non-blocking — don't let this crash the page)
-  try {
-    await checkGoalProgress()
-  } catch (err) {
-    console.error("[Dashboard] checkGoalProgress failed:", err)
-  }
-
   let sessions: Session[] = []
-  let goals: Awaited<ReturnType<typeof getGoals>>["data"] = []
 
   try {
-    const [sessionsResult, goalsResult] = await Promise.all([
-      getSessions(),
-      getGoals(),
-    ])
-    sessions = sessionsResult.data
-    goals = goalsResult.data
+    const result = await getSessions()
+    sessions = result.data
   } catch (err) {
     console.error("[Dashboard] Data fetch failed:", err)
   }
@@ -43,7 +30,6 @@ export default async function DashboardPage() {
       <DashboardContent
         initialSessions={sessions}
         initialStats={stats}
-        initialGoals={goals}
       />
     </main>
   )

@@ -262,7 +262,7 @@ export function PBsContent({
                   Main Events
                 </h2>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
                 {mainEventIds.map(renderEventCard)}
               </div>
             </div>
@@ -274,14 +274,14 @@ export function PBsContent({
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                 Other Events
               </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
                 {otherEventIds.map(renderEventCard)}
               </div>
             </div>
           )}
         </>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
           {allEventsWithPBs.map(renderEventCard)}
         </div>
       )}

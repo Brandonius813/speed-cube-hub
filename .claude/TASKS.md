@@ -898,8 +898,8 @@ Modify: `src/components/shared/navbar.tsx` — swap bell `<Link>` for popup comp
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
-| **Claimed by** | Claude-F |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-F → Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 10 files (4 create, 4 modify, 2 delete) |
 | **Priority** | HIGH |

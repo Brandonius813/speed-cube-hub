@@ -142,30 +142,35 @@ export function TimerContent() {
     return result.data.id
   }
 
-  // Handle a completed solve
-  const handleSolveComplete = useCallback(
-    async (timeMs: number) => {
-      const inspPenalty = inspectionPenaltyRef.current
-      inspectionPenaltyRef.current = null
+  // Save a solve: optimistic update first, then persist to server
+  const saveSolve = useCallback(
+    async (timeMs: number, penalty: "+2" | "DNF" | null) => {
+      const solveNumber = solves.length + 1
+      const compSimGroup =
+        mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
+      const tempId = `temp-${Date.now()}`
 
-      // Combine inspection penalty
-      const penalty = inspPenalty
+      // Optimistic update — show solve instantly
+      const optimisticSolve: Solve = {
+        id: tempId,
+        timer_session_id: timerSessionId ?? "",
+        user_id: "",
+        solve_number: solveNumber,
+        time_ms: timeMs,
+        penalty,
+        scramble: currentScramble ?? "",
+        event,
+        comp_sim_group: compSimGroup,
+        notes: null,
+        solved_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }
+      setSolves((prev) => [...prev, optimisticSolve])
 
-      setLastTime(
-        penalty === "+2"
-          ? timeMs + 2000
-          : penalty === "DNF"
-            ? null
-            : timeMs
-      )
-
+      // Persist to server in background
       try {
         setSaveError(null)
         const sessionId = await ensureTimerSession()
-        const solveNumber = solves.length + 1
-        const compSimGroup =
-          mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
-
         const result = await addSolve(sessionId, {
           solve_number: solveNumber,
           time_ms: timeMs,
@@ -176,58 +181,56 @@ export function TimerContent() {
         })
 
         if (result.error) {
+          // Remove optimistic solve on failure
+          setSolves((prev) => prev.filter((s) => s.id !== tempId))
           setSaveError(`Failed to save solve: ${result.error}`)
         } else if (result.data) {
-          setSolves((prev) => [...prev, result.data!])
+          // Replace temp solve with real one from server
+          setSolves((prev) =>
+            prev.map((s) => (s.id === tempId ? result.data! : s))
+          )
         }
       } catch (err) {
+        setSolves((prev) => prev.filter((s) => s.id !== tempId))
         const message = err instanceof Error ? err.message : "Unknown error"
         setSaveError(`Failed to save solve: ${message}`)
       }
-
-      // Load next scramble
-      loadScramble(event as WcaEventId)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [solves.length, event, mode, timerSessionId, currentScramble]
+  )
+
+  // Handle a completed solve
+  const handleSolveComplete = useCallback(
+    async (timeMs: number) => {
+      const inspPenalty = inspectionPenaltyRef.current
+      inspectionPenaltyRef.current = null
+      const penalty = inspPenalty
+
+      setLastTime(
+        penalty === "+2"
+          ? timeMs + 2000
+          : penalty === "DNF"
+            ? null
+            : timeMs
+      )
+
+      saveSolve(timeMs, penalty)
+      loadScramble(event as WcaEventId)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [saveSolve, event]
   )
 
   // Handle a typed time submission
   const handleTypedTime = useCallback(
     async (timeMs: number) => {
       setLastTime(timeMs)
-
-      try {
-        setSaveError(null)
-        const sessionId = await ensureTimerSession()
-        const solveNumber = solves.length + 1
-        const compSimGroup =
-          mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
-
-        const result = await addSolve(sessionId, {
-          solve_number: solveNumber,
-          time_ms: timeMs,
-          penalty: null,
-          scramble: currentScramble ?? "",
-          event,
-          comp_sim_group: compSimGroup,
-        })
-
-        if (result.error) {
-          setSaveError(`Failed to save solve: ${result.error}`)
-        } else if (result.data) {
-          setSolves((prev) => [...prev, result.data!])
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error"
-        setSaveError(`Failed to save solve: ${message}`)
-      }
-
-      // Load next scramble
+      saveSolve(timeMs, null)
       loadScramble(event as WcaEventId)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [solves.length, event, mode, timerSessionId, currentScramble]
+    [saveSolve, event]
   )
 
   const handlePenaltyChange = async (

@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Calendar, Clock, Flame } from "lucide-react"
+import { Calendar, Clock } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 
 export function StatsCards({
@@ -36,17 +36,10 @@ export function StatsCards({
       icon: Clock,
       iconColor: "text-accent",
     },
-    {
-      label: "Current Streak",
-      value: `${stats.currentStreak} day${stats.currentStreak !== 1 ? "s" : ""}`,
-      change: stats.currentStreak > 0 ? "Keep it up!" : "Start practicing!",
-      icon: Flame,
-      iconColor: "text-chart-1",
-    },
   ]
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2">
       {cards.map((stat) => (
         <Card key={stat.label} className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-4 p-6">

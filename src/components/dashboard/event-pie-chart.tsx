@@ -3,23 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
-import { WCA_EVENTS } from "@/lib/constants"
-
-const EVENT_COLORS: Record<string, string> = {
-  "333": "#EF4444",
-  "444": "#6366F1",
-  "555": "#F97316",
-  "222": "#22D3EE",
-  minx: "#A855F7",
-  pyram: "#A855F7",
-  clock: "#22D3EE",
-  skewb: "#F97316",
-  sq1: "#6366F1",
-}
-
-function getEventLabel(eventId: string): string {
-  return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
-}
+import { EVENT_COLORS, getEventLabel } from "@/lib/constants"
 
 function CustomTooltip({
   active,
