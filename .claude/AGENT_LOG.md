@@ -357,3 +357,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** React Compiler makes all manual memoization unnecessary for this project. `useSyncExternalStore` with a null server snapshot is the clean SSR-safe way to do conditional rendering based on media queries. Stale `.next/cache` can cause phantom TypeScript errors on lines that don't exist — `rm -rf .next/cache` fixes it.
 **Blockers:** None — Phase 12 is fully complete (all 16 tasks Done)
 **Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor: `019_batch_like_counts_rpc.sql`, `020_batch_comment_counts_rpc.sql`, `021_batch_club_challenge_counts_rpc.sql`. Without these, like/comment/club/challenge count RPCs will fail with "function not found" errors on the preview deployment.
+
+---
+
+### 2026-02-27 17:55 PT — Follow Count Bug Fix Session
+
+**Task:** General work — Fix follower/following counts showing 0/0
+**Status:** Diagnosed and fixed a bug where follow counts showed 0/0 for all users. Root cause: the T46 security cleanup (commit 8960afd) changed `getFollowCounts()` from `select("*", { count: "exact", head: true })` to `select("id", { count: "exact", head: true })`, but the `follows` table has no `id` column — it's a join table with only `follower_id`, `following_id`, and `created_at`. Supabase silently returned null counts (no error), which defaulted to 0. Fixed by changing back to `select("*")`. Also added `revalidatePath("/profile")` to both `followUser` and `unfollowUser` actions so profile page caches update when follows change. Merged to main and deployed to production.
+**Files touched:** src/lib/actions/follows.ts
+**Learnings:** Supabase does NOT throw errors when you query a non-existent column with `head: true` + `count: "exact"` — it silently returns null for the count. This is the same class of bug as the T51 explicit column list issue. Always verify column names actually exist before using them in queries.
+**Blockers:** None
+**Warnings:** There are uncommitted changes on dev in 7 other files (dashboard-content, stats-cards, main-cubes, pb-grid, pb-progress-chart, tab-pbs, personal-bests, wca-results) from a previous session. These appear to be PB progress chart improvements and dashboard stats card changes. Don't revert these — they're intentional work that hasn't been committed yet.
