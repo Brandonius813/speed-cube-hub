@@ -22,12 +22,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Camera, X } from "lucide-react"
-import { updateProfile, uploadAvatar, deleteAvatar } from "@/lib/actions/profiles"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Camera, Check, ChevronsUpDown, X, Plus } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { updateProfile, uploadAvatar, deleteAvatar, updateProfileLinks } from "@/lib/actions/profiles"
+import { getWcaCountries } from "@/lib/actions/sor-kinch"
+import type { WcaCountry } from "@/lib/actions/sor-kinch"
 import { WCA_EVENTS } from "@/lib/constants"
 import { DEFAULT_AVATARS } from "@/lib/avatar-defaults"
 import { AvatarCropModal } from "@/components/profile/avatar-crop-modal"
-import type { Profile } from "@/lib/types"
+import type { Profile, ProfileLink } from "@/lib/types"
+
+const US_STATES = [
+  { value: "Alabama", label: "Alabama" },
+  { value: "Alaska", label: "Alaska" },
+  { value: "Arizona", label: "Arizona" },
+  { value: "Arkansas", label: "Arkansas" },
+  { value: "California", label: "California" },
+  { value: "Colorado", label: "Colorado" },
+  { value: "Connecticut", label: "Connecticut" },
+  { value: "Delaware", label: "Delaware" },
+  { value: "Florida", label: "Florida" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "Hawaii", label: "Hawaii" },
+  { value: "Idaho", label: "Idaho" },
+  { value: "Illinois", label: "Illinois" },
+  { value: "Indiana", label: "Indiana" },
+  { value: "Iowa", label: "Iowa" },
+  { value: "Kansas", label: "Kansas" },
+  { value: "Kentucky", label: "Kentucky" },
+  { value: "Louisiana", label: "Louisiana" },
+  { value: "Maine", label: "Maine" },
+  { value: "Maryland", label: "Maryland" },
+  { value: "Massachusetts", label: "Massachusetts" },
+  { value: "Michigan", label: "Michigan" },
+  { value: "Minnesota", label: "Minnesota" },
+  { value: "Mississippi", label: "Mississippi" },
+  { value: "Missouri", label: "Missouri" },
+  { value: "Montana", label: "Montana" },
+  { value: "Nebraska", label: "Nebraska" },
+  { value: "Nevada", label: "Nevada" },
+  { value: "New Hampshire", label: "New Hampshire" },
+  { value: "New Jersey", label: "New Jersey" },
+  { value: "New Mexico", label: "New Mexico" },
+  { value: "New York", label: "New York" },
+  { value: "North Carolina", label: "North Carolina" },
+  { value: "North Dakota", label: "North Dakota" },
+  { value: "Ohio", label: "Ohio" },
+  { value: "Oklahoma", label: "Oklahoma" },
+  { value: "Oregon", label: "Oregon" },
+  { value: "Pennsylvania", label: "Pennsylvania" },
+  { value: "Rhode Island", label: "Rhode Island" },
+  { value: "South Carolina", label: "South Carolina" },
+  { value: "South Dakota", label: "South Dakota" },
+  { value: "Tennessee", label: "Tennessee" },
+  { value: "Texas", label: "Texas" },
+  { value: "Utah", label: "Utah" },
+  { value: "Vermont", label: "Vermont" },
+  { value: "Virginia", label: "Virginia" },
+  { value: "Washington", label: "Washington" },
+  { value: "West Virginia", label: "West Virginia" },
+  { value: "Wisconsin", label: "Wisconsin" },
+  { value: "Wyoming", label: "Wyoming" },
+  { value: "District of Columbia", label: "District of Columbia" },
+]
+
+const PLATFORM_OPTIONS = [
+  { value: "youtube", label: "YouTube" },
+  { value: "instagram", label: "Instagram" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "x", label: "X (Twitter)" },
+  { value: "discord", label: "Discord" },
+  { value: "wca", label: "WCA" },
+  { value: "website", label: "Website" },
+] as const
 
 function getInitials(name: string): string {
   return name
@@ -55,8 +131,11 @@ export function EditProfileModal({
   const [handle, setHandle] = useState(profile.handle)
   const [bio, setBio] = useState(profile.bio ?? "")
   const [location, setLocation] = useState(profile.location ?? "")
-  const [sponsor, setSponsor] = useState(profile.sponsor ?? "")
+  const [countryId, setCountryId] = useState(profile.country_id ?? "")
+  const [countries, setCountries] = useState<WcaCountry[]>([])
+  const [countryOpen, setCountryOpen] = useState(false)
   const [mainEvents, setMainEvents] = useState<string[]>(profile.main_events ?? [])
+  const [links, setLinks] = useState<ProfileLink[]>(profile.links ?? [])
 
   // Avatar state
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null)
@@ -78,15 +157,21 @@ export function EditProfileModal({
       setHandle(profile.handle)
       setBio(profile.bio ?? "")
       setLocation(profile.location ?? "")
-      setSponsor(profile.sponsor ?? "")
+      setCountryId(profile.country_id ?? "")
       setMainEvents(profile.main_events ?? [])
+      setLinks(profile.links ?? [])
       setAvatarBlob(null)
       setAvatarPreview(null)
       setSelectedDefault(null)
       setRemoveAvatar(false)
       setError(null)
+
+      // Fetch countries list for the dropdown
+      if (countries.length === 0) {
+        getWcaCountries().then((data) => setCountries(data))
+      }
     }
-  }, [open, profile])
+  }, [open, profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Revoke object URLs on cleanup to prevent memory leaks
   useEffect(() => {
@@ -197,7 +282,6 @@ export function EditProfileModal({
         ...(handle !== profile.handle ? { handle } : {}),
         bio: bio || null,
         location: location || null,
-        sponsor: sponsor || null,
         main_event: mainEvents[0] || null,
         main_events: mainEvents,
         ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
@@ -209,8 +293,25 @@ export function EditProfileModal({
         return
       }
 
+      // Save social links (only non-empty URLs)
+      const linksToSave = links
+        .filter((l) => l.url.trim())
+        .map((l) => ({
+          ...l,
+          label: l.label.trim() || PLATFORM_OPTIONS.find((p) => p.value === l.platform)?.label || l.platform,
+        }))
+      const linksResult = await updateProfileLinks(linksToSave)
+      if (!linksResult.success) {
+        setError(linksResult.error ?? "Failed to save links.")
+        setSaving(false)
+        return
+      }
+
       setSaving(false)
       onOpenChange(false)
+
+      // Notify navbar to refresh avatar/display name
+      window.dispatchEvent(new Event("profile-updated"))
 
       if (handle !== profile.handle && pathname.startsWith("/profile/")) {
         router.replace(`/profile/${handle}`)
@@ -403,35 +504,170 @@ export function EditProfileModal({
               </p>
             </div>
 
+            {/* Social Links */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-location">
-                Location{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
-              </Label>
-              <Input
-                id="edit-location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g., San Diego, CA"
-                className="min-h-11"
-                maxLength={100}
-              />
+              <Label>Social Links</Label>
+              <div className="flex flex-col gap-2">
+                {links.map((link, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Select
+                      value={link.platform}
+                      onValueChange={(v) => {
+                        setLinks((prev) =>
+                          prev.map((l, idx) => (idx === i ? { ...l, platform: v } : l))
+                        )
+                      }}
+                    >
+                      <SelectTrigger className="min-h-11 w-[140px] shrink-0 border-border/50 text-sm">
+                        <SelectValue placeholder="Platform" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PLATFORM_OPTIONS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={link.url}
+                      onChange={(e) => {
+                        setLinks((prev) =>
+                          prev.map((l, idx) => (idx === i ? { ...l, url: e.target.value } : l))
+                        )
+                      }}
+                      placeholder="https://..."
+                      className="min-h-11 min-w-0 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLinks((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border/50 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Remove link"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {links.length < 10 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setLinks((prev) => [
+                      ...prev,
+                      { platform: "youtube", url: "", label: "" },
+                    ])
+                  }
+                  className="min-h-9 w-fit gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Link
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Up to 10 links. URLs must start with https://
+              </p>
             </div>
 
+            {/* Country picker */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-sponsor">
-                Sponsor{" "}
+              <Label>
+                Country{" "}
                 <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
-              <Input
-                id="edit-sponsor"
-                value={sponsor}
-                onChange={(e) => setSponsor(e.target.value)}
-                placeholder="e.g., GAN, MoYu, SpeedCubeShop"
-                className="min-h-11"
-                maxLength={100}
-              />
+              <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={countryOpen}
+                    className="min-h-11 w-full justify-between border-border/50 text-sm font-normal"
+                  >
+                    {countryId
+                      ? countries.find((c) => c.id === countryId)?.name ?? countryId
+                      : "Select a country..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search countries..." />
+                    <CommandList>
+                      <CommandEmpty>No country found.</CommandEmpty>
+                      <CommandGroup>
+                        {/* Option to clear selection */}
+                        <CommandItem
+                          value="__clear__"
+                          onSelect={() => {
+                            setCountryId("")
+                            setLocation("")
+                            setCountryOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !countryId ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          None
+                        </CommandItem>
+                        {countries.map((country) => (
+                          <CommandItem
+                            key={country.id}
+                            value={country.name}
+                            onSelect={() => {
+                              const newId = country.id === countryId ? "" : country.id
+                              setCountryId(newId)
+                              // Clear state if switching away from US
+                              if (newId !== "US") setLocation("")
+                              setCountryOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                countryId === country.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {country.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {/* US State picker (only shown when country is US) */}
+            {countryId === "US" && (
+              <div className="flex flex-col gap-2">
+                <Label>
+                  State{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <Select
+                  value={location}
+                  onValueChange={setLocation}
+                >
+                  <SelectTrigger className="min-h-11 border-border/50 text-sm">
+                    <SelectValue placeholder="Select a state..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="__none__">None</SelectItem>
+                    {US_STATES.map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-destructive">{error}</p>
