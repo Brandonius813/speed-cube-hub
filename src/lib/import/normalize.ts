@@ -9,7 +9,6 @@ import { DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants"
 
 /**
  * Groups individual solves by date and computes session summaries.
- * Used for Twisty Timer and AI-parsed solve data.
  */
 export function solvesToSessions(
   solves: NormalizedSolve[],
@@ -20,7 +19,6 @@ export function solvesToSessions(
 
   const perSolve = secondsPerSolve ?? DEFAULT_SECONDS_PER_SOLVE[event] ?? 30
 
-  // Group by date
   const grouped = new Map<string, NormalizedSolve[]>()
   for (const solve of solves) {
     const existing = grouped.get(solve.date)
@@ -77,7 +75,6 @@ export function solvesToSessions(
 
 /**
  * Converts raw sessions (from csTimer/CubeTime parsers) into SessionSummary[].
- * These parsers already group by date, so we just add the missing fields.
  */
 export function rawSessionsToSummaries(
   rawSessions: RawSession[],
@@ -104,7 +101,6 @@ export function rawSessionsToSummaries(
 
 /**
  * Finds the best single from an array of solves for a given event.
- * Returns an array (0 or 1 item) for easy spreading into PB arrays.
  */
 export function extractPBsFromSolves(
   solves: NormalizedSolve[],

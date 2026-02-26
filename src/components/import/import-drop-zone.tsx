@@ -61,7 +61,6 @@ export function ImportDropZone({ onData, disabled }: Props) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (file) handleFile(file)
-      // Reset input so same file can be selected again
       e.target.value = ""
     },
     [handleFile]
