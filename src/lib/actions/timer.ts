@@ -7,7 +7,8 @@ import type { TimerSession, Solve } from "@/lib/types"
 
 export async function createTimerSession(
   event: string,
-  mode: "normal" | "comp_sim" = "normal"
+  mode: "normal" | "comp_sim" = "normal",
+  solveSessionId?: string
 ): Promise<{ data: TimerSession | null; error?: string }> {
   const parsed = createTimerSessionSchema.safeParse({ event, mode })
   if (!parsed.success) {
@@ -24,13 +25,16 @@ export async function createTimerSession(
     return { data: null, error: "You must be logged in to use the timer." }
   }
 
+  const insertData: Record<string, unknown> = {
+    user_id: user.id,
+    event: parsed.data.event,
+    mode: parsed.data.mode,
+  }
+  if (solveSessionId) insertData.solve_session_id = solveSessionId
+
   const { data, error } = await supabase
     .from("timer_sessions")
-    .insert({
-      user_id: user.id,
-      event: parsed.data.event,
-      mode: parsed.data.mode,
-    })
+    .insert(insertData)
     .select()
     .single()
 
@@ -41,8 +45,14 @@ export async function createTimerSession(
   return { data: data as TimerSession }
 }
 
+/**
+ * Find active timer session by solve_session_id or event (fallback).
+ * When solveSessionId is provided, looks for an active timer session linked to it.
+ * Falls back to event-based lookup for backward compatibility.
+ */
 export async function getActiveTimerSession(
-  event: string
+  event: string,
+  solveSessionId?: string
 ): Promise<{ data: (TimerSession & { solves: Solve[] }) | null; error?: string }> {
   const supabase = await createClient()
 
@@ -54,16 +64,22 @@ export async function getActiveTimerSession(
     return { data: null, error: "Not authenticated" }
   }
 
-  // Find active timer session for this event
-  const { data: session, error: sessionError } = await supabase
+  // Build query — prefer solve_session_id, fall back to event
+  let query = supabase
     .from("timer_sessions")
     .select("*")
     .eq("user_id", user.id)
-    .eq("event", event)
     .eq("status", "active")
     .order("started_at", { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  if (solveSessionId) {
+    query = query.eq("solve_session_id", solveSessionId)
+  } else {
+    query = query.eq("event", event)
+  }
+
+  const { data: session, error: sessionError } = await query.maybeSingle()
 
   if (sessionError) {
     return { data: null, error: sessionError.message }
@@ -73,7 +89,7 @@ export async function getActiveTimerSession(
     return { data: null }
   }
 
-  // Fetch solves for this session
+  // Fetch solves for this timer session
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
     .select("*")
@@ -101,6 +117,7 @@ export async function addSolve(
     scramble: string
     event: string
     comp_sim_group: number | null
+    solve_session_id?: string | null
   }
 ): Promise<{ data: Solve | null; error?: string }> {
   const supabase = await createClient()
@@ -130,18 +147,21 @@ export async function addSolve(
     return { data: null, error: "Timer session not found or not yours" }
   }
 
+  const insertData: Record<string, unknown> = {
+    timer_session_id: timerSessionId,
+    user_id: user.id,
+    solve_number: parsed.data.solve_number,
+    time_ms: parsed.data.time_ms,
+    penalty: parsed.data.penalty,
+    scramble: parsed.data.scramble,
+    event: parsed.data.event,
+    comp_sim_group: parsed.data.comp_sim_group,
+  }
+  if (data.solve_session_id) insertData.solve_session_id = data.solve_session_id
+
   const { data: solve, error } = await supabase
     .from("solves")
-    .insert({
-      timer_session_id: timerSessionId,
-      user_id: user.id,
-      solve_number: parsed.data.solve_number,
-      time_ms: parsed.data.time_ms,
-      penalty: parsed.data.penalty,
-      scramble: parsed.data.scramble,
-      event: parsed.data.event,
-      comp_sim_group: parsed.data.comp_sim_group,
-    })
+    .insert(insertData)
     .select()
     .single()
 
@@ -212,6 +232,41 @@ export async function deleteSolve(
   }
 
   return {}
+}
+
+/**
+ * Fetch solves for a named solve session (only those after active_from).
+ * Used by the timer to load solves for the current session.
+ */
+export async function getSolvesBySession(
+  solveSessionId: string,
+  activeFrom: string,
+  limit = 5000
+): Promise<{ solves: Solve[]; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { solves: [], error: "Not authenticated" }
+  }
+
+  const { data, error } = await supabase
+    .from("solves")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("solve_session_id", solveSessionId)
+    .gte("solved_at", activeFrom)
+    .order("solved_at", { ascending: true })
+    .limit(limit)
+
+  if (error) {
+    return { solves: [], error: error.message }
+  }
+
+  return { solves: (data as Solve[]) || [] }
 }
 
 export async function getSolvesByEvent(
@@ -336,10 +391,25 @@ export async function finalizeTimerSession(
   const practiceType =
     timerSession.mode === "comp_sim" ? "Comp Sim" : "Solves"
 
-  // Create the sessions row
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .insert({
+  // Check if the solve session is tracked — untracked sessions skip the sessions row
+  let isTracked = true
+  if (timerSession.solve_session_id) {
+    const { data: solveSession } = await supabase
+      .from("solve_sessions")
+      .select("is_tracked")
+      .eq("id", timerSession.solve_session_id)
+      .single()
+
+    if (solveSession) {
+      isTracked = solveSession.is_tracked
+    }
+  }
+
+  let sessionId: string | null = null
+
+  if (isTracked) {
+    // Create the sessions row (only for tracked solve sessions)
+    const sessionInsert: Record<string, unknown> = {
       user_id: user.id,
       session_date: sessionDate,
       event: timerSession.event,
@@ -352,12 +422,22 @@ export async function finalizeTimerSession(
       timer_session_id: timerSessionId,
       feed_visible: true,
       title: `${numSolves} solve${numSolves !== 1 ? "s" : ""} — Timer Session`,
-    })
-    .select("id")
-    .single()
+    }
+    if (timerSession.solve_session_id) {
+      sessionInsert.solve_session_id = timerSession.solve_session_id
+    }
 
-  if (sessionError) {
-    return { error: sessionError.message }
+    const { data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .insert(sessionInsert)
+      .select("id")
+      .single()
+
+    if (sessionError) {
+      return { error: sessionError.message }
+    }
+
+    sessionId = session?.id || null
   }
 
   // Link the timer session to the sessions row and mark completed
@@ -366,7 +446,7 @@ export async function finalizeTimerSession(
     .update({
       status: "completed",
       ended_at: new Date().toISOString(),
-      session_id: session?.id || null,
+      session_id: sessionId,
     })
     .eq("id", timerSessionId)
 

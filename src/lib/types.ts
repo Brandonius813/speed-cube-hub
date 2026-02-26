@@ -62,6 +62,7 @@ export type Session = {
   notes: string | null;
   feed_visible?: boolean;
   timer_session_id?: string | null;
+  solve_session_id?: string | null;
   created_at: string;
 };
 
@@ -213,6 +214,20 @@ export type PendingBadgeClaim = {
   };
 };
 
+export type SolveSession = {
+  id: string;
+  user_id: string;
+  name: string;
+  event: string;
+  is_tracked: boolean;
+  is_archived: boolean;
+  active_from: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  solve_count?: number;
+};
+
 export type TimerSession = {
   id: string;
   user_id: string;
@@ -222,6 +237,7 @@ export type TimerSession = {
   started_at: string;
   ended_at: string | null;
   session_id: string | null;
+  solve_session_id: string | null;
   created_at: string;
 };
 
@@ -236,6 +252,7 @@ export type Solve = {
   event: string;
   comp_sim_group: number | null;
   notes: string | null;
+  solve_session_id: string | null;
   solved_at: string;
   created_at: string;
 };

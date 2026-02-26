@@ -108,6 +108,7 @@ export function computeBPA(
     event: "",
     comp_sim_group: null,
     notes: null,
+    solve_session_id: null,
     solved_at: "",
     created_at: "",
   }))
@@ -139,6 +140,7 @@ export function computeWPA(
     event: "",
     comp_sim_group: null,
     notes: null,
+    solve_session_id: null,
     solved_at: "",
     created_at: "",
   }))
