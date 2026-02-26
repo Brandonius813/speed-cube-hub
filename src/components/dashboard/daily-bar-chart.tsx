@@ -61,9 +61,21 @@ function getGroupMode(sessions: Session[]): GroupMode {
   const minDate = Math.min(...dates)
   const maxDate = Math.max(...dates)
   const daySpan = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1
-  if (daySpan <= 14) return "daily"
+  if (daySpan <= 31) return "daily"
   if (daySpan <= 90) return "weekly"
   return "monthly"
+}
+
+/** Returns a numeric timestamp for sorting groups chronologically */
+function getGroupSortKey(dateStr: string, mode: GroupMode): number {
+  const date = new Date(dateStr + "T00:00:00")
+  if (mode === "daily") return date.getTime()
+  if (mode === "weekly") {
+    const start = new Date(date)
+    start.setDate(start.getDate() - start.getDay())
+    return start.getTime()
+  }
+  return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
 }
 
 function getGroupKey(dateStr: string, mode: GroupMode): string {
@@ -106,28 +118,25 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
 
     // Group by time period
     const groups: Record<string, Record<string, number>> = {}
-    const groupOrder: string[] = []
+    const groupSortKeys: Record<string, number> = {}
 
     for (const s of sessions) {
       const key = getGroupKey(s.session_date, mode)
       if (!groups[key]) {
         groups[key] = {}
-        groupOrder.push(key)
+        groupSortKeys[key] = getGroupSortKey(s.session_date, mode)
       }
       const event = top.includes(s.event) ? s.event : "other"
       groups[key][event] = (groups[key][event] || 0) + s.duration_minutes
       groups[key][`_solves_${event}`] = (groups[key][`_solves_${event}`] || 0) + (s.num_solves ?? 0)
     }
 
-    // De-dupe order (in case sessions aren't sorted)
-    const seen = new Set<string>()
-    const uniqueOrder = groupOrder.filter((k) => {
-      if (seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
+    // Sort chronologically: earliest on the left, most recent on the right
+    const sortedKeys = Object.keys(groups).sort(
+      (a, b) => groupSortKeys[a] - groupSortKeys[b]
+    )
 
-    const data = uniqueOrder.map((key) => ({
+    const data = sortedKeys.map((key) => ({
       label: key,
       ...groups[key],
     }))
