@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
+import { DailySolveChart } from "@/components/timer/daily-solve-chart"
+import { SolveHeatmap } from "@/components/timer/solve-heatmap"
 import { getSolvesByEvent } from "@/lib/actions/timer"
 import type { Solve } from "@/lib/types"
 
@@ -292,6 +294,7 @@ export function StatsPanel({
             <>
               <TimeDistributionChart solves={chartSolves} />
               <TimeTrendChart solves={chartSolves} />
+              {chartScope === "all" && <DailySolveChart solves={chartSolves} />}
             </>
           )}
         </div>

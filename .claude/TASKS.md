@@ -2276,11 +2276,13 @@ Aggregate stats across sessions with date/event/name filters.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
+| **Key files** | `src/components/timer/daily-solve-chart.tsx`, `src/components/timer/stats-panel.tsx` |
 
-Solve count per day/week/month/year, configurable week start, heatmap/bar chart.
+Daily/weekly/monthly solve count bar chart in the timer stats panel "All Time" view. Auto-detects grouping based on date range (≤31 days → daily, ≤90 → weekly, otherwise monthly). Recharts bar chart with tooltips. Shows alongside existing distribution + trend charts.
 
 ---
 
