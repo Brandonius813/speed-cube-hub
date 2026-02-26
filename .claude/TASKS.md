@@ -2155,11 +2155,16 @@ Added 4x4 (Edges, R,r,U,u, LL, ELL, Edge Only, Center Only, UD Centers, UD+3E, L
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116, T122 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/components/timer/training-case-stats.tsx`, `src/lib/timer/scrambles.ts`, `src/lib/timer/use-timer-scramble.ts` |
 
-Best/mean time per case, attempt count, bar chart, weakest case identification.
+- ✅ Case index tracking through scramble generation pipeline (generateTrainingScrambleWithCase)
+- ✅ Per-case stats: best time, mean time, attempt count
+- ✅ Weakest case identification
+- ✅ Solve-to-case mapping preserved through optimistic updates
 
 ---
 
