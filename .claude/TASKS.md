@@ -1031,7 +1031,7 @@ No other files need changes — `getPBTypesForEvent()` reads from this config an
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action + 2 components + 2 integration points |

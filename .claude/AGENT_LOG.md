@@ -114,3 +114,17 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Always check `git log` before claiming a task — another session may have completed and committed it even if TASKS.md showed Available when you first read it. The `npm run build` command requires significant memory and can get killed (exit 137) or timeout on this machine; use `npx tsc --noEmit` as a lighter alternative for type verification.
 **Blockers:** No available tasks remain. T56 is in progress by Claude-Opus.
 **Warnings:** None — all tasks except T56 are done. T56 has local uncommitted changes in `src/lib/actions/timer.ts` (29 lines for `getSolvesByEvent`).
+
+---
+
+### 2026-02-25 16:12 PT — Timer Bug Fixes Session
+
+**Task:** General work — Timer solves not saving + UX improvements
+**Status:** Fixed three timer issues:
+1. **Solves silently failing:** The `timer_sessions` and `solves` tables didn't exist in Supabase. All save errors were silently caught and logged to console.error with no UI feedback. Added error banner to timer UI so failures are visible. User ran the CREATE TABLE SQL to create both tables with RLS policies.
+2. **Red/green hold feedback:** Added "holding" state to timer — numbers turn red immediately when spacebar is pressed, then green after 300ms threshold (matching csTimer behavior).
+3. **Slow solve list update:** Solves didn't appear in sidebar until after 2 server round-trips. Added optimistic updates — solve appears instantly, server save happens in background. If save fails, solve is removed and error shown.
+**Files touched:** src/components/timer/timer-content.tsx, src/components/timer/timer-display.tsx
+**Learnings:** The `timer_sessions` and `solves` tables were referenced in code but never created in Supabase — this was the root cause of timer solves not saving. The error banner we added immediately surfaced the real error message. `.next/lock` contention continues to be an issue with parallel builds — `npx tsc --noEmit` is a reliable alternative.
+**Blockers:** None
+**Warnings:** Two new tables (`timer_sessions`, `solves`) were created in Supabase via SQL. Any future schema changes to these tables need to be done in the Supabase dashboard.
