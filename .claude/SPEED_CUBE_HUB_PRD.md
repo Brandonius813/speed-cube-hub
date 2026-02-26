@@ -226,7 +226,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [ ] Per-case performance statistics (T123)
 
 **Phase 17 — Timer Modes & Advanced Input — T124-T128:**
-- [ ] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
+- [x] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
 - [x] Configurable timer hold duration (T125)
 - [x] Timer display customization (size, small decimals, update mode) (T126)
 - [x] Mobile swipe gestures (8-direction, matching csTimer) (T127)
@@ -247,10 +247,10 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [ ] BLD helper tool (T138)
 
 **Phase 20 — Non-WCA Puzzles & Relays — T139-T143:**
-- [ ] Big cubes 8x8-11x11 + custom NxN (T139)
-- [ ] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
-- [ ] Remaining non-WCA puzzles (~20 more types) (T141)
-- [ ] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
+- [x] Big cubes 8x8-11x11 + custom NxN (T139)
+- [x] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
+- [x] Remaining non-WCA puzzles (~20 more types) (T141)
+- [x] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
 - [x] Other event training variants (Mega, Pyra, Skewb, SQ1 — Clock deferred) (T143)
 
 **Phase 21 — Hardware Integration — T144-T146:**
