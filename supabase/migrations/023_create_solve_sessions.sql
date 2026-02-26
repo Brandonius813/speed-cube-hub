@@ -79,9 +79,7 @@ FROM solve_sessions ss
 WHERE timer_sessions.user_id = ss.user_id
   AND timer_sessions.event = ss.event;
 
--- 8. Backfill: update existing sessions rows that came from timer to point to their solve_session
-UPDATE sessions
-SET solve_session_id = ts.solve_session_id
-FROM timer_sessions ts
-WHERE sessions.timer_session_id = ts.id
-  AND ts.solve_session_id IS NOT NULL;
+-- 8. NOTE: sessions.timer_session_id does not exist in production DB,
+-- so we skip backfilling sessions.solve_session_id from timer_sessions.
+-- Historical session rows will have solve_session_id = NULL, which is fine.
+-- New sessions created by the timer going forward will be linked properly.

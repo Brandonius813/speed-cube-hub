@@ -529,3 +529,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** `.next/lock` gets stuck when parallel sessions compete — `rm -rf .next` + `pkill -f "next"` is the standard fix.
 **Blockers:** User must run `023_create_solve_sessions.sql` in Supabase SQL Editor.
 **Warnings:** Uncommitted work on dev from other sessions: timer-content.tsx, timer-sidebar.tsx changes. Also untracked: `src/components/share/`, `src/components/timer/solve-detail-modal.tsx`. Don't revert these.
+
+---
+
+### 2026-02-26 12:20 PT — Migration Fix + Sync Session
+
+**Task:** General — Fix 023 migration SQL and sync
+**Status:** User ran the corrected 023_create_solve_sessions.sql migration successfully in Supabase (without the step 8 backfill that referenced non-existent `sessions.timer_session_id` column). Updated migration file to match what was actually run. The `solve_sessions` table is now live in production with all RLS policies, indexes, FK columns on solves/timer_sessions/sessions, and backfilled data.
+**Files touched:** supabase/migrations/023_create_solve_sessions.sql (removed step 8 backfill)
+**Learnings:** The `sessions` table does NOT have a `timer_session_id` column in the live DB — this was in the TypeScript types but never added via SQL. Always verify column existence against live DB before writing migration SQL that references them.
+**Blockers:** None — migration is applied, Phase 14 is fully live.
+**Warnings:** `sessions.timer_session_id` does NOT exist in production. Any code referencing it will fail at the DB level. The TypeScript `Session` type has it as optional (`timer_session_id?: string | null`) but the column was never created.
