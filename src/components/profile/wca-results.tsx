@@ -113,7 +113,7 @@ function sortByWcaOrder(events: ProcessedEvent[]): ProcessedEvent[] {
   })
 }
 
-type SortMode = "default" | "rank" | "time"
+type SortMode = "default" | "rank"
 
 type ProcessedEvent = {
   eventId: string
@@ -152,13 +152,6 @@ export function WcaResults({
         const aRank = getRankValue(a[sortField], rankType) ?? 999999
         const bRank = getRankValue(b[sortField], rankType) ?? 999999
         return aRank - bRank
-      })
-    }
-    if (sortBy === "time") {
-      return [...events].sort((a, b) => {
-        const aTime = a[sortField]?.best ?? 999999
-        const bTime = b[sortField]?.best ?? 999999
-        return aTime - bTime
       })
     }
     // Default: official WCA order
@@ -204,7 +197,6 @@ export function WcaResults({
               options={[
                 { value: "default", label: "Default" },
                 { value: "rank", label: "Rank" },
-                { value: "time", label: "Time" },
               ]}
               value={sortBy}
               onChange={(v) => setSortBy(v as SortMode)}
@@ -222,7 +214,7 @@ export function WcaResults({
               onChange={(v) => setRankType(v as RankType)}
             />
           </div>
-          {(sortBy === "rank" || sortBy === "time") && (
+          {sortBy === "rank" && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">By:</span>
               <SegmentedToggle
