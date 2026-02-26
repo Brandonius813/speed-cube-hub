@@ -341,3 +341,19 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `country_id` field was accepted in the UI (country dropdown existed) but never actually saved to the database — the `updateProfile` server action didn't include it in its accepted fields. Always verify the full data flow (UI → action → DB) when checking a feature is "done."
 **Blockers:** None — all Phase 12 and Phase 13 tasks are complete.
 **Warnings:** No remaining available tasks in TASKS.md. All phases (1-13) complete.
+
+---
+
+### 2026-02-26 19:00 PT — Phase 12 Wave 3 Completion + SQL Handoff Session
+
+**Task:** T76–T79 (Phase 12 Wave 3 — Component Performance) + Phase 12 SQL handoff
+**Status:** Completed all Wave 3 component performance tasks across two context windows:
+- T78: Confirmed React Compiler (`reactCompiler: true`) auto-memoizes everything — no manual React.memo/useMemo/useCallback needed
+- T77: Split timer-content.tsx (498→368 lines) by extracting `use-timer-scramble.ts` hook, `timer-top-bar.tsx`, and `timer-sidebar.tsx`
+- T76: Split import-pbs-modal.tsx (790→309 lines) by extracting `parse-import.ts`, `import-manual-section.tsx`, `import-csv-section.tsx`
+- T79: Added `useSyncExternalStore` media query hook to session-log.tsx (446→299 lines) — only renders one layout at a time after hydration. Extracted `session-log-layouts.tsx` with SessionCard + SessionTable components.
+- All changes were auto-committed by a parallel session. Provided user with 3 SQL migration files to run in Supabase.
+**Files touched:** src/components/timer/timer-content.tsx, src/lib/timer/use-timer-scramble.ts (new), src/components/timer/timer-top-bar.tsx (new), src/components/timer/timer-sidebar.tsx (new), src/components/pbs/import-pbs-modal.tsx, src/lib/pbs/parse-import.ts (new), src/components/pbs/import-manual-section.tsx (new), src/components/pbs/import-csv-section.tsx (new), src/components/dashboard/session-log.tsx, src/components/dashboard/session-log-layouts.tsx (new)
+**Learnings:** React Compiler makes all manual memoization unnecessary for this project. `useSyncExternalStore` with a null server snapshot is the clean SSR-safe way to do conditional rendering based on media queries. Stale `.next/cache` can cause phantom TypeScript errors on lines that don't exist — `rm -rf .next/cache` fixes it.
+**Blockers:** None — Phase 12 is fully complete (all 16 tasks Done)
+**Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor: `019_batch_like_counts_rpc.sql`, `020_batch_comment_counts_rpc.sql`, `021_batch_club_challenge_counts_rpc.sql`. Without these, like/comment/club/challenge count RPCs will fail with "function not found" errors on the preview deployment.
