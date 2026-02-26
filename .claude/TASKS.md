@@ -2543,11 +2543,13 @@ Click scramble image → animated sequence, step-through moves.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/scramble-display.tsx` |
 
-Adjustable text size, mono font toggle, height limit, alignment, key move labels.
+Adjustable text size, mono font toggle, height limit, compact mode. Settings gear icon opens dropdown with Size (Auto/S/M/L), Font (Mono/Sans), and Compact mode toggle. All settings persisted to localStorage.
 
 ---
 

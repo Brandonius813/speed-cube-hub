@@ -264,8 +264,8 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 23 — Polish & Display — T149-T152:**
 - [x] Hide all elements during timing (T149)
-- [ ] Scramble display options (size, font, alignment) (T150)
-- [ ] Multiple solve deletion (batch select) (T151)
+- [x] Scramble display options (size, font, alignment) (T150)
+- [x] Multiple solve deletion (batch select) (T151)
 - [ ] Auto-backup / auto-export (T152)
 
 ### Algorithm Learning System (Future)
