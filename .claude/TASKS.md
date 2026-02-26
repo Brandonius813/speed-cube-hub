@@ -2171,12 +2171,12 @@ Best/mean time per case, attempt count, bar chart, weakest case identification.
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | Claude-Opus-B |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms.
+Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localStorage.
 
 ---
 
