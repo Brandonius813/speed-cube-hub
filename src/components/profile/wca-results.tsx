@@ -4,8 +4,6 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
   Medal,
   ArrowUp,
@@ -25,8 +23,6 @@ const LEGACY_EVENT_LABELS: Record<string, string> = {
   mmagic: "Master Magic",
   "333mbo": "Multi-BLD (Old)",
 }
-
-const PREVIEW_COUNT = 2
 
 type RankType = "world" | "national" | "continental"
 
@@ -155,14 +151,15 @@ export function WcaResults({
   wcaId,
   isOwner = false,
   customEventOrder,
+  mainEvents = [],
 }: {
   personalRecords: WcaPersonalRecords
   competitionCount: number
   wcaId?: string | null
   isOwner?: boolean
   customEventOrder?: string[] | null
+  mainEvents?: string[]
 }) {
-  const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sortBy, setSortBy] = useState<SortMode>("default")
   const [sortField, setSortField] = useState<"single" | "average">("single")
@@ -200,10 +197,8 @@ export function WcaResults({
     return sortByCustomOrder(events, customOrder)
   })()
 
-  // In edit mode, show all events so you can reorder the full list
-  const visibleEvents =
-    editing || expanded ? sortedEvents : sortedEvents.slice(0, PREVIEW_COUNT)
-  const hiddenCount = sortedEvents.length - PREVIEW_COUNT
+  const visibleEvents = sortedEvents
+  const mainEventSet = new Set(mainEvents)
 
   async function handleMove(eventId: string, direction: "up" | "down") {
     // Build the current order from sortedEvents if no custom order yet
@@ -346,8 +341,7 @@ export function WcaResults({
 
         {editing && (
           <p className="mb-4 text-xs text-muted-foreground">
-            Use the arrows to reorder your events. The top {PREVIEW_COUNT} will
-            show by default.
+            Use the arrows to reorder your events.
           </p>
         )}
 
@@ -365,30 +359,11 @@ export function WcaResults({
                 event.eventId
               }
               onMove={(dir) => handleMove(event.eventId, dir)}
+              isMainEvent={mainEventSet.has(event.eventId)}
             />
           ))}
         </div>
 
-        {/* Show more/less button (hidden in edit mode since all are shown) */}
-        {!editing && hiddenCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-          >
-            {expanded ? (
-              <>
-                Show less
-                <ChevronUp className="h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Show all {sortedEvents.length} events
-                <ChevronDown className="h-4 w-4" />
-              </>
-            )}
-          </button>
-        )}
       </CardContent>
     </Card>
   )
@@ -432,6 +407,7 @@ function EventCard({
   isFirst = false,
   isLast = false,
   onMove,
+  isMainEvent = false,
 }: {
   event: ProcessedEvent
   rankType: RankType
@@ -439,13 +415,18 @@ function EventCard({
   isFirst?: boolean
   isLast?: boolean
   onMove?: (direction: "up" | "down") => void
+  isMainEvent?: boolean
 }) {
   const singleRank = getRankValue(event.single, rankType)
   const avgRank = getRankValue(event.average, rankType)
   const label = RANK_LABEL[rankType]
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-4">
+    <div className={`flex items-center justify-between rounded-lg border p-4 ${
+      isMainEvent
+        ? "border-primary/40 bg-primary/5"
+        : "border-border/50 bg-secondary/50"
+    }`}>
       <div className="flex items-center gap-3">
         {showReorder && (
           <div className="flex flex-col gap-0.5">
@@ -469,9 +450,14 @@ function EventCard({
         )}
         <CubingIcon
           event={event.eventId}
-          className="shrink-0 text-base text-muted-foreground"
+          className={`shrink-0 text-base ${isMainEvent ? "text-primary" : "text-muted-foreground"}`}
         />
         <span className="font-medium text-foreground">{event.label}</span>
+        {isMainEvent && (
+          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            Main
+          </span>
+        )}
       </div>
       {!showReorder && (
         <div className="flex gap-6 text-right">

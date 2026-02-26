@@ -69,6 +69,7 @@ export function TabOfficial({
           wcaId={wcaId}
           isOwner={isOwner}
           customEventOrder={profile.wca_event_order}
+          mainEvents={profile.main_events ?? []}
         />
       )}
 
