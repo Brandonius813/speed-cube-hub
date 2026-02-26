@@ -11,25 +11,19 @@ import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
 import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
+import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
 export function DashboardContent({
   initialSessions,
-  initialStats,
 }: {
   initialSessions: Session[]
-  initialStats: {
-    sessionsThisWeek: number
-    totalMinutes: number
-    currentStreak: number
-    longestStreak: number
-    weeklyMinutes: number
-    weeklyChange: number
-  }
 }) {
+  // Compute streak stats from ALL sessions (unfiltered)
+  const allStats = useMemo(() => computeSessionStats(initialSessions), [initialSessions])
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
   const [selectedPracticeTypes, setSelectedPracticeTypes] = useState<string[]>([])
-  const [searchNotes, setSearchNotes] = useState("")
+
   const [selectedRange, setSelectedRange] = useState<DateRange>("30d")
   const [customRange, setCustomRange] = useState<CustomDateRange | null>(null)
 
@@ -64,16 +58,6 @@ export function DashboardContent({
       result = result.filter((s) => selectedPracticeTypes.includes(s.practice_type))
     }
 
-    // Filter by notes/title search
-    if (searchNotes.trim()) {
-      const query = searchNotes.trim().toLowerCase()
-      result = result.filter(
-        (s) =>
-          (s.notes && s.notes.toLowerCase().includes(query)) ||
-          (s.title && s.title.toLowerCase().includes(query))
-      )
-    }
-
     // Filter by date range
     if (selectedRange === "custom" && customRange) {
       result = result.filter((s) => {
@@ -106,12 +90,14 @@ export function DashboardContent({
     }
 
     return result
-  }, [initialSessions, selectedEvents, selectedPracticeTypes, searchNotes, selectedRange, customRange])
+  }, [initialSessions, selectedEvents, selectedPracticeTypes, selectedRange, customRange])
+
+  // Compute stats from filtered sessions (so stats cards reflect filters)
+  const filteredStats = useMemo(() => computeSessionStats(filteredSessions), [filteredSessions])
 
   function handleClearFilters() {
     setSelectedEvents([])
     setSelectedPracticeTypes([])
-    setSearchNotes("")
     setSelectedRange("30d")
     setCustomRange(null)
   }
@@ -121,8 +107,8 @@ export function DashboardContent({
       {/* 1. Practice Streak (heatmap + streak counters) */}
       <PracticeStreak
         sessions={initialSessions}
-        currentStreak={initialStats.currentStreak}
-        longestStreak={initialStats.longestStreak}
+        currentStreak={allStats.currentStreak}
+        longestStreak={allStats.longestStreak}
       />
 
       {/* 2. Filters */}
@@ -131,18 +117,16 @@ export function DashboardContent({
         selectedRange={selectedRange}
         customRange={customRange}
         selectedPracticeTypes={selectedPracticeTypes}
-        searchNotes={searchNotes}
         availablePracticeTypes={availablePracticeTypes}
         onEventsChange={setSelectedEvents}
         onRangeChange={setSelectedRange}
         onCustomRangeChange={setCustomRange}
         onPracticeTypesChange={setSelectedPracticeTypes}
-        onSearchNotesChange={setSearchNotes}
         onClearFilters={handleClearFilters}
       />
 
       {/* 3. Stats Cards */}
-      <StatsCards stats={initialStats} />
+      <StatsCards stats={filteredStats} />
 
       {/* 4. Charts grid: Time by Event + Event Pie */}
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">

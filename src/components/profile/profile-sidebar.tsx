@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,11 @@ import {
   Globe,
   MapPin,
   Pencil,
-  Star,
 } from "lucide-react"
 import { EventBadge } from "@/components/shared/event-badge"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import { FollowListModal } from "@/components/profile/follow-list-modal"
+import { getWcaCountries } from "@/lib/actions/sor-kinch"
 import type { Profile } from "@/lib/types"
 
 function getInitials(name: string): string {
@@ -72,6 +72,20 @@ export function ProfileSidebar({
   const [editOpen, setEditOpen] = useState(false)
   const [followListOpen, setFollowListOpen] = useState(false)
   const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers")
+  const [countryName, setCountryName] = useState<string | null>(null)
+
+  // Look up country name if profile has country_id but no location string
+  useEffect(() => {
+    if (profile.country_id && !profile.location) {
+      getWcaCountries().then((countries) => {
+        const match = countries.find((c) => c.id === profile.country_id)
+        if (match) setCountryName(match.name)
+      })
+    }
+  }, [profile.country_id, profile.location])
+
+  // Display location: prefer the composed location string, fall back to country name
+  const displayLocation = profile.location || countryName
 
   const mainEvents =
     profile.main_events?.length > 0
@@ -129,16 +143,10 @@ export function ProfileSidebar({
             <Calendar className="h-3.5 w-3.5 shrink-0" />
             <span>Joined {formatJoinDate(profile.created_at)}</span>
           </div>
-          {profile.location && (
+          {displayLocation && (
             <div className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span>{profile.location}</span>
-            </div>
-          )}
-          {profile.sponsor && (
-            <div className="flex items-center gap-2">
-              <Star className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="text-primary">{profile.sponsor}</span>
+              <span>{displayLocation}</span>
             </div>
           )}
         </div>

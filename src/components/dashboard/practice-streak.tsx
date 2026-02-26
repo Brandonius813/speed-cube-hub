@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { Flame, Trophy, Star } from "lucide-react"
+import { Flame, Trophy } from "lucide-react"
 import { HeatmapTooltip } from "@/components/dashboard/heatmap-tooltip"
 import type { Session } from "@/lib/types"
 import { formatDuration } from "@/lib/utils"
@@ -10,13 +10,6 @@ const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""]
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-]
-
-const MILESTONES = [
-  { days: 7, label: "7d", icon: Star },
-  { days: 30, label: "30d", icon: Star },
-  { days: 100, label: "100d", icon: Trophy },
-  { days: 365, label: "365d", icon: Trophy },
 ]
 
 function getIntensity(minutes: number): number {
@@ -129,59 +122,24 @@ export function PracticeStreak({
 
   return (
     <div className="rounded-xl border border-border/50 bg-card p-4 sm:p-6">
-      {/* Header: streak counters + milestones */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-6">
-          {/* Current streak */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                isActive ? "bg-orange-500/15" : "bg-secondary"
-              }`}
-            >
-              <Flame
-                className={`h-5 w-5 ${isActive ? "text-orange-500" : "text-muted-foreground"}`}
-                style={isActive ? { animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" } : undefined}
-              />
-            </div>
-            <div>
-              <p className="font-mono text-2xl font-bold leading-none text-foreground">
-                {currentStreak}
-              </p>
-              <p className="text-[11px] text-muted-foreground">day streak</p>
-            </div>
-          </div>
-          {/* Longest streak */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-              <Trophy className="h-4 w-4 text-accent" />
-            </div>
-            <div>
-              <p className="font-mono text-lg font-bold leading-none text-foreground">
-                {longestStreak}
-              </p>
-              <p className="text-[11px] text-muted-foreground">longest</p>
-            </div>
-          </div>
+      {/* Header: inline streak counters */}
+      <div className="mb-4 flex items-center gap-4">
+        <div className="flex items-center gap-1.5">
+          <Flame
+            className={`h-5 w-5 ${isActive ? "text-orange-500" : "text-muted-foreground"}`}
+          />
+          <span className="font-mono text-lg font-bold text-foreground">
+            {currentStreak}
+          </span>
+          <span className="text-sm text-muted-foreground">day streak</span>
         </div>
-        {/* Milestones */}
-        <div className="flex flex-wrap gap-1.5">
-          {MILESTONES.map((m) => {
-            const earned = longestStreak >= m.days
-            return (
-              <div
-                key={m.days}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                  earned
-                    ? "bg-accent/15 text-accent"
-                    : "bg-secondary/50 text-muted-foreground/50"
-                }`}
-              >
-                <m.icon className="h-3 w-3" />
-                {m.label}
-              </div>
-            )
-          })}
+        <span className="text-muted-foreground/40">·</span>
+        <div className="flex items-center gap-1.5">
+          <Trophy className="h-4 w-4 text-accent" />
+          <span className="font-mono text-lg font-bold text-foreground">
+            {longestStreak}
+          </span>
+          <span className="text-sm text-muted-foreground">longest</span>
         </div>
       </div>
 

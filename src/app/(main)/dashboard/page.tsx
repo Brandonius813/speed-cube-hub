@@ -1,6 +1,5 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions } from "@/lib/actions/sessions"
-import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
 export default async function DashboardPage() {
@@ -13,8 +12,6 @@ export default async function DashboardPage() {
     console.error("[Dashboard] Data fetch failed:", err)
   }
 
-  const stats = computeSessionStats(sessions)
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 sm:mb-8">
@@ -26,10 +23,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <DashboardContent
-        initialSessions={sessions}
-        initialStats={stats}
-      />
+      <DashboardContent initialSessions={sessions} />
     </main>
   )
 }

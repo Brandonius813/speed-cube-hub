@@ -207,6 +207,7 @@ export async function updateProfile(fields: {
   bio?: string | null
   avatar_url?: string | null
   location?: string | null
+  country_id?: string | null
   sponsor?: string | null
   main_event?: string | null
   main_events?: string[]
@@ -270,6 +271,13 @@ export async function updateProfile(fields: {
   if (fields.location !== undefined && fields.location !== null) {
     if (fields.location.length > 100) {
       return { success: false, error: "Location must be under 100 characters." }
+    }
+  }
+
+  // Validate country_id if provided (WCA country codes are short strings like "US", "CN")
+  if (fields.country_id !== undefined && fields.country_id !== null) {
+    if (fields.country_id.length > 50) {
+      return { success: false, error: "Invalid country." }
     }
   }
 

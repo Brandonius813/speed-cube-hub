@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { CalendarDays, ChevronDown, Search, X } from "lucide-react"
+import { CalendarDays, ChevronDown, X } from "lucide-react"
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 
@@ -61,26 +60,22 @@ export function DashboardFilters({
   selectedRange,
   customRange,
   selectedPracticeTypes,
-  searchNotes,
   availablePracticeTypes,
   onEventsChange,
   onRangeChange,
   onCustomRangeChange,
   onPracticeTypesChange,
-  onSearchNotesChange,
   onClearFilters,
 }: {
   selectedEvents: string[]
   selectedRange: DateRange
   customRange: CustomDateRange | null
   selectedPracticeTypes: string[]
-  searchNotes: string
   availablePracticeTypes: string[]
   onEventsChange: (events: string[]) => void
   onRangeChange: (range: DateRange) => void
   onCustomRangeChange: (range: CustomDateRange) => void
   onPracticeTypesChange: (types: string[]) => void
-  onSearchNotesChange: (search: string) => void
   onClearFilters: () => void
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -118,7 +113,6 @@ export function DashboardFilters({
   const hasActiveFilters =
     selectedEvents.length > 0 ||
     selectedPracticeTypes.length > 0 ||
-    searchNotes.length > 0 ||
     selectedRange !== "30d"
 
   const customLabel = selectedRange === "custom" && customRange
@@ -229,17 +223,6 @@ export function DashboardFilters({
               </div>
             </PopoverContent>
           </Popover>
-
-          {/* Search notes */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search notes..."
-              value={searchNotes}
-              onChange={(e) => onSearchNotesChange(e.target.value)}
-              className="min-h-11 border-border/50 pl-9"
-            />
-          </div>
 
           {/* Clear filters */}
           {hasActiveFilters && (

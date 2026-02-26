@@ -10,13 +10,17 @@ function CustomTooltip({
   payload,
 }: {
   active?: boolean
-  payload?: Array<{ name: string; value: number; payload: { color: string } }>
+  payload?: Array<{ name: string; value: number; payload: { color: string; solves: number } }>
 }) {
   if (active && payload && payload.length) {
+    const data = payload[0].payload
     return (
       <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
         <p className="font-medium text-foreground">{payload[0].name}</p>
         <p className="text-muted-foreground">{payload[0].value}% of practice</p>
+        {data.solves > 0 && (
+          <p className="text-muted-foreground">{data.solves.toLocaleString()} solves</p>
+        )}
       </div>
     )
   }
@@ -26,11 +30,14 @@ function CustomTooltip({
 export function EventPieChart({ sessions }: { sessions: Session[] }) {
   // Compute time per event as percentages
   const eventMinutes: Record<string, number> = {}
+  const eventSolves: Record<string, number> = {}
   let total = 0
 
   for (const session of sessions) {
     eventMinutes[session.event] =
       (eventMinutes[session.event] || 0) + session.duration_minutes
+    eventSolves[session.event] =
+      (eventSolves[session.event] || 0) + (session.num_solves ?? 0)
     total += session.duration_minutes
   }
 
@@ -38,6 +45,7 @@ export function EventPieChart({ sessions }: { sessions: Session[] }) {
     .map(([event, minutes]) => ({
       name: getEventLabel(event),
       value: total > 0 ? Math.round((minutes / total) * 100) : 0,
+      solves: eventSolves[event] || 0,
       color: EVENT_COLORS[event] || "#6366F1",
     }))
     .sort((a, b) => b.value - a.value)

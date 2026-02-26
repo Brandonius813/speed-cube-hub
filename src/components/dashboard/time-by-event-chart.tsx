@@ -20,7 +20,7 @@ function CustomTooltip({
   payload,
 }: {
   active?: boolean
-  payload?: Array<{ payload: { event: string; minutes: number; color: string } }>
+  payload?: Array<{ payload: { event: string; minutes: number; solves: number; color: string } }>
 }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload
@@ -28,6 +28,9 @@ function CustomTooltip({
       <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
         <p className="font-medium text-foreground">{data.event}</p>
         <p className="text-muted-foreground">{formatDuration(data.minutes)}</p>
+        {data.solves > 0 && (
+          <p className="text-muted-foreground">{data.solves.toLocaleString()} solves</p>
+        )}
       </div>
     )
   }
@@ -36,8 +39,10 @@ function CustomTooltip({
 
 export function TimeByEventChart({ sessions }: { sessions: Session[] }) {
   const eventMinutes: Record<string, number> = {}
+  const eventSolves: Record<string, number> = {}
   for (const s of sessions) {
     eventMinutes[s.event] = (eventMinutes[s.event] || 0) + s.duration_minutes
+    eventSolves[s.event] = (eventSolves[s.event] || 0) + (s.num_solves ?? 0)
   }
 
   const data = Object.entries(eventMinutes)
@@ -45,6 +50,7 @@ export function TimeByEventChart({ sessions }: { sessions: Session[] }) {
       event: getEventLabel(id),
       eventId: id,
       minutes,
+      solves: eventSolves[id] || 0,
       color: EVENT_COLORS[id] || "#6366F1",
     }))
     .sort((a, b) => b.minutes - a.minutes)

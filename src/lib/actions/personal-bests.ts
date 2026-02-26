@@ -513,15 +513,7 @@ export async function updatePB(
   }
 
   // Re-evaluate which PB is the "current" best for this event+type
-  // First, unmark all as not current
-  await supabase
-    .from("personal_bests")
-    .update({ is_current: false })
-    .eq("user_id", user.id)
-    .eq("event", existing.event)
-    .eq("pb_type", existing.pb_type)
-
-  // Then find and promote the actual best
+  // Find the best first, then unmark all + mark best in parallel (saves 1 round-trip)
   if (isMBLD) {
     const { data: all } = await supabase
       .from("personal_bests")
@@ -548,13 +540,24 @@ export async function updatePB(
           bestId = all[i].id
         }
       }
-      await supabase
-        .from("personal_bests")
-        .update({ is_current: true })
-        .eq("id", bestId)
-        .eq("user_id", user.id)
+      // Unmark all + mark best in parallel
+      await Promise.all([
+        supabase
+          .from("personal_bests")
+          .update({ is_current: false })
+          .eq("user_id", user.id)
+          .eq("event", existing.event)
+          .eq("pb_type", existing.pb_type)
+          .neq("id", bestId),
+        supabase
+          .from("personal_bests")
+          .update({ is_current: true })
+          .eq("id", bestId)
+          .eq("user_id", user.id),
+      ])
     }
   } else {
+    // Find the best by time, then unmark all + mark best in parallel
     const { data: best } = await supabase
       .from("personal_bests")
       .select("id")
@@ -566,11 +569,20 @@ export async function updatePB(
       .single()
 
     if (best) {
-      await supabase
-        .from("personal_bests")
-        .update({ is_current: true })
-        .eq("id", best.id)
-        .eq("user_id", user.id)
+      await Promise.all([
+        supabase
+          .from("personal_bests")
+          .update({ is_current: false })
+          .eq("user_id", user.id)
+          .eq("event", existing.event)
+          .eq("pb_type", existing.pb_type)
+          .neq("id", best.id),
+        supabase
+          .from("personal_bests")
+          .update({ is_current: true })
+          .eq("id", best.id)
+          .eq("user_id", user.id),
+      ])
     }
   }
 

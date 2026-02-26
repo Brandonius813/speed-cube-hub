@@ -132,16 +132,16 @@ export async function getCommentCounts(
 
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("comments")
-    .select("session_id")
-    .in("session_id", sessionIds)
+  // Use RPC for SQL COUNT GROUP BY — no row transfer
+  const { data, error } = await supabase.rpc("get_batch_comment_counts", {
+    p_session_ids: sessionIds,
+  })
 
   if (error || !data) return {}
 
   const counts: Record<string, number> = {}
   for (const row of data) {
-    counts[row.session_id] = (counts[row.session_id] || 0) + 1
+    counts[row.session_id] = Number(row.comment_count)
   }
   return counts
 }

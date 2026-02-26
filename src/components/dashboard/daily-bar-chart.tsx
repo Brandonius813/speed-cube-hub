@@ -21,24 +21,32 @@ function CustomTooltip({
   label,
 }: {
   active?: boolean
-  payload?: Array<{ dataKey: string; value: number; color: string }>
+  payload?: Array<{ dataKey: string; value: number; color: string; payload: Record<string, number> }>
   label?: string
 }) {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
         <p className="mb-1 font-medium text-foreground">{label}</p>
-        {payload.map((entry) => (
-          <div key={entry.dataKey} className="flex items-center gap-2">
-            <div
-              className="h-2 w-2 rounded-sm"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-muted-foreground">
-              {getEventLabel(entry.dataKey) || entry.dataKey}: {formatDuration(entry.value)}
-            </span>
-          </div>
-        ))}
+        {payload.map((entry) => {
+          const solves = entry.payload[`_solves_${entry.dataKey}`] || 0
+          return (
+            <div key={entry.dataKey}>
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-2 w-2 rounded-sm"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-muted-foreground">
+                  {getEventLabel(entry.dataKey) || entry.dataKey}: {formatDuration(entry.value)}
+                </span>
+              </div>
+              {solves > 0 && (
+                <p className="ml-4 text-muted-foreground">{solves.toLocaleString()} solves</p>
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -108,6 +116,7 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
       }
       const event = top.includes(s.event) ? s.event : "other"
       groups[key][event] = (groups[key][event] || 0) + s.duration_minutes
+      groups[key][`_solves_${event}`] = (groups[key][`_solves_${event}`] || 0) + (s.num_solves ?? 0)
     }
 
     // De-dupe order (in case sessions aren't sorted)

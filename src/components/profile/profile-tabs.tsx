@@ -10,8 +10,8 @@ const TABS: { id: ProfileTab; label: string }[] = [
   { id: "pbs", label: "PBs" },
   { id: "stats", label: "Stats" },
   { id: "overview", label: "Overview" },
-  { id: "cubes", label: "Cubes" },
-  { id: "official", label: "Official" },
+  { id: "cubes", label: "Main Puzzles" },
+  { id: "official", label: "Official Results" },
 ]
 
 const SWIPE_THRESHOLD = 60

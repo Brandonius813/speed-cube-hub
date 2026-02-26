@@ -70,25 +70,25 @@ export async function claimCompetitionBadge(
     return { success: false, error: "Badge, year, and detail are required." };
   }
 
-  // Verify the badge exists and is a competition badge
-  const { data: badge } = await supabase
-    .from("badges")
-    .select("id, category, verification")
-    .eq("id", badgeId)
-    .single();
+  // Verify badge + check for duplicate in parallel
+  const [{ data: badge }, { data: existing }] = await Promise.all([
+    supabase
+      .from("badges")
+      .select("id, category, verification")
+      .eq("id", badgeId)
+      .single(),
+    supabase
+      .from("user_badges")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("badge_id", badgeId)
+      .eq("year", year)
+      .eq("detail", detail.trim()),
+  ]);
 
   if (!badge || badge.category !== "competition") {
     return { success: false, error: "Invalid competition badge." };
   }
-
-  // Check for duplicate claim (same badge + year + detail)
-  const { data: existing } = await supabase
-    .from("user_badges")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("badge_id", badgeId)
-    .eq("year", year)
-    .eq("detail", detail.trim());
 
   if (existing && existing.length > 0) {
     return { success: false, error: "You already claimed this badge." };
@@ -131,7 +131,7 @@ export async function claimSponsorBadge(
     return { success: false, error: "Sponsor name is required." };
   }
 
-  // Find the "Sponsored Athlete" badge
+  // Find the "Sponsored Athlete" badge first (needed for duplicate check)
   const { data: badge } = await supabase
     .from("badges")
     .select("id")

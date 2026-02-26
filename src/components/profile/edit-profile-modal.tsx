@@ -156,7 +156,13 @@ export function EditProfileModal({
       setDisplayName(profile.display_name)
       setHandle(profile.handle)
       setBio(profile.bio ?? "")
-      setLocation(profile.location ?? "")
+      // Parse state from composed location (e.g., "California, USA" → "California")
+      const rawLocation = profile.location ?? ""
+      if (profile.country_id === "US" && rawLocation.endsWith(", USA")) {
+        setLocation(rawLocation.slice(0, -5))
+      } else {
+        setLocation(rawLocation)
+      }
       setCountryId(profile.country_id ?? "")
       setMainEvents(profile.main_events ?? [])
       setLinks(profile.links ?? [])
@@ -277,11 +283,23 @@ export function EditProfileModal({
         newAvatarUrl = null
       }
 
+      // Compose display location from country + state for the location field
+      let displayLocation: string | null = null
+      if (countryId) {
+        const countryName = countries.find((c) => c.id === countryId)?.name ?? countryId
+        if (countryId === "US" && location && location !== "__none__") {
+          displayLocation = `${location}, USA`
+        } else {
+          displayLocation = countryName
+        }
+      }
+
       const result = await updateProfile({
         display_name: displayName,
         ...(handle !== profile.handle ? { handle } : {}),
         bio: bio || null,
-        location: location || null,
+        location: displayLocation,
+        country_id: countryId || null,
         main_event: mainEvents[0] || null,
         main_events: mainEvents,
         ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
@@ -327,7 +345,7 @@ export function EditProfileModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="border-border/50 bg-card">
+        <DialogContent className="max-h-[90vh] border-border/50 bg-card flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
@@ -335,7 +353,7 @@ export function EditProfileModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 overflow-y-auto pr-1">
             {/* Avatar section */}
             <div className="flex flex-col items-center gap-3">
               {/* Current avatar preview */}

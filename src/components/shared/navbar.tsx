@@ -111,6 +111,24 @@ export function Navbar() {
     return () => window.removeEventListener("notifications-updated", handleUpdate)
   }, [])
 
+  // Re-fetch navbar data when profile is updated (avatar, display name)
+  useEffect(() => {
+    function handleProfileUpdate() {
+      getNavbarData().then((data) => {
+        if (data.isLoggedIn) {
+          setUserProfile({
+            avatar_url: data.avatarUrl,
+            display_name: data.displayName,
+          })
+        }
+      }).catch(() => {
+        // Profile refresh failed — keep current state
+      })
+    }
+    window.addEventListener("profile-updated", handleProfileUpdate)
+    return () => window.removeEventListener("profile-updated", handleProfileUpdate)
+  }, [])
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">

@@ -98,7 +98,7 @@ export async function getClub(clubId: string): Promise<{
 
   const { count } = await supabase
     .from("club_members")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("club_id", clubId)
 
   let isMember = false

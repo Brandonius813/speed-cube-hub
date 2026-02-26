@@ -1,10 +1,11 @@
 "use client"
 
+import { useMemo } from "react"
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { ProfileStats } from "@/components/profile/profile-stats"
 import { BadgesSection } from "@/components/profile/badges-section"
-import { YtdStats } from "@/components/profile/ytd-stats"
+import { PracticeStreak } from "@/components/dashboard/practice-streak"
 import { RecentActivity } from "@/components/profile/recent-activity"
+import { computeSessionStats } from "@/lib/utils"
 import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
 
 export function TabOverview({
@@ -28,6 +29,8 @@ export function TabOverview({
   followingCount?: number
   followButton?: React.ReactNode
 }) {
+  const stats = useMemo(() => computeSessionStats(sessions), [sessions])
+
   return (
     <div className="flex flex-col gap-6">
       {/* Mobile only: show ProfileHeader here since sidebar is hidden */}
@@ -41,7 +44,11 @@ export function TabOverview({
         />
       </div>
 
-      <ProfileStats sessions={sessions} />
+      <PracticeStreak
+        sessions={sessions}
+        currentStreak={stats.currentStreak}
+        longestStreak={stats.longestStreak}
+      />
 
       <BadgesSection
         userBadges={userBadges}
@@ -50,7 +57,6 @@ export function TabOverview({
         isAdmin={isAdmin}
       />
 
-      <YtdStats sessions={sessions} />
       <RecentActivity sessions={sessions.slice(0, 10)} />
     </div>
   )

@@ -1480,3 +1480,186 @@ T77 (Timer memoization)       — no deps
 T78 (Feed/LB memoization)     — no deps
 T79 (Session log dual DOM)    — no deps
 ```
+
+---
+
+## Phase 13 — QoL Improvements Sprint
+
+### T83: Clean Up Streak Display + Remove Pill Badges
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+
+Clean inline display with flame icon + number + "day streak" · trophy icon + number + "longest". No milestone pill badges.
+
+---
+
+### T84: Remove Search Notes from Practice Stats
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Removed search notes input and filtering logic from filters and dashboard content.
+
+---
+
+### T85: Make Stats Cards Dynamic Based on Filters
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+Stats cards now reflect filtered sessions. `filteredStats` computed client-side from `filteredSessions`.
+
+---
+
+### T86: Add Solve Counts to Graph Tooltips
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 3 files |
+
+All three chart tooltips now show solve counts alongside duration.
+
+---
+
+### T87: Session Log Pagination (20 per page)
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+
+Session log paginates at 20 per page with Previous/Next controls. Toggle all only affects current page.
+
+---
+
+### T88: Profile Overview — Remove Stat Cards, Add Heatmap, Remove YiR
+
+| | |
+|---|---|
+| **Status** | ✅ Done |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+
+Overview tab: ProfileHeader (mobile) → PracticeStreak → BadgesSection → RecentActivity. Removed ProfileStats and YtdStats.
+
+---
+
+### T89: Stats Tab — Remove Duplicate Tracker + Add Filters
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | T83 |
+| **Estimated scope** | 1 file |
+
+In `src/components/profile/tab-stats.tsx`: Remove `<PracticeHeatmap>` (second heatmap), keep `<PracticeStreak>`. Import `DashboardFilters` and add filter state (selectedEvents, selectedPracticeTypes, selectedRange, customRange). Add `filteredSessions` useMemo. Render filters at top. Pass `filteredSessions` to charts/session log, unfiltered `sessions` to PracticeStreak. This makes filters work on both own profile and public profiles since both use `TabStats`.
+
+---
+
+### T90: Tab Renames + PB History
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+In `src/components/profile/profile-tabs.tsx`: Rename "Cubes" → "Main Puzzles", "Official" → "Official Results". In `src/components/profile/pb-progress-chart.tsx`: Rename "PB Progress" → "PB History".
+
+---
+
+### T91: Replace Location with Country Dropdown + US State
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 4 files |
+
+In `edit-profile-modal.tsx`: Fetch country list via `getWcaCountries()`, replace location `<Input>` with searchable country `<Combobox>` (Shadcn Popover + Command), store in `country_id`. When US selected, show state dropdown (hardcoded list), store in `location` field. In `profiles.ts`: Add `country_id` to `updateProfile` accepted fields. In `profile-sidebar.tsx` and `profile-header.tsx`: Display country name + state instead of raw location.
+
+---
+
+### T92: Remove Sponsor Field
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 3 files |
+
+Remove Sponsor input from `edit-profile-modal.tsx`. Remove sponsor display row (Star icon + text) from `profile-sidebar.tsx`. Remove sponsor from `profile-header.tsx` if present.
+
+---
+
+### T93: Add Social Links to Edit Profile Modal
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+
+In `edit-profile-modal.tsx`: Add "Social Links" section. Reuse existing `ProfileLink` type and `updateProfileLinks()` server action. UI: list current links with platform dropdown + URL input + delete button, plus "Add Link" button. Platforms: YouTube, Instagram, TikTok, X, Discord, WCA, Website.
+
+---
+
+### T94: PB Settings — 3-Event Limit + Order All Events
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+In `pb-settings-modal.tsx`: Add counter "Main Events (2/3)" in section header. Disable "Add" buttons when 3 main events selected. Add up/down reorder buttons to "Other Events" section. When saving, concatenate `[...mainEvents, ...orderedOtherEvents]` into `pbs_main_events`. In `pbs-content.tsx`: Read `pbs_main_events` — first 3 = main events (pinned), rest = custom-ordered others. Events not in array appear last in WCA default order.
+
+---
+
+### T95: Fix Navbar Avatar Not Updating After Profile Change
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+
+In `navbar.tsx`: Add `useEffect` listener for `"profile-updated"` custom event (same pattern as existing `"notifications-updated"`). On event, re-call `getNavbarData()` and update state. In `edit-profile-modal.tsx`: After successful save, dispatch `window.dispatchEvent(new Event("profile-updated"))`.
+
+---
+
+### Phase 13 Dependency Graph
+
+```
+Phase 13 — QoL Improvements Sprint
+
+Wave 1 (all parallel, no deps):
+T83 (Streak display cleanup)     — no deps
+T84 (Remove search notes)        — no deps
+T85 (Dynamic stats cards)        — no deps
+T86 (Solve counts in tooltips)   — no deps
+T87 (Session log pagination)     — no deps
+T88 (Overview tab cleanup)       — no deps
+T90 (Tab renames)                — no deps
+T91 (Country dropdown)           — no deps
+T92 (Remove sponsor)             — no deps
+T93 (Social links in modal)      — no deps
+T94 (PB settings improvements)   — no deps
+T95 (Navbar avatar fix)          — no deps
+
+Wave 2 (after T83):
+T89 (Stats tab filters + dedup)  — T83 (needs clean streak component)
+```

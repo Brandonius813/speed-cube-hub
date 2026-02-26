@@ -129,7 +129,7 @@ export async function getNavbarData(): Promise<NavbarData> {
       .single(),
     supabase
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("read", false),
   ])

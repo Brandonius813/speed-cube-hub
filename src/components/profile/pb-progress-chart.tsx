@@ -170,7 +170,7 @@ export function PBProgressChart({ sessions }: { sessions: Session[] }) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-foreground">
             <TrendingDown className="h-5 w-5 text-primary" />
-            PB Progress
+            PB History
           </CardTitle>
           <Select value={selectedEvent} onValueChange={setSelectedEvent}>
             <SelectTrigger className="min-h-11 w-full border-border bg-secondary/50 sm:w-[200px]">

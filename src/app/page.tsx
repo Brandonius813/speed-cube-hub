@@ -5,7 +5,8 @@ import { SocialProof } from "@/components/landing/social-proof"
 import { Footer } from "@/components/shared/footer"
 import { getGlobalStats } from "@/lib/actions/stats"
 
-export const dynamic = "force-dynamic"
+// Regenerate every 5 minutes — stats don't need to be real-time
+export const revalidate = 300
 
 export default async function Home() {
   const stats = await getGlobalStats()

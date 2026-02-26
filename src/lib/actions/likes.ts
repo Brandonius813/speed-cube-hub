@@ -78,30 +78,27 @@ export async function getSessionLikeInfo(
 
   if (sessionIds.length === 0) return result
 
-  // Get like counts for all sessions in one query
-  const { data: countData } = await supabase
-    .from("likes")
-    .select("session_id")
-    .in("session_id", sessionIds)
+  // Get like counts via RPC (SQL COUNT GROUP BY — no row transfer)
+  // and user's own likes in parallel
+  const [countResult, likedResult] = await Promise.all([
+    supabase.rpc("get_batch_like_counts", { p_session_ids: sessionIds }),
+    userId
+      ? supabase
+          .from("likes")
+          .select("session_id")
+          .eq("user_id", userId)
+          .in("session_id", sessionIds)
+      : Promise.resolve({ data: [] as { session_id: string }[] }),
+  ])
 
-  // Count likes per session
   const counts = new Map<string, number>()
-  for (const row of countData ?? []) {
-    counts.set(row.session_id, (counts.get(row.session_id) ?? 0) + 1)
+  for (const row of countResult.data ?? []) {
+    counts.set(row.session_id, Number(row.like_count))
   }
 
-  // Get which sessions the current user has liked
   const userLiked = new Set<string>()
-  if (userId) {
-    const { data: likedData } = await supabase
-      .from("likes")
-      .select("session_id")
-      .eq("user_id", userId)
-      .in("session_id", sessionIds)
-
-    for (const row of likedData ?? []) {
-      userLiked.add(row.session_id)
-    }
+  for (const row of likedResult.data ?? []) {
+    userLiked.add(row.session_id)
   }
 
   // Build the result map

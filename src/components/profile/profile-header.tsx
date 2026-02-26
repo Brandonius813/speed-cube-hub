@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Eye, MapPin, Pencil, Star } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Eye, MapPin, Pencil } from "lucide-react"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import { FollowListModal } from "@/components/profile/follow-list-modal"
+import { getWcaCountries } from "@/lib/actions/sor-kinch"
 import Link from "next/link"
 import type { Profile } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
@@ -36,6 +36,20 @@ export function ProfileHeader({
   const [editOpen, setEditOpen] = useState(false)
   const [followListOpen, setFollowListOpen] = useState(false)
   const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers")
+  const [countryName, setCountryName] = useState<string | null>(null)
+
+  // Look up country name if profile has country_id but no location string
+  useEffect(() => {
+    if (profile.country_id && !profile.location) {
+      getWcaCountries().then((countries) => {
+        const match = countries.find((c) => c.id === profile.country_id)
+        if (match) setCountryName(match.name)
+      })
+    }
+  }, [profile.country_id, profile.location])
+
+  // Display location: prefer the composed location string, fall back to country name
+  const displayLocation = profile.location || countryName
 
   return (
     <>
@@ -62,12 +76,6 @@ export function ProfileHeader({
                 {(profile.main_events?.length > 0 ? profile.main_events : profile.main_event ? [profile.main_event] : []).map((eventId) => (
                   <EventBadge key={eventId} event={eventId} className="border-accent/30 bg-accent/10 text-accent" />
                 ))}
-                {profile.sponsor && (
-                  <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
-                    <Star className="h-3 w-3" />
-                    {profile.sponsor}
-                  </Badge>
-                )}
                 {profile.location && (
                   <p className="flex items-center gap-1 text-sm text-muted-foreground">
                     <MapPin className="h-3.5 w-3.5" />

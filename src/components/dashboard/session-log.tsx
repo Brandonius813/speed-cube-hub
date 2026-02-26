@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,36 +15,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Pencil, Trash2, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react"
 import type { Session } from "@/lib/types"
-import { EventBadge } from "@/components/shared/event-badge"
-import { formatDuration } from "@/lib/utils"
 import { EditSessionModal } from "@/components/dashboard/edit-session-modal"
+import { SessionCard, SessionTable } from "@/components/dashboard/session-log-layouts"
 import { deleteSessionsBulk } from "@/lib/actions/sessions"
 
-function formatAvg(avg: number | null): string {
-  if (avg === null) return "--"
-  if (avg >= 60) {
-    const min = Math.floor(avg / 60)
-    const sec = (avg % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${avg.toFixed(2)}s`
-}
+const PAGE_SIZE = 20
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00")
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+/** SSR-safe media query hook — returns null during SSR, true/false after hydration */
+const SM_QUERY = "(min-width: 640px)"
+function subscribeMedia(cb: () => void) {
+  const mql = window.matchMedia(SM_QUERY)
+  mql.addEventListener("change", cb)
+  return () => mql.removeEventListener("change", cb)
+}
+function getMediaSnapshot() {
+  return window.matchMedia(SM_QUERY).matches
+}
+function getMediaServerSnapshot() {
+  return null as boolean | null
+}
+function useIsDesktop(): boolean | null {
+  return useSyncExternalStore(subscribeMedia, getMediaSnapshot, getMediaServerSnapshot)
 }
 
 export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]; readOnly?: boolean }) {
   const router = useRouter()
+  const isDesktop = useIsDesktop()
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+
+  // Reset to first page whenever the sessions list changes (e.g. filters applied)
+  useEffect(() => {
+    setPage(0)
+  }, [sessions])
+
+  const totalPages = Math.ceil(sessions.length / PAGE_SIZE)
+  const displayedSessions = sessions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function handleSaved() {
     setEditingSession(null)
@@ -75,10 +88,22 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
   }
 
   function toggleAll() {
-    if (selectedIds.size === sessions.length) {
-      setSelectedIds(new Set())
+    const pageIds = displayedSessions.map((s) => s.id)
+    const allPageSelected = pageIds.every((id) => selectedIds.has(id))
+    if (allPageSelected) {
+      // Deselect all on current page
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        pageIds.forEach((id) => next.delete(id))
+        return next
+      })
     } else {
-      setSelectedIds(new Set(sessions.map((s) => s.id)))
+      // Select all on current page
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        pageIds.forEach((id) => next.add(id))
+        return next
+      })
     }
   }
 
@@ -99,8 +124,10 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
     router.refresh()
   }
 
-  const allSelected = sessions.length > 0 && selectedIds.size === sessions.length
-  const someSelected = selectedIds.size > 0 && selectedIds.size < sessions.length
+  const pageIds = displayedSessions.map((s) => s.id)
+  const pageSelectedCount = pageIds.filter((id) => selectedIds.has(id)).length
+  const allSelected = displayedSessions.length > 0 && pageSelectedCount === displayedSessions.length
+  const someSelected = pageSelectedCount > 0 && pageSelectedCount < displayedSessions.length
 
   if (sessions.length === 0) {
     return (
@@ -147,187 +174,68 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
             </div>
           )}
 
-          {/* Mobile card layout */}
-          <div className="flex flex-col gap-3 sm:hidden">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className="flex items-center gap-2 rounded-lg border border-border/30 bg-secondary/30 px-3 py-3"
-                onClick={selectMode ? () => toggleSession(session.id) : undefined}
-              >
-                {selectMode && (
-                  <Checkbox
-                    checked={selectedIds.has(session.id)}
-                    onCheckedChange={() => toggleSession(session.id)}
-                    className="shrink-0"
-                  />
-                )}
-                <div className="flex min-w-0 flex-1 items-center justify-between">
-                  <div className="flex min-w-0 flex-col gap-1.5">
-                    {session.title && (
-                      <span className="truncate text-sm font-medium text-foreground">
-                        {session.title}
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <EventBadge event={session.event} />
-                      <span className="text-xs text-muted-foreground">
-                        {session.practice_type}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{formatDate(session.session_date)}</span>
-                      {session.num_solves !== null && session.num_solves > 0 && (
-                        <span>{session.num_solves} solves</span>
-                      )}
-                      {session.num_dnf != null && session.num_dnf > 0 && (
-                        <span className="text-amber-500">{session.num_dnf} DNF{session.num_dnf !== 1 ? "s" : ""}</span>
-                      )}
-                      <span>{formatDuration(session.duration_minutes)}</span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <div className="flex gap-3 text-right">
-                      {session.best_time !== null && (
-                        <div>
-                          <div className="font-mono text-sm font-semibold text-accent">
-                            {formatAvg(session.best_time)}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">best</div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-mono text-sm font-semibold text-foreground">
-                          {formatAvg(session.avg_time)}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">avg</div>
-                      </div>
-                    </div>
-                    {!readOnly && !selectMode && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="ml-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => setEditingSession(session)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Mobile card layout — rendered when not desktop (or during SSR with CSS hide) */}
+          {(isDesktop === null || !isDesktop) && (
+            <div className={`flex flex-col gap-3${isDesktop === null ? " sm:hidden" : ""}`}>
+              {displayedSessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(session.id)}
+                  readOnly={readOnly}
+                  onToggle={() => toggleSession(session.id)}
+                  onEdit={() => setEditingSession(session)}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Desktop table layout */}
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border/50">
-                  {selectMode && (
-                    <th className="w-10 pb-3">
-                      <Checkbox
-                        checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                        onCheckedChange={toggleAll}
-                      />
-                    </th>
-                  )}
-                  <th className="pb-3 text-left text-sm font-medium text-muted-foreground">
-                    Date
-                  </th>
-                  <th className="pb-3 text-left text-sm font-medium text-muted-foreground">
-                    Event
-                  </th>
-                  <th className="pb-3 text-left text-sm font-medium text-muted-foreground">
-                    Type
-                  </th>
-                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                    Solves
-                  </th>
-                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                    DNFs
-                  </th>
-                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                    Duration
-                  </th>
-                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                    Best
-                  </th>
-                  <th className="pb-3 text-right text-sm font-medium text-muted-foreground">
-                    Avg
-                  </th>
-                  {!readOnly && <th className="w-10 pb-3" />}
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session) => (
-                  <tr
-                    key={session.id}
-                    className={`group border-b border-border/30 last:border-0 hover:bg-secondary/30 ${selectMode ? "cursor-pointer" : ""}`}
-                    onClick={selectMode ? () => toggleSession(session.id) : undefined}
-                  >
-                    {selectMode && (
-                      <td className="py-3">
-                        <Checkbox
-                          checked={selectedIds.has(session.id)}
-                          onCheckedChange={() => toggleSession(session.id)}
-                        />
-                      </td>
-                    )}
-                    <td className="py-3 text-sm text-muted-foreground">
-                      {formatDate(session.session_date)}
-                    </td>
-                    <td className="py-3">
-                      <div className="flex flex-col gap-1">
-                        <EventBadge event={session.event} />
-                        {session.title && (
-                          <span className="max-w-[200px] truncate text-xs text-muted-foreground">
-                            {session.title}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 text-sm text-foreground">
-                      {session.practice_type}
-                    </td>
-                    <td className="py-3 text-right font-mono text-sm text-foreground">
-                      {session.num_solves ?? "—"}
-                    </td>
-                    <td className="py-3 text-right font-mono text-sm">
-                      {session.num_dnf != null && session.num_dnf > 0 ? (
-                        <span className="text-amber-500">{session.num_dnf}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 text-right font-mono text-sm text-foreground">
-                      {formatDuration(session.duration_minutes)}
-                    </td>
-                    <td className="py-3 text-right font-mono text-sm text-accent">
-                      {formatAvg(session.best_time)}
-                    </td>
-                    <td className="py-3 text-right font-mono text-sm text-foreground">
-                      {formatAvg(session.avg_time)}
-                    </td>
-                    {!readOnly && (
-                      <td className="py-3 text-center">
-                        {!selectMode && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-                            onClick={() => setEditingSession(session)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Desktop table layout — rendered when desktop (or during SSR with CSS hide) */}
+          {(isDesktop === null || isDesktop) && (
+            <div className={`overflow-x-auto${isDesktop === null ? " hidden sm:block" : ""}`}>
+              <SessionTable
+                sessions={displayedSessions}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                allSelected={allSelected}
+                someSelected={someSelected}
+                readOnly={readOnly}
+                onToggleSession={toggleSession}
+                onToggleAll={toggleAll}
+                onEdit={setEditingSession}
+              />
+            </div>
+          )}
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/50 pt-4 mt-4">
+              <span className="text-sm text-muted-foreground">
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sessions.length)} of {sessions.length} sessions
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

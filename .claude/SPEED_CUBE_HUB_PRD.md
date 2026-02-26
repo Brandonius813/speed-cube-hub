@@ -141,7 +141,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Fix landing page stats — use database aggregation (T48)
 - [x] Fix navbar — reduce server calls from 8 to 1 (T49)
 - [x] Fix dashboard — deduplicate session fetches + add limits (T50)
-- [x] Replace select("*") with explicit column lists (T51)
+- [ ] Replace select("*") with explicit column lists (T51) — **Reverted 3x.** Requires a live Supabase DB schema audit first (`SELECT column_name FROM information_schema.columns WHERE table_name = '...'`) because many columns were added via SQL editor and don't match the TypeScript types. Do not re-attempt without verifying every column name against the live database.
 
 ### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
 
@@ -160,6 +160,10 @@ Rework the profile page from a flat vertical stack into a 5-tab layout with a pe
   - **Official** — WCA results (lazy-loaded), allrounding, accomplishments, upcoming competitions
 - [x] Rewrite profile content components with grid + tabs layout
 - [ ] Activate unused components: `UpcomingCompetitions`, `PBProgressChart` (on profile)
+
+### Remaining Security Items (Manual)
+- [ ] **Rate limiting** — Add rate limiting to login, signup, `/api/scramble`, and `/api/og`. Requires Upstash Redis (or similar) since Vercel serverless can't do in-memory rate limiting reliably. Supabase Auth already rate-limits login/signup natively, so the API routes are the priority.
+- [ ] **Challenges RLS policy** — The `challenges` table INSERT policy allows any authenticated user. Need a SQL migration to restrict INSERT to admin users only (currently admin check is only enforced in the server action, not at the database level).
 
 ### Coaching Platform (Future)
 - Coach role with student management

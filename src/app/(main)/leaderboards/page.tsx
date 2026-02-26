@@ -7,25 +7,24 @@ import { createClient } from "@/lib/supabase/server"
 export default async function LeaderboardsPage() {
   const supabase = await createClient()
 
-  // Fetch practice leaderboards, WCA data, and user info all in parallel
-  const [initialData, countries, sorSingleData, kinchSingleData, { data: { user } }] = await Promise.all([
+  // Fetch leaderboards + user WCA ID all in parallel
+  // The profile query chains off the auth promise so it starts as soon as auth resolves
+  const authPromise = supabase.auth.getUser()
+  const [initialData, countries, sorSingleData, kinchSingleData, userWcaId] = await Promise.all([
     getAllLeaderboards(),
     getWcaCountries().catch(() => []),
     getSorKinchLeaderboard("sor", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
     getSorKinchLeaderboard("kinch", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
-    supabase.auth.getUser(),
+    authPromise.then(async ({ data: { user } }) => {
+      if (!user) return null
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("wca_id")
+        .eq("id", user.id)
+        .single()
+      return profile?.wca_id ?? null
+    }),
   ])
-
-  // Get the user's WCA ID for "Find Me" on SOR/Kinch tabs
-  let userWcaId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("wca_id")
-      .eq("id", user.id)
-      .single()
-    userWcaId = profile?.wca_id ?? null
-  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
