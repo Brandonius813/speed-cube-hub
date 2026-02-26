@@ -4,38 +4,24 @@ import type { WcaEventId } from "@/lib/constants"
 
 export function useTimerScramble() {
   const [currentScramble, setCurrentScramble] = useState<string | null>(null)
-  const [isLoadingScramble, setIsLoadingScramble] = useState(false)
   const nextScrambleRef = useRef<string | null>(null)
 
-  const loadScramble = async (eventId: WcaEventId) => {
-    setIsLoadingScramble(true)
-    try {
-      if (nextScrambleRef.current) {
-        setCurrentScramble(nextScrambleRef.current)
-        nextScrambleRef.current = null
-      } else {
-        const scramble = await generateScramble(eventId)
-        setCurrentScramble(scramble)
-      }
-    } catch (err) {
-      console.error("Failed to generate scramble:", err)
-      setCurrentScramble("Error generating scramble — try refreshing")
-    } finally {
-      setIsLoadingScramble(false)
+  const loadScramble = (eventId: WcaEventId) => {
+    // Use pre-generated scramble if available, otherwise generate instantly
+    if (nextScrambleRef.current) {
+      setCurrentScramble(nextScrambleRef.current)
+      nextScrambleRef.current = null
+    } else {
+      setCurrentScramble(generateScramble(eventId))
     }
 
-    preGenerateScramble(eventId)
-      .then((s) => {
-        nextScrambleRef.current = s
-      })
-      .catch(() => {
-        // Pre-generation is optional — next scramble will generate on-demand
-      })
+    // Pre-generate the next scramble (synchronous, <50ms)
+    nextScrambleRef.current = preGenerateScramble(eventId)
   }
 
   const clearNextScramble = () => {
     nextScrambleRef.current = null
   }
 
-  return { currentScramble, isLoadingScramble, loadScramble, clearNextScramble }
+  return { currentScramble, loadScramble, clearNextScramble }
 }

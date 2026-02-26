@@ -34,7 +34,7 @@ export function TimerContent() {
   const [solves, setSolves] = useState<Solve[]>([])
 
   // Scramble management (extracted hook)
-  const { currentScramble, isLoadingScramble, loadScramble, clearNextScramble } =
+  const { currentScramble, loadScramble, clearNextScramble } =
     useTimerScramble()
 
   // Settings
@@ -324,10 +324,7 @@ export function TimerContent() {
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
-          <ScrambleDisplay
-            scramble={currentScramble}
-            isLoading={isLoadingScramble}
-          />
+          <ScrambleDisplay scramble={currentScramble} />
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}

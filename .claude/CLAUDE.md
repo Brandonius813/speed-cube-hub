@@ -88,7 +88,7 @@ Each page uses a two-file pattern:
 - `src/components/profile/tab-cubes.tsx` — Cubes tab (wrapper around MainCubes)
 - `src/components/profile/tab-official.tsx` — Official tab (WCA results, allrounding, accomplishments)
 - `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, share-button, following-sidebar)
-- `src/app/api/scramble/route.ts` — WCA-standard scramble generation API (runs cubing.js server-side to avoid Turbopack Web Worker issues)
+- `src/lib/timer/scrambles.ts` — Client-side scramble generation using cstimer_module (random-state for 3x3, 2x2, pyraminx, skewb, clock, sq1; random-move for big cubes + megaminx)
 - `src/app/api/og/route.tsx` — OG image generation API (share cards for sessions/PBs, uses @vercel/og)
 - `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components

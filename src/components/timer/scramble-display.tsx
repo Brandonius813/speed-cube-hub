@@ -6,10 +6,9 @@ import { cn } from "@/lib/utils"
 
 type ScrambleDisplayProps = {
   scramble: string | null
-  isLoading: boolean
 }
 
-export function ScrambleDisplay({ scramble, isLoading }: ScrambleDisplayProps) {
+export function ScrambleDisplay({ scramble }: ScrambleDisplayProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -31,14 +30,6 @@ export function ScrambleDisplay({ scramble, isLoading }: ScrambleDisplayProps) {
     if (len < 60) return "text-base sm:text-lg md:text-xl"
     if (len < 100) return "text-sm sm:text-base md:text-lg"
     return "text-xs sm:text-sm md:text-base"
-  }
-
-  if (isLoading) {
-    return (
-      <div className="w-full px-4 py-3 text-center">
-        <div className="h-6 w-48 mx-auto bg-muted animate-pulse rounded" />
-      </div>
-    )
   }
 
   if (!scramble) {
