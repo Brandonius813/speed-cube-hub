@@ -20,7 +20,8 @@ export type CsTimerParsedSession = {
 };
 
 type ParsedSolve = {
-  time: number | null; // null = DNF
+  time: number | null; // null = bare DNF with no recorded time
+  isDnf: boolean;
   date: string; // YYYY-MM-DD
 };
 
@@ -68,8 +69,8 @@ export function parseCsTimerCsv(text: string): {
 
     if (!rawTime || !rawDate) continue;
 
-    // Parse time
-    const time = parseSolveTime(rawTime);
+    // Parse time (extracts underlying time even from DNFs like "DNF(12.34)")
+    const { time, isDnf } = parseSolveTime(rawTime);
 
     // Parse date
     const dateMatch = rawDate.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -80,7 +81,7 @@ export function parseCsTimerCsv(text: string): {
 
     const dateStr = dateMatch[1];
 
-    solves.push({ time, date: dateStr });
+    solves.push({ time, isDnf, date: dateStr });
   }
 
   if (solves.length === 0) {
@@ -112,7 +113,7 @@ export function parseCsTimerCsv(text: string): {
       .map((s) => s.time)
       .filter((t): t is number => t !== null);
 
-    const numDnf = daySolves.length - validTimes.length;
+    const numDnf = daySolves.filter((s) => s.isDnf).length;
 
     // Averages
     const avgTime =
@@ -141,25 +142,37 @@ export function parseCsTimerCsv(text: string): {
 }
 
 /**
- * Parses a csTimer time value.
- * - "10.26"       → 10.26
- * - "13.30+"      → 13.30  (+2 penalty already included)
- * - "DNF(12.34)"  → null   (DNF)
- * - "DNF"         → null   (DNF)
+ * Parses a csTimer time value, returning both the time and whether it was a DNF.
+ * DNFs with a recorded time (e.g. "DNF(12.34)") have their time extracted
+ * so it can be included in averages.
+ *
+ * - "10.26"       → { time: 10.26, isDnf: false }
+ * - "13.30+"      → { time: 13.30, isDnf: false }
+ * - "DNF(12.34)"  → { time: 12.34, isDnf: true }
+ * - "DNF"         → { time: null,  isDnf: true }
  */
-function parseSolveTime(raw: string): number | null {
+function parseSolveTime(raw: string): { time: number | null; isDnf: boolean } {
   const trimmed = raw.trim();
 
   // DNF — could be "DNF" or "DNF(12.34)"
   if (trimmed.toUpperCase().startsWith("DNF")) {
-    return null;
+    const match = trimmed.match(/DNF\(([^)]+)\)/i);
+    if (match) {
+      const time = parseTimeValue(match[1].trim());
+      return { time, isDnf: true };
+    }
+    return { time: null, isDnf: true };
   }
 
   // Strip trailing "+" for +2 penalty (time already includes the penalty)
   const cleaned = trimmed.replace(/\+$/, "");
+  return { time: parseTimeValue(cleaned), isDnf: false };
+}
 
+/** Parses a raw numeric time string (supports ss.cc and m:ss.cc formats). */
+function parseTimeValue(raw: string): number | null {
   // Handle m:ss.cc format (e.g. "2:34.56" → 154.56 seconds)
-  const colonMatch = cleaned.match(/^(\d+):(\d+(?:\.\d+)?)$/);
+  const colonMatch = raw.match(/^(\d+):(\d+(?:\.\d+)?)$/);
   if (colonMatch) {
     const minutes = parseInt(colonMatch[1], 10);
     const seconds = parseFloat(colonMatch[2]);
@@ -169,7 +182,7 @@ function parseSolveTime(raw: string): number | null {
     return Math.round(total * 100) / 100;
   }
 
-  const num = parseFloat(cleaned);
+  const num = parseFloat(raw);
   if (isNaN(num) || num <= 0) return null;
 
   return Math.round(num * 100) / 100;

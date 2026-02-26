@@ -260,7 +260,7 @@ export function CsTimerImport() {
                   {sessions.reduce((sum, s) => sum + s.num_dnf, 0) !== 1
                     ? "s"
                     : ""}{" "}
-                  detected &mdash; excluded from averages.
+                  detected &mdash; times included in averages.
                 </p>
               </div>
             )}
