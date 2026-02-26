@@ -259,7 +259,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Stackmat timer support (T146)
 
 **Phase 22 — Online & Social Timer — T147-T148:**
-- [ ] Online battle mode (rooms, real-time, shared scrambles) (T147)
+- [x] Online battle mode (rooms, real-time, shared scrambles) (T147)
 - [x] Scramble animation (step-through 3D) (T148)
 
 **Phase 23 — Polish & Display — T149-T152:**

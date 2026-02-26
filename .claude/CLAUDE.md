@@ -145,6 +145,9 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
 - `src/lib/bld/letter-scheme.ts` — BLD letter scheme data (Speffz), memo parser, parity detection
 - `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel, scramble-type-selector)
+- `src/lib/battle/battle-room.ts` — Battle room system (Supabase Realtime broadcast + presence, ephemeral rooms)
+- `src/lib/battle/use-battle.ts` — React hook for battle state management
+- `src/components/tools/battle-content.tsx` — Battle mode UI (lobby, solving, round results, match results)
 - `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
@@ -209,6 +212,7 @@ See `.env.local.example` for required variables:
 /tools/metronome     → Metronome tool (BPM + seconds mode) [public]
 /tools/bld           → BLD helper (letter scheme, memo practice, parity check) [public]
 /tools/virtual-cube  → 3D interactive virtual cube [public]
+/tools/battle        → Real-time 1v1 battle mode with shared scrambles [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]

@@ -2561,11 +2561,19 @@ Added training variants for Pyraminx (L4E, No Bar), Skewb (No Bar), Square-1 (CS
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T136 |
 | **Estimated scope** | 4-5 files |
+| **Key files** | `src/lib/battle/battle-room.ts`, `src/lib/battle/use-battle.ts`, `src/components/tools/battle-content.tsx` |
 
-Battle rooms, Supabase Realtime, shared scrambles, win/loss, spectator mode.
+- ✅ Ephemeral battle rooms via Supabase Realtime broadcast + presence
+- ✅ 4-letter room codes with shared scramble seeds
+- ✅ Best-of-N format (1, 3, 5, 7 rounds)
+- ✅ Built-in timer with keyboard/touch controls
+- ✅ Live score tracking and round results
+- ✅ Support for all WCA events
+- ✅ Route at /tools/battle
 
 ---
 
