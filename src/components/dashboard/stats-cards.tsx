@@ -3,9 +3,25 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, Clock } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
+import type { DateRange } from "@/components/dashboard/filters"
+
+function getSessionsLabel(range: DateRange): string {
+  switch (range) {
+    case "1d": return "Sessions Today"
+    case "7d": return "Sessions This Week"
+    case "30d": return "Sessions in the Last 30 Days"
+    case "90d": return "Sessions in the Last 90 Days"
+    case "1y": return "Sessions This Year"
+    case "365d": return "Sessions in the Last 365 Days"
+    case "all": return "Total Sessions"
+    case "custom": return "Sessions in Range"
+    default: return "Sessions"
+  }
+}
 
 export function StatsCards({
   stats,
+  selectedRange,
 }: {
   stats: {
     sessionsThisWeek: number
@@ -15,24 +31,18 @@ export function StatsCards({
     weeklyMinutes: number
     weeklyChange: number
   }
+  selectedRange: DateRange
 }) {
   const cards = [
     {
-      label: "Sessions This Week",
+      label: getSessionsLabel(selectedRange),
       value: String(stats.sessionsThisWeek),
-      change:
-        stats.weeklyChange > 0
-          ? `+${stats.weeklyChange} from last week`
-          : stats.weeklyChange < 0
-            ? `${stats.weeklyChange} from last week`
-            : "Same as last week",
       icon: Calendar,
       iconColor: "text-primary",
     },
     {
       label: "Total Practice Time",
       value: formatDuration(stats.totalMinutes),
-      change: `${formatDuration(stats.weeklyMinutes)} this week`,
       icon: Clock,
       iconColor: "text-accent",
     },
@@ -49,7 +59,6 @@ export function StatsCards({
             <div>
               <p className="text-sm text-muted-foreground">{stat.label}</p>
               <p className="font-mono text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.change}</p>
             </div>
           </CardContent>
         </Card>

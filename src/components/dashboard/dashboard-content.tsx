@@ -126,7 +126,7 @@ export function DashboardContent({
       />
 
       {/* 3. Stats Cards */}
-      <StatsCards stats={filteredStats} />
+      <StatsCards stats={{ ...filteredStats, sessionsThisWeek: filteredSessions.length }} selectedRange={selectedRange} />
 
       {/* 4. Charts grid: Time by Event + Event Pie */}
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
