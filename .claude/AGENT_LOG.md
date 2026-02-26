@@ -166,3 +166,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Another parallel session was working on the same Phase 11 tasks simultaneously. The linter aggressively removes "unused" imports — when adding an import and its usage in separate edits, the linter strips the import before the usage is added. Solution: use Write tool for full file replacement so the linter sees all references together. `.next/lock` contention persists with parallel sessions — `npx tsc --noEmit` is the only reliable build check.
 **Blockers:** None — all Phase 11 tasks are complete. No remaining available tasks in TASKS.md.
 **Warnings:** User needs to have run `018_add_main_events.sql` in Supabase (confirmed done). The profile layout changed from `max-w-4xl` to `max-w-6xl` on both profile pages.
+
+---
+
+### 2026-02-26 09:00 PT — Phase 11 Verification + Fixes Session
+
+**Task:** T57–T63 (Phase 11 — Profile Rework verification and fixes)
+**Status:** Found Phase 11 was mostly built by a parallel session but had uncommitted work and TypeScript errors. Pushed T60 (ProfileSidebar) which was committed locally but not pushed. Fixed TS error in tab-pbs.tsx (indexOf type mismatch with WCA_EVENTS const). Reconciled duplicate EditProfileModal between ProfileSidebar and profile-content.tsx by adding onEditProfile optional prop to sidebar. Cleaned up 7 junk * 2.tsx duplicate files. Verified all code pushed to dev.
+**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/tab-pbs.tsx
+**Learnings:** npm run build and npx tsc --noEmit both OOM-killed (exit 137) on this machine — Vercel builds are the only reliable check. The linter aggressively restores file state — work with it, not against it. ProfileSidebar now uses onEditProfile prop pattern: when provided by caller (profile-content.tsx), caller manages the EditProfileModal; when absent (public-profile-content.tsx), sidebar manages it internally.
+**Blockers:** None — no tasks remain in TASKS.md.
+**Warnings:** All phases complete (1-11). No available tasks. The npm run build OOM issue persists — may need Node.js memory limit increase or investigate Turbopack memory usage.
