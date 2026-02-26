@@ -2181,11 +2181,17 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-D |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/components/timer/timer-display.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-content.tsx`, `src/components/timer/timer-top-bar.tsx` |
 
-Font selection, size, small decimals, update mode (real-time/every-second/hidden), ms toggle, time format.
+- ✅ Timer size selector (Small/Medium/Large) — adjusts font size of time display
+- ✅ Small decimals toggle — renders decimal portion in a smaller font
+- ✅ Update mode (Real-time/Seconds/Hidden) — replaces binary "Show Time" toggle
+- ✅ All settings persist to localStorage
+- Note: Font selection and ms toggle deferred to future iteration
 
 ---
 

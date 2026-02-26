@@ -278,7 +278,6 @@ export function TimerSettings({
               </div>
             </div>
           </div>
-        </div>
       )}
     </div>
   )
