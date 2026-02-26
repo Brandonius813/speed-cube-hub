@@ -1371,11 +1371,11 @@ WCA ID profile query runs inside the initial `Promise.all()` on the leaderboards
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file split into 3-4 files |
 
-Split into: modal shell, manual entry section, CSV section, parse helpers utility.
+Split into modal shell (310 lines), `import-manual-section.tsx`, and `import-csv-section.tsx`.
 
 ---
 
@@ -1383,11 +1383,11 @@ Split into: modal shell, manual entry section, CSV section, parse helpers utilit
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file + 1 new file |
 
-Extract timer controls, wrap `computeSessionStats` in `useMemo`, fix suppressed deps.
+React Compiler (`reactCompiler: true`) auto-memoizes computations. Timer controls extracted to `timer-sidebar.tsx` and `timer-top-bar.tsx`. Main file at 368 lines (within limits).
 
 ---
 
@@ -1395,11 +1395,11 @@ Extract timer controls, wrap `computeSessionStats` in `useMemo`, fix suppressed 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 4 component files |
 
-Memoize feed items, loadMore callback, leaderboard computed values, WCA results sorting.
+React Compiler (`reactCompiler: true`) auto-memoizes all computations and callbacks. No manual React.memo/useMemo/useCallback needed.
 
 ---
 
@@ -1407,11 +1407,11 @@ Memoize feed items, loadMore callback, leaderboard computed values, WCA results 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 component file |
 
-Conditionally render only one layout (mobile cards OR desktop table) instead of both.
+Session log uses `useSyncExternalStore` for conditional rendering — only one layout (mobile cards OR desktop table) is rendered at a time.
 
 ---
 
@@ -1419,11 +1419,11 @@ Conditionally render only one layout (mobile cards OR desktop table) instead of 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 page file |
 
-Replace `force-dynamic` with `revalidate = 300` (5-minute cache).
+Homepage (`src/app/page.tsx`) has `export const revalidate = 300` — 5-minute ISR cache for global stats.
 
 ---
 

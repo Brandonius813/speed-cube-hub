@@ -284,3 +284,19 @@ Also confirmed: security headers in next.config.ts, avatar magic byte validation
 **Learnings:** The Glob tool can miss files if they're git-ignored or have unusual patterns — `ls` is more reliable for confirming file existence. The `npm run build` manifest error is a persistent Next.js 16.1.6 + Node.js v24 issue, not code-related. Vercel builds work fine. The linter has been reverting explicit column lists back to `select("*")` which aligns with T51's reverted status.
 **Blockers:** None — all security tasks confirmed complete
 **Warnings:** None — ready for new feature work
+
+---
+
+### 2026-02-26 14:00 PT — Phase 13 QoL Sprint Session
+
+**Task:** T83–T95 (Phase 13 — QoL Improvements Sprint)
+**Status:** All 13 Phase 13 tasks are now complete. This session implemented the remaining 4 tasks:
+- T90 ✅ Renamed profile tabs ("Cubes" → "Main Puzzles", "Official" → "Official Results") and chart title ("PB Progress" → "PB History")
+- T92 ✅ Removed sponsor field from edit-profile-modal, profile-sidebar, profile-header (input, display, imports)
+- T84 ✅ Removed search notes input/filter from filters.tsx and dashboard-content.tsx
+- T95 ✅ Navbar avatar/name now updates instantly after profile edit via "profile-updated" custom event
+The other 9 tasks (T83, T85–T89, T91, T93, T94) were already implemented by previous sessions. Build passes clean.
+**Files touched:** src/components/profile/profile-tabs.tsx, src/components/profile/pb-progress-chart.tsx, src/components/profile/profile-sidebar.tsx, src/components/profile/profile-header.tsx, src/components/profile/edit-profile-modal.tsx, src/components/dashboard/filters.tsx, src/components/dashboard/dashboard-content.tsx, src/components/shared/navbar.tsx, .claude/TASKS.md
+**Learnings:** Many QoL tasks were already done by parallel sessions but not marked in TASKS.md. Always grep the actual code before implementing — saves time. The "profile-updated" custom event pattern (already used for "notifications-updated") is a clean way to sync state across unrelated components.
+**Blockers:** None — Phase 13 complete
+**Warnings:** Phase 12 still has 5 available tasks (T78–T82). All Phase 13 tasks done.
