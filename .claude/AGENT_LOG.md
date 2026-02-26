@@ -90,3 +90,16 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** The SQL "islands and gaps" pattern (date - ROW_NUMBER() groups consecutive dates) works cleanly for streak calculation in PostgreSQL. Supabase RPC with `RETURNS TABLE(...)` returns arrays; scalar returns (like the rank functions returning `int`) come back as a plain number. `SECURITY DEFINER` + `SET search_path = public` is the safe pattern for RPC functions accessible to anon users.
 **Blockers:** None
 **Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor before leaderboards/follows/stats work with the new code: 014_create_global_stats_rpc.sql, 015_add_follows_rls.sql, 016_create_leaderboard_rpcs.sql. Without these, the RPC calls will fail with "function not found" errors.
+
+---
+
+### 2026-02-25 16:01 PT — PB Migration + Event Order Session
+
+**Task:** General work — PB data migration from old Supabase + new PB event ordering feature
+**Status:** Completed two things:
+1. Migrated 221 historical PB records from user's old Supabase project via CSV export. Created `scripts/migrate-pbs.mjs` migration script. Had to fix event name mismatch (CSV used display names like "3x3" instead of WCA IDs like "333") — created and ran a fix script, then updated migrate-pbs.mjs with built-in event name mapping.
+2. Built customizable PB event ordering feature: users can organize PBs into "Main Events" (pinned to top, reorderable) and "Other Events" sections. Added `pbs_main_events` column to profiles, new server action, tabbed settings modal with Event Order tab (up/down arrows, add/remove), and section rendering in pbs-content.
+**Files touched:** scripts/migrate-pbs.mjs (created), supabase/migrations/017_add_pbs_main_events.sql (created), src/lib/types.ts, src/lib/actions/profiles.ts, src/components/pbs/pb-settings-modal.tsx, src/components/pbs/pbs-content.tsx, src/app/(main)/pbs/page.tsx
+**Learnings:** The old Supabase stored events by display name (e.g., "3x3", "Megaminx") while Speed Cube Hub uses WCA event IDs ("333", "minx"). Any future data migration must map these. The `personal_bests` table has no RLS policies — reads work because data is fetched server-side via authenticated client, but this should be addressed in T46.
+**Blockers:** User needs to run `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pbs_main_events text[] DEFAULT NULL;` in Supabase SQL Editor before the event ordering feature works.
+**Warnings:** New column `pbs_main_events` added to profiles table — any code that uses explicit column lists for profiles will need updating (though currently all use `select("*")`).

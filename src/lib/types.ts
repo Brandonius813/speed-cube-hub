@@ -32,6 +32,7 @@ export type Profile = {
   main_event: string | null;
   wca_event_order: string[] | null;
   pb_visible_types: string[] | null;
+  pbs_main_events: string[] | null;
   created_at: string;
   updated_at: string;
 };

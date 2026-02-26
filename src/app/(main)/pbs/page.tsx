@@ -21,6 +21,7 @@ export default async function PBsPage() {
       <PBsContent
         initialPBs={currentPBs}
         initialVisibleTypes={profile?.pb_visible_types ?? null}
+        initialMainEvents={profile?.pbs_main_events ?? null}
       />
     </main>
   )
