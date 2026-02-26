@@ -362,11 +362,16 @@ export function MainCubes({
                         className="flex items-start gap-3 p-4"
                         onClick={isClickable ? () => openHistory(cube.event) : undefined}
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                          <CubingIcon
-                            event={cube.event}
-                            className="text-lg text-primary"
-                          />
+                        <div className="flex shrink-0 flex-col items-center gap-1">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            <CubingIcon
+                              event={cube.event}
+                              className="text-lg text-primary"
+                            />
+                          </div>
+                          <span className="text-[10px] font-medium leading-tight text-muted-foreground">
+                            {getEventLabel(cube.event)}
+                          </span>
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground">
