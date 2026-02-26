@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
-import { analyzeEOLine } from "@/lib/timer/eoline-solver"
+import { useMemo, useState } from "react"
+import { Copy, Check } from "lucide-react"
+import { analyzeEOLine, solveEOLine } from "@/lib/timer/eoline-solver"
+import { solve2x2Face } from "@/lib/timer/twox2-face-solver"
 import { analyzeRouxFB } from "@/lib/timer/roux-analyzer"
-import { analyze2x2 } from "@/lib/timer/twobytwo-analyzer"
 import { analyzePyraminx } from "@/lib/timer/pyraminx-analyzer"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +17,15 @@ type SolverPanelProps = {
 
 function EOLinePanel({ scramble }: { scramble: string }) {
   const result = useMemo(() => analyzeEOLine(scramble), [scramble])
+  const solution = useMemo(() => solveEOLine(scramble), [scramble])
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    if (solution.moveCount <= 0) return
+    await navigator.clipboard.writeText(solution.moves.join(" "))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="space-y-2">
@@ -74,6 +84,33 @@ function EOLinePanel({ scramble }: { scramble: string }) {
           </span>
         </span>
       </div>
+
+      {solution.moveCount > 0 && (
+        <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+          <span className="text-[10px] text-muted-foreground/60 shrink-0">
+            {solution.moveCount}m
+          </span>
+          <span className="text-xs font-mono truncate flex-1 min-w-0">
+            {solution.moves.join(" ")}
+          </span>
+          <button
+            onClick={handleCopy}
+            className="p-0.5 rounded hover:bg-secondary/80 transition-colors shrink-0"
+            title="Copy solution"
+          >
+            {copied ? (
+              <Check className="h-3 w-3 text-green-400" />
+            ) : (
+              <Copy className="h-3 w-3 text-muted-foreground/50" />
+            )}
+          </button>
+        </div>
+      )}
+      {solution.moveCount === 0 && (
+        <div className="text-[10px] text-green-400 pt-1 border-t border-border/30">
+          EOLine already solved!
+        </div>
+      )}
     </div>
   )
 }
@@ -130,27 +167,51 @@ const DOT_COLORS: Record<string, string> = {
 }
 
 function Face2x2Panel({ scramble }: { scramble: string }) {
-  const result = useMemo(() => analyze2x2(scramble), [scramble])
+  const solutions = useMemo(() => solve2x2Face(scramble), [scramble])
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const handleCopy = async (face: string, moves: string[]) => {
+    await navigator.clipboard.writeText(moves.join(" "))
+    setCopied(face)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const bestCount = solutions.length > 0 ? solutions[0].moveCount : 0
 
   return (
     <div className="space-y-2">
       <span className="text-xs font-medium text-muted-foreground">
-        Face Analysis
+        Face Solver
       </span>
       <div className="space-y-0.5">
-        {result.faces.map((f) => (
+        {solutions.map((sol) => (
           <div
-            key={f.face}
+            key={sol.face}
             className={cn(
-              "flex items-center gap-2 px-1.5 py-0.5 rounded text-xs",
-              f.face === result.bestFace && f.correctCount > 0 && "bg-secondary/40"
+              "flex items-center gap-2 px-1.5 py-0.5 rounded text-xs font-mono",
+              sol.moveCount === bestCount && "bg-secondary/40"
             )}
           >
-            <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", DOT_COLORS[f.face])} />
-            <span className="text-muted-foreground w-12">{f.color}</span>
-            <span className="font-mono">
-              {f.correctCount}/4
+            <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", DOT_COLORS[sol.face])} />
+            <span className="text-muted-foreground/70 w-4 text-right shrink-0">
+              {sol.moveCount}
             </span>
+            <span className="flex-1 min-w-0 truncate">
+              {sol.moveCount === 0 ? "solved" : sol.moves.join(" ")}
+            </span>
+            {sol.moveCount > 0 && (
+              <button
+                onClick={() => handleCopy(sol.face, sol.moves)}
+                className="p-0.5 rounded hover:bg-secondary/80 transition-colors shrink-0"
+                title="Copy"
+              >
+                {copied === sol.face ? (
+                  <Check className="h-3 w-3 text-green-400" />
+                ) : (
+                  <Copy className="h-3 w-3 text-muted-foreground/50" />
+                )}
+              </button>
+            )}
           </div>
         ))}
       </div>

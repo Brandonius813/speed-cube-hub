@@ -10,13 +10,13 @@
 
 // ── Move definitions ────────────────────────────────────────────────
 
-const CORNER_CYCLES = [
-  [0, 1, 2, 3] as const,  // U
-  [4, 5, 6, 7] as const,  // D
-  [0, 4, 5, 1] as const,  // R
-  [3, 2, 6, 7] as const,  // L
-  [0, 3, 7, 4] as const,  // F
-  [1, 5, 6, 2] as const,  // B
+const CORNER_CYCLES: number[][] = [
+  [0, 1, 2, 3],  // U
+  [4, 5, 6, 7],  // D
+  [0, 4, 5, 1],  // R
+  [3, 2, 6, 7],  // L
+  [0, 3, 7, 4],  // F
+  [1, 5, 6, 2],  // B
 ]
 
 const CORNER_TWIST = [
