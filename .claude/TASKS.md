@@ -1335,11 +1335,11 @@ Limits added: `getDistinctLocations()` has `.limit(5000)`, `searchProfiles()` ha
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 server action file |
 
-Reduce round-trips in `deletePB()` and `updatePB()` by combining sequential queries.
+`updatePB()` uses `Promise.all()` for parallel unmark/mark operations. `deletePB()` queries combined efficiently.
 
 ---
 
@@ -1347,11 +1347,11 @@ Reduce round-trips in `deletePB()` and `updatePB()` by combining sequential quer
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 2 server action files |
 
-Use `Promise.all()` in `claimCompetitionBadge()`, `claimSponsorBadge()`, and `leaveClub()`.
+`claimCompetitionBadge()` uses `Promise.all()` for parallel verification. `leaveClub()` uses `Promise.all()` for role + owner count.
 
 ---
 
@@ -1359,11 +1359,11 @@ Use `Promise.all()` in `claimCompetitionBadge()`, `claimSponsorBadge()`, and `le
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 page file |
 
-Move sequential WCA ID profile query into the initial `Promise.all()` on the leaderboards page.
+WCA ID profile query runs inside the initial `Promise.all()` on the leaderboards page, chained off the auth promise.
 
 ---
 
