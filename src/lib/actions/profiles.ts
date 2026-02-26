@@ -207,6 +207,7 @@ export async function updateProfile(fields: {
   location?: string | null
   sponsor?: string | null
   main_event?: string | null
+  main_events?: string[]
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -282,6 +283,19 @@ export async function updateProfile(fields: {
     const validIds = WCA_EVENTS.map((e) => e.id) as string[]
     if (!validIds.includes(fields.main_event)) {
       return { success: false, error: "Invalid main event." }
+    }
+  }
+
+  // Validate main_events if provided (up to 3)
+  if (fields.main_events !== undefined) {
+    const validIds = WCA_EVENTS.map((e) => e.id) as string[]
+    if (fields.main_events.length > 3) {
+      return { success: false, error: "Maximum 3 main events allowed." }
+    }
+    for (const eventId of fields.main_events) {
+      if (!validIds.includes(eventId)) {
+        return { success: false, error: `Invalid event: ${eventId}` }
+      }
     }
   }
 

@@ -30,6 +30,7 @@ export type Profile = {
   accomplishments: ProfileAccomplishment[];
   country_id: string | null;
   main_event: string | null;
+  main_events: string[];
   wca_event_order: string[] | null;
   pb_visible_types: string[] | null;
   pbs_main_events: string[] | null;

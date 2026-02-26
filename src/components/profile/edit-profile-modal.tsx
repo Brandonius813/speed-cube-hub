@@ -56,7 +56,7 @@ export function EditProfileModal({
   const [bio, setBio] = useState(profile.bio ?? "")
   const [location, setLocation] = useState(profile.location ?? "")
   const [sponsor, setSponsor] = useState(profile.sponsor ?? "")
-  const [mainEvent, setMainEvent] = useState(profile.main_event ?? "")
+  const [mainEvents, setMainEvents] = useState<string[]>(profile.main_events ?? [])
 
   // Avatar state
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null)
@@ -181,7 +181,8 @@ export function EditProfileModal({
         bio: bio || null,
         location: location || null,
         sponsor: sponsor || null,
-        main_event: mainEvent || null,
+        main_event: mainEvents[0] || null,
+        main_events: mainEvents,
         ...(newAvatarUrl !== undefined ? { avatar_url: newAvatarUrl } : {}),
       })
 
@@ -339,28 +340,49 @@ export function EditProfileModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-main-event">
-                Main Event{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+              <Label>
+                Main Events{" "}
+                <span className="font-normal text-muted-foreground">(up to 3)</span>
               </Label>
-              <Select
-                value={mainEvent || "none"}
-                onValueChange={(v) => setMainEvent(v === "none" ? "" : v)}
-              >
-                <SelectTrigger id="edit-main-event" className="min-h-11 border-border/50 text-sm">
-                  <SelectValue placeholder="Select your main event" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="none">None</SelectItem>
-                  {WCA_EVENTS.map((event) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2">
+                {mainEvents.map((eventId) => {
+                  const label = WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+                  return (
+                    <button
+                      key={eventId}
+                      type="button"
+                      onClick={() => setMainEvents((prev) => prev.filter((e) => e !== eventId))}
+                      className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:border-destructive/30"
+                    >
+                      {label}
+                      <X className="h-3 w-3" />
+                    </button>
+                  )
+                })}
+              </div>
+              {mainEvents.length < 3 && (
+                <Select
+                  value=""
+                  onValueChange={(v) => {
+                    if (v && !mainEvents.includes(v)) {
+                      setMainEvents((prev) => [...prev, v])
+                    }
+                  }}
+                >
+                  <SelectTrigger className="min-h-11 border-border/50 text-sm">
+                    <SelectValue placeholder="Add a main event..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {WCA_EVENTS.filter((e) => !mainEvents.includes(e.id)).map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        {event.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <p className="text-xs text-muted-foreground">
-                The event you compete in or practice the most.
+                The events you compete in or practice the most.
               </p>
             </div>
 
