@@ -191,6 +191,7 @@ See `.env.local.example` for required variables:
 /profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
 /timer               → Built-in cubing timer [protected]
+/tools/scrambles     → Batch scramble generator (1-999 scrambles) [public]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
