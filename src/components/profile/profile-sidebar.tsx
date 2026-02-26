@@ -11,7 +11,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { EventBadge } from "@/components/shared/event-badge"
-import { SocialIcon, PLATFORM_COLORS } from "@/components/shared/social-icons"
+import { SocialIcon } from "@/components/shared/social-icons"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import { FollowListModal } from "@/components/profile/follow-list-modal"
 import { getWcaCountries } from "@/lib/actions/sor-kinch"
@@ -198,22 +198,18 @@ export function ProfileSidebar({
         {/* Social link icons */}
         {profile.links && profile.links.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2">
-            {profile.links.map((link, i) => {
-              const color = PLATFORM_COLORS[link.platform] ?? "#6366F1"
-              return (
+            {profile.links.map((link, i) => (
                 <a
                   key={i}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={link.label}
-                  className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-secondary"
-                  style={{ color }}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-secondary"
                 >
                   <SocialIcon platform={link.platform} />
                 </a>
-              )
-            })}
+            ))}
           </div>
         )}
       </div>
