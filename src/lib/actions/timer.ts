@@ -2,12 +2,18 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
+import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstError } from "@/lib/validations"
 import type { TimerSession, Solve } from "@/lib/types"
 
 export async function createTimerSession(
   event: string,
   mode: "normal" | "comp_sim" = "normal"
 ): Promise<{ data: TimerSession | null; error?: string }> {
+  const parsed = createTimerSessionSchema.safeParse({ event, mode })
+  if (!parsed.success) {
+    return { data: null, error: zodFirstError(parsed.error) }
+  }
+
   const supabase = await createClient()
 
   const {
@@ -22,8 +28,8 @@ export async function createTimerSession(
     .from("timer_sessions")
     .insert({
       user_id: user.id,
-      event,
-      mode,
+      event: parsed.data.event,
+      mode: parsed.data.mode,
     })
     .select()
     .single()
@@ -51,7 +57,7 @@ export async function getActiveTimerSession(
   // Find active timer session for this event
   const { data: session, error: sessionError } = await supabase
     .from("timer_sessions")
-    .select("id, user_id, event, mode, status, started_at, ended_at, session_id, created_at")
+    .select("*")
     .eq("user_id", user.id)
     .eq("event", event)
     .eq("status", "active")
@@ -70,7 +76,7 @@ export async function getActiveTimerSession(
   // Fetch solves for this session
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
+    .select("*")
     .eq("timer_session_id", session.id)
     .order("solve_number", { ascending: true })
 
@@ -107,6 +113,11 @@ export async function addSolve(
     return { data: null, error: "Not authenticated" }
   }
 
+  const parsed = addSolveSchema.safeParse(data)
+  if (!parsed.success) {
+    return { data: null, error: zodFirstError(parsed.error) }
+  }
+
   // Verify the timer session belongs to the current user
   const { data: session, error: sessionError } = await supabase
     .from("timer_sessions")
@@ -124,12 +135,12 @@ export async function addSolve(
     .insert({
       timer_session_id: timerSessionId,
       user_id: user.id,
-      solve_number: data.solve_number,
-      time_ms: data.time_ms,
-      penalty: data.penalty,
-      scramble: data.scramble,
-      event: data.event,
-      comp_sim_group: data.comp_sim_group,
+      solve_number: parsed.data.solve_number,
+      time_ms: parsed.data.time_ms,
+      penalty: parsed.data.penalty,
+      scramble: parsed.data.scramble,
+      event: parsed.data.event,
+      comp_sim_group: parsed.data.comp_sim_group,
     })
     .select()
     .single()
@@ -145,6 +156,11 @@ export async function updateSolve(
   solveId: string,
   data: { penalty?: "+2" | "DNF" | null; notes?: string | null }
 ): Promise<{ error?: string }> {
+  const parsed = updateSolveSchema.safeParse(data)
+  if (!parsed.success) {
+    return { error: zodFirstError(parsed.error) }
+  }
+
   const supabase = await createClient()
 
   const {
@@ -156,8 +172,8 @@ export async function updateSolve(
   }
 
   const updateData: Record<string, unknown> = {}
-  if (data.penalty !== undefined) updateData.penalty = data.penalty
-  if (data.notes !== undefined) updateData.notes = data.notes
+  if (parsed.data.penalty !== undefined) updateData.penalty = parsed.data.penalty
+  if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes
 
   const { error } = await supabase
     .from("solves")
@@ -214,7 +230,7 @@ export async function getSolvesByEvent(
 
   const { data, error } = await supabase
     .from("solves")
-    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
+    .select("*")
     .eq("user_id", user.id)
     .eq("event", event)
     .order("solved_at", { ascending: true })
@@ -243,7 +259,7 @@ export async function finalizeTimerSession(
   // Fetch the timer session
   const { data: timerSession, error: tsError } = await supabase
     .from("timer_sessions")
-    .select("id, user_id, event, mode, status, started_at, ended_at, session_id, created_at")
+    .select("*")
     .eq("id", timerSessionId)
     .eq("user_id", user.id)
     .single()
@@ -260,7 +276,7 @@ export async function finalizeTimerSession(
   // Fetch all solves
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("id, timer_session_id, user_id, solve_number, time_ms, penalty, scramble, event, comp_sim_group, notes, solved_at, created_at")
+    .select("*")
     .eq("timer_session_id", timerSessionId)
     .order("solve_number", { ascending: true })
 

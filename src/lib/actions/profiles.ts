@@ -22,7 +22,7 @@ export async function getProfile(): Promise<{
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
+    .select("*")
     .eq("id", user.id)
     .single()
 
@@ -41,7 +41,7 @@ export async function getProfileByHandle(handle: string): Promise<{
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
+    .select("*")
     .eq("handle", handle)
     .single()
 
@@ -72,7 +72,7 @@ export async function searchProfiles(
     return { profiles: [] }
   }
 
-  let qb = supabase.from("profiles").select("id, display_name, handle, bio, avatar_url, wca_id, location, sponsor, events, cubes, links, accomplishments, country_id, main_event, main_events, wca_event_order, pb_visible_types, pbs_main_events, created_at, updated_at")
+  let qb = supabase.from("profiles").select("*")
 
   // Filter by main event
   if (event) {
@@ -121,15 +121,17 @@ export async function getDistinctLocations(): Promise<{
 }> {
   const supabase = await createClient()
 
+  // Limit to 500 locations and deduplicate in JS
+  // (PostgREST doesn't support DISTINCT, so we fetch and dedup)
   const { data, error } = await supabase
     .from("profiles")
     .select("location")
     .not("location", "is", null)
     .order("location")
+    .limit(5000)
 
   if (error) return { locations: [], error: error.message }
 
-  // Deduplicate and filter empty
   const unique = [...new Set(
     (data || [])
       .map((r) => r.location as string)

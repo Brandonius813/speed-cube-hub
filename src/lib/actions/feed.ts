@@ -23,11 +23,13 @@ export async function getFeed(cursor?: string): Promise<{
     return { items: [], nextCursor: null, error: "Not authenticated" }
   }
 
-  // Get the IDs of people the current user follows
+  // Get the IDs of people the current user follows (capped at 1000 most recent)
   const { data: followData, error: followError } = await supabase
     .from("follows")
     .select("following_id")
     .eq("follower_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1000)
 
   if (followError) {
     return { items: [], nextCursor: null, error: followError.message }
@@ -46,7 +48,7 @@ export async function getFeed(cursor?: string): Promise<{
   let query = supabase
     .from("sessions")
     .select(`
-      id, user_id, session_date, event, practice_type, num_solves, num_dnf, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at,
+      *,
       profile:profiles(
         display_name,
         handle,

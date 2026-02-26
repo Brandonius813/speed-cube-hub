@@ -23,7 +23,7 @@ export async function getChallenges(): Promise<{
   // Fetch all challenges
   const { data: challenges, error } = await supabase
     .from("challenges")
-    .select("id, title, description, type, target_value, start_date, end_date, created_at")
+    .select("*")
     .order("end_date", { ascending: false })
 
   if (error) {
@@ -34,22 +34,30 @@ export async function getChallenges(): Promise<{
     return { data: [], currentUserId: user?.id }
   }
 
-  // Get participant counts for all challenges in one query
+  // Get participant counts via RPC + user's own participations in parallel
   const challengeIds = challenges.map((c: { id: string }) => c.id)
-  const { data: participants } = await supabase
-    .from("challenge_participants")
-    .select("challenge_id, user_id")
-    .in("challenge_id", challengeIds)
 
-  // Build participant count map and user-joined set
+  const [countResult, joinedResult] = await Promise.all([
+    supabase.rpc("get_batch_challenge_participant_counts", {
+      p_challenge_ids: challengeIds,
+    }),
+    user
+      ? supabase
+          .from("challenge_participants")
+          .select("challenge_id")
+          .eq("user_id", user.id)
+          .in("challenge_id", challengeIds)
+      : Promise.resolve({ data: [] as { challenge_id: string }[] }),
+  ])
+
   const countMap = new Map<string, number>()
-  const joinedSet = new Set<string>()
+  for (const row of countResult.data ?? []) {
+    countMap.set(row.challenge_id, Number(row.participant_count))
+  }
 
-  for (const p of participants ?? []) {
-    countMap.set(p.challenge_id, (countMap.get(p.challenge_id) ?? 0) + 1)
-    if (user && p.user_id === user.id) {
-      joinedSet.add(p.challenge_id)
-    }
+  const joinedSet = new Set<string>()
+  for (const row of joinedResult.data ?? []) {
+    joinedSet.add(row.challenge_id)
   }
 
   const data: Challenge[] = challenges.map(

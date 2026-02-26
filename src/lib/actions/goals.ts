@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createGoalSchema, updateGoalSchema, zodFirstError } from "@/lib/validations"
 import type { Goal } from "@/lib/types"
 
 /**
@@ -30,7 +31,7 @@ export async function getGoals(): Promise<{ data: Goal[]; error?: string }> {
 
   const { data, error } = await supabase
     .from("goals")
-    .select("id, user_id, event, target_avg, target_date, status, achieved_at, created_at")
+    .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -56,22 +57,16 @@ export async function createGoal(fields: {
     return { success: false, error: "Not authenticated" }
   }
 
-  // Validate fields
-  if (!fields.event) {
-    return { success: false, error: "Event is required." }
-  }
-  if (!fields.target_avg || fields.target_avg <= 0) {
-    return { success: false, error: "Target time must be a positive number." }
-  }
-  if (!fields.target_date) {
-    return { success: false, error: "Target date is required." }
+  const parsed = createGoalSchema.safeParse(fields)
+  if (!parsed.success) {
+    return { success: false, error: zodFirstError(parsed.error) }
   }
 
   const { data, error } = await supabase.from("goals").insert({
     user_id: user.id,
-    event: fields.event,
-    target_avg: fields.target_avg,
-    target_date: fields.target_date,
+    event: parsed.data.event,
+    target_avg: parsed.data.target_avg,
+    target_date: parsed.data.target_date,
   }).select().single()
 
   if (error) {
@@ -100,10 +95,15 @@ export async function updateGoal(
     return { success: false, error: "Not authenticated" }
   }
 
+  const parsed = updateGoalSchema.safeParse(fields)
+  if (!parsed.success) {
+    return { success: false, error: zodFirstError(parsed.error) }
+  }
+
   const updates: Record<string, unknown> = {}
-  if (fields.event) updates.event = fields.event
-  if (fields.target_avg && fields.target_avg > 0) updates.target_avg = fields.target_avg
-  if (fields.target_date) updates.target_date = fields.target_date
+  if (parsed.data.event) updates.event = parsed.data.event
+  if (parsed.data.target_avg && parsed.data.target_avg > 0) updates.target_avg = parsed.data.target_avg
+  if (parsed.data.target_date) updates.target_date = parsed.data.target_date
 
   const { data, error } = await supabase
     .from("goals")

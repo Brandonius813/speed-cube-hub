@@ -25,7 +25,7 @@ export async function getClubs(query?: string): Promise<{
 
   let clubQuery = supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .order("created_at", { ascending: false })
 
   if (query && query.trim()) {
@@ -41,27 +41,27 @@ export async function getClubs(query?: string): Promise<{
   const clubIds = (clubs ?? []).map((c: ClubRow) => c.id)
   if (clubIds.length === 0) return { clubs: [], currentUserId: user?.id }
 
-  const { data: memberRows } = await supabase
-    .from("club_members")
-    .select("club_id")
-    .in("club_id", clubIds)
+  // Fetch member counts via RPC + user memberships in parallel
+  const [countResult, membershipResult] = await Promise.all([
+    supabase.rpc("get_batch_club_member_counts", { p_club_ids: clubIds }),
+    user
+      ? supabase
+          .from("club_members")
+          .select("club_id, role")
+          .eq("user_id", user.id)
+      : Promise.resolve({ data: [] as { club_id: string; role: string }[] }),
+  ])
 
   const memberCounts = new Map<string, number>()
-  for (const row of memberRows ?? []) {
-    memberCounts.set(row.club_id, (memberCounts.get(row.club_id) ?? 0) + 1)
+  for (const row of countResult.data ?? []) {
+    memberCounts.set(row.club_id, Number(row.member_count))
   }
 
   const userClubIds = new Set<string>()
   const userRoles = new Map<string, string>()
-  if (user) {
-    const { data: memberships } = await supabase
-      .from("club_members")
-      .select("club_id, role")
-      .eq("user_id", user.id)
-    for (const m of memberships ?? []) {
-      userClubIds.add(m.club_id)
-      userRoles.set(m.club_id, m.role)
-    }
+  for (const m of membershipResult.data ?? []) {
+    userClubIds.add(m.club_id)
+    userRoles.set(m.club_id, m.role)
   }
 
   const enriched: Club[] = (clubs ?? []).map((c: ClubRow) => ({
@@ -90,7 +90,7 @@ export async function getClub(clubId: string): Promise<{
 
   const { data: club, error } = await supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .eq("id", clubId)
     .single()
 
@@ -177,7 +177,7 @@ export async function getClubFeed(clubId: string): Promise<{
 
   const { data, error } = await supabase
     .from("sessions")
-    .select(`id, user_id, session_date, event, practice_type, num_solves, num_dnf, duration_minutes, avg_time, best_time, title, notes, feed_visible, timer_session_id, created_at, profile:profiles(display_name, handle, avatar_url)`)
+    .select(`*, profile:profiles(display_name, handle, avatar_url)`)
     .in("user_id", memberIds)
     .order("created_at", { ascending: false })
     .limit(30)
@@ -223,20 +223,20 @@ export async function getUserClubs(userId: string): Promise<{
 
   const { data: clubs, error: clubError } = await supabase
     .from("clubs")
-    .select("id, name, description, avatar_url, created_by, created_at")
+    .select("*")
     .in("id", clubIds)
     .order("created_at", { ascending: false })
 
   if (clubError) return { clubs: [], error: clubError.message }
 
-  const { data: allMembers } = await supabase
-    .from("club_members")
-    .select("club_id")
-    .in("club_id", clubIds)
+  // Get member counts via RPC (SQL COUNT GROUP BY — no row transfer)
+  const { data: countData } = await supabase.rpc("get_batch_club_member_counts", {
+    p_club_ids: clubIds,
+  })
 
   const memberCounts = new Map<string, number>()
-  for (const row of allMembers ?? []) {
-    memberCounts.set(row.club_id, (memberCounts.get(row.club_id) ?? 0) + 1)
+  for (const row of countData ?? []) {
+    memberCounts.set(row.club_id, Number(row.member_count))
   }
 
   const enriched: Club[] = (clubs ?? []).map((c: ClubRow) => ({
