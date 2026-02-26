@@ -5,7 +5,7 @@ import { SessionSelector } from "@/components/timer/session-selector"
 import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
-import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, AutoBackupInterval } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
@@ -45,6 +45,8 @@ export function TimerTopBar({
   caseFilter,
   onCaseFilterChange,
   trainingCstimerType,
+  autoBackupInterval,
+  onAutoBackupIntervalChange,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -81,6 +83,8 @@ export function TimerTopBar({
   caseFilter?: number[] | null
   onCaseFilterChange?: (cases: number[] | null) => void
   trainingCstimerType?: string
+  autoBackupInterval?: AutoBackupInterval
+  onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -200,6 +204,8 @@ export function TimerTopBar({
             onSidebarPositionChange={onSidebarPositionChange}
             statIndicators={statIndicators}
             onStatIndicatorsChange={onStatIndicatorsChange}
+            autoBackupInterval={autoBackupInterval}
+            onAutoBackupIntervalChange={onAutoBackupIntervalChange}
           />
         </div>
       </div>

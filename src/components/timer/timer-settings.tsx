@@ -13,6 +13,8 @@ import {
 
 export type InputMode = "timer" | "typing"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
+export type AutoBackupInterval = 0 | 10 | 25 | 50 | 100
+export const AUTO_BACKUP_OPTIONS: AutoBackupInterval[] = [0, 10, 25, 50, 100]
 
 type TimerSettingsProps = {
   mode: "normal" | "comp_sim"
@@ -35,6 +37,8 @@ type TimerSettingsProps = {
   onSidebarPositionChange: (position: SidebarPosition) => void
   statIndicators: string
   onStatIndicatorsChange: (indicators: string) => void
+  autoBackupInterval?: AutoBackupInterval
+  onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
 }
 
 export function TimerSettings({
@@ -58,6 +62,8 @@ export function TimerSettings({
   onSidebarPositionChange,
   statIndicators,
   onStatIndicatorsChange,
+  autoBackupInterval,
+  onAutoBackupIntervalChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -261,6 +267,31 @@ export function TimerSettings({
                   placeholder="mo3 ao5 ao12 ao50 ao100"
                 />
               </div>
+
+              {/* Auto-backup */}
+              {onAutoBackupIntervalChange && (
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                    Auto-Backup
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-download JSON backup every N solves
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {AUTO_BACKUP_OPTIONS.map((n) => (
+                      <Button
+                        key={n}
+                        variant={autoBackupInterval === n ? "default" : "outline"}
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => onAutoBackupIntervalChange(n)}
+                      >
+                        {n === 0 ? "Off" : `${n}`}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Sidebar position */}
               <div className="space-y-2">

@@ -1039,6 +1039,8 @@ export function TimerContent() {
         caseFilter={caseFilter}
         onCaseFilterChange={handleCaseFilterChange}
         trainingCstimerType={trainingCstimerType}
+        autoBackupInterval={autoBackupInterval}
+        onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
       />)}
 
       <div className={layoutClass}>
