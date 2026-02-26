@@ -1940,7 +1940,8 @@ Let users configure which averages to track, exactly like csTimer:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | Claude-Opus-B |
 | **Dependencies** | T106 |
 | **Estimated scope** | 1-2 new files |
 | **Key files** | New: `src/components/timer/stat-detail-modal.tsx` |
