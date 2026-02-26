@@ -490,3 +490,20 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The linter aggressively rewrites files — many Phase 14 changes were auto-applied before manual edits could be made. Always re-read files before editing. Build OOM is a known local issue — use `npx tsc --noEmit` as the reliable check.
 **Blockers:** User must run `023_create_solve_sessions.sql` in Supabase SQL Editor before the feature works.
 **Warnings:** Phase 14 is complete. Phases 15-18 are now unblocked (T129/T130/T133 depended on T96-T105). Untracked files on dev: `src/components/share/` and `src/components/timer/solve-detail-modal.tsx` — these are from the linter pre-generating future task code, do not commit yet.
+
+---
+
+### 2026-02-26 11:55 PT — Phase 14 Cleanup + Build Verification Session
+
+**Task:** T102-T105 (Phase 14 — Timer Session Management cleanup)
+**Status:** Verified and committed remaining Phase 14 work:
+- Fixed TimerTopBar props mismatch in timer-content.tsx (previous session left mismatched old/new prop interfaces)
+- Removed duplicate Zod schemas in validations.ts (createSolveSessionSchema/updateSolveSessionSchema were defined twice)
+- Verified `npm run build` passes clean (BUILD_ID generated successfully)
+- Committed solve-detail-modal.tsx, pb-celebration.tsx, and refactored solve-list.tsx (click-to-open modal instead of inline expand, notes support, PB highlighting)
+- Pushed all to dev (3 commits: share card system T153, computeAoNStdDev fix, solve detail modal)
+- Phase 14 docs (CLAUDE.md, PRD, TASKS.md) were already updated by previous session
+**Files touched:** src/lib/validations.ts, src/components/timer/timer-content.tsx, src/components/timer/solve-list.tsx, src/components/timer/timer-sidebar.tsx, src/components/timer/solve-detail-modal.tsx (new), src/components/share/pb-celebration.tsx (new), .claude/CLAUDE.md
+**Learnings:** Local `npm run build` has persistent lock file issues when multiple builds get triggered in quick succession. Kill all `next build` processes, `rm -rf .next`, then retry. Running build in background helps avoid duplicate execution from tool retries.
+**Blockers:** User still needs to run `023_create_solve_sessions.sql` in Supabase SQL Editor.
+**Warnings:** None — Phase 14 is fully complete and pushed.
