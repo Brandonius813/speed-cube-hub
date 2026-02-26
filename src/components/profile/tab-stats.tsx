@@ -20,11 +20,6 @@ export function TabStats({
   sessions: Session[]
   isOwner: boolean
 }) {
-  const allStats = useMemo(
-    () => computeSessionStats(sessions),
-    [sessions]
-  )
-
   // Filter state
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
   const [selectedPracticeTypes, setSelectedPracticeTypes] = useState<string[]>([])
