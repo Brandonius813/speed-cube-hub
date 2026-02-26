@@ -5,8 +5,11 @@ import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   getTrainingTypes,
+  getEventCategories,
   NORMAL_SCRAMBLE_ID,
+  CATEGORY_LABELS,
   type TrainingScrambleType,
+  type TrainingCategory,
 } from "@/lib/timer/training-scrambles"
 
 type ScrambleTypeSelectorProps = {
@@ -24,6 +27,7 @@ export function ScrambleTypeSelector({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const trainingTypes = getTrainingTypes(eventId)
+  const categories = getEventCategories(eventId)
 
   // Close on outside click
   useEffect(() => {
@@ -52,6 +56,14 @@ export function ScrambleTypeSelector({
     setIsOpen(false)
   }
 
+  // Group types by category
+  const typesByCategory = new Map<TrainingCategory, TrainingScrambleType[]>()
+  for (const type of trainingTypes) {
+    const list = typesByCategory.get(type.category) ?? []
+    list.push(type)
+    typesByCategory.set(type.category, list)
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -69,7 +81,7 @@ export function ScrambleTypeSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 w-56 bg-card border border-border rounded-lg shadow-lg z-50 py-1">
+        <div className="absolute left-0 top-full mt-1 w-60 bg-card border border-border rounded-lg shadow-lg z-50 py-1 max-h-[70vh] overflow-y-auto">
           {/* Normal option */}
           <button
             onClick={() => handleSelect(NORMAL_SCRAMBLE_ID)}
@@ -86,24 +98,29 @@ export function ScrambleTypeSelector({
             </span>
           </button>
 
-          {/* Divider */}
-          <div className="h-px bg-border my-1" />
-
           {/* Training types grouped by category */}
-          <div className="px-3 py-1">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Training
-            </span>
-          </div>
-
-          {trainingTypes.map((type) => (
-            <TrainingOption
-              key={type.id}
-              type={type}
-              isSelected={selectedTypeId === type.id}
-              onSelect={() => handleSelect(type.id)}
-            />
-          ))}
+          {categories.map((cat) => {
+            const types = typesByCategory.get(cat)
+            if (!types || types.length === 0) return null
+            return (
+              <div key={cat}>
+                <div className="h-px bg-border my-1" />
+                <div className="px-3 py-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                    {CATEGORY_LABELS[cat]}
+                  </span>
+                </div>
+                {types.map((type) => (
+                  <TrainingOption
+                    key={type.id}
+                    type={type}
+                    isSelected={selectedTypeId === type.id}
+                    onSelect={() => handleSelect(type.id)}
+                  />
+                ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -123,7 +140,7 @@ function TrainingOption({
     <button
       onClick={onSelect}
       className={cn(
-        "w-full text-left px-3 py-2 text-sm transition-colors",
+        "w-full text-left px-3 py-1.5 text-sm transition-colors",
         isSelected
           ? "bg-amber-500/10 text-amber-400"
           : "hover:bg-secondary/50 text-foreground"

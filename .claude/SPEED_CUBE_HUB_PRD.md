@@ -217,11 +217,11 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 16 — Training Scrambles — T116-T123:**
 - [x] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) — scramble type selector in timer (T116)
-- [ ] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross) (T117)
-- [ ] 3x3 Roux + Mehta training scrambles (T118)
-- [ ] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
-- [ ] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
-- [ ] 4x4+ training (edges, centers, Yau/Hoya stages) (T121)
+- [x] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine) (T117)
+- [x] 3x3 Roux + Mehta training scrambles (T118)
+- [x] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
+- [x] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
+- [x] 4x4+ training (edges, centers, Yau/Hoya stages) + Pyra, Skewb, SQ1, Mega training (T121)
 - [ ] Case filtering UI (checkbox grid, probability control) (T122)
 - [ ] Per-case performance statistics (T123)
 

@@ -2063,7 +2063,7 @@ Built 2D scramble image using `cstimer_module.getImage()` which returns SVG stri
 | **Estimated scope** | 3-4 files |
 | **Key files** | `src/lib/timer/scrambles.ts`, `src/lib/timer/training-scrambles.ts`, `src/components/timer/scramble-type-selector.tsx` |
 
-Built training scramble types for 3x3 and 3x3 OH: PLL (21 cases), OLL (57 cases), Last Layer, F2L, LSLL. Scramble type selector dropdown in timer top bar. Training type persisted to localStorage. Easy Cross removed (not supported by cstimer_module). Case filtering UI deferred to T122.
+Built training scramble types for 3x3 and 3x3 OH: PLL, OLL, Last Layer, F2L, LSLL, Easy Cross, Easy XCross. Scramble type selector dropdown in timer top bar with category grouping. Training type persisted to localStorage. Case filtering UI deferred to T122.
 
 ---
 
@@ -2071,11 +2071,12 @@ Built training scramble types for 3x3 and 3x3 OH: PLL (21 cases), OLL (57 cases)
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 2-3 files |
+| **Estimated scope** | 1 file |
 
-ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross, Easy xcross.
+Added ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine to training-scrambles.ts. Grouped under "Advanced" category in selector.
 
 ---
 
@@ -2083,11 +2084,12 @@ ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross, Easy 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, TTLL.
+Added Roux (2nd Block, CMLL, LSE, LSE M,U) and Mehta (3QB, EOLE, TDR, 6CP, CDRLL, L5EP, TTLL) to training-scrambles.ts. Each has its own category group in the selector.
 
 ---
 
@@ -2095,11 +2097,12 @@ Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-2-gen R,U / L,U / M,U. 3-gen F,R,U / R,U,L / R,r,U. Domino subgroup, half turns, edges only, corners only.
+Added 2-gen R,U / L,U / M,U, 3-gen F,R,U / R,U,L / R,r,U, half turns, edges only, corners only to training-scrambles.ts under "Subsets" category.
 
 ---
 
@@ -2107,11 +2110,12 @@ Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
+Added EG, CLL, EG-1, EG-2, TCLL, TCLL+, TCLL-, LS, No Bar training types for 2x2 event.
 
 ---
 
@@ -2119,11 +2123,12 @@ Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-4x4: edges, R,r,U,u, LL, ELL, edge-only, center-only, Yau/Hoya stages. 5x5-7x7: edge-only, notation variants.
+Added 4x4 (Edges, R,r,U,u, LL, ELL, Edge Only, Center Only, UD Centers, UD+3E, Last 8 Edges, RL Centers), 5x5/6x6/7x7 (Edge Only), Pyraminx (L4E, No Bar), Skewb (No Bar), SQ1 (CSP, PLL), Megaminx (2-gen, LSLL, PLL, LL) training types.
 
 ---
 
@@ -2284,11 +2289,22 @@ Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + C
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/app/(main)/import/page.tsx`, `src/components/import/import-content.tsx`, `src/components/import/import-drop-zone.tsx`, `src/components/import/import-preview.tsx`, `src/lib/import/types.ts`, `src/lib/import/detect-format.ts`, `src/lib/import/parsers.ts`, `src/lib/import/normalize.ts`, `src/app/api/import/parse/route.ts` |
 
-Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
+- ✅ File drag-and-drop + paste textarea input
+- ✅ Auto-detection of csTimer, CubeTime, Twisty Timer, generic CSV formats
+- ✅ AI-powered parsing fallback (Claude Haiku via Anthropic API) for unknown formats
+- ✅ Event selection step for formats that don't specify the event
+- ✅ Session preview with summaries before import
+- ✅ PB detection and import
+- ✅ Bulk session import via `createSessionsBulk`
+- ✅ `bulkImportSolves` server action for individual solve import
+- ✅ Import link in navbar profile dropdown
+- ✅ Route: `/import`
 
 ---
 
