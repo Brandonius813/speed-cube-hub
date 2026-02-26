@@ -133,3 +133,158 @@ export function analyzeEOLine(scramble: string): EOLineResult {
     dbSolved,
   }
 }
+
+// ── BFS EOLine Solver ──────────────────────────────────────────
+
+const MOVE_NAMES = [
+  "U", "U'", "U2", "D", "D'", "D2",
+  "R", "R'", "R2", "L", "L'", "L2",
+  "F", "F'", "F2", "B", "B'", "B2",
+]
+
+const EOL_TABLE_SIZE = 4096 * 144
+
+function encodeEOL(eo: number, df: number, db: number): number {
+  return eo * 144 + df * 12 + db
+}
+
+/**
+ * Apply a move to the compact EOLine state (eo bitmap + DF/DB positions).
+ * EO bitmap: bit i = orientation of piece at slot i.
+ * When a move cycles slots [a,b,c,d], pieces shift: a→b, b→c, c→d, d→a.
+ * F and B quarter-turns flip edge orientations.
+ */
+function applyMoveCompact(
+  eo: number, df: number, db: number, moveIdx: number
+): [number, number, number] {
+  const faceIdx = Math.floor(moveIdx / 3)
+  const variant = moveIdx % 3
+  const { cycle, flip } = FACE_MOVES[faceIdx]
+  const [a, b, c, d] = cycle
+
+  const bA = (eo >> a) & 1
+  const bB = (eo >> b) & 1
+  const bC = (eo >> c) & 1
+  const bD = (eo >> d) & 1
+  const mask = ~((1 << a) | (1 << b) | (1 << c) | (1 << d))
+  let newEO = eo & mask
+  let newDF = df
+  let newDB = db
+
+  if (variant === 2) {
+    // 180°: swap opposite pairs, no flip
+    newEO |= (bC << a) | (bD << b) | (bA << c) | (bB << d)
+    if (df === a) newDF = c; else if (df === c) newDF = a
+    else if (df === b) newDF = d; else if (df === d) newDF = b
+    if (db === a) newDB = c; else if (db === c) newDB = a
+    else if (db === b) newDB = d; else if (db === d) newDB = b
+  } else {
+    const f = flip ? 1 : 0
+    if (variant === 0) {
+      // CW: piece at a→b, b→c, c→d, d→a
+      newEO |= ((bD ^ f) << a) | ((bA ^ f) << b) | ((bB ^ f) << c) | ((bC ^ f) << d)
+      if (df === a) newDF = b; else if (df === b) newDF = c
+      else if (df === c) newDF = d; else if (df === d) newDF = a
+      if (db === a) newDB = b; else if (db === b) newDB = c
+      else if (db === c) newDB = d; else if (db === d) newDB = a
+    } else {
+      // CCW: piece at a→d, b→a, c→b, d→c
+      newEO |= ((bB ^ f) << a) | ((bC ^ f) << b) | ((bD ^ f) << c) | ((bA ^ f) << d)
+      if (df === a) newDF = d; else if (df === b) newDF = a
+      else if (df === c) newDF = b; else if (df === d) newDF = c
+      if (db === a) newDB = d; else if (db === b) newDB = a
+      else if (db === c) newDB = b; else if (db === d) newDB = c
+    }
+  }
+
+  return [newEO, newDF, newDB]
+}
+
+let eoLineTable: Uint8Array | null = null
+
+function getEOLineTable(): Uint8Array {
+  if (eoLineTable) return eoLineTable
+
+  const table = new Uint8Array(EOL_TABLE_SIZE).fill(255)
+  // Goal: all edges oriented (eo=0), DF piece in slot 4, DB piece in slot 6
+  const goalKey = encodeEOL(0, 4, 6)
+  table[goalKey] = 0
+
+  let frontier = [goalKey]
+  let depth = 0
+
+  while (frontier.length > 0 && depth < 9) {
+    const next: number[] = []
+    depth++
+    for (const key of frontier) {
+      const db = key % 12
+      const df = Math.floor(key / 12) % 12
+      const eo = Math.floor(key / 144)
+      for (let move = 0; move < 18; move++) {
+        const [nEO, nDF, nDB] = applyMoveCompact(eo, df, db, move)
+        const nKey = encodeEOL(nEO, nDF, nDB)
+        if (table[nKey] === 255) {
+          table[nKey] = depth
+          next.push(nKey)
+        }
+      }
+    }
+    frontier = next
+  }
+
+  eoLineTable = table
+  return table
+}
+
+export type EOLineSolution = {
+  moves: string[]
+  moveCount: number
+}
+
+/**
+ * Find optimal solution to solve EOLine (edge orientation + DF/DB line).
+ * Returns the move sequence. moveCount = -1 if no solution found (depth > 9).
+ */
+export function solveEOLine(scramble: string): EOLineSolution {
+  const state = applyScramble(scramble)
+
+  // Extract compact state from full edge state
+  let eo = 0
+  for (let i = 0; i < 12; i++) {
+    if (state.orient[i]) eo |= (1 << i)
+  }
+  let df = -1
+  let db = -1
+  for (let i = 0; i < 12; i++) {
+    if (state.perm[i] === 4) df = i
+    if (state.perm[i] === 6) db = i
+  }
+
+  const table = getEOLineTable()
+  const startKey = encodeEOL(eo, df, db)
+  let dist = table[startKey]
+
+  if (dist === 255) return { moves: [], moveCount: -1 }
+  if (dist === 0) return { moves: [], moveCount: 0 }
+
+  // Follow decreasing distances to find optimal path
+  const moves: number[] = []
+  while (dist > 0) {
+    for (let move = 0; move < 18; move++) {
+      const [nEO, nDF, nDB] = applyMoveCompact(eo, df, db, move)
+      if (table[encodeEOL(nEO, nDF, nDB)] === dist - 1) {
+        moves.push(move)
+        eo = nEO
+        df = nDF
+        db = nDB
+        dist--
+        break
+      }
+    }
+  }
+
+  return {
+    moves: moves.map((m) => MOVE_NAMES[m]),
+    moveCount: moves.length,
+  }
+}
