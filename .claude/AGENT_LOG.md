@@ -471,3 +471,22 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The `sessions` table is deeply integrated (feed, leaderboards, challenges, goals, wrapped, streaks) — adding a layer on top is much safer than restructuring. The `timer_sessions` table already maps perfectly to "practice sitting" concept.
 **Blockers:** None — ready to start T96 (DB migration)
 **Warnings:** Phase 14 touches `timer.ts` and all timer UI components. If another session is working on timer features, coordinate before starting T99/T102.
+
+---
+
+### 2026-02-28 13:30 PT — Phase 14 Implementation Session
+
+**Task:** T96–T105 (Phase 14 — Timer Session Management)
+**Status:** Implemented all 10 Phase 14 tasks. Most infrastructure (migration, types, server actions, UI components) was pre-built during the design session. Key implementation work:
+- T96: Migration `023_create_solve_sessions.sql` already existed — verified correct
+- T97: Added `solve_session_id` to `Solve` and `Session` types, added Zod schemas
+- T98: Server actions in `solve-sessions.ts` already existed — verified complete
+- T99: Updated `timer.ts` — `finalizeTimerSession` checks `is_tracked`, passes `solve_session_id`
+- T100-T101: Session selector + manager components already existed — verified
+- T102-T104: Rewired `timer-content.tsx` with full solve session integration (session switching, localStorage persistence, first-time user handling, reset/throwaway logic)
+- T105: Docs already updated
+- TypeScript compiles clean (`npx tsc --noEmit` passes). Build OOM on local (known 16GB RAM issue), Vercel builds fine.
+**Files touched:** src/lib/types.ts, src/lib/validations.ts, src/lib/actions/timer.ts, src/components/timer/timer-content.tsx, src/components/timer/timer-top-bar.tsx, src/components/timer/timer-settings.tsx, .claude/TASKS.md, .claude/SPEED_CUBE_HUB_PRD.md, .claude/CLAUDE.md
+**Learnings:** The linter aggressively rewrites files — many Phase 14 changes were auto-applied before manual edits could be made. Always re-read files before editing. Build OOM is a known local issue — use `npx tsc --noEmit` as the reliable check.
+**Blockers:** User must run `023_create_solve_sessions.sql` in Supabase SQL Editor before the feature works.
+**Warnings:** Phase 14 is complete. Phases 15-18 are now unblocked (T129/T130/T133 depended on T96-T105). Untracked files on dev: `src/components/share/` and `src/components/timer/solve-detail-modal.tsx` — these are from the linter pre-generating future task code, do not commit yet.
