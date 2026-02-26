@@ -300,3 +300,18 @@ The other 9 tasks (T83, T85–T89, T91, T93, T94) were already implemented by pr
 **Learnings:** Many QoL tasks were already done by parallel sessions but not marked in TASKS.md. Always grep the actual code before implementing — saves time. The "profile-updated" custom event pattern (already used for "notifications-updated") is a clean way to sync state across unrelated components.
 **Blockers:** None — Phase 13 complete
 **Warnings:** Phase 12 still has 5 available tasks (T78–T82). All Phase 13 tasks done.
+
+---
+
+### 2026-02-26 13:00 PT — Phase 13 QoL Verification Session
+
+**Task:** T83–T95 (Phase 13 — QoL Improvements Sprint) + T73/T74 status update
+**Status:** Verified all 13 Phase 13 tasks are complete. Made two actual code changes:
+- T83: Cleaned up streak display in practice-streak.tsx — replaced stacked icon boxes + milestone pills with clean inline layout (flame + "day streak" · trophy + "longest")
+- T85: Made stats cards dynamic — removed `initialStats` prop from dashboard-content.tsx, added `filteredStats` computed from filtered sessions, removed stats computation from page.tsx
+- T84, T86-T95: All verified as already implemented by prior sessions
+Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm run build` passes clean.
+**Files touched:** src/components/dashboard/practice-streak.tsx, src/components/dashboard/dashboard-content.tsx, src/app/(main)/practice-stats/page.tsx, .claude/TASKS.md
+**Learnings:** Most Phase 13 tasks were completed by a prior session that also synced — always read AGENT_LOG before starting work to avoid duplicate effort.
+**Blockers:** None
+**Warnings:** None — Phase 13 fully complete. Remaining available Phase 12 tasks: T78, T79, T80, T81, T82.

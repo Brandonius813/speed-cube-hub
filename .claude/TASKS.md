@@ -1431,11 +1431,11 @@ Homepage (`src/app/page.tsx`) has `export const revalidate = 300` — 5-minute I
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 server action files |
 
-Change `.select("*", { count: "exact", head: true })` to `.select("id", { count: "exact", head: true })`.
+Count queries use `.select("id", { count: "exact", head: true })` pattern across server actions.
 
 ---
 
@@ -1443,11 +1443,11 @@ Change `.select("*", { count: "exact", head: true })` to `.select("id", { count:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
 | **Dependencies** | None |
 | **Estimated scope** | 1 config file |
 
-Add `images.remotePatterns` for Supabase Storage domain to `next.config.ts`.
+`next.config.ts` has `images.remotePatterns` configured for `*.supabase.co` storage domain.
 
 ---
 
