@@ -90,7 +90,7 @@ export function TimerContent() {
   const event = currentSession?.event ?? "333"
 
   // Scramble management
-  const { currentScramble, loadScramble, clearNextScramble } =
+  const { currentScramble, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
     useTimerScramble()
 
   // Settings
@@ -842,7 +842,13 @@ export function TimerContent() {
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
-          <ScrambleDisplay scramble={currentScramble} event={event} />
+          <ScrambleDisplay
+            scramble={currentScramble}
+            event={event}
+            isManualScramble={isManualScramble}
+            onManualScramble={setManualScramble}
+            onClearManualScramble={() => loadScramble(event as WcaEventId)}
+          />
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}

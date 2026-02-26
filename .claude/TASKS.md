@@ -2205,11 +2205,19 @@ Font selection, size, small decimals, update mode (real-time/every-second/hidden
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-D |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/components/timer/scramble-display.tsx`, `src/lib/timer/use-timer-scramble.ts`, `src/components/timer/timer-content.tsx` |
 
-Custom scramble mode, notation validation, image updates from input.
+- ✅ Click scramble text or pencil icon to enter edit mode
+- ✅ Inline textarea with Enter to apply, Esc to cancel
+- ✅ Manual scrambles shown in blue to distinguish from auto-generated
+- ✅ X button to clear manual scramble and return to auto
+- ✅ Scramble image + cross solver update live from manual input
+- ✅ After completing a solve, auto-scramble resumes automatically
+- ✅ Keyboard shortcuts suppressed while editing (existing guard for textarea elements)
 
 ---
 
