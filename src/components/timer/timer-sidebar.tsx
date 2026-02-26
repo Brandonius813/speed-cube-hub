@@ -17,6 +17,7 @@ export function TimerSidebar({
   onShareSolve,
   onBatchDelete,
   onStatClick,
+  sessionNames,
 }: {
   sidebarPosition: "left" | "right" | "bottom"
   stats: SessionStats
@@ -30,6 +31,7 @@ export function TimerSidebar({
   onShareSolve?: (solve: Solve) => void
   onBatchDelete?: (solveIds: string[]) => void
   onStatClick?: (statLabel: string, column: "current" | "best") => void
+  sessionNames?: Map<string, string>
 }) {
   const currentCompSimProgress =
     mode === "comp_sim"
@@ -57,6 +59,7 @@ export function TimerSidebar({
         event={event}
         statIndicators={statIndicators}
         onStatClick={onStatClick}
+        sessionNames={sessionNames}
       />
       <div className="flex-1 border-t border-border/50 overflow-y-auto min-h-0">
         <SolveList

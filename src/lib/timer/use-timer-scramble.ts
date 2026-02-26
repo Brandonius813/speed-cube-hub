@@ -3,6 +3,7 @@ import {
   generateScramble,
   generateTrainingScrambleWithCase,
   preGenerateScrambleWithCase,
+  setScrambleSeed,
   type ScrambleWithCase,
 } from "@/lib/timer/scrambles"
 import type { WcaEventId } from "@/lib/constants"
@@ -12,6 +13,23 @@ export function useTimerScramble() {
   const [currentCaseIndex, setCurrentCaseIndex] = useState<number | null>(null)
   const [isManualScramble, setIsManualScramble] = useState(false)
   const nextRef = useRef<ScrambleWithCase | null>(null)
+  const seedRef = useRef<string | null>(null)
+  const seedCounterRef = useRef(0)
+
+  /**
+   * Set the race seed. When set, scrambles are deterministic.
+   * Call this before loadScramble to ensure the seed takes effect.
+   */
+  const setRaceSeed = (seed: string | null) => {
+    seedRef.current = seed
+    seedCounterRef.current = 0
+    nextRef.current = null // Clear pre-generated scramble
+    if (seed) {
+      setScrambleSeed(seed)
+    } else {
+      setScrambleSeed(null)
+    }
+  }
 
   /**
    * Load a new scramble for the given event.
@@ -24,6 +42,14 @@ export function useTimerScramble() {
     caseFilter?: number[] | null
   ) => {
     setIsManualScramble(false)
+
+    // When using a race seed, reset the seed state for deterministic generation.
+    // Each scramble increments the counter so both players get the same Nth scramble.
+    if (seedRef.current) {
+      const counter = seedCounterRef.current++
+      setScrambleSeed(`${seedRef.current}-${eventId}-${counter}`)
+      nextRef.current = null // No pre-generation in seeded mode
+    }
 
     // Use pre-generated scramble if available, otherwise generate instantly
     if (nextRef.current) {
@@ -39,8 +65,10 @@ export function useTimerScramble() {
       setCurrentCaseIndex(null)
     }
 
-    // Pre-generate the next scramble (synchronous, <50ms)
-    nextRef.current = preGenerateScrambleWithCase(eventId, trainingCstimerType, caseFilter)
+    // Pre-generate the next scramble (only when not in seeded mode)
+    if (!seedRef.current) {
+      nextRef.current = preGenerateScrambleWithCase(eventId, trainingCstimerType, caseFilter)
+    }
   }
 
   const setManualScramble = (scramble: string) => {
@@ -60,5 +88,6 @@ export function useTimerScramble() {
     loadScramble,
     setManualScramble,
     clearNextScramble,
+    setRaceSeed,
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TimerDisplay, DEFAULT_HOLD_DURATION } from "@/components/timer/timer-display"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
@@ -63,6 +63,7 @@ import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
 import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
 import { SwipeFeedback } from "@/components/timer/swipe-feedback"
 import { TrainingCaseStats } from "@/components/timer/training-case-stats"
+import { SeedInput, loadPersistedSeed } from "@/components/timer/seed-input"
 import type { SwipeDirection } from "@/components/timer/timer-display"
 
 type PBDetection = {
@@ -126,8 +127,18 @@ export function TimerContent() {
   })
 
   // Scramble management
-  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
+  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble, setRaceSeed } =
     useTimerScramble()
+
+  // Race seed state
+  const [raceSeed, setRaceSeedState] = useState<string | null>(() => loadPersistedSeed())
+  const handleRaceSeedChange = (seed: string | null) => {
+    setRaceSeedState(seed)
+    setRaceSeed(seed)
+    // Re-generate scramble with new seed
+    clearNextScramble()
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+  }
 
   // Track which algorithm case each solve was for (solve ID → case index)
   const solveCaseMapRef = useRef(new Map<string, number>())
@@ -222,6 +233,15 @@ export function TimerContent() {
   // Compute stats from current solves
   const stats = computeSessionStats(solves)
 
+  // Build session name map for cross-session stats
+  const sessionNames = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of solveSessions) {
+      map.set(s.id, s.name)
+    }
+    return map
+  }, [solveSessions])
+
   // Session duration
   const durationMinutes = solves.length > 0
     ? Math.max(
@@ -243,6 +263,12 @@ export function TimerContent() {
 
   const initializeSession = async () => {
     setIsLoading(true)
+
+    // Initialize race seed if persisted
+    const persistedSeed = loadPersistedSeed()
+    if (persistedSeed) {
+      setRaceSeed(persistedSeed)
+    }
 
     // Load PBs and profile in parallel with sessions
     const [{ data: sessions }, pbResult, profileResult] = await Promise.all([
@@ -1008,6 +1034,7 @@ export function TimerContent() {
         onShareSolve={handleShareSolve}
         onBatchDelete={handleBatchDelete}
         onStatClick={handleStatClick}
+        sessionNames={sessionNames}
       />
       {trainingCstimerType && hasCaseFiltering(trainingCstimerType) && (
         <TrainingCaseStats

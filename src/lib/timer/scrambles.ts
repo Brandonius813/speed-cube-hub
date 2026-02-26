@@ -1,6 +1,6 @@
 "use client"
 
-import { getScramble as cstimerGetScramble } from "cstimer_module"
+import { getScramble as cstimerGetScramble, setSeed as cstimerSetSeed } from "cstimer_module"
 import type { WcaEventId } from "@/lib/constants"
 
 // Map WCA event IDs to cstimer_module scramble type strings
@@ -147,4 +147,43 @@ export function preGenerateScrambleWithCase(
   } catch {
     return null
   }
+}
+
+// ---- Seeded scramble generation (for race mode) ----
+
+/**
+ * Set the scramble generator seed for deterministic scrambles.
+ * Same seed → same scramble sequence. Call before generating scrambles.
+ * Pass null to reset to random (crypto) seed.
+ */
+export function setScrambleSeed(seed: string | null): void {
+  if (seed) {
+    cstimerSetSeed(seed)
+  } else {
+    // Reset to crypto-random by setting a unique seed based on timestamp + random
+    cstimerSetSeed(`${Date.now()}-${Math.random()}`)
+  }
+}
+
+/**
+ * Generate a batch of seeded scrambles for a given event.
+ * Used for race mode: both players get the same scrambles from the same seed.
+ *
+ * @param eventId - WCA event ID
+ * @param seed - Seed string (same seed = same scrambles)
+ * @param count - Number of scrambles to generate
+ */
+export function generateSeededScrambles(
+  eventId: WcaEventId,
+  seed: string,
+  count: number
+): string[] {
+  cstimerSetSeed(seed)
+  const scrambles: string[] = []
+  for (let i = 0; i < count; i++) {
+    scrambles.push(generateScramble(eventId))
+  }
+  // Reset to random seed after generating
+  cstimerSetSeed(`${Date.now()}-${Math.random()}`)
+  return scrambles
 }
