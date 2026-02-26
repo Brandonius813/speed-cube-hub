@@ -2291,11 +2291,18 @@ Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-D |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
+| **Key files** | `src/components/tools/batch-scramble-generator.tsx`, `src/app/(main)/tools/scrambles/page.tsx` |
 
-Generate 1-999 scrambles, copy or download.
+- ✅ Event selector (all WCA events except FMC and Multi-BLD)
+- ✅ Count input (1-999) with quick-select buttons (5, 12, 25, 50, 100, 200, 500)
+- ✅ Batched generation (50 at a time) to avoid UI blocking
+- ✅ Numbered scramble list with hover-to-copy per row
+- ✅ Copy All and Download as .txt file
+- ✅ Route: `/tools/scrambles`
 
 ---
 
