@@ -10,10 +10,27 @@ export const HOLD_DURATION_OPTIONS = [0, 100, 200, 300, 500, 1000] as const
 export type HoldDuration = (typeof HOLD_DURATION_OPTIONS)[number]
 export const DEFAULT_HOLD_DURATION: HoldDuration = 300
 
+export type TimerSize = "small" | "medium" | "large"
+export type TimerUpdateMode = "realtime" | "seconds" | "hidden"
+
+const TIMER_SIZE_CLASSES: Record<TimerSize, string> = {
+  small: "text-4xl sm:text-5xl md:text-6xl",
+  medium: "text-5xl sm:text-6xl md:text-7xl lg:text-8xl",
+  large: "text-6xl sm:text-7xl md:text-8xl lg:text-9xl",
+}
+
+const SMALL_DECIMAL_SIZE: Record<TimerSize, string> = {
+  small: "text-2xl sm:text-3xl md:text-4xl",
+  medium: "text-3xl sm:text-4xl md:text-5xl lg:text-6xl",
+  large: "text-4xl sm:text-5xl md:text-6xl lg:text-7xl",
+}
+
 type TimerDisplayProps = {
   onSolveComplete: (timeMs: number) => void
   lastTime: number | null
-  showTimeWhileSolving: boolean
+  timerUpdateMode?: TimerUpdateMode
+  timerSize?: TimerSize
+  smallDecimals?: boolean
   holdDuration?: HoldDuration
   disabled?: boolean
   inspectionActive?: boolean
@@ -23,7 +40,9 @@ type TimerDisplayProps = {
 export function TimerDisplay({
   onSolveComplete,
   lastTime,
-  showTimeWhileSolving,
+  timerUpdateMode = "realtime",
+  timerSize = "large",
+  smallDecimals = false,
   holdDuration = DEFAULT_HOLD_DURATION,
   disabled = false,
   inspectionActive = false,
@@ -178,6 +197,15 @@ export function TimerDisplay({
     }
   }, [])
 
+  // Format whole seconds only (no decimals)
+  const formatSeconds = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    if (totalSeconds < 60) return `${totalSeconds}`
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
   // Determine what to display
   const getDisplayText = () => {
     switch (timerState) {
@@ -187,9 +215,9 @@ export function TimerDisplay({
       case "ready":
         return "0.000"
       case "running":
-        return showTimeWhileSolving
-          ? formatTimeMs(displayTime)
-          : "Solving..."
+        if (timerUpdateMode === "hidden") return "Solving..."
+        if (timerUpdateMode === "seconds") return formatSeconds(displayTime)
+        return formatTimeMs(displayTime)
       case "stopped":
         return formatTimeMs(displayTime)
     }
@@ -241,11 +269,20 @@ export function TimerDisplay({
       {/* Big time display */}
       <div
         className={cn(
-          "font-mono text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tabular-nums tracking-tight transition-colors duration-150",
+          "font-mono font-bold tabular-nums tracking-tight transition-colors duration-150",
+          TIMER_SIZE_CLASSES[timerSize],
           getTimeColor()
         )}
       >
-        {getDisplayText()}
+        {(() => {
+          const text = getDisplayText()
+          // Show small decimals unless running in seconds/hidden mode (no decimals to shrink)
+          const showSmall = smallDecimals &&
+            !(timerState === "running" && timerUpdateMode !== "realtime")
+          return showSmall ? (
+            <SmallDecimalTime text={text} smallClass={SMALL_DECIMAL_SIZE[timerSize]} />
+          ) : text
+        })()}
       </div>
 
       {/* Hint text */}
@@ -253,5 +290,22 @@ export function TimerDisplay({
         {getHintText()}
       </p>
     </div>
+  )
+}
+
+/** Renders time with the decimal portion in a smaller font size */
+function SmallDecimalTime({ text, smallClass }: { text: string; smallClass: string }) {
+  // Find the decimal point — everything after it is smaller
+  const dotIndex = text.lastIndexOf(".")
+  if (dotIndex === -1) return <>{text}</>
+
+  const integerPart = text.slice(0, dotIndex)
+  const decimalPart = text.slice(dotIndex)
+
+  return (
+    <>
+      {integerPart}
+      <span className={smallClass}>{decimalPart}</span>
+    </>
   )
 }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { SessionSelector } from "@/components/timer/session-selector"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
-import type { HoldDuration } from "@/components/timer/timer-display"
+import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
 export function TimerTopBar({
@@ -19,8 +19,12 @@ export function TimerTopBar({
   onInputModeChange,
   inspectionEnabled,
   onInspectionChange,
-  showTimeWhileSolving,
-  onShowTimeChange,
+  timerUpdateMode,
+  onTimerUpdateModeChange,
+  timerSize,
+  onTimerSizeChange,
+  smallDecimals,
+  onSmallDecimalsChange,
   holdDuration,
   onHoldDurationChange,
   sidebarPosition,
@@ -44,8 +48,12 @@ export function TimerTopBar({
   onInputModeChange: (mode: InputMode) => void
   inspectionEnabled: boolean
   onInspectionChange: (enabled: boolean) => void
-  showTimeWhileSolving: boolean
-  onShowTimeChange: (show: boolean) => void
+  timerUpdateMode: TimerUpdateMode
+  onTimerUpdateModeChange: (mode: TimerUpdateMode) => void
+  timerSize: TimerSize
+  onTimerSizeChange: (size: TimerSize) => void
+  smallDecimals: boolean
+  onSmallDecimalsChange: (enabled: boolean) => void
   holdDuration?: HoldDuration
   onHoldDurationChange?: (duration: HoldDuration) => void
   sidebarPosition: SidebarPosition
@@ -146,8 +154,12 @@ export function TimerTopBar({
             onModeChange={onModeChange}
             inspectionEnabled={inspectionEnabled}
             onInspectionChange={onInspectionChange}
-            showTimeWhileSolving={showTimeWhileSolving}
-            onShowTimeChange={onShowTimeChange}
+            timerUpdateMode={timerUpdateMode}
+            onTimerUpdateModeChange={onTimerUpdateModeChange}
+            timerSize={timerSize}
+            onTimerSizeChange={onTimerSizeChange}
+            smallDecimals={smallDecimals}
+            onSmallDecimalsChange={onSmallDecimalsChange}
             holdDuration={holdDuration}
             onHoldDurationChange={onHoldDurationChange}
             inputMode={inputMode}

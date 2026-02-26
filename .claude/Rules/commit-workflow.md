@@ -10,13 +10,9 @@
 - **`main` branch** — Production only. Pushing to `main` automatically deploys to production.
 - **To go live:** When a feature is tested and approved, merge `dev` into `main` and push.
 
-**Commit vs Push (important for build costs):**
-- **Commit locally** after every working feature. Tell the user what was committed.
-- **Only push to `dev`** when:
-  - The user explicitly says to push (e.g., "push", "deploy", "send it", "push it up")
-  - A work session is ending
-  - Multiple features are batched and ready for preview testing
-- After committing, say: "Committed locally. Ready to push when you want to preview."
+**Commit and Push:**
+- **Commit and push to `dev`** after every working feature. Tell the user what was committed and pushed.
+- Do not wait for permission to push — just push to `dev` automatically when the feature is done.
 
 When the user says to go live, merge `dev` into `main` and push. No need to ask — just do it and confirm.
 

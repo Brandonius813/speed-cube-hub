@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TimerDisplay, DEFAULT_HOLD_DURATION } from "@/components/timer/timer-display"
-import type { HoldDuration } from "@/components/timer/timer-display"
+import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import { TimerTopBar } from "@/components/timer/timer-top-bar"
 import { TimerSidebar } from "@/components/timer/timer-sidebar"
@@ -72,6 +72,9 @@ type UserInfo = {
 const LAST_SESSION_KEY = "sch_last_solve_session_id"
 const STAT_INDICATORS_KEY = "sch_stat_indicators"
 const HOLD_DURATION_KEY = "sch_hold_duration"
+const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
+const TIMER_SIZE_KEY = "sch_timer_size"
+const SMALL_DECIMALS_KEY = "sch_small_decimals"
 
 export function TimerContent() {
   const router = useRouter()
@@ -95,7 +98,26 @@ export function TimerContent() {
 
   // Settings
   const [inspectionEnabled, setInspectionEnabled] = useState(false)
-  const [showTimeWhileSolving, setShowTimeWhileSolving] = useState(true)
+  const [timerUpdateMode, setTimerUpdateMode] = useState<TimerUpdateMode>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(TIMER_UPDATE_MODE_KEY)
+      if (stored === "realtime" || stored === "seconds" || stored === "hidden") return stored
+    }
+    return "realtime"
+  })
+  const [timerSize, setTimerSize] = useState<TimerSize>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(TIMER_SIZE_KEY)
+      if (stored === "small" || stored === "medium" || stored === "large") return stored
+    }
+    return "large"
+  })
+  const [smallDecimals, setSmallDecimals] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SMALL_DECIMALS_KEY) === "true"
+    }
+    return false
+  })
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
   const [statIndicators, setStatIndicators] = useState(() => {
@@ -628,6 +650,27 @@ export function TimerContent() {
     }
   }
 
+  const handleTimerUpdateModeChange = (mode: TimerUpdateMode) => {
+    setTimerUpdateMode(mode)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TIMER_UPDATE_MODE_KEY, mode)
+    }
+  }
+
+  const handleTimerSizeChange = (size: TimerSize) => {
+    setTimerSize(size)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TIMER_SIZE_KEY, size)
+    }
+  }
+
+  const handleSmallDecimalsChange = (enabled: boolean) => {
+    setSmallDecimals(enabled)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SMALL_DECIMALS_KEY, String(enabled))
+    }
+  }
+
   const handleEndSession = () => {
     if (solves.length === 0) return
     setShowSummary(true)
@@ -824,8 +867,12 @@ export function TimerContent() {
         onInputModeChange={setInputMode}
         inspectionEnabled={inspectionEnabled}
         onInspectionChange={setInspectionEnabled}
-        showTimeWhileSolving={showTimeWhileSolving}
-        onShowTimeChange={setShowTimeWhileSolving}
+        timerUpdateMode={timerUpdateMode}
+        onTimerUpdateModeChange={handleTimerUpdateModeChange}
+        timerSize={timerSize}
+        onTimerSizeChange={handleTimerSizeChange}
+        smallDecimals={smallDecimals}
+        onSmallDecimalsChange={handleSmallDecimalsChange}
         holdDuration={holdDuration}
         onHoldDurationChange={handleHoldDurationChange}
         sidebarPosition={sidebarPosition}
@@ -858,7 +905,9 @@ export function TimerContent() {
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
               lastTime={lastTime}
-              showTimeWhileSolving={showTimeWhileSolving}
+              timerUpdateMode={timerUpdateMode}
+              timerSize={timerSize}
+              smallDecimals={smallDecimals}
               holdDuration={holdDuration}
               disabled={showSummary || inspection.isInspecting}
               inspectionActive={inspectionEnabled && !inspection.isInspecting}

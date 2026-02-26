@@ -227,20 +227,20 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **Phase 17 — Timer Modes & Advanced Input — T124-T128:**
 - [ ] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
-- [ ] Configurable timer hold duration (T125)
-- [ ] Timer display customization (font, size, update mode, milliseconds) (T126)
+- [x] Configurable timer hold duration (T125)
+- [x] Timer display customization (size, small decimals, update mode) (T126)
 - [ ] Mobile swipe gestures (8-direction, matching csTimer) (T127)
-- [ ] Manual scramble input mode (T128)
+- [x] Manual scramble input mode (T128)
 
 **Phase 18 — Session Data Features — T129-T133:**
 - [ ] Session merge & split (T129)
 - [ ] Cross-session statistics with filters (T130)
 - [ ] Daily statistics (solves per day/week/month) (T131)
-- [ ] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
+- [x] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
 - [ ] Import from csTimer and other timers (T133)
 
 **Phase 19 — Advanced Tools — T134-T138:**
-- [ ] Batch scramble generator (up to 999) (T134)
+- [x] Batch scramble generator (up to 999) (T134)
 - [ ] Metronome tool (T135)
 - [ ] Shared scramble seed (race friends) (T136)
 - [ ] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
