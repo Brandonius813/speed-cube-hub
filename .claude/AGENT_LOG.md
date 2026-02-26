@@ -562,3 +562,18 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Every `git push` to any branch triggers a Vercel build. With 5 parallel Claude sessions each pushing after every feature, build minutes stack up fast. Batching pushes is the single biggest cost reducer.
 **Blockers:** None
 **Warnings:** All agent sessions will now commit locally but NOT auto-push. If you need to test on the preview domain, explicitly push or tell the user "ready to push." The `vercel.json` file must be pushed to take effect.
+
+---
+
+### 2026-02-26 13:00 PT — Share Card System Integration Session
+
+**Task:** T33 enhancement — Full client-side share card system (Phases 1–3)
+**Status:** Built the complete share card system with client-side image generation. This extends T33 (which was OG route only) with a full in-app sharing experience:
+- **Phase 1 (Foundation):** Created `share-card.tsx` (4 card variants: PB, session, solve, profile with dark theme + indigo glow), `share-modal.tsx` (aspect ratio toggle 9:16/1:1, scramble toggle, download/share buttons), `share-utils.ts` (html-to-image capture + Web Share API)
+- **Phase 2 (PB Detection + Celebration):** Added PB auto-detection to `timer-content.tsx` — loads user's current PBs on session init, checks Single/Ao5/Ao12 after every solve, auto-logs new PBs via `logNewPB()`. Created `pb-celebration.tsx` overlay.
+- **Phase 3 (Session + Solve Sharing):** Added share button to `session-summary-modal.tsx`, share icon on hover for every solve in `solve-list.tsx`, threaded `onShareSolve` through `timer-sidebar.tsx`.
+- Build passes clean. All committed and pushed to dev.
+**Files touched:** src/components/share/share-card.tsx (new), src/components/share/share-modal.tsx (new), src/components/share/share-utils.ts (updated), src/components/share/pb-celebration.tsx (new), src/components/timer/timer-content.tsx, src/components/timer/session-summary-modal.tsx, src/components/timer/solve-list.tsx, src/components/timer/timer-sidebar.tsx
+**Learnings:** The linter aggressively modifies files between Read and Edit calls — making smaller, targeted edits works better. Also, stale `.next` cache can cause phantom build errors referencing deleted imports — `rm -rf .next` fixes it.
+**Blockers:** None — Phases 1-3 are complete and pushed.
+**Warnings:** Phase 4 (profile + PB page share buttons) is not yet started. The share card system uses `html-to-image` for client-side PNG generation — this is a new dependency.
