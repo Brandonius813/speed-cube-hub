@@ -577,3 +577,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The linter aggressively modifies files between Read and Edit calls — making smaller, targeted edits works better. Also, stale `.next` cache can cause phantom build errors referencing deleted imports — `rm -rf .next` fixes it.
 **Blockers:** None — Phases 1-3 are complete and pushed.
 **Warnings:** Phase 4 (profile + PB page share buttons) is not yet started. The share card system uses `html-to-image` for client-side PNG generation — this is a new dependency.
+
+---
+
+### 2026-02-26 13:30 PT — Cross Solver + Phase 15 Completion Session
+
+**Task:** T108 (bug fixes) + T115 (Cross Solver Tool)
+**Status:** Completed T108 bug fixes (Escape key handling, `window` → `solveWindow` rename fix, keyboard shortcut suppression with statDetail). Built T115 cross solver from scratch — BFS pruning table approach for optimal cross solutions on all 6 faces. Integrated into scramble-display.tsx with a "+" toggle button (3x3 only). Phase 15 is now fully complete (10/10 tasks done).
+**Files touched:** src/lib/timer/cross-solver.ts (new), src/components/timer/cross-solver-panel.tsx (new), src/components/timer/scramble-display.tsx, src/components/timer/stat-detail-modal.tsx, src/components/timer/timer-content.tsx, .claude/TASKS.md
+**Learnings:** BFS pruning tables for 4-edge cross state (24^4 = 331K entries) build in <100ms per face and give O(1) optimal solutions. Much better than IDA* for this small state space. The `npm run build` lock file issue persists — `rm -rf .next` + `pkill -f "next"` is the standard fix.
+**Blockers:** None
+**Warnings:** Phase 15 is fully done. Phase 16 (Training Scrambles) and beyond are all Available. XCross was deferred from T115 — it requires full F2L state tracking beyond just cross edges.
