@@ -73,6 +73,7 @@ Each page uses a two-file pattern:
 - `src/lib/actions/badges.ts` — Badges system (getBadgeDefinitions, getUserBadges, claimCompetitionBadge, claimSponsorBadge, removeBadge, approveBadge, rejectBadge, getPendingBadgeClaims)
 - `src/lib/helpers/create-notification.ts` — Internal helper: createNotification (NOT a server action, not callable from browser)
 - `src/lib/helpers/check-milestones.ts` — Internal helper: checkAndAwardMilestones (NOT a server action, not callable from browser)
+- `src/app/(main)/admin/page.tsx` — Admin dashboard hub (no navbar link — access via /admin URL only)
 - `src/components/admin/` — Admin components (badge-queue-content)
 - `src/app/api/auth/callback/route.ts` — Supabase OAuth callback (Google sign-in + auto profile creation)
 - `src/app/api/auth/wca/callback/route.ts` — WCA OAuth callback (verifies WCA ID ownership)
@@ -172,7 +173,7 @@ See `.env.local.example` for required variables:
 /                    → Landing page (hero, features, social proof)
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
-/practice-stats      → Practice stats (filters, charts, session log) [protected]
+/practice-stats      → Redirects to /profile?tab=stats [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
 /profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
@@ -182,10 +183,11 @@ See `.env.local.example` for required variables:
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
 /challenges          → Community challenges (join, track progress, admin creates) [protected]
-/pbs                 → Personal Bests management (log, view history, delete) [protected]
+/pbs                 → Redirects to /profile?tab=pbs [protected]
 /clubs               → Browse/search/create clubs, join/leave [protected]
 /clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
 /wrapped             → Year in Review [protected]
+/admin               → Admin dashboard hub (links to all admin subpages) [admin only]
 /admin/badges        → Admin badge approval queue [admin only]
 /privacy             → Privacy Policy [public]
 /terms               → Terms of Service [public]
