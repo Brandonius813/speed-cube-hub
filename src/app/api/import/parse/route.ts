@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import Anthropic from "@anthropic-ai/sdk"
 import { WCA_EVENTS } from "@/lib/constants"
 import type { ParseResult, NormalizedSolve, NormalizedPB } from "@/lib/import/types"
 
@@ -83,19 +82,37 @@ export async function POST(request: Request) {
     : truncated
 
   try {
-    const anthropic = new Anthropic({ apiKey })
-
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userMessage }],
+      }),
     })
 
+    if (!resp.ok) {
+      console.error("Anthropic API error:", resp.status, await resp.text())
+      return NextResponse.json(
+        { error: "AI parsing failed. Please try again." },
+        { status: 500 }
+      )
+    }
+
+    const message = await resp.json()
+
     // Extract text from response
-    const responseText = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
+    const responseText = (
+      message.content as Array<{ type: string; text?: string }>
+    )
+      .filter((block) => block.type === "text")
+      .map((block) => block.text ?? "")
       .join("")
 
     // Parse the JSON response
