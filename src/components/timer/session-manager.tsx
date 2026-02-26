@@ -11,6 +11,8 @@ import {
   Plus,
   Check,
   X,
+  Merge,
+  Scissors,
 } from "lucide-react"
 import {
   Dialog,
@@ -22,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { WCA_EVENTS } from "@/lib/constants"
+import { WCA_EVENTS, ALL_TIMER_EVENTS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import type { SolveSession } from "@/lib/types"
 
@@ -38,6 +40,8 @@ type SessionManagerProps = {
   onArchive: (id: string) => void
   onDelete: (id: string) => void
   onCreate: (name: string, event: string, isTracked: boolean) => void
+  onMerge?: (sourceId: string, targetId: string) => void
+  onSplit?: (sessionId: string, splitAfter: number) => void
 }
 
 export function SessionManager({
@@ -52,6 +56,8 @@ export function SessionManager({
   onArchive,
   onDelete,
   onCreate,
+  onMerge,
+  onSplit,
 }: SessionManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
@@ -64,9 +70,12 @@ export function SessionManager({
   const [newName, setNewName] = useState("")
   const [newEvent, setNewEvent] = useState("333")
   const [newTracked, setNewTracked] = useState(true)
+  const [mergeSource, setMergeSource] = useState<SolveSession | null>(null)
+  const [splitSession, setSplitSession] = useState<SolveSession | null>(null)
+  const [splitNumber, setSplitNumber] = useState("")
 
   const eventLabel = (eventId: string) =>
-    WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+    ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
 
   // Group by event
   const grouped = sessions.reduce<Record<string, SolveSession[]>>(
@@ -79,7 +88,7 @@ export function SessionManager({
     {}
   )
 
-  const eventOrder: string[] = WCA_EVENTS.map((e) => e.id)
+  const eventOrder: string[] = ALL_TIMER_EVENTS.map((e) => e.id)
   const sortedEvents = Object.keys(grouped).sort(
     (a, b) => eventOrder.indexOf(a) - eventOrder.indexOf(b)
   )
@@ -151,6 +160,80 @@ export function SessionManager({
                   }}
                 >
                   {confirmAction.type === "reset" ? "Reset" : "Delete"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Merge target picker overlay */}
+        {mergeSource && (
+          <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
+            <div className="text-center space-y-3 max-w-xs w-full">
+              <p className="text-sm font-medium">
+                Merge &ldquo;{mergeSource.name}&rdquo; into:
+              </p>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {sessions
+                  .filter((s) => s.event === mergeSource.event && s.id !== mergeSource.id)
+                  .map((s) => (
+                    <button
+                      key={s.id}
+                      className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+                      onClick={() => {
+                        onMerge?.(mergeSource.id, s.id)
+                        setMergeSource(null)
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setMergeSource(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Split session overlay */}
+        {splitSession && (
+          <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
+            <div className="text-center space-y-3 max-w-xs">
+              <p className="text-sm font-medium">
+                Split &ldquo;{splitSession.name}&rdquo;
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Solves after this number move to a new session.
+              </p>
+              <Input
+                type="number"
+                min={1}
+                placeholder="Split after solve #"
+                value={splitNumber}
+                onChange={(e) => setSplitNumber(e.target.value)}
+                className="h-8 text-sm text-center"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const n = parseInt(splitNumber, 10)
+                    if (n > 0) { onSplit?.(splitSession.id, n); setSplitSession(null); setSplitNumber("") }
+                  }
+                  if (e.key === "Escape") { setSplitSession(null); setSplitNumber("") }
+                }}
+              />
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" size="sm" onClick={() => { setSplitSession(null); setSplitNumber("") }}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const n = parseInt(splitNumber, 10)
+                    if (n > 0) { onSplit?.(splitSession.id, n); setSplitSession(null); setSplitNumber("") }
+                  }}
+                >
+                  Split
                 </Button>
               </div>
             </div>
@@ -271,6 +354,24 @@ export function SessionManager({
                           >
                             <Archive className="h-3.5 w-3.5" />
                           </button>
+                          {onMerge && sessions.filter((s) => s.event === session.event && s.id !== session.id).length > 0 && (
+                            <button
+                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                              onClick={() => setMergeSource(session)}
+                              title="Merge into another session"
+                            >
+                              <Merge className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {onSplit && (
+                            <button
+                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                              onClick={() => setSplitSession(session)}
+                              title="Split session"
+                            >
+                              <Scissors className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button
                             className="p-1 rounded hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
                             onClick={() =>
@@ -315,8 +416,8 @@ export function SessionManager({
                   if (e.key === "Escape") setShowCreate(false)
                 }}
               />
-              <div className="flex flex-wrap gap-1">
-                {WCA_EVENTS.map((e) => (
+              <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                {ALL_TIMER_EVENTS.map((e) => (
                   <Badge
                     key={e.id}
                     variant={newEvent === e.id ? "default" : "outline"}

@@ -6,6 +6,7 @@ import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
 import { StatsCards } from "@/components/dashboard/stats-cards"
 import { EventPieChart } from "@/components/dashboard/event-pie-chart"
 import { DailyBarChart } from "@/components/dashboard/daily-bar-chart"
+import { DailySolvesChart } from "@/components/dashboard/daily-solves-chart"
 import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
@@ -122,6 +123,7 @@ export function TabStats({
       </div>
 
       <DailyBarChart sessions={filteredSessions} />
+      <DailySolvesChart sessions={filteredSessions} />
       <EventBreakdownTable sessions={filteredSessions} />
 
       {/* Solve Analytics (timer solve-level charts) — owner only */}

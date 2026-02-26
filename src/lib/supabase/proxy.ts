@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   "/challenges",
   "/clubs",
   "/timer",
+  "/import",
   "/admin",
 ]
 

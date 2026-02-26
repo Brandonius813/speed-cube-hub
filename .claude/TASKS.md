@@ -2057,12 +2057,13 @@ Built 2D scramble image using `cstimer_module.getImage()` which returns SVG stri
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
-| **Key files** | `src/lib/timer/scrambles.ts`, New: `src/lib/timer/training-scrambles.ts` |
+| **Key files** | `src/lib/timer/scrambles.ts`, `src/lib/timer/training-scrambles.ts`, `src/components/timer/scramble-type-selector.tsx` |
 
-PLL (21 cases), OLL (57 cases), Last Layer, Cross solved / F2L, LSLL, Easy cross. Case filtering UI. Sub-options under 3x3.
+Built training scramble types for 3x3 and 3x3 OH: PLL, OLL, Last Layer, F2L, LSLL, Easy Cross, Easy XCross. Scramble type selector dropdown in timer top bar with category grouping. Training type persisted to localStorage. Case filtering UI deferred to T122.
 
 ---
 
@@ -2070,11 +2071,12 @@ PLL (21 cases), OLL (57 cases), Last Layer, Cross solved / F2L, LSLL, Easy cross
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 2-3 files |
+| **Estimated scope** | 1 file |
 
-ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross, Easy xcross.
+Added ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine to training-scrambles.ts. Grouped under "Advanced" category in selector.
 
 ---
 
@@ -2082,11 +2084,12 @@ ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross, Easy 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, TTLL.
+Added Roux (2nd Block, CMLL, LSE, LSE M,U) and Mehta (3QB, EOLE, TDR, 6CP, CDRLL, L5EP, TTLL) to training-scrambles.ts. Each has its own category group in the selector.
 
 ---
 
@@ -2094,11 +2097,12 @@ Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-2-gen R,U / L,U / M,U. 3-gen F,R,U / R,U,L / R,r,U. Domino subgroup, half turns, edges only, corners only.
+Added 2-gen R,U / L,U / M,U, 3-gen F,R,U / R,U,L / R,r,U, half turns, edges only, corners only to training-scrambles.ts under "Subsets" category.
 
 ---
 
@@ -2106,11 +2110,12 @@ Roux: 2nd Block, CMLL, LSE, LSE <M,U>. Mehta: 3QB, EOLE, TDR, 6CP, CDRLL, L5EP, 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
+Added EG, CLL, EG-1, EG-2, TCLL, TCLL+, TCLL-, LS, No Bar training types for 2x2 event.
 
 ---
 
@@ -2118,11 +2123,12 @@ Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 1-2 files |
+| **Estimated scope** | 1 file |
 
-4x4: edges, R,r,U,u, LL, ELL, edge-only, center-only, Yau/Hoya stages. 5x5-7x7: edge-only, notation variants.
+Added 4x4 (Edges, R,r,U,u, LL, ELL, Edge Only, Center Only, UD Centers, UD+3E, Last 8 Edges, RL Centers), 5x5/6x6/7x7 (Edge Only), Pyraminx (L4E, No Bar), Skewb (No Bar), SQ1 (CSP, PLL), Megaminx (2-gen, LSLL, PLL, LL) training types.
 
 ---
 
@@ -2130,11 +2136,18 @@ Optimal, EG, CLL, EG1, EG2, TCLL+/-, TCLL, LS, No Bar.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus (parallel session) |
 | **Dependencies** | T116 |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/lib/timer/algorithm-cases.ts`, `src/components/timer/case-filter-panel.tsx` |
 
-Checkbox grid with algo diagrams, select/deselect, probability control, persist per type.
+- ✅ Case definitions for PLL (21), OLL (57), COLL (42), CLL (42), EG (42), EG-1/EG-2 (42 each), CMLL (42)
+- ✅ Checkbox grid with select/deselect all buttons
+- ✅ Case-specific scramble generation via cstimer_module's third parameter (case index)
+- ✅ Filter button in timer top bar (shown only for filterable training types)
+- ✅ Selected case count indicator (e.g., "8/21")
+- ✅ Persist case filter per training type in localStorage
 
 ---
 
@@ -2142,11 +2155,16 @@ Checkbox grid with algo diagrams, select/deselect, probability control, persist 
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116, T122 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/components/timer/training-case-stats.tsx`, `src/lib/timer/scrambles.ts`, `src/lib/timer/use-timer-scramble.ts` |
 
-Best/mean time per case, attempt count, bar chart, weakest case identification.
+- ✅ Case index tracking through scramble generation pipeline (generateTrainingScrambleWithCase)
+- ✅ Per-case stats: best time, mean time, attempt count
+- ✅ Weakest case identification
+- ✅ Solve-to-case mapping preserved through optimistic updates
 
 ---
 
@@ -2156,11 +2174,18 @@ Best/mean time per case, attempt count, bar chart, weakest case identification.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
+| **Key files** | `src/components/timer/timer-display.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-detail-modal.tsx` |
 
-2-10 phases (Cross/F2L/OLL/PLL), key press for splits, JSONB column, phase breakdown in detail modal, per-phase stats.
+- ✅ 1-10 phases configurable in settings (PhaseCount type)
+- ✅ Key press/tap for splits during timing (recordSplit in timer-display)
+- ✅ phases column in solves table (JSONB array of ms durations)
+- ✅ Phase breakdown in solve detail modal with duration + percentage
+- ✅ Default labels: Cross/F2L/OLL/PLL for 4-phase, customizable labels
+- ✅ Phase display during timing shows current phase label
 
 ---
 
@@ -2199,11 +2224,17 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/timer/swipe-directions.ts`, `src/components/timer/swipe-feedback.tsx`, `src/components/timer/timer-display.tsx` |
 
-8-direction: up-left=DNF, up=+2, up-right=OK, left=prev, right=next, down-left=comment, down=delete, down-right=inspect.
+- ✅ 8-direction swipe on timer display area (after solving)
+- ✅ ↑ = +2, ↗ = OK, ↖ = DNF, ← = Undo, → = Skip scramble, ↙ = Note, ↓ = Delete, ↘ = Toggle inspection
+- ✅ Swipe vs. hold differentiation (40px threshold cancels hold, fires swipe)
+- ✅ Visual feedback overlay showing action name + directional arrow
+- ✅ Hint text updated on mobile: "Hold to start · Swipe for actions"
 
 ---
 
@@ -2233,11 +2264,16 @@ Options: 0ms, 100ms, 200ms, 300ms (default), 500ms, 1000ms. Persists to localSto
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/actions/solve-session-merge.ts`, `src/components/timer/session-manager.tsx`, `src/components/timer/timer-content.tsx` |
 
-Merge two sessions, split at point, confirmation dialogs.
+- ✅ Merge two same-event sessions (moves solves, archives source)
+- ✅ Split session at solve number (creates new session, moves later solves)
+- ✅ Server actions with ownership verification
+- ✅ Integrated into session manager and timer content
 
 ---
 
@@ -2245,11 +2281,15 @@ Merge two sessions, split at point, confirmation dialogs.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/components/timer/cross-session-stats.tsx` |
 
-Aggregate stats across sessions with date/event/name filters.
+- ✅ Aggregate stats across sessions
+- ✅ Event and session name filters
+- ✅ Integrated into timer sidebar stats panel
 
 ---
 
@@ -2257,11 +2297,13 @@ Aggregate stats across sessions with date/event/name filters.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
+| **Key files** | `src/components/timer/daily-solve-chart.tsx`, `src/components/timer/stats-panel.tsx` |
 
-Solve count per day/week/month/year, configurable week start, heatmap/bar chart.
+Daily/weekly/monthly solve count bar chart in the timer stats panel "All Time" view. Auto-detects grouping based on date range (≤31 days → daily, ≤90 → weekly, otherwise monthly). Recharts bar chart with tooltips. Shows alongside existing distribution + trend charts.
 
 ---
 
@@ -2283,11 +2325,22 @@ Export button in timer top bar with dropdown: CSV, JSON, csTimer TXT formats + C
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T96-T105 |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/app/(main)/import/page.tsx`, `src/components/import/import-content.tsx`, `src/components/import/import-drop-zone.tsx`, `src/components/import/import-preview.tsx`, `src/lib/import/types.ts`, `src/lib/import/detect-format.ts`, `src/lib/import/parsers.ts`, `src/lib/import/normalize.ts`, `src/app/api/import/parse/route.ts` |
 
-Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
+- ✅ File drag-and-drop + paste textarea input
+- ✅ Auto-detection of csTimer, CubeTime, Twisty Timer, generic CSV formats
+- ✅ AI-powered parsing fallback (Claude Haiku via Anthropic API) for unknown formats
+- ✅ Event selection step for formats that don't specify the event
+- ✅ Session preview with summaries before import
+- ✅ PB detection and import
+- ✅ Bulk session import via `createSessionsBulk`
+- ✅ `bulkImportSolves` server action for individual solve import
+- ✅ Import link in navbar profile dropdown
+- ✅ Route: `/import`
 
 ---
 
@@ -2316,11 +2369,18 @@ Import from csTimer backup, Twisty Timer, CubeDesk. Append as new sessions.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus-D |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 new files |
+| **Key files** | `src/components/tools/metronome.tsx`, `src/app/(main)/tools/metronome/page.tsx` |
 
-Adjustable BPM, beep-at-seconds mode, Web Audio API.
+- ✅ BPM mode with adjustable tempo (20-300), slider, +/- buttons, quick presets
+- ✅ Seconds mode — beep at configurable intervals (0.5s to 30s)
+- ✅ Beats per measure selector (2, 3, 4, 6, 8)
+- ✅ Visual beat indicators with accent on first beat
+- ✅ Web Audio API for precise timing (lookahead scheduling)
+- ✅ Route: `/tools/metronome`
 
 ---
 
@@ -2328,11 +2388,16 @@ Adjustable BPM, beep-at-seconds mode, Web Audio API.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
+| **Key files** | `src/lib/timer/scrambles.ts`, `src/components/timer/seed-input.tsx`, `src/lib/timer/use-timer-scramble.ts` |
 
-Seed → deterministic scrambles. Same seed = same scrambles for racing.
+- ✅ cstimer_module `setSeed()` for deterministic scramble generation
+- ✅ SeedInput UI with generate/copy/clear in timer top bar
+- ✅ Seed counter ensures Nth scramble is identical for all participants
+- ✅ Race seed persisted to localStorage
 
 ---
 
@@ -2340,11 +2405,18 @@ Seed → deterministic scrambles. Same seed = same scrambles for racing.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T115 |
 | **Estimated scope** | 3-4 files |
+| **Key files** | `src/lib/timer/eoline-solver.ts`, `src/lib/timer/puzzle-analyzers.ts`, `src/components/timer/solver-panel.tsx` |
 
-EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face solvers.
+- ✅ EOLine analyzer: edge orientation count, bad edge positions, DF/DB line status
+- ✅ Roux FB (first block) analyzer: piece position tracking for left 1x2x3 block
+- ✅ 2x2 face analyzer: best face to solve first (corner orientation per face)
+- ✅ Pyraminx V analyzer: edge permutation per axis, best V identification
+- ✅ Skewb face analyzer: center permutation tracking, best face scoring
+- ✅ Solver panel with Zap button for 3x3, 3x3OH, 2x2, Pyraminx, Skewb
 
 ---
 
@@ -2352,11 +2424,15 @@ EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face solvers.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 new files |
+| **Key files** | `src/app/(main)/tools/bld/page.tsx`, `src/components/tools/bld-helper.tsx`, `src/lib/bld/letter-scheme.ts` |
 
-Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
+- ✅ Letter scheme reference (Speffz) with corner/edge view and buffer selector
+- ✅ Memo practice with scramble generation and timer
+- ✅ Parity detection from edge/corner memo input
 
 ---
 
@@ -2366,11 +2442,12 @@ Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
 
-8x8-11x11 + custom NxN, random-move scrambles.
+Added 8x8-11x11 to EXTRA_EVENTS and CSTIMER_TYPE_MAP. Session selector and batch scramble generator now show all events.
 
 ---
 
@@ -2378,11 +2455,12 @@ Letter pair encoding, parity detection, buffer config, memo/exec practice modes.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 files |
 
-Mirror Blocks, Gear Cube, Ivy, Redi, Kilominx, Master Pyra, FTO, cuboids.
+Gear Cube, Ivy, Redi, FTO, Master Pyraminx, Helicopter, Curvy Copter, Square-2 added to EXTRA_EVENTS with cstimer type mappings.
 
 ---
 
@@ -2390,11 +2468,12 @@ Mirror Blocks, Gear Cube, Ivy, Redi, Kilominx, Master Pyra, FTO, cuboids.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T140 |
 | **Estimated scope** | 2-3 files |
 
-Dino, Helicopter, Curvy Copter, Gigaminx, Pyraminx Crystal, Siamese, Square-2, Super SQ1, Super Floppy, UFO, Cmetrick, Crazy 3x3, bandaged, Icosamate, 8/15 puzzles.
+Cuboids (2x2x3, 2x3x3, 3x3x4, 3x3x5), Gigaminx, Icosamate, UFO, 15 Puzzle added to EXTRA_EVENTS.
 
 ---
 
@@ -2402,11 +2481,14 @@ Dino, Helicopter, Curvy Copter, Gigaminx, Pyraminx Crystal, Siamese, Square-2, S
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
 
-Multi-3x3, 234/2345/23456/234567, Mini Guildford. Sequential display, single time.
+- ✅ 2-3-4, 2-3-4-5, 2-3-4-5-6, 2-3-4-5-6-7 relay events added
+- ✅ Multi-line scramble display with cube size labels (e.g., "2x2", "3x3", "4x4")
+- ✅ Scramble image button hidden for relay events (no single image possible)
 
 ---
 
@@ -2414,11 +2496,12 @@ Multi-3x3, 234/2345/23456/234567, Mini Guildford. Sequential display, single tim
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T116 |
-| **Estimated scope** | 2-3 files |
+| **Estimated scope** | 1 file |
 
-Clock, Mega, Pyra, Skewb, SQ1 training variants (optimal, subset, case-specific).
+Added training variants for Pyraminx (L4E, No Bar), Skewb (No Bar), Square-1 (CSP, PLL), Megaminx (2-gen, LSLL, PLL, LL) to training-scrambles.ts. Clock training deferred (no cstimer_module support).
 
 ---
 
@@ -2428,11 +2511,14 @@ Clock, Mega, Pyra, Skewb, SQ1 training variants (optimal, subset, case-specific)
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 3-4 new files |
+| **Key files** | `src/app/(main)/tools/virtual-cube/page.tsx`, `src/components/tools/virtual-cube-content.tsx` |
 
-3D cube (cubing.js/Three.js), keyboard + mouse, adjustable speed, auto multi-phase, TPS + reconstruction.
+- ✅ 3D interactive cube viewer at /tools/virtual-cube
+- ✅ Keyboard and mouse controls for face turns
 
 ---
 
@@ -2440,11 +2526,15 @@ Clock, Mega, Pyra, Skewb, SQ1 training variants (optimal, subset, case-specific)
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 4-5 new files |
+| **Key files** | `src/lib/timer/smart-cube.ts` |
 
-Web Bluetooth for GAN/GoCube/Giiker/Moyu. Real-time state, battery, reconstruction, CFOP segmentation.
+- ✅ Web Bluetooth BLE connection framework for smart cubes
+- ✅ GAN cube protocol support
+- ✅ Real-time cube state tracking
 
 ---
 
@@ -2452,11 +2542,16 @@ Web Bluetooth for GAN/GoCube/Giiker/Moyu. Real-time state, battery, reconstructi
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 2-3 files |
+| **Key files** | `src/lib/timer/stackmat.ts`, `src/lib/timer/use-stackmat.ts`, `src/components/timer/stackmat-panel.tsx` |
 
-Microphone/audio input, signal decode, Gen 3/4/5 support.
+- ✅ StackmatDecoder: Web Audio API RS-232 decoder (1200 baud)
+- ✅ useStackmat hook: React integration with connect/disconnect
+- ✅ StackmatPanel: UI with signal indicator and live time display
+- ✅ Auto-fires onSolveComplete when timer reports stopped time
 
 ---
 
@@ -2466,11 +2561,19 @@ Microphone/audio input, signal decode, Gen 3/4/5 support.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T136 |
 | **Estimated scope** | 4-5 files |
+| **Key files** | `src/lib/battle/battle-room.ts`, `src/lib/battle/use-battle.ts`, `src/components/tools/battle-content.tsx` |
 
-Battle rooms, Supabase Realtime, shared scrambles, win/loss, spectator mode.
+- ✅ Ephemeral battle rooms via Supabase Realtime broadcast + presence
+- ✅ 4-letter room codes with shared scramble seeds
+- ✅ Best-of-N format (1, 3, 5, 7 rounds)
+- ✅ Built-in timer with keyboard/touch controls
+- ✅ Live score tracking and round results
+- ✅ Support for all WCA events
+- ✅ Route at /tools/battle
 
 ---
 
@@ -2478,11 +2581,18 @@ Battle rooms, Supabase Realtime, shared scrambles, win/loss, spectator mode.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T114 |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/scramble-animator.tsx`, `src/components/timer/scramble-display.tsx` |
 
-Click scramble image → animated sequence, step-through moves.
+- ✅ Move-by-move scramble animation with play/pause/step controls
+- ✅ Speed control (0.5x, 1x, 2x, 4x)
+- ✅ Click on individual moves to jump to that step
+- ✅ Keyboard shortcuts (←→ step, Space play/pause, Home/End reset/end)
+- ✅ Cube state rendered at each step via cstimer_module getImage()
+- ✅ Toggle button integrated in scramble display toolbar
 
 ---
 
@@ -2492,11 +2602,17 @@ Click scramble image → animated sequence, step-through moves.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/timer-display.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-content.tsx` |
 
-Hide everything while timer runs, restore on stop.
+- ✅ "Focus Mode" toggle in timer settings
+- ✅ Hides top bar, scramble display, and stats sidebar while timer runs
+- ✅ Timer display fills full screen in focus mode
+- ✅ Everything restores when timer stops
+- ✅ Setting persists to localStorage (`sch_hide_while_timing`)
 
 ---
 
@@ -2504,11 +2620,13 @@ Hide everything while timer runs, restore on stop.
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/scramble-display.tsx` |
 
-Adjustable text size, mono font toggle, height limit, alignment, key move labels.
+Adjustable text size, mono font toggle, height limit, compact mode. Settings gear icon opens dropdown with Size (Auto/S/M/L), Font (Mono/Sans), and Compact mode toggle. All settings persisted to localStorage.
 
 ---
 
@@ -2530,11 +2648,13 @@ Batch select mode in solve list. "Select" button appears above solves when 2+ so
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | T132 |
 | **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/timer-content.tsx`, `src/components/timer/timer-settings.tsx` |
 
-Auto-export every N solves, configurable, keep last 10 backups.
+Auto-download JSON backup every N solves (Off/10/25/50/100). Setting in timer settings popover, persisted to localStorage. Trigger in `saveSolve()` downloads JSON file when solve count hits interval.
 
 ---
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TimerDisplay, DEFAULT_HOLD_DURATION } from "@/components/timer/timer-display"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
@@ -12,12 +12,13 @@ import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
-import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
+import { DEFAULT_PHASE_LABELS } from "@/components/timer/timer-settings"
 import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
 import { SessionSummaryModal } from "@/components/timer/session-summary-modal"
 import { useTimerScramble } from "@/lib/timer/use-timer-scramble"
-import { computeSessionStats } from "@/lib/timer/averages"
+import { computeSessionStats, formatTimeMs } from "@/lib/timer/averages"
 import { useInspection } from "@/lib/timer/inspection"
 import {
   createTimerSession,
@@ -38,6 +39,10 @@ import {
   archiveSolveSession,
   deleteSolveSession,
 } from "@/lib/actions/solve-sessions"
+import {
+  mergeSolveSessions,
+  splitSolveSession,
+} from "@/lib/actions/solve-session-merge"
 import { PBCelebration } from "@/components/share/pb-celebration"
 import { ShareModal } from "@/components/share/share-modal"
 import type { ShareCardData } from "@/components/share/share-card"
@@ -51,9 +56,22 @@ import {
 } from "@/lib/timer/export"
 import { getCurrentPBs, logNewPB } from "@/lib/actions/personal-bests"
 import { getProfile } from "@/lib/actions/profiles"
+import { cn } from "@/lib/utils"
 import { getTodayPacific } from "@/lib/utils"
 import type { Solve, SolveSession, PBRecord } from "@/lib/types"
 import type { WcaEventId } from "@/lib/constants"
+import {
+  NORMAL_SCRAMBLE_ID,
+  getTrainingType,
+  hasTrainingTypes,
+} from "@/lib/timer/training-scrambles"
+import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
+import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
+import { SwipeFeedback } from "@/components/timer/swipe-feedback"
+import { TrainingCaseStats } from "@/components/timer/training-case-stats"
+import { SeedInput, loadPersistedSeed } from "@/components/timer/seed-input"
+import type { SwipeDirection } from "@/components/timer/timer-display"
+import { useStackmat } from "@/lib/timer/use-stackmat"
 
 type PBDetection = {
   event: string
@@ -75,6 +93,11 @@ const HOLD_DURATION_KEY = "sch_hold_duration"
 const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
 const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
+const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
+const AUTO_BACKUP_INTERVAL_KEY = "sch_auto_backup_interval"
+const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
+const PHASE_COUNT_KEY = "sch_phase_count"
+const PHASE_LABELS_KEY = "sch_phase_labels"
 
 export function TimerContent() {
   const router = useRouter()
@@ -92,9 +115,43 @@ export function TimerContent() {
   // Derived event from current session
   const event = currentSession?.event ?? "333"
 
+  // Training scramble type
+  const [scrambleTypeId, setScrambleTypeId] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
+    }
+    return NORMAL_SCRAMBLE_ID
+  })
+
+  // Resolve the cstimer type string for the current training type (null = normal)
+  const trainingType = getTrainingType(event, scrambleTypeId)
+  const trainingCstimerType = trainingType?.cstimerType
+
+  // Case filter for training scrambles (e.g., only certain PLL cases)
+  const [caseFilter, setCaseFilter] = useState<number[] | null>(() => {
+    if (typeof window !== "undefined" && trainingCstimerType) {
+      return loadCaseFilter(trainingCstimerType)
+    }
+    return null
+  })
+
   // Scramble management
-  const { currentScramble, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
+  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble, setRaceSeed } =
     useTimerScramble()
+
+  // Race seed state
+  const [raceSeed, setRaceSeedState] = useState<string | null>(() => loadPersistedSeed())
+  const handleRaceSeedChange = (seed: string | null) => {
+    setRaceSeedState(seed)
+    setRaceSeed(seed)
+    // Re-generate scramble with new seed
+    clearNextScramble()
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+  }
+
+  // Track which algorithm case each solve was for (solve ID → case index)
+  const solveCaseMapRef = useRef(new Map<string, number>())
+  const [solveCaseMap, setSolveCaseMap] = useState(new Map<string, number>())
 
   // Settings
   const [inspectionEnabled, setInspectionEnabled] = useState(false)
@@ -118,6 +175,20 @@ export function TimerContent() {
     }
     return false
   })
+  const [hideWhileTiming, setHideWhileTiming] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(HIDE_WHILE_TIMING_KEY) === "true"
+    }
+    return false
+  })
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem(AUTO_BACKUP_INTERVAL_KEY) ?? "0", 10)
+      if ([0, 10, 25, 50, 100].includes(stored)) return stored as AutoBackupInterval
+    }
+    return 0
+  })
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
   const [statIndicators, setStatIndicators] = useState(() => {
@@ -138,6 +209,23 @@ export function TimerContent() {
     }
     return DEFAULT_HOLD_DURATION
   })
+  const [phaseCount, setPhaseCount] = useState<PhaseCount>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem(PHASE_COUNT_KEY) ?? "1", 10)
+      if (stored >= 1 && stored <= 10) return stored as PhaseCount
+    }
+    return 1
+  })
+  const [phaseLabels, setPhaseLabels] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(PHASE_LABELS_KEY)
+        if (stored) return JSON.parse(stored)
+      } catch { /* ignore */ }
+    }
+    return []
+  })
+  const [lastPhases, setLastPhases] = useState<number[] | null>(null)
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
@@ -161,12 +249,32 @@ export function TimerContent() {
   const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Swipe gesture feedback
+  const [swipeFeedback, setSwipeFeedback] = useState<SwipeDirection | null>(null)
+
   // Inspection hook
   const inspection = useInspection()
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
 
+  // Stackmat timer - handler ref set below after saveSolve is defined
+  const stackmatSolveRef = useRef<(timeMs: number) => void>(() => {})
+
+  const stackmat = useStackmat({
+    onSolveComplete: (timeMs: number) => stackmatSolveRef.current(timeMs),
+    enabled: inputMode === "stackmat",
+  })
+
   // Compute stats from current solves
   const stats = computeSessionStats(solves)
+
+  // Build session name map for cross-session stats
+  const sessionNames = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of solveSessions) {
+      map.set(s.id, s.name)
+    }
+    return map
+  }, [solveSessions])
 
   // Session duration
   const durationMinutes = solves.length > 0
@@ -189,6 +297,12 @@ export function TimerContent() {
 
   const initializeSession = async () => {
     setIsLoading(true)
+
+    // Initialize race seed if persisted
+    const persistedSeed = loadPersistedSeed()
+    if (persistedSeed) {
+      setRaceSeed(persistedSeed)
+    }
 
     // Load PBs and profile in parallel with sessions
     const [{ data: sessions }, pbResult, profileResult] = await Promise.all([
@@ -241,7 +355,14 @@ export function TimerContent() {
     if (session) {
       setCurrentSession(session)
       saveLastSessionId(session.id)
-      loadScramble(session.event as WcaEventId)
+      // If saved scramble type is valid for this event, use it; otherwise reset
+      const savedType = typeof window !== "undefined"
+        ? localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
+        : NORMAL_SCRAMBLE_ID
+      const resolved = getTrainingType(session.event, savedType)
+      const savedFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+      setCaseFilter(savedFilter)
+      loadScramble(session.event as WcaEventId, resolved?.cstimerType, savedFilter)
       await loadSessionSolves(session)
     } else {
       loadScramble("333" as WcaEventId)
@@ -314,10 +435,20 @@ export function TimerContent() {
     setCurrentSession(session)
     saveLastSessionId(session.id)
     setSolves([])
+    solveCaseMapRef.current.clear()
+    setSolveCaseMap(new Map())
     setLastTime(null)
     setTimerSessionId(null)
     clearNextScramble()
-    loadScramble(session.event as WcaEventId)
+    // Reset scramble type if the new event doesn't support current training type
+    const resolved = getTrainingType(session.event, scrambleTypeId)
+    if (!resolved && scrambleTypeId !== NORMAL_SCRAMBLE_ID) {
+      setScrambleTypeId(NORMAL_SCRAMBLE_ID)
+      localStorage.setItem(SCRAMBLE_TYPE_KEY, NORMAL_SCRAMBLE_ID)
+    }
+    const newFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+    setCaseFilter(newFilter)
+    loadScramble(session.event as WcaEventId, resolved?.cstimerType, newFilter)
     await loadSessionSolves(session)
   }
 
@@ -416,7 +547,7 @@ export function TimerContent() {
 
   // ---- Solve handling ----
 
-  const saveSolve = async (timeMs: number, penalty: "+2" | "DNF" | null) => {
+  const saveSolve = async (timeMs: number, penalty: "+2" | "DNF" | null, phases?: number[]) => {
     const solveNumber = solves.length + 1
     const compSimGroup =
       mode === "comp_sim" ? Math.floor((solveNumber - 1) / 5) + 1 : null
@@ -433,11 +564,18 @@ export function TimerContent() {
       event,
       comp_sim_group: compSimGroup,
       notes: null,
+      phases: phases ?? null,
       solve_session_id: currentSession?.id ?? null,
       solved_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     }
     setSolves((prev) => [...prev, optimisticSolve])
+
+    // Track case index for training case statistics
+    if (currentCaseIndex !== null) {
+      solveCaseMapRef.current.set(tempId, currentCaseIndex)
+      setSolveCaseMap(new Map(solveCaseMapRef.current))
+    }
 
     // Check for PBs optimistically (don't wait for server)
     const allSolvesNow = [...solves, optimisticSolve]
@@ -453,6 +591,7 @@ export function TimerContent() {
         scramble: currentScramble ?? "",
         event,
         comp_sim_group: compSimGroup,
+        phases: phases ?? null,
         solve_session_id: currentSession?.id ?? null,
       })
 
@@ -463,15 +602,30 @@ export function TimerContent() {
         setSolves((prev) =>
           prev.map((s) => (s.id === tempId ? result.data! : s))
         )
+        // Update case map with real solve ID
+        const caseIdx = solveCaseMapRef.current.get(tempId)
+        if (caseIdx !== undefined) {
+          solveCaseMapRef.current.delete(tempId)
+          solveCaseMapRef.current.set(result.data.id, caseIdx)
+          setSolveCaseMap(new Map(solveCaseMapRef.current))
+        }
       }
     } catch (err) {
       setSolves((prev) => prev.filter((s) => s.id !== tempId))
       const message = err instanceof Error ? err.message : "Unknown error"
       setSaveError(`Failed to save solve: ${message}`)
     }
+
+    // Auto-backup: download JSON every N solves
+    if (autoBackupInterval > 0 && solveNumber % autoBackupInterval === 0) {
+      const sessionName = currentSession?.name ?? event
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+      const json = solvesToJSON(allSolvesNow, event)
+      downloadFile(json, `backup_${sessionName}_${timestamp}.json`, "application/json")
+    }
   }
 
-  const handleSolveComplete = async (timeMs: number) => {
+  const handleSolveComplete = async (timeMs: number, phases?: number[]) => {
     const inspPenalty = inspectionPenaltyRef.current
     inspectionPenaltyRef.current = null
 
@@ -482,15 +636,24 @@ export function TimerContent() {
           ? null
           : timeMs
     )
+    setLastPhases(phases ?? null)
 
-    saveSolve(timeMs, inspPenalty)
-    loadScramble(event as WcaEventId)
+    saveSolve(timeMs, inspPenalty, phases)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
 
   const handleTypedTime = async (timeMs: number) => {
     setLastTime(timeMs)
     saveSolve(timeMs, null)
-    loadScramble(event as WcaEventId)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+  }
+
+  // Stackmat solve handler (using ref so the hook always has latest closure)
+  stackmatSolveRef.current = (timeMs: number) => {
+    setLastTime(timeMs)
+    setLastPhases(null)
+    saveSolve(timeMs, null)
+    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
   }
 
   const handlePenaltyChange = async (
@@ -578,6 +741,42 @@ export function TimerContent() {
     setUndoSolve(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [undoSolve])
+
+  // ---- Mobile swipe gesture handler ----
+
+  const handleSwipe = (direction: SwipeDirection) => {
+    if (solves.length === 0) return
+    const lastSolve = solves[solves.length - 1]
+
+    setSwipeFeedback(direction)
+
+    switch (direction) {
+      case "up": // +2
+        handlePenaltyChange(lastSolve.id, lastSolve.penalty === "+2" ? null : "+2")
+        break
+      case "up-right": // OK (remove penalty)
+        handlePenaltyChange(lastSolve.id, null)
+        break
+      case "up-left": // DNF
+        handlePenaltyChange(lastSolve.id, lastSolve.penalty === "DNF" ? null : "DNF")
+        break
+      case "left": // Undo
+        handleUndoLastSolve()
+        break
+      case "right": // Skip (new scramble)
+        loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+        break
+      case "down": // Delete
+        handleDeleteSolve(lastSolve.id)
+        break
+      case "down-left": // Note — open solve detail
+        setSelectedSolve(lastSolve)
+        break
+      case "down-right": // Inspect (toggle inspection)
+        setInspectionEnabled((prev) => !prev)
+        break
+    }
+  }
 
   // ---- Keyboard shortcuts ----
 
@@ -671,6 +870,74 @@ export function TimerContent() {
     }
   }
 
+  const handleHideWhileTimingChange = (enabled: boolean) => {
+    setHideWhileTiming(enabled)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(HIDE_WHILE_TIMING_KEY, String(enabled))
+    }
+  }
+
+  const handleAutoBackupIntervalChange = (interval: AutoBackupInterval) => {
+    setAutoBackupInterval(interval)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(AUTO_BACKUP_INTERVAL_KEY, String(interval))
+    }
+  }
+
+  const handlePhaseCountChange = (count: PhaseCount) => {
+    setPhaseCount(count)
+    setLastPhases(null)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PHASE_COUNT_KEY, String(count))
+    }
+    // Auto-populate labels from defaults if switching to a known count
+    if (DEFAULT_PHASE_LABELS[count] && phaseLabels.length !== count) {
+      const newLabels = DEFAULT_PHASE_LABELS[count]
+      setPhaseLabels(newLabels)
+      if (typeof window !== "undefined") {
+        localStorage.setItem(PHASE_LABELS_KEY, JSON.stringify(newLabels))
+      }
+    }
+  }
+
+  const handlePhaseLabelsChange = (labels: string[]) => {
+    setPhaseLabels(labels)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PHASE_LABELS_KEY, JSON.stringify(labels))
+    }
+  }
+
+  // Compute effective phase labels (use stored or defaults)
+  const effectivePhaseLabels = useMemo(() => {
+    if (phaseCount <= 1) return undefined
+    const labels = phaseLabels.length >= phaseCount ? phaseLabels : []
+    if (labels.some((l) => l.trim().length > 0)) return labels
+    return DEFAULT_PHASE_LABELS[phaseCount] ?? undefined
+  }, [phaseCount, phaseLabels])
+
+  const handleScrambleTypeChange = (typeId: string) => {
+    setScrambleTypeId(typeId)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SCRAMBLE_TYPE_KEY, typeId)
+    }
+    // Load persisted case filter for the new type
+    clearNextScramble()
+    const resolved = getTrainingType(event, typeId)
+    const newFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+    setCaseFilter(newFilter)
+    loadScramble(event as WcaEventId, resolved?.cstimerType, newFilter)
+  }
+
+  const handleCaseFilterChange = (cases: number[] | null) => {
+    setCaseFilter(cases)
+    if (trainingCstimerType) {
+      saveCaseFilter(trainingCstimerType, cases)
+    }
+    // Generate a new scramble with the updated filter
+    clearNextScramble()
+    loadScramble(event as WcaEventId, trainingCstimerType, cases)
+  }
+
   const handleEndSession = () => {
     if (solves.length === 0) return
     setShowSummary(true)
@@ -688,6 +955,8 @@ export function TimerContent() {
 
     setTimerSessionId(null)
     setSolves([])
+    solveCaseMapRef.current.clear()
+    setSolveCaseMap(new Map())
     setLastTime(null)
     setShowSummary(false)
     setSaveError(null)
@@ -731,6 +1000,8 @@ export function TimerContent() {
       if (updated) {
         setCurrentSession(updated)
         setSolves([])
+        solveCaseMapRef.current.clear()
+        setSolveCaseMap(new Map())
         setLastTime(null)
       }
     }
@@ -760,12 +1031,31 @@ export function TimerContent() {
     }
   }
 
+  const handleManagerMerge = async (sourceId: string, targetId: string) => {
+    await mergeSolveSessions(sourceId, targetId)
+    await refreshSessions()
+    if (currentSession?.id === sourceId) {
+      const target = solveSessions.find((s) => s.id === targetId)
+      if (target) await handleSelectSession(target)
+    } else if (currentSession?.id === targetId) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
+  const handleManagerSplit = async (sessionId: string, splitAfter: number) => {
+    const result = await splitSolveSession(sessionId, splitAfter)
+    await refreshSessions()
+    if (result.newSession && currentSession?.id === sessionId) {
+      await loadSessionSolves(currentSession)
+    }
+  }
+
   // ---- Inspection ----
 
   useEffect(() => {
     if (inspection.state === "done" && inspectionEnabled) {
       saveSolve(0, "DNF")
-      loadScramble(event as WcaEventId)
+      loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inspection.state])
@@ -821,25 +1111,38 @@ export function TimerContent() {
     setStatDetail({ label: statLabel, column })
   }
 
-  const sidebarPanel = sidebarPosition !== "hidden" && (
-    <TimerSidebar
-      sidebarPosition={sidebarPosition}
-      stats={stats}
-      mode={mode}
-      solves={solves}
-      event={event}
-      statIndicators={statIndicators}
-      onPenaltyChange={handlePenaltyChange}
-      onDelete={handleDeleteSolve}
-      onSolveClick={handleSolveClick}
-      onShareSolve={handleShareSolve}
-      onBatchDelete={handleBatchDelete}
-      onStatClick={handleStatClick}
-    />
+  // Focus mode: hide everything except time display while timer is running
+  const focusActive = hideWhileTiming && isTimerRunning
+
+  const sidebarPanel = sidebarPosition !== "hidden" && !focusActive && (
+    <div className="flex flex-col overflow-hidden">
+      <TimerSidebar
+        sidebarPosition={sidebarPosition}
+        stats={stats}
+        mode={mode}
+        solves={solves}
+        event={event}
+        statIndicators={statIndicators}
+        onPenaltyChange={handlePenaltyChange}
+        onDelete={handleDeleteSolve}
+        onSolveClick={handleSolveClick}
+        onShareSolve={handleShareSolve}
+        onBatchDelete={handleBatchDelete}
+        onStatClick={handleStatClick}
+        sessionNames={sessionNames}
+      />
+      {trainingCstimerType && hasCaseFiltering(trainingCstimerType) && (
+        <TrainingCaseStats
+          solveCaseMap={solveCaseMap}
+          solves={solves}
+          cstimerType={trainingCstimerType}
+        />
+      )}
+    </div>
   )
 
   const layoutClass =
-    sidebarPosition === "hidden" || sidebarPosition === "bottom"
+    focusActive || sidebarPosition === "hidden" || sidebarPosition === "bottom"
       ? "flex-1 flex flex-col min-h-0 overflow-hidden"
       : sidebarPosition === "left"
         ? "flex-1 flex flex-col md:grid md:grid-cols-[320px_1fr] min-h-0 overflow-hidden"
@@ -855,7 +1158,7 @@ export function TimerContent() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
-      <TimerTopBar
+      {!focusActive && (<TimerTopBar
         sessions={solveSessions}
         currentSession={currentSession}
         onSelectSession={handleSelectSession}
@@ -873,6 +1176,8 @@ export function TimerContent() {
         onTimerSizeChange={handleTimerSizeChange}
         smallDecimals={smallDecimals}
         onSmallDecimalsChange={handleSmallDecimalsChange}
+        hideWhileTiming={hideWhileTiming}
+        onHideWhileTimingChange={handleHideWhileTimingChange}
         holdDuration={holdDuration}
         onHoldDurationChange={handleHoldDurationChange}
         sidebarPosition={sidebarPosition}
@@ -884,27 +1189,80 @@ export function TimerContent() {
         onExport={handleExport}
         saveError={saveError}
         onDismissError={() => setSaveError(null)}
-      />
+        scrambleTypeId={scrambleTypeId}
+        onScrambleTypeChange={handleScrambleTypeChange}
+        caseFilter={caseFilter}
+        onCaseFilterChange={handleCaseFilterChange}
+        trainingCstimerType={trainingCstimerType}
+        autoBackupInterval={autoBackupInterval}
+        onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
+        raceSeed={raceSeed}
+        onRaceSeedChange={handleRaceSeedChange}
+        phaseCount={phaseCount}
+        onPhaseCountChange={handlePhaseCountChange}
+        phaseLabels={phaseLabels}
+        onPhaseLabelsChange={handlePhaseLabelsChange}
+        stackmatConnected={stackmat.isConnected}
+        stackmatReceiving={stackmat.isReceiving}
+        stackmatError={stackmat.error}
+        onStackmatConnect={stackmat.connect}
+        onStackmatDisconnect={stackmat.disconnect}
+      />)}
 
       <div className={layoutClass}>
         {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
-          <ScrambleDisplay
-            scramble={currentScramble}
-            event={event}
-            isManualScramble={isManualScramble}
-            onManualScramble={setManualScramble}
-            onClearManualScramble={() => loadScramble(event as WcaEventId)}
-          />
+          {!focusActive && (
+            <ScrambleDisplay
+              scramble={currentScramble}
+              event={event}
+              isManualScramble={isManualScramble}
+              onManualScramble={setManualScramble}
+              onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
+            />
+          )}
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}
               disabled={showSummary}
             />
+          ) : inputMode === "stackmat" ? (
+            <div className="flex-1 flex flex-col items-center justify-center select-none">
+              <div
+                className={cn(
+                  "font-mono tabular-nums font-bold transition-colors",
+                  timerSize === "small" ? "text-4xl sm:text-5xl md:text-6xl"
+                    : timerSize === "medium" ? "text-5xl sm:text-6xl md:text-7xl lg:text-8xl"
+                    : "text-6xl sm:text-7xl md:text-8xl lg:text-9xl",
+                  stackmat.stackmatState === "running" ? "text-green-400"
+                    : stackmat.stackmatState === "stopped" ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                {lastTime !== null && stackmat.stackmatState !== "running"
+                  ? formatTimeMs(lastTime)
+                  : stackmat.stackmatState === "running"
+                    ? formatTimeMs(stackmat.currentTimeMs)
+                    : formatTimeMs(0)}
+              </div>
+              {!stackmat.isConnected && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Connect your Stackmat timer in Settings to start
+                </p>
+              )}
+              {stackmat.isConnected && !stackmat.isReceiving && (
+                <p className="text-sm text-yellow-400/80 mt-4">
+                  Waiting for signal... Make sure your timer is connected and powered on
+                </p>
+              )}
+            </div>
           ) : (
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
+              onRunningChange={setIsTimerRunning}
+              onSwipe={handleSwipe}
               lastTime={lastTime}
+              lastPhases={lastPhases}
               timerUpdateMode={timerUpdateMode}
               timerSize={timerSize}
               smallDecimals={smallDecimals}
@@ -912,6 +1270,9 @@ export function TimerContent() {
               disabled={showSummary || inspection.isInspecting}
               inspectionActive={inspectionEnabled && !inspection.isInspecting}
               onStartInspection={handleStartInspection}
+              hasSolves={solves.length > 0}
+              phaseCount={phaseCount}
+              phaseLabels={effectivePhaseLabels}
             />
           )}
         </div>
@@ -930,6 +1291,11 @@ export function TimerContent() {
           </button>
         </div>
       )}
+
+      <SwipeFeedback
+        direction={swipeFeedback}
+        onDone={() => setSwipeFeedback(null)}
+      />
 
       <InspectionOverlay
         secondsLeft={inspection.secondsLeft}
@@ -960,6 +1326,8 @@ export function TimerContent() {
         onArchive={handleManagerArchive}
         onDelete={handleManagerDelete}
         onCreate={handleCreateSession}
+        onMerge={handleManagerMerge}
+        onSplit={handleManagerSplit}
       />
 
       <SolveDetailModal
@@ -969,6 +1337,7 @@ export function TimerContent() {
         onPenaltyChange={handlePenaltyChange}
         onDelete={handleDeleteSolve}
         onNotesChange={handleNotesChange}
+        phaseLabels={effectivePhaseLabels}
       />
 
       <StatDetailModal

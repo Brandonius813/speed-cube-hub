@@ -216,57 +216,57 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Cross solver tool (T115)
 
 **Phase 16 — Training Scrambles — T116-T123:**
-- [ ] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) with case filtering (T116)
-- [ ] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine, EO Cross) (T117)
-- [ ] 3x3 Roux + Mehta training scrambles (T118)
-- [ ] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
-- [ ] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
-- [ ] 4x4+ training (edges, centers, Yau/Hoya stages) (T121)
-- [ ] Case filtering UI (checkbox grid, probability control) (T122)
+- [x] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) — scramble type selector in timer (T116)
+- [x] 3x3 advanced (ZBLL, COLL, CLL, ELL, 2GLL, ZZLL, ZBLS, EOLS, WVLS, VLS, EOLine) (T117)
+- [x] 3x3 Roux + Mehta training scrambles (T118)
+- [x] 3x3 move subset scrambles (2-gen, 3-gen, Roux-gen, half turns, edges/corners only) (T119)
+- [x] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
+- [x] 4x4+ training (edges, centers, Yau/Hoya stages) + Pyra, Skewb, SQ1, Mega training (T121)
+- [x] Case filtering UI (checkbox grid, probability control) (T122)
 - [ ] Per-case performance statistics (T123)
 
 **Phase 17 — Timer Modes & Advanced Input — T124-T128:**
-- [ ] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
+- [x] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
 - [x] Configurable timer hold duration (T125)
 - [x] Timer display customization (size, small decimals, update mode) (T126)
-- [ ] Mobile swipe gestures (8-direction, matching csTimer) (T127)
+- [x] Mobile swipe gestures (8-direction, matching csTimer) (T127)
 - [x] Manual scramble input mode (T128)
 
 **Phase 18 — Session Data Features — T129-T133:**
-- [ ] Session merge & split (T129)
-- [ ] Cross-session statistics with filters (T130)
-- [ ] Daily statistics (solves per day/week/month) (T131)
+- [x] Session merge & split (T129)
+- [x] Cross-session statistics with filters (T130)
+- [x] Daily statistics (solves per day/week/month) (T131)
 - [x] Export timer data (CSV, JSON, csTimer-compatible .txt) (T132)
-- [ ] Import from csTimer and other timers (T133)
+- [x] Import from csTimer, CubeTime, Twisty Timer, generic CSV, AI fallback (T133)
 
 **Phase 19 — Advanced Tools — T134-T138:**
 - [x] Batch scramble generator (up to 999) (T134)
-- [ ] Metronome tool (T135)
-- [ ] Shared scramble seed (race friends) (T136)
-- [ ] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
-- [ ] BLD helper tool (T138)
+- [x] Metronome tool (T135)
+- [x] Shared scramble seed (race friends) (T136)
+- [x] Additional solvers (EOLine, Roux S1, 2x2 face, Pyraminx V, Skewb face) (T137)
+- [x] BLD helper tool (T138)
 
 **Phase 20 — Non-WCA Puzzles & Relays — T139-T143:**
-- [ ] Big cubes 8x8-11x11 + custom NxN (T139)
-- [ ] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
-- [ ] Remaining non-WCA puzzles (~20 more types) (T141)
-- [ ] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
-- [ ] Other event training variants (Clock, Mega, Pyra, Skewb, SQ1) (T143)
+- [x] Big cubes 8x8-11x11 + custom NxN (T139)
+- [x] Popular non-WCA puzzles (Mirror, Gear, Ivy, Redi, Kilominx, FTO, cuboids) (T140)
+- [x] Remaining non-WCA puzzles (~20 more types) (T141)
+- [x] Relay scrambles (234, 2345, 234567, Mini Guildford) (T142)
+- [x] Other event training variants (Mega, Pyra, Skewb, SQ1 — Clock deferred) (T143)
 
 **Phase 21 — Hardware Integration — T144-T146:**
-- [ ] Virtual cube (3D interactive with keyboard/mouse controls) (T144)
-- [ ] Bluetooth smart cube (GAN, GoCube, Giiker, Moyu) (T145)
-- [ ] Stackmat timer support (T146)
+- [x] Virtual cube (3D interactive with keyboard/mouse controls) (T144)
+- [x] Bluetooth smart cube (GAN, GoCube, Giiker, Moyu) (T145)
+- [x] Stackmat timer support (T146)
 
 **Phase 22 — Online & Social Timer — T147-T148:**
-- [ ] Online battle mode (rooms, real-time, shared scrambles) (T147)
-- [ ] Scramble animation (step-through 3D) (T148)
+- [x] Online battle mode (rooms, real-time, shared scrambles) (T147)
+- [x] Scramble animation (step-through 3D) (T148)
 
 **Phase 23 — Polish & Display — T149-T152:**
-- [ ] Hide all elements during timing (T149)
-- [ ] Scramble display options (size, font, alignment) (T150)
-- [ ] Multiple solve deletion (batch select) (T151)
-- [ ] Auto-backup / auto-export (T152)
+- [x] Hide all elements during timing (T149)
+- [x] Scramble display options (size, font, alignment) (T150)
+- [x] Multiple solve deletion (batch select) (T151)
+- [x] Auto-backup / auto-export (T152)
 
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning

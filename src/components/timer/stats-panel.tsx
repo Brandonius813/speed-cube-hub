@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
+import { DailySolveChart } from "@/components/timer/daily-solve-chart"
+import { SolveHeatmap } from "@/components/timer/solve-heatmap"
+import { CrossSessionStats } from "@/components/timer/cross-session-stats"
 import { getSolvesByEvent } from "@/lib/actions/timer"
 import type { Solve } from "@/lib/types"
 
@@ -30,6 +33,7 @@ type StatsPanelProps = {
   event?: string
   statIndicators?: string
   onStatClick?: (statLabel: string, column: "current" | "best") => void
+  sessionNames?: Map<string, string>
 }
 
 type ChartScope = "session" | "all"
@@ -104,6 +108,7 @@ export function StatsPanel({
   event,
   statIndicators = DEFAULT_STAT_INDICATORS,
   onStatClick,
+  sessionNames,
 }: StatsPanelProps) {
   const [showCharts, setShowCharts] = useState(false)
   const [chartScope, setChartScope] = useState<ChartScope>("session")
@@ -292,6 +297,13 @@ export function StatsPanel({
             <>
               <TimeDistributionChart solves={chartSolves} />
               <TimeTrendChart solves={chartSolves} />
+              {chartScope === "all" && (
+                <>
+                  <CrossSessionStats solves={chartSolves} sessionNames={sessionNames} />
+                  <SolveHeatmap solves={chartSolves} />
+                  <DailySolveChart solves={chartSolves} />
+                </>
+              )}
             </>
           )}
         </div>

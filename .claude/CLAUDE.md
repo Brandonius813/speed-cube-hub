@@ -125,14 +125,29 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/lib/cstimer/parse-cstimer.ts` — csTimer CSV parser (semicolon-delimited, groups solves into per-day sessions)
 - `src/lib/cubetime/parse-cubetime.ts` — CubeTime CSV parser (comma-delimited iOS timer app export, groups solves into per-day sessions)
 - `src/components/log/` — Log page components (session-form, csv-import, cstimer-import, cubetime-import)
+- `src/lib/import/types.ts` — Shared types for hybrid import system (NormalizedSolve, ParseResult, SessionSummary)
+- `src/lib/import/detect-format.ts` — Auto-detects timer export format (csTimer, CubeTime, Twisty Timer, generic CSV)
+- `src/lib/import/parsers.ts` — Parser wrappers for known formats + new Twisty Timer parser
+- `src/lib/import/normalize.ts` — Converts solves → session summaries for createSessionsBulk()
+- `src/components/import/` — Import page components (import-content, import-drop-zone, import-preview)
+- `src/app/api/import/parse/route.ts` — AI parsing API route (Claude Haiku for unknown formats)
 - `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent, getSolvesBySession)
 - `src/lib/actions/solve-sessions.ts` — Solve session CRUD (getUserSolveSessions, getSolveSession, createSolveSession, updateSolveSession, resetSolveSession, archiveSolveSession, deleteSolveSession, getOrCreateDefaultSession)
-- `src/lib/timer/scrambles.ts` — Scramble generation wrapper (cubing.js)
+- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module — random-state for supported events, training scrambles)
+- `src/lib/timer/training-scrambles.ts` — Training scramble type definitions (PLL, OLL, F2L, Last Layer, LSLL) per event
 - `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
 - `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
 - `src/lib/timer/cross-solver.ts` — Optimal cross solver (BFS pruning tables for all 6 faces, client-side)
+- `src/lib/timer/eoline-solver.ts` — EOLine analyzer + optimal solver for ZZ method
+- `src/lib/timer/puzzle-analyzers.ts` — Roux FB, 2x2 face, Pyraminx V, Skewb face analyzers
+- `src/lib/timer/stackmat.ts` — Stackmat timer RS-232 audio decoder (Web Audio API)
+- `src/lib/timer/use-stackmat.ts` — React hook for Stackmat timer integration
 - `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel)
+- `src/lib/bld/letter-scheme.ts` — BLD letter scheme data (Speffz), memo parser, parity detection
+- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel, scramble-type-selector)
+- `src/lib/battle/battle-room.ts` — Battle room system (Supabase Realtime broadcast + presence, ephemeral rooms)
+- `src/lib/battle/use-battle.ts` — React hook for battle state management
+- `src/components/tools/battle-content.tsx` — Battle mode UI (lobby, solving, round results, match results)
 - `src/components/share/pb-celebration.tsx` — PB celebration dialog (shown when timer detects a new personal best)
 - `scripts/sync-wca-rankings.mjs` — WCA data sync script (downloads WCA export, computes SOR/Kinch, upserts to wca_rankings table)
 - `.github/workflows/sync-wca.yml` — Weekly GitHub Action for WCA data sync
@@ -172,6 +187,7 @@ See `.env.local.example` for required variables:
 - `WCA_CLIENT_ID` — WCA OAuth application ID (server-side)
 - `WCA_CLIENT_SECRET` — WCA OAuth secret (server-side)
 - `NEXT_PUBLIC_WCA_CLIENT_ID` — WCA OAuth application ID (client-side, for redirect URL)
+- `ANTHROPIC_API_KEY` — Anthropic API key for AI import parsing (server-side only)
 
 ## Design System
 
@@ -190,8 +206,13 @@ See `.env.local.example` for required variables:
 /profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
 /profile/[handle]    → Public profile for any user (viewable by anyone) [public]
 /log                 → Log a practice session (form) [protected]
+/import              → Import data from any timer app or spreadsheet (hybrid AI + auto-detect) [protected]
 /timer               → Built-in cubing timer [protected]
 /tools/scrambles     → Batch scramble generator (1-999 scrambles) [public]
+/tools/metronome     → Metronome tool (BPM + seconds mode) [public]
+/tools/bld           → BLD helper (letter scheme, memo practice, parity check) [public]
+/tools/virtual-cube  → 3D interactive virtual cube [public]
+/tools/battle        → Real-time 1v1 battle mode with shared scrambles [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]

@@ -612,3 +612,25 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Dev branch build fails due to untracked local files from other sessions (import feature, cross solver). `npx tsc --noEmit` on specific files is the safe way to verify your own code compiles.
 **Blockers:** None
 **Warnings:** Untracked files on disk from other sessions cause Next.js build failures. Don't commit `src/app/api/import/`, `src/components/import/` unless completing those features.
+
+---
+
+### 2026-02-26 12:43 PT — Session Start + Sync
+
+**Task:** General — Session start, read PRD/tasks, sync
+**Status:** New session. Read full TASKS.md (Phases 1-23), AGENT_LOG.md, and PRD. All tasks through Phase 15 are Done. Phase 16+ tasks are Available. Uncommitted work on disk from prior sessions: import feature (staged: import-drop-zone.tsx, import-preview.tsx, detect-format.ts, normalize.ts, parsers.ts), modified timer.ts + scrambles.ts, and untracked training-scrambles.ts. Ready to pick up next task.
+**Files touched:** .claude/AGENT_LOG.md (this sync only)
+**Learnings:** Recent sessions completed T125 (hold duration), T126 (display customization), T128 (manual scramble), T132 (export), T134 (batch scramble generator), T135 (metronome). Phases 1-15 + most of 16-23 prerequisites are done.
+**Blockers:** None
+**Warnings:** Staged import feature files (src/components/import/, src/lib/import/) from another session — don't modify or commit these unless completing the import feature. Untracked `src/lib/timer/training-scrambles.ts` may be early T116 work from another session.
+
+---
+
+### 2026-02-26 12:56 PT — timer_session_id Fix + Sync Session
+
+**Task:** General — Fix sessions.timer_session_id missing column
+**Status:** Diagnosed and fixed the `sessions.timer_session_id` column missing from the live Supabase database. The column was defined in migration 013 SQL and TypeScript types, and code in `timer.ts` was writing it, but Supabase silently dropped the unknown field. User ran `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS timer_session_id uuid REFERENCES timer_sessions(id) ON DELETE SET NULL;` successfully. No code changes needed — the TypeScript types and server actions already referenced it correctly.
+**Files touched:** None — database-only fix
+**Learnings:** Supabase/PostgREST silently drops unknown columns on insert — no error is thrown. This means code can appear to work while data is being lost. Always verify columns exist in the live DB, not just in migration files or TypeScript types.
+**Blockers:** None
+**Warnings:** None — `sessions.timer_session_id` now exists in production. Future `finalizeTimerSession()` and `importSolvesToSession()` calls will correctly persist the FK link.

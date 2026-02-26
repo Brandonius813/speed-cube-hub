@@ -117,6 +117,7 @@ export async function addSolve(
     scramble: string
     event: string
     comp_sim_group: number | null
+    phases?: number[] | null
     solve_session_id?: string | null
   }
 ): Promise<{ data: Solve | null; error?: string }> {
@@ -158,6 +159,7 @@ export async function addSolve(
     comp_sim_group: parsed.data.comp_sim_group,
   }
   if (data.solve_session_id) insertData.solve_session_id = data.solve_session_id
+  if (data.phases && data.phases.length > 0) insertData.phases = data.phases
 
   const { data: solve, error } = await supabase
     .from("solves")
@@ -327,6 +329,155 @@ export async function getSolvesByEvent(
   }
 
   return { solves: (data as Solve[]) || [] }
+}
+
+/**
+ * Bulk import solves into a solve session.
+ * Creates a completed timer_session, inserts all solves, and optionally
+ * creates a sessions entry for the feed/stats (if the solve session is tracked).
+ *
+ * @param solveSessionId - Target solve session to import into
+ * @param event - WCA event ID
+ * @param solves - Array of { time_ms, penalty, scramble, date }
+ * @returns Count of imported solves or error
+ */
+export async function bulkImportSolves(
+  solveSessionId: string,
+  event: string,
+  solves: Array<{
+    time_ms: number
+    penalty: "+2" | "DNF" | null
+    scramble: string | null
+    date: string // YYYY-MM-DD
+  }>
+): Promise<{ imported: number; error?: string }> {
+  if (solves.length === 0) {
+    return { imported: 0, error: "No solves to import." }
+  }
+  if (solves.length > 10000) {
+    return { imported: 0, error: "Maximum 10,000 solves per import." }
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { imported: 0, error: "Not authenticated" }
+  }
+
+  // Verify the solve session belongs to this user
+  const { data: solveSession, error: ssError } = await supabase
+    .from("solve_sessions")
+    .select("id, is_tracked, event")
+    .eq("id", solveSessionId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (ssError || !solveSession) {
+    return { imported: 0, error: "Solve session not found." }
+  }
+
+  // Create a completed timer_session to hold the imported solves
+  const { data: timerSession, error: tsError } = await supabase
+    .from("timer_sessions")
+    .insert({
+      user_id: user.id,
+      event,
+      mode: "normal",
+      status: "completed",
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      solve_session_id: solveSessionId,
+    })
+    .select("id")
+    .single()
+
+  if (tsError || !timerSession) {
+    return { imported: 0, error: tsError?.message ?? "Failed to create timer session." }
+  }
+
+  // Build solve rows
+  const solveRows = solves.map((s, i) => ({
+    timer_session_id: timerSession.id,
+    user_id: user.id,
+    solve_number: i + 1,
+    time_ms: s.time_ms,
+    penalty: s.penalty,
+    scramble: s.scramble ?? "",
+    event,
+    solve_session_id: solveSessionId,
+    solved_at: `${s.date}T12:00:00.000Z`, // Noon UTC as placeholder timestamp
+  }))
+
+  // Insert in batches of 500
+  let totalInserted = 0
+  for (let i = 0; i < solveRows.length; i += 500) {
+    const batch = solveRows.slice(i, i + 500)
+    const { error: insertError } = await supabase
+      .from("solves")
+      .insert(batch)
+
+    if (insertError) {
+      return {
+        imported: totalInserted,
+        error: `Imported ${totalInserted} of ${solves.length} solves. Error: ${insertError.message}`,
+      }
+    }
+    totalInserted += batch.length
+  }
+
+  // Create a sessions entry for feed/stats if the solve session is tracked
+  if (solveSession.is_tracked) {
+    const nonDnf = solves.filter((s) => s.penalty !== "DNF")
+    const effectiveTimes = nonDnf.map((s) =>
+      s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
+    )
+    const avgMs = effectiveTimes.length > 0
+      ? effectiveTimes.reduce((a, b) => a + b, 0) / effectiveTimes.length
+      : null
+    const bestMs = effectiveTimes.length > 0
+      ? Math.min(...effectiveTimes)
+      : null
+
+    // Use the most common date from the solves
+    const dateCounts = new Map<string, number>()
+    for (const s of solves) {
+      dateCounts.set(s.date, (dateCounts.get(s.date) ?? 0) + 1)
+    }
+    let sessionDate = getTodayPacific()
+    let maxCount = 0
+    for (const [date, count] of dateCounts) {
+      if (count > maxCount) {
+        maxCount = count
+        sessionDate = date
+      }
+    }
+
+    // Estimate duration: use avg solve time × solve count, in minutes
+    const avgSolveMs = avgMs ?? 30000 // default 30s if all DNF
+    const durationMinutes = Math.max(1, Math.round((avgSolveMs * solves.length) / 60000))
+
+    await supabase.from("sessions").insert({
+      user_id: user.id,
+      session_date: sessionDate,
+      event,
+      practice_type: "Solves",
+      num_solves: solves.length,
+      num_dnf: solves.length - nonDnf.length,
+      duration_minutes: durationMinutes,
+      avg_time: avgMs ? Math.round(avgMs / 10) / 100 : null,
+      best_time: bestMs ? Math.round(bestMs / 10) / 100 : null,
+      timer_session_id: timerSession.id,
+      solve_session_id: solveSessionId,
+      feed_visible: false, // Don't spam the feed with imports
+      title: `Imported ${solves.length} solves`,
+    })
+  }
+
+  return { imported: totalInserted }
 }
 
 export async function finalizeTimerSession(

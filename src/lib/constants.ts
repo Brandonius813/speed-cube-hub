@@ -21,6 +21,45 @@ export const WCA_EVENTS = [
 export type WcaEvent = (typeof WCA_EVENTS)[number]
 export type WcaEventId = WcaEvent["id"]
 
+// ---- Non-WCA & Extended Events (T139-T142) ----
+
+export const EXTRA_EVENTS = [
+  // Big cubes
+  { id: "888", label: "8x8", category: "Big Cubes" },
+  { id: "999", label: "9x9", category: "Big Cubes" },
+  { id: "101010", label: "10x10", category: "Big Cubes" },
+  { id: "111111", label: "11x11", category: "Big Cubes" },
+  // Non-WCA puzzles
+  { id: "gear", label: "Gear Cube", category: "Non-WCA" },
+  { id: "redi", label: "Redi Cube", category: "Non-WCA" },
+  { id: "ivy", label: "Ivy Cube", category: "Non-WCA" },
+  { id: "fto", label: "FTO", category: "Non-WCA" },
+  { id: "mpyr", label: "Master Pyraminx", category: "Non-WCA" },
+  { id: "heli", label: "Helicopter Cube", category: "Non-WCA" },
+  { id: "curvycop", label: "Curvy Copter", category: "Non-WCA" },
+  { id: "sq2", label: "Square-2", category: "Non-WCA" },
+  { id: "223", label: "2x2x3 Tower", category: "Cuboids" },
+  { id: "233", label: "2x3x3 Domino", category: "Cuboids" },
+  { id: "334", label: "3x3x4", category: "Cuboids" },
+  { id: "335", label: "3x3x5", category: "Cuboids" },
+  { id: "giga", label: "Gigaminx", category: "Non-WCA" },
+  { id: "icosamate", label: "Icosamate", category: "Non-WCA" },
+  { id: "ufo", label: "UFO", category: "Non-WCA" },
+  { id: "15puzzle", label: "15 Puzzle", category: "Non-WCA" },
+  // Relay events
+  { id: "relay234", label: "2-3-4 Relay", category: "Relays" },
+  { id: "relay2345", label: "2-3-4-5 Relay", category: "Relays" },
+  { id: "relay23456", label: "2-3-4-5-6 Relay", category: "Relays" },
+  { id: "relay234567", label: "2-3-4-5-6-7 Relay", category: "Relays" },
+] as const
+
+export type ExtraEvent = (typeof EXTRA_EVENTS)[number]
+export type ExtraEventId = ExtraEvent["id"]
+
+/** All timer-selectable events (WCA + extra) */
+export const ALL_TIMER_EVENTS = [...WCA_EVENTS, ...EXTRA_EVENTS]
+export type TimerEventId = WcaEventId | ExtraEventId
+
 export const PRACTICE_TYPES = [
   "Solves",
   "Drill Algs",
@@ -122,7 +161,7 @@ export const EVENT_COLORS: Record<string, string> = {
  * Helper to get event label by ID.
  */
 export function getEventLabel(eventId: string): string {
-  return WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+  return ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
 }
 
 /**

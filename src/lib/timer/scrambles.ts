@@ -1,11 +1,12 @@
 "use client"
 
-import { getScramble as cstimerGetScramble } from "cstimer_module"
+import { getScramble as cstimerGetScramble, setSeed as cstimerSetSeed } from "cstimer_module"
 import type { WcaEventId } from "@/lib/constants"
 
 // Map WCA event IDs to cstimer_module scramble type strings
 // (verified from csTimer source: src/js/scramble/scramble.js + src/lang/en-us.js)
 const CSTIMER_TYPE_MAP: Record<string, string> = {
+  // WCA events
   "333": "333",
   "222": "222so",
   "444": "444wca",
@@ -23,6 +24,33 @@ const CSTIMER_TYPE_MAP: Record<string, string> = {
   clock: "clkwca",
   sq1: "sqrs",
   minx: "mgmp",
+  // Big cubes (T139)
+  "888": "888",
+  "999": "999",
+  "101010": "101010",
+  "111111": "111111",
+  // Non-WCA puzzles (T140/T141)
+  gear: "gearso",
+  redi: "rediso",
+  ivy: "ivyso",
+  fto: "ftoso",
+  mpyr: "mpyrso",
+  heli: "heli",
+  curvycop: "helicv",
+  sq2: "sq2",
+  "223": "223",
+  "233": "233",
+  "334": "334",
+  "335": "335",
+  giga: "giga",
+  icosamate: "ctico",
+  ufo: "ufo",
+  "15puzzle": "15prp",
+  // Relay events (T142)
+  relay234: "r234w",
+  relay2345: "r2345w",
+  relay23456: "r23456w",
+  relay234567: "r234567w",
 }
 
 // WCA regulation 4b3: 2x2 scrambles must require ≥4 moves to solve.
@@ -41,7 +69,7 @@ function countMoves(scramble: string): number {
  * Uses cstimer_module (same engine as csTimer) for random-state scrambles.
  * Runs entirely client-side — no API calls needed.
  */
-export function generateScramble(eventId: WcaEventId): string {
+export function generateScramble(eventId: string): string {
   const cstimerType = CSTIMER_TYPE_MAP[eventId]
   if (!cstimerType) return "Scramble not available for this event"
 
@@ -62,12 +90,128 @@ export function generateScramble(eventId: WcaEventId): string {
 }
 
 /**
- * Pre-generate a scramble (for caching one ahead).
+ * Generate a training scramble using a cstimer_module type string directly.
+ * Training types (PLL, OLL, F2L, etc.) use different scramble generators
+ * than the standard event scrambles.
+ *
+ * @param cstimerType - The cstimer scramble type (e.g., "pll", "oll")
+ * @param caseFilter - Optional array of case indices to pick from.
+ *                     If provided, picks a random case from the array.
+ *                     If null/undefined, generates a random case.
  */
-export function preGenerateScramble(eventId: WcaEventId): string | null {
+export function generateTrainingScramble(
+  cstimerType: string,
+  caseFilter?: number[] | null
+): string {
   try {
+    if (caseFilter && caseFilter.length > 0) {
+      const caseIndex = caseFilter[Math.floor(Math.random() * caseFilter.length)]
+      return cstimerGetScramble(cstimerType, 0, caseIndex)
+    }
+    return cstimerGetScramble(cstimerType)
+  } catch (err) {
+    console.error("Training scramble generation failed:", err)
+    return "Error generating scramble — try refreshing"
+  }
+}
+
+export type ScrambleWithCase = {
+  scramble: string
+  caseIndex: number | null
+}
+
+/**
+ * Generate a training scramble and return both the scramble text and case index.
+ * Used by the timer to track which algorithm case each solve was for.
+ */
+export function generateTrainingScrambleWithCase(
+  cstimerType: string,
+  caseFilter?: number[] | null
+): ScrambleWithCase {
+  try {
+    if (caseFilter && caseFilter.length > 0) {
+      const caseIndex = caseFilter[Math.floor(Math.random() * caseFilter.length)]
+      return { scramble: cstimerGetScramble(cstimerType, 0, caseIndex), caseIndex }
+    }
+    return { scramble: cstimerGetScramble(cstimerType), caseIndex: null }
+  } catch (err) {
+    console.error("Training scramble generation failed:", err)
+    return { scramble: "Error generating scramble — try refreshing", caseIndex: null }
+  }
+}
+
+/**
+ * Pre-generate a scramble (for caching one ahead).
+ * Accepts an optional cstimer type override for training scrambles.
+ */
+export function preGenerateScramble(
+  eventId: string,
+  trainingCstimerType?: string,
+  caseFilter?: number[] | null
+): string | null {
+  try {
+    if (trainingCstimerType) {
+      return generateTrainingScramble(trainingCstimerType, caseFilter)
+    }
     return generateScramble(eventId)
   } catch {
     return null
   }
+}
+
+/**
+ * Pre-generate a scramble with case index tracking.
+ */
+export function preGenerateScrambleWithCase(
+  eventId: string,
+  trainingCstimerType?: string,
+  caseFilter?: number[] | null
+): ScrambleWithCase | null {
+  try {
+    if (trainingCstimerType) {
+      return generateTrainingScrambleWithCase(trainingCstimerType, caseFilter)
+    }
+    return { scramble: generateScramble(eventId), caseIndex: null }
+  } catch {
+    return null
+  }
+}
+
+// ---- Seeded scramble generation (for race mode) ----
+
+/**
+ * Set the scramble generator seed for deterministic scrambles.
+ * Same seed → same scramble sequence. Call before generating scrambles.
+ * Pass null to reset to random (crypto) seed.
+ */
+export function setScrambleSeed(seed: string | null): void {
+  if (seed) {
+    cstimerSetSeed(seed)
+  } else {
+    // Reset to crypto-random by setting a unique seed based on timestamp + random
+    cstimerSetSeed(`${Date.now()}-${Math.random()}`)
+  }
+}
+
+/**
+ * Generate a batch of seeded scrambles for a given event.
+ * Used for race mode: both players get the same scrambles from the same seed.
+ *
+ * @param eventId - WCA event ID
+ * @param seed - Seed string (same seed = same scrambles)
+ * @param count - Number of scrambles to generate
+ */
+export function generateSeededScrambles(
+  eventId: string,
+  seed: string,
+  count: number
+): string[] {
+  cstimerSetSeed(seed)
+  const scrambles: string[] = []
+  for (let i = 0; i < count; i++) {
+    scrambles.push(generateScramble(eventId))
+  }
+  // Reset to random seed after generating
+  cstimerSetSeed(`${Date.now()}-${Math.random()}`)
+  return scrambles
 }

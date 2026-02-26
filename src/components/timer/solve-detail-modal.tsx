@@ -14,6 +14,7 @@ type SolveDetailModalProps = {
   onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
   onDelete: (solveId: string) => void
   onNotesChange?: (solveId: string, notes: string) => void
+  phaseLabels?: string[]
 }
 
 export function SolveDetailModal({
@@ -23,6 +24,7 @@ export function SolveDetailModal({
   onPenaltyChange,
   onDelete,
   onNotesChange,
+  phaseLabels,
 }: SolveDetailModalProps) {
   const [copied, setCopied] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
@@ -141,6 +143,32 @@ export function SolveDetailModal({
               {dateStr} at {timeStr}
             </span>
           </div>
+
+          {/* Phase breakdown */}
+          {solve.phases && solve.phases.length > 1 && (
+            <div className="px-4 pb-3">
+              <div className="rounded-lg bg-secondary/30 px-3 py-2">
+                <div className="flex items-center gap-3 flex-wrap justify-center">
+                  {solve.phases.map((phaseMs, i) => {
+                    const pct = Math.round((phaseMs / solve.time_ms) * 100)
+                    return (
+                      <div key={i} className="text-center min-w-[52px]">
+                        <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                          {phaseLabels?.[i] || `Phase ${i + 1}`}
+                        </div>
+                        <div className="text-sm font-mono tabular-nums font-medium">
+                          {formatTimeMs(phaseMs)}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground/40 font-mono">
+                          {pct}%
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Scramble */}
           {solve.scramble && (

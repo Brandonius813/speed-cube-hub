@@ -1,9 +1,13 @@
 import { Square, X, Download } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { SessionSelector } from "@/components/timer/session-selector"
+import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
+import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
-import type { InputMode, SidebarPosition } from "@/components/timer/timer-settings"
+import { SeedInput } from "@/components/timer/seed-input"
+import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
@@ -25,6 +29,8 @@ export function TimerTopBar({
   onTimerSizeChange,
   smallDecimals,
   onSmallDecimalsChange,
+  hideWhileTiming,
+  onHideWhileTimingChange,
   holdDuration,
   onHoldDurationChange,
   sidebarPosition,
@@ -36,6 +42,24 @@ export function TimerTopBar({
   onExport,
   saveError,
   onDismissError,
+  scrambleTypeId,
+  onScrambleTypeChange,
+  caseFilter,
+  onCaseFilterChange,
+  trainingCstimerType,
+  autoBackupInterval,
+  onAutoBackupIntervalChange,
+  raceSeed,
+  onRaceSeedChange,
+  phaseCount,
+  onPhaseCountChange,
+  phaseLabels,
+  onPhaseLabelsChange,
+  stackmatConnected,
+  stackmatReceiving,
+  stackmatError,
+  onStackmatConnect,
+  onStackmatDisconnect,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -54,6 +78,8 @@ export function TimerTopBar({
   onTimerSizeChange: (size: TimerSize) => void
   smallDecimals: boolean
   onSmallDecimalsChange: (enabled: boolean) => void
+  hideWhileTiming?: boolean
+  onHideWhileTimingChange?: (enabled: boolean) => void
   holdDuration?: HoldDuration
   onHoldDurationChange?: (duration: HoldDuration) => void
   sidebarPosition: SidebarPosition
@@ -65,6 +91,24 @@ export function TimerTopBar({
   onExport?: (format: "csv" | "json" | "txt" | "clipboard") => void
   saveError: string | null
   onDismissError: () => void
+  scrambleTypeId?: string
+  onScrambleTypeChange?: (typeId: string) => void
+  caseFilter?: number[] | null
+  onCaseFilterChange?: (cases: number[] | null) => void
+  trainingCstimerType?: string
+  autoBackupInterval?: AutoBackupInterval
+  onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
+  raceSeed?: string | null
+  onRaceSeedChange?: (seed: string | null) => void
+  phaseCount?: PhaseCount
+  onPhaseCountChange?: (count: PhaseCount) => void
+  phaseLabels?: string[]
+  onPhaseLabelsChange?: (labels: string[]) => void
+  stackmatConnected?: boolean
+  stackmatReceiving?: boolean
+  stackmatError?: string | null
+  onStackmatConnect?: () => void
+  onStackmatDisconnect?: () => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -91,14 +135,47 @@ export function TimerTopBar({
             onCreate={onCreateSession}
             onManage={onManageSessions}
           />
+          {scrambleTypeId && onScrambleTypeChange && currentSession && (
+            <ScrambleTypeSelector
+              eventId={currentSession.event}
+              selectedTypeId={scrambleTypeId}
+              onTypeChange={onScrambleTypeChange}
+            />
+          )}
+          {trainingCstimerType && onCaseFilterChange && (
+            <CaseFilterPanel
+              cstimerType={trainingCstimerType}
+              selectedCases={caseFilter ?? null}
+              onSelectedCasesChange={onCaseFilterChange}
+            />
+          )}
+          {onRaceSeedChange && (
+            <SeedInput seed={raceSeed ?? null} onSeedChange={onRaceSeedChange} />
+          )}
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim
             </span>
           )}
+          {phaseCount && phaseCount > 1 && (
+            <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">
+              {phaseCount}-Phase
+            </span>
+          )}
           {inputMode === "typing" && (
             <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
               Typing
+            </span>
+          )}
+          {inputMode === "stackmat" && (
+            <span className="text-xs bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  stackmatReceiving ? "bg-green-400" : stackmatConnected ? "bg-yellow-400" : "bg-muted-foreground/30"
+                )}
+              />
+              Stackmat
             </span>
           )}
         </div>
@@ -160,6 +237,8 @@ export function TimerTopBar({
             onTimerSizeChange={onTimerSizeChange}
             smallDecimals={smallDecimals}
             onSmallDecimalsChange={onSmallDecimalsChange}
+            hideWhileTiming={hideWhileTiming}
+            onHideWhileTimingChange={onHideWhileTimingChange}
             holdDuration={holdDuration}
             onHoldDurationChange={onHoldDurationChange}
             inputMode={inputMode}
@@ -168,6 +247,17 @@ export function TimerTopBar({
             onSidebarPositionChange={onSidebarPositionChange}
             statIndicators={statIndicators}
             onStatIndicatorsChange={onStatIndicatorsChange}
+            autoBackupInterval={autoBackupInterval}
+            onAutoBackupIntervalChange={onAutoBackupIntervalChange}
+            phaseCount={phaseCount}
+            onPhaseCountChange={onPhaseCountChange}
+            phaseLabels={phaseLabels}
+            onPhaseLabelsChange={onPhaseLabelsChange}
+            stackmatConnected={stackmatConnected}
+            stackmatReceiving={stackmatReceiving}
+            stackmatError={stackmatError}
+            onStackmatConnect={onStackmatConnect}
+            onStackmatDisconnect={onStackmatDisconnect}
           />
         </div>
       </div>

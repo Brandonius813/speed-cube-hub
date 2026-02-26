@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Settings2, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { WCA_EVENTS } from "@/lib/constants"
+import { WCA_EVENTS, ALL_TIMER_EVENTS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import type { SolveSession } from "@/lib/types"
 
@@ -32,7 +32,7 @@ export function SessionSelector({
 
   const currentSession = sessions.find((s) => s.id === currentSessionId)
   const eventLabel = (eventId: string) =>
-    WCA_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+    ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
 
   // Group sessions by event
   const grouped = sessions.reduce<Record<string, SolveSession[]>>(
@@ -45,8 +45,8 @@ export function SessionSelector({
     {}
   )
 
-  // Sort event groups by WCA_EVENTS order
-  const eventOrder: string[] = WCA_EVENTS.map((e) => e.id)
+  // Sort event groups by ALL_TIMER_EVENTS order
+  const eventOrder: string[] = ALL_TIMER_EVENTS.map((e) => e.id)
   const sortedEvents = Object.keys(grouped).sort(
     (a, b) => eventOrder.indexOf(a) - eventOrder.indexOf(b)
   )
@@ -153,8 +153,8 @@ export function SessionSelector({
                       if (e.key === "Escape") setShowCreate(false)
                     }}
                   />
-                  <div className="flex flex-wrap gap-1">
-                    {WCA_EVENTS.slice(0, 8).map((e) => (
+                  <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
+                    {ALL_TIMER_EVENTS.map((e) => (
                       <Badge
                         key={e.id}
                         variant={newEvent === e.id ? "default" : "outline"}
@@ -169,20 +169,6 @@ export function SessionSelector({
                         {e.label}
                       </Badge>
                     ))}
-                    <Badge
-                      variant="outline"
-                      className="cursor-pointer text-[10px] h-6 hover:bg-secondary"
-                      onClick={() => {
-                        // Cycle through remaining events
-                        const rest = WCA_EVENTS.slice(8)
-                        const idx = rest.findIndex((e) => e.id === newEvent)
-                        const next = rest[(idx + 1) % rest.length]
-                        setNewEvent(next.id)
-                      }}
-                    >
-                      {WCA_EVENTS.slice(8).find((e) => e.id === newEvent)
-                        ?.label ?? "More..."}
-                    </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <button
