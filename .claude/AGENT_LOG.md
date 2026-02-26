@@ -382,3 +382,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** None new
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-02-27 18:10 PT — Social Icons + Sync Session
+
+**Task:** General work — social icons TS fix, merge to main, sync
+**Status:** Fixed TypeScript error in social-icons.tsx (icon components lacked `style` prop — linter auto-fixed by adding `style` to `IconProps` type and all SVG components). Committed social icons + agent log, pushed to dev, merged dev→main, pushed main. Verified dev and main are fully in sync. Also noted 6 uncommitted files + 1 untracked migration on dev from a previous session (cube history feature: main-cubes.tsx, profile-content.tsx, public-profile-content.tsx, tab-cubes.tsx, profiles.ts, types.ts, 022_add_cube_history.sql).
+**Files touched:** src/components/shared/social-icons.tsx, .claude/AGENT_LOG.md
+**Learnings:** The linter properly fixed the `style` prop issue by adding it to all icon components — better than my initial span wrapper approach.
+**Blockers:** None
+**Warnings:** There are 6 uncommitted modified files + 1 untracked SQL migration on dev from a previous session (cube history feature). Don't revert these — they're intentional work that hasn't been committed yet.
