@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Box, LogOut, LayoutDashboard, Medal, Rss, Search, Timer, Trophy, User } from "lucide-react"
+import { Box, LayoutDashboard, Medal, Rss, Search, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -241,18 +241,6 @@ export function Navbar() {
                 Log Session
               </Button>
             </Link>
-            <button
-              type="button"
-              onClick={async () => {
-                const supabase = getSupabaseClient()
-                await supabase.auth.signOut()
-                window.location.href = "/"
-              }}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Log out"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
