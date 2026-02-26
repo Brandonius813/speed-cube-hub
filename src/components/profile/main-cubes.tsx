@@ -52,6 +52,7 @@ export function MainCubes({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [editMode, setEditMode] = useState(false)
 
   // History modal state
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -214,15 +215,34 @@ export function MainCubes({
               Main Cubes
             </CardTitle>
             {isOwner && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openAdd}
-                className="min-h-9 gap-1.5 border-border/50"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </Button>
+              <div className="flex items-center gap-2">
+                {editMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openAdd}
+                    className="min-h-9 gap-1.5 border-border/50"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </Button>
+                )}
+                <Button
+                  variant={editMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditMode(!editMode)}
+                  className={`min-h-9 gap-1.5 ${editMode ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border-border/50"}`}
+                >
+                  {editMode ? (
+                    <>Done</>
+                  ) : (
+                    <>
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -237,79 +257,87 @@ export function MainCubes({
                 {visibleItems.map((cube, i) => {
                   const eventHistory = getEventHistory(cube.event)
                   const hasHistory = eventHistory.length > 0
+                  const isClickable = hasHistory && !editMode
 
                   return (
                     <div
                       key={i}
-                      className={`group flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/50 p-4 ${
-                        hasHistory ? "cursor-pointer transition-colors hover:border-primary/30" : ""
+                      className={`flex flex-col rounded-lg border border-border/50 bg-secondary/50 ${
+                        isClickable ? "cursor-pointer transition-colors hover:border-primary/30" : ""
                       }`}
-                      onClick={hasHistory ? () => openHistory(cube.event) : undefined}
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <CubingIcon
-                          event={cube.event}
-                          className="text-lg text-primary"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-foreground">
-                          {cube.name}
-                        </p>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {cube.setup || getEventLabel(cube.event)}
-                        </p>
-                      </div>
-                      {hasHistory && !isOwner && (
-                        <div className="shrink-0">
-                          <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      <div
+                        className="flex items-start gap-3 p-4"
+                        onClick={isClickable ? () => openHistory(cube.event) : undefined}
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <CubingIcon
+                            event={cube.event}
+                            className="text-lg text-primary"
+                          />
                         </div>
-                      )}
-                      {isOwner && (
-                        <div
-                          className="flex shrink-0 gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {hasHistory && (
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground">
+                            {cube.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {cube.setup || getEventLabel(cube.event)}
+                          </p>
+                        </div>
+                        {hasHistory && !editMode && (
+                          <div className="shrink-0 pt-0.5">
+                            <History className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Edit mode controls */}
+                      {isOwner && editMode && (
+                        <div className="flex items-center justify-between border-t border-border/50 px-3 py-2">
+                          <div className="flex items-center gap-1">
                             <button
-                              onClick={() => openHistory(cube.event)}
-                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-                              aria-label="View cube history"
+                              onClick={() => handleMove(i, "up")}
+                              disabled={i === 0 || saving}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
+                              aria-label="Move cube up"
                             >
-                              <History className="h-3.5 w-3.5" />
+                              <ArrowUp className="h-4 w-4" />
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleMove(i, "up")}
-                            disabled={i === 0 || saving}
-                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-                            aria-label="Move cube up"
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleMove(i, "down")}
-                            disabled={i === items.length - 1 || saving}
-                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
-                            aria-label="Move cube down"
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => openEdit(i)}
-                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-                            aria-label="Edit cube"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(i)}
-                            disabled={saving}
-                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
-                            aria-label="Delete cube"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                            <button
+                              onClick={() => handleMove(i, "down")}
+                              disabled={i === items.length - 1 || saving}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
+                              aria-label="Move cube down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {hasHistory && (
+                              <button
+                                onClick={() => openHistory(cube.event)}
+                                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                                aria-label="View cube history"
+                              >
+                                <History className="h-4 w-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openEdit(i)}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                              aria-label="Edit cube"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(i)}
+                              disabled={saving}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive"
+                              aria-label="Delete cube"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
