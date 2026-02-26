@@ -10,12 +10,10 @@ import { CubingIcon } from "@/components/shared/cubing-icon"
 import { LogPBModal } from "@/components/pbs/log-pb-modal"
 import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
 import { PBSettingsModal } from "@/components/pbs/pb-settings-modal"
-import { PBProgressChart } from "@/components/profile/pb-progress-chart"
 import {
   EventDetailModal,
   getDefaultDisplayTypes,
 } from "@/components/profile/event-detail-modal"
-import { PBHistoryInline } from "@/components/profile/pb-history-inline"
 import type { Profile, PBRecord } from "@/lib/types"
 
 function getEventLabel(eventId: string): string {
@@ -87,14 +85,6 @@ export function TabPBs({
   // Event detail modal
   const [detailEvent, setDetailEvent] = useState<string | null>(null)
 
-  // Inline history selection
-  const [selectedHistory, setSelectedHistory] = useState<{
-    event: string
-    pbType: string
-  } | null>(null)
-
-  // For PB Progress Chart
-  const [chartEvent, setChartEvent] = useState<string | undefined>(undefined)
 
   async function reloadPBs() {
     const result = await getCurrentPBs()
@@ -112,11 +102,6 @@ export function TabPBs({
 
   function handleDisplayTypesChange(eventId: string, types: string[]) {
     setDisplayTypeOverrides((prev) => ({ ...prev, [eventId]: types }))
-  }
-
-  function handleSelectPBType(event: string, pbType: string) {
-    setSelectedHistory({ event, pbType })
-    setChartEvent(event)
   }
 
   // Group PBs by event — keep only the best per event+type
@@ -266,27 +251,6 @@ export function TabPBs({
       {/* Compact PB grid */}
       {gridContent}
 
-      {/* PB Progress Chart — inline */}
-      <PBProgressChart
-        pbs={pbs}
-        userId={profile.id}
-        selectedEvent={chartEvent}
-        onEventChange={(ev) => {
-          setChartEvent(ev)
-          setSelectedHistory(null)
-        }}
-      />
-
-      {/* Inline PB history — shown when a specific PB type is selected */}
-      {selectedHistory && (
-        <PBHistoryInline
-          event={selectedHistory.event}
-          pbType={selectedHistory.pbType}
-          isOwner={isOwner}
-          onUpdate={reloadPBs}
-        />
-      )}
-
       {/* Event Detail Modal */}
       {detailEvent && (
         <EventDetailModal
@@ -300,7 +264,8 @@ export function TabPBs({
           displayTypes={getDisplayTypesForEvent(detailEvent)}
           onDisplayTypesChange={handleDisplayTypesChange}
           onAddPB={handleAddPB}
-          onSelectPBType={handleSelectPBType}
+          onUpdate={reloadPBs}
+          userId={profile.id}
         />
       )}
 
