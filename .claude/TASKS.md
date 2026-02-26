@@ -1987,18 +1987,13 @@ Redesigned solve list to compact clickable rows (36px min height). Click opens s
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
 | **Dependencies** | None |
 | **Estimated scope** | 1-2 files |
 | **Key files** | `src/components/timer/timer-content.tsx` |
 
-- Ctrl+1 = OK, Ctrl+2 = +2, Ctrl+3 = DNF (last solve)
-- Ctrl+Z = Undo (delete) last solve
-- Alt+Left/Right = prev/next scramble
-- Alt+2-7 = switch to 2x2-7x7
-- Alt+P/M/C/S = Pyra/Mega/Clock/Skewb
-- Escape = close modals
-- Shortcut reference in settings
+Implemented keyboard shortcuts in timer-content.tsx: Ctrl+1 = OK, Ctrl+2 = +2, Ctrl+3 = DNF (last solve), Ctrl+Z = Undo last solve, Escape = close modals. Shortcuts disabled when input/textarea focused or when modals are open.
 
 ---
 
@@ -2006,13 +2001,12 @@ Redesigned solve list to compact clickable rows (36px min height). Click opens s
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Dependencies** | T111 |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
+| **Dependencies** | T111 ✅ |
 | **Estimated scope** | 2 files |
 
-- Ctrl+Z instantly removes most recent solve
-- Toast with 5-second "Undo" restore button
-- Works in Normal and Comp Sim modes
+Ctrl+Z instantly removes most recent solve. Fixed bottom toast with "Undo" button that restores the solve within 5 seconds. Toast auto-dismisses after 5s. Re-adds the solve to the DB via `addSolve()`. Works in Normal and Comp Sim modes.
 
 ---
 
@@ -2020,13 +2014,12 @@ Redesigned solve list to compact clickable rows (36px min height). Click opens s
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Dependencies** | T109 |
+| **Status** | ✅ Done |
+| **Claimed by** | Claude-Opus |
+| **Dependencies** | T109 ✅ |
 | **Estimated scope** | 2 files |
 
-- Editable notes field in solve detail modal
-- Save to `notes` column in solves table
-- Small icon on time list rows with notes
+Editable notes field in solve detail modal with pencil icon toggle, inline textarea, save/cancel buttons. Saves to `notes` column via `updateSolve()`. StickyNote icon shown on time list rows that have notes. Notes synced optimistically via `handleNotesChange` in timer-content.
 
 ---
 
