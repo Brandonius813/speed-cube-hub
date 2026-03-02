@@ -778,3 +778,14 @@ T157:
 **Learnings:** The `timer-rebuild` branch is completely isolated from `dev`. Old timer code is preserved in full on `dev` (git history). The new timer does NOT save to DB yet — in-memory only. `phaseRef` + `heldRef` + `scrambleRef` + `eventRef` + `inspRef` pattern prevents stale closures in keyboard/pointer event handlers without needing to add all dependencies to useEffect.
 **Blockers:** None
 **Warnings:** **DO NOT** merge `timer-rebuild` into `dev` without user instruction — it replaces the entire timer. The old timer on `dev` references `src/lib/timer/` files (cross-solver, stackmat, etc.) that no longer exist on `timer-rebuild`. `src/app/api/scramble/route.ts` exists as an untracked file in the working directory — it came from a previous session, do not commit it unless completing that feature.
+
+---
+
+### 2026-03-02 PT — Timer Scramble Top Bar Session
+
+**Task:** General work — Move scramble into top bar of timer (user request)
+**Status:** Moved scramble text from the body section into the top bar, placed between the event dropdown and the Type/Insp. buttons. Scramble now appears centered as `flex-1 min-w-0` with `line-clamp-2 text-xs sm:text-sm` — 2 lines allowed on mobile, single line typical on desktop. Removed the standalone `<p>` scramble from the right body section. Also noted the user's linter changed `HOLD_MS` from 200→550 and added `inspHoldRef` logic (hold-to-arm during inspection). That change is already on disk and included in the current `timer-content.tsx`.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** This session is still on the `dev` branch (the `timer-rebuild` branch was previously merged into `dev` per commit `555b5a3`). The timer is the clean single-file rebuild.
