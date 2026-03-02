@@ -66,6 +66,7 @@ export function TimerContent() {
   const [inspOn, setInspOn] = useState(false)
   const [btReset, setBtReset] = useState(false)
   const [btHandsOnMat, setBtHandsOnMat] = useState(false) // hands placed on mat during BT inspection
+  const [btArmed, setBtArmed] = useState(false)           // hardware armed (GET_SET fired) during inspection
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -88,7 +89,6 @@ export function TimerContent() {
   const inspHoldRef = useRef(false)    // true when holding spacebar during inspection to arm the timer
   const tapToInspectRef = useRef(false) // true when a tap from idle/stopped should start inspection on release
   const btConnectedRef = useRef(false)  // mirrors btStatus === "connected"; read in keydown without re-subscribing
-  const btInspFrozen = useRef<number | null>(null) // frozen countdown value saved when GET_SET fires during inspection
   const settingsRef = useRef<HTMLDivElement>(null)
   const scrambleHistoryRef = useRef<string[]>([])
   const scrambleIdxRef = useRef(0)
@@ -294,21 +294,21 @@ export function TimerContent() {
     onHandsOn: () => {
       setBtReset(false)
       if (phaseRef.current === "inspecting") {
-        // Inspection is running — show red to signal hands are on the mat, but keep counting.
+        // Inspection is running — go red to signal hands on mat, but keep the clock ticking.
         setBtHandsOnMat(true)
         return
       }
       setPhase("holding") // show red while hands are on the mat (no inspection)
     },
     onGetSet: () => {
-      // Hardware armed. If inspection was running, freeze the countdown display and show green.
       if (phaseRef.current === "inspecting") {
-        btInspFrozen.current = Math.max(0, 15 - (inspRef.current?.secondsLeft ?? 15))
-        inspRef.current?.cancelInspection()
+        // Hardware armed but inspection clock keeps running — the judge's count doesn't stop.
+        // Just flip the color to green; the display stays on the live inspection count.
         setBtHandsOnMat(false)
-        setPhase("ready") // green — show frozen count (handled in getDisplay)
+        setBtArmed(true)
+        // Phase intentionally stays "inspecting" so getDisplay() keeps showing the live count.
       } else {
-        // Normal path (no inspection): just arm.
+        // Normal path (no inspection): cancel any stray inspection, show green.
         inspRef.current?.cancelInspection()
         setPhase("ready")
       }
@@ -317,6 +317,7 @@ export function TimerContent() {
       if (phaseRef.current === "inspecting") {
         // Briefly touched the mat during inspection then lifted — keep counting.
         setBtHandsOnMat(false)
+        setBtArmed(false)
         return
       }
       // Premature lift before grace period — revert to idle.
@@ -324,8 +325,10 @@ export function TimerContent() {
       setPhase("idle")
     },
     onRunning: () => {
-      btInspFrozen.current = null
+      // Timer is now counting — stop the inspection clock and start the elapsed display.
+      inspRef.current?.cancelInspection()
       setBtHandsOnMat(false)
+      setBtArmed(false)
       if (phaseRef.current !== "running") {
         setPhase("running"); setElapsed(0); startRef.current = performance.now()
       }
@@ -339,8 +342,8 @@ export function TimerContent() {
       // If a solve time is currently displayed (phase "stopped"), first press just clears to 0.00.
       // In all other states (already at 0, mid-inspection), pressing reset starts inspection.
       inspRef.current?.cancelInspection()
-      btInspFrozen.current = null
       setBtHandsOnMat(false)
+      setBtArmed(false)
       const shouldStartInsp = inspOnRef.current
         && phaseRef.current !== "stopped"
         && phaseRef.current !== "running"
@@ -355,8 +358,8 @@ export function TimerContent() {
     },
     onDisconnect: () => {
       inspRef.current?.cancelInspection()
-      btInspFrozen.current = null
       setBtHandsOnMat(false)
+      setBtArmed(false)
       if (phaseRef.current === "running") {
         cancelAnimationFrame(rafRef.current); setElapsed(0)
       }
@@ -378,8 +381,7 @@ export function TimerContent() {
   function getDisplay(): string {
     if (phase === "running") return fmt(elapsed)
     if (phase === "inspecting" || inInspHold) return String(Math.max(0, 15 - insp.secondsLeft))
-    // After GET_SET during inspection: show the frozen count (not "0.00") in green
-    if (phase === "ready") return btInspFrozen.current !== null ? String(btInspFrozen.current) : "0.00"
+    if (phase === "ready") return "0.00"
     if (phase === "idle" && btReset) return "0.00" // BT reset button — clear the display
     if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
     return "0.00"
@@ -388,7 +390,8 @@ export function TimerContent() {
   const timeColor =
     phase === "holding" ? "text-red-400" :
     phase === "ready" ? "text-green-400" :
-    phase === "inspecting" && btHandsOnMat ? "text-red-400" : // hands on mat = red during inspection
+    phase === "inspecting" && btArmed ? "text-green-400" :   // hardware armed = green, count keeps going
+    phase === "inspecting" && btHandsOnMat ? "text-red-400" : // hands on mat, not yet armed = red
     phase === "inspecting" && insp.secondsLeft <= 3 ? "text-red-400" :
     phase === "inspecting" && insp.secondsLeft <= 7 ? "text-yellow-400" :
     "text-foreground"
