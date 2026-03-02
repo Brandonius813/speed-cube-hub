@@ -64,6 +64,7 @@ export function TimerContent() {
   const [phase, setPhase] = useState<Phase>("idle")
   const [elapsed, setElapsed] = useState(0)
   const [inspOn, setInspOn] = useState(false)
+  const [btReset, setBtReset] = useState(false)
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -209,6 +210,15 @@ export function TimerContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [insp.state])
 
+  // If inspection is toggled off while a countdown is actively running, cancel it immediately.
+  useEffect(() => {
+    if (!inspOn && phaseRef.current === "inspecting") {
+      inspRef.current?.cancelInspection()
+      setPhase("idle")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspOn])
+
   useEffect(() => {
     if (!settingsOpen) return
     const handler = (e: MouseEvent) => {
@@ -279,6 +289,7 @@ export function TimerContent() {
   const btCallbacksRef = useRef<BtTimerCallbacks>(null!)
   btCallbacksRef.current = {
     onHandsOn: () => {
+      setBtReset(false)
       // If software inspection is enabled, start the 15s countdown (mirrors WCA inspection).
       // The GAN Halo handles its own grace period (~0.5s); the app shows the inspection timer.
       if (inspOnRef.current) {
@@ -288,11 +299,18 @@ export function TimerContent() {
       }
     },
     onGetSet: () => {
-      // Grace period done — hardware is armed. Clean up any software inspection and show green.
-      if (phaseRef.current === "inspecting") inspRef.current?.finishInspection()
+      // Grace period done — hardware is armed. Always cancel inspection here.
+      // We cannot check phaseRef.current because React may not have re-rendered yet after
+      // onHandsOn fired (stale ref race condition) — so we always call cancelInspection(),
+      // which is a safe no-op if no countdown is running.
+      inspRef.current?.cancelInspection()
       setPhase("ready")
     },
-    onHandsOff: () => setPhase("idle"),
+    onHandsOff: () => {
+      // Premature lift before grace period — cancel any running inspection and revert to idle.
+      inspRef.current?.cancelInspection()
+      setPhase("idle")
+    },
     onRunning: () => {
       if (phaseRef.current !== "running") {
         setPhase("running"); setElapsed(0); startRef.current = performance.now()
@@ -303,13 +321,17 @@ export function TimerContent() {
       setElapsed(time_ms); setPhase("stopped"); addSolve(time_ms, null)
     },
     onIdle: () => {
-      // Physical reset button pressed — clear the display back to 0.00.
+      // Physical reset button pressed — cancel any running inspection and clear the display.
+      inspRef.current?.cancelInspection()
+      setBtReset(true)
       setPhase("idle")
     },
     onDisconnect: () => {
+      inspRef.current?.cancelInspection()
       if (phaseRef.current === "running") {
-        cancelAnimationFrame(rafRef.current); setPhase("idle"); setElapsed(0)
+        cancelAnimationFrame(rafRef.current); setElapsed(0)
       }
+      setPhase("idle")
     },
   }
 
@@ -328,6 +350,7 @@ export function TimerContent() {
     if (phase === "running") return fmt(elapsed)
     if (phase === "inspecting" || inInspHold) return String(Math.max(0, 15 - insp.secondsLeft))
     if (phase === "ready") return "0.00"
+    if (phase === "idle" && btReset) return "0.00" // BT reset button was pressed — clear the display
     if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
     return "0.00"
   }
@@ -347,89 +370,20 @@ export function TimerContent() {
     <div
       className="flex flex-col min-h-screen bg-background select-none"
     >
-      {/* Top bar — full width */}
-      <div className="relative border-b border-border px-4" onPointerDown={sp}>
-        {/* Row 1: event selector (left) + scramble nav + settings gear (right) */}
-        <div className="flex items-center justify-between py-3 gap-3">
-          <select
-            className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
-            value={event}
-            onChange={(e) => changeEvent(e.target.value)}
-          >
-            {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-          </select>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              className={scrambleNavBtn}
-              onClick={prevScramble}
-              disabled={!scrambleCanGoPrev || timingActive}
-              title="Go back to previous scramble"
-            >
-              ← Prev
-            </button>
-            <button
-              className={scrambleNavBtn}
-              onClick={nextScramble}
-              disabled={timingActive}
-              title="Skip to next scramble"
-            >
-              Next →
-            </button>
-            <div className="relative" ref={settingsRef}>
-              <button
-                className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setSettingsOpen((v) => !v)}
-                title="Timer settings"
-              >
-                <Settings size={14} />
-              </button>
-              {settingsOpen && (
-                <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
-                  <button
-                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
-                    onClick={() => setTyping((t) => !t)}
-                  >
-                    <span className="text-foreground">⌨ Typing Mode</span>
-                    <span className={typing ? "text-primary font-medium" : "text-muted-foreground"}>
-                      {typing ? "On" : "Off"}
-                    </span>
-                  </button>
-                  <button
-                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    onClick={() => setInspOn((v) => !v)}
-                    disabled={typing}
-                  >
-                    <span className="text-foreground">⏱ Inspection</span>
-                    <span className={inspOn && !typing ? "text-primary font-medium" : "text-muted-foreground"}>
-                      {inspOn ? "On" : "Off"}
-                    </span>
-                  </button>
-                  {isBleSupported() && (
-                    <>
-                      <div className="my-1 border-t border-border" />
-                      <button
-                        className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        onClick={btStatus === "connected" ? btDisconnect : btConnect}
-                        disabled={btStatus === "connecting"}
-                        onPointerDown={sp}
-                        title={btStatus === "connected" ? "Disconnect Bluetooth timer" : "Connect GAN Halo via Bluetooth"}
-                      >
-                        <span className="text-foreground">🔵 Bluetooth</span>
-                        <span className={btStatus === "connected" ? "text-primary font-medium" : "text-muted-foreground"}>
-                          {btStatus === "connecting" ? "Connecting…" : btStatus === "connected" ? "Connected" : "Disconnected"}
-                        </span>
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Row 2: scramble — true horizontal center */}
-        <div className="pb-3 text-center">
+      {/* Top bar — single row: event select | scramble (centered) | nav + settings */}
+      <div className="relative flex items-center px-4 py-3 gap-3 border-b border-border" onPointerDown={sp}>
+        {/* Left: event selector */}
+        <select
+          className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
+          value={event}
+          onChange={(e) => changeEvent(e.target.value)}
+        >
+          {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+        </select>
+        {/* Center: scramble */}
+        <div className="flex-1 min-w-0 flex items-center justify-center">
           <button
-            className="font-mono text-lg sm:text-xl font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer"
+            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer"
             onClick={() => {
               navigator.clipboard.writeText(scramble).then(() => {
                 setScrambleCopied(true)
@@ -450,6 +404,74 @@ export function TimerContent() {
         >
           Scramble copied!
         </span>
+        {/* Right: scramble nav + settings gear */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            className={scrambleNavBtn}
+            onClick={prevScramble}
+            disabled={!scrambleCanGoPrev || timingActive}
+            title="Go back to previous scramble"
+          >
+            ← Prev
+          </button>
+          <button
+            className={scrambleNavBtn}
+            onClick={nextScramble}
+            disabled={timingActive}
+            title="Skip to next scramble"
+          >
+            Next →
+          </button>
+          <div className="relative" ref={settingsRef}>
+            <button
+              className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setSettingsOpen((v) => !v)}
+              title="Timer settings"
+            >
+              <Settings size={14} />
+            </button>
+            {settingsOpen && (
+              <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                  onClick={() => setTyping((t) => !t)}
+                >
+                  <span className="text-foreground">⌨ Typing Mode</span>
+                  <span className={typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                    {typing ? "On" : "Off"}
+                  </span>
+                </button>
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => setInspOn((v) => !v)}
+                  disabled={typing}
+                >
+                  <span className="text-foreground">⏱ Inspection</span>
+                  <span className={inspOn && !typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                    {inspOn ? "On" : "Off"}
+                  </span>
+                </button>
+                {isBleSupported() && (
+                  <>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={btStatus === "connected" ? btDisconnect : btConnect}
+                      disabled={btStatus === "connecting"}
+                      onPointerDown={sp}
+                      title={btStatus === "connected" ? "Disconnect GAN Smart Timer" : "Connect GAN Smart Timer via Bluetooth"}
+                    >
+                      <span className="text-foreground">GAN Smart Timer</span>
+                      <span className={btStatus === "connected" ? "text-primary font-medium" : "text-muted-foreground"}>
+                        {btStatus === "connecting" ? "Connecting…" : btStatus === "connected" ? "Connected" : "Disconnected"}
+                      </span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Body: left panel + timer */}
