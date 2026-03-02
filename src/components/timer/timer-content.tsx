@@ -69,6 +69,27 @@ function bestAo(solves: Solve[], n: number): number | null {
   return best
 }
 
+const STAT_OPTIONS = ["mo3", "ao5", "ao10", "ao12", "ao25", "ao50", "ao100"]
+
+function computeMo(solves: Solve[], n: number): number | null {
+  if (solves.length < n) return null
+  const times = solves.slice(-n).map((s) => s.penalty === "DNF" ? Infinity : s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
+  if (times.some((t) => t === Infinity)) return null
+  return Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+}
+
+function computeStat(solves: Solve[], key: string): number | null {
+  const n = parseInt(key.slice(2)); return key.startsWith("mo") ? computeMo(solves, n) : computeAo(solves, n)
+}
+
+function bestStat(solves: Solve[], key: string): number | null {
+  const n = parseInt(key.slice(2)); const fn = key.startsWith("mo") ? computeMo : computeAo
+  if (solves.length < n) return null
+  let best: number | null = null
+  for (let i = n; i <= solves.length; i++) { const r = fn(solves.slice(0, i), n); if (r !== null && (best === null || r < best)) best = r }
+  return best
+}
+
 export function TimerContent() {
   const [event, setEvent] = useState("333")
   const [scramble, setScramble] = useState("")
@@ -79,6 +100,12 @@ export function TimerContent() {
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showStatSettings, setShowStatSettings] = useState(false)
+  const [statRows, setStatRows] = useState<[string, string]>(() => {
+    if (typeof window === "undefined") return ["ao5", "ao12"]
+    try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
+    return ["ao5", "ao12"]
+  })
 
   const startRef = useRef(0)
   const rafRef = useRef(0)
@@ -88,7 +115,8 @@ export function TimerContent() {
   const eventRef = useRef("333")
   const inspOnRef = useRef(false)
   const inspRef = useRef<ReturnType<typeof useInspection> | null>(null)
-  const inspHoldRef = useRef(false) // true when holding spacebar during inspection to arm the timer
+  const inspHoldRef = useRef(false)   // true when holding spacebar during inspection to arm the timer
+  const tapToInspectRef = useRef(false) // true when a tap from idle/stopped should start inspection on release
 
   const insp = useInspection({ voice: true })
 
@@ -127,31 +155,39 @@ export function TimerContent() {
   }
 
   function releaseHold() {
-    if (phaseRef.current === "holding") {
-      if (inspHoldRef.current) { inspHoldRef.current = false; setPhase("inspecting") }
-      else setPhase("idle")
+    // tapToInspectRef is set synchronously in handlePress — no React state dependency
+    if (tapToInspectRef.current) {
+      tapToInspectRef.current = false
+      setPhase("inspecting"); inspRef.current?.startInspection()
       return
     }
+    // inspHoldRef is also synchronous — handle robustly regardless of phaseRef timing
+    if (inspHoldRef.current) {
+      inspHoldRef.current = false
+      if (phaseRef.current === "ready") startTimer()
+      else setPhase("inspecting") // released before 0.55s — return to inspection
+      return
+    }
+    // Regular hold path (no inspection involved)
+    if (phaseRef.current === "holding") { setPhase("idle"); return }
     if (phaseRef.current !== "ready") return
-    if (inspHoldRef.current) { inspHoldRef.current = false; startTimer() }
-    else if (inspOnRef.current) { setPhase("inspecting"); inspRef.current?.startInspection() }
-    else startTimer()
+    startTimer()
   }
 
   function handlePress() {
     const p = phaseRef.current
     if (p === "running") { stopTimer(); return }
     if (p === "inspecting") {
-      // Hold to arm the timer during inspection
-      inspHoldRef.current = true; startHold(); return
+      inspHoldRef.current = true; tapToInspectRef.current = false; startHold(); return
     }
     if (p === "idle" || p === "stopped") {
       inspHoldRef.current = false
       if (inspOnRef.current) {
-        // Tap to start inspection — show green immediately, no hold required
-        heldRef.current = true; setPhase("ready")
+        // Tap spacebar to start inspection — flag is synchronous so release works instantly
+        tapToInspectRef.current = true
+        heldRef.current = true; setPhase("ready") // show green while held
       } else {
-        startHold()
+        tapToInspectRef.current = false; startHold()
       }
     }
   }
@@ -194,18 +230,22 @@ export function TimerContent() {
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
   }
 
+  function updateStatRow(idx: 0 | 1, key: string) {
+    setStatRows((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
+  }
+
   const stats = useMemo(() => {
     const valid = solves.filter((s) => s.penalty !== "DNF").map((s) => s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
     const mean = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null
     return {
       best: valid.length ? Math.min(...valid) : null,
       mean,
-      ao5: computeAo(solves, 5),
-      ao12: computeAo(solves, 12),
-      bestAo5: bestAo(solves, 5),
-      bestAo12: bestAo(solves, 12),
+      row1cur: computeStat(solves, statRows[0]),
+      row1best: bestStat(solves, statRows[0]),
+      row2cur: computeStat(solves, statRows[1]),
+      row2best: bestStat(solves, statRows[1]),
     }
-  }, [solves])
+  }, [solves, statRows])
 
   const last = solves[solves.length - 1]
 
@@ -275,14 +315,14 @@ export function TimerContent() {
                   <td className="text-right">{D(stats.best)}</td>
                 </tr>
                 <tr>
-                  <td className="text-muted-foreground py-0.5 pr-2">ao5</td>
-                  <td className="text-right pr-2">{D(stats.ao5)}</td>
-                  <td className="text-right">{D(stats.bestAo5)}</td>
+                  <td className="text-muted-foreground py-0.5 pr-2">{statRows[0]}</td>
+                  <td className="text-right pr-2">{D(stats.row1cur)}</td>
+                  <td className="text-right">{D(stats.row1best)}</td>
                 </tr>
                 <tr>
-                  <td className="text-muted-foreground py-0.5 pr-2">ao12</td>
-                  <td className="text-right pr-2">{D(stats.ao12)}</td>
-                  <td className="text-right">{D(stats.bestAo12)}</td>
+                  <td className="text-muted-foreground py-0.5 pr-2">{statRows[1]}</td>
+                  <td className="text-right pr-2">{D(stats.row2cur)}</td>
+                  <td className="text-right">{D(stats.row2best)}</td>
                 </tr>
               </tbody>
             </table>
@@ -290,6 +330,21 @@ export function TimerContent() {
               <span>count: {solves.length}</span>
               <span>mean: {D(stats.mean)}</span>
             </div>
+            {showStatSettings ? (
+              <div className="mt-2 pt-2 border-t border-border space-y-1.5">
+                {([0, 1] as const).map((idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-muted-foreground shrink-0">row {idx + 2}:</span>
+                    <select className="flex-1 bg-muted text-xs rounded px-1.5 py-1 border border-border text-foreground" value={statRows[idx]} onChange={(e) => updateStatRow(idx, e.target.value)}>
+                      {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                ))}
+                <button className="text-[10px] text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowStatSettings(false)}>done</button>
+              </div>
+            ) : (
+              <button className="mt-1.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={() => setShowStatSettings(true)}>⚙ customize</button>
+            )}
           </div>
 
           {/* Solve list */}
