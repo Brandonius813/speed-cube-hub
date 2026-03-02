@@ -120,8 +120,13 @@ export function TimerContent() {
     // inspHoldRef is also synchronous — handle robustly regardless of phaseRef timing
     if (inspHoldRef.current) {
       inspHoldRef.current = false
-      if (phaseRef.current === "ready") startTimer()
-      else setPhase("inspecting") // released before 0.55s — return to inspection
+      if (phaseRef.current === "ready") {
+        // Stop inspection (silences voice alerts + returns any penalty) before starting timer
+        const pen = inspRef.current?.finishInspection() ?? null
+        if (pen === "DNF") { addSolve(0, "DNF"); setPhase("stopped") } else startTimer()
+      } else {
+        setPhase("inspecting") // released before 0.55s — return to inspection
+      }
       return
     }
     // Regular hold path (no inspection involved)
@@ -149,7 +154,10 @@ export function TimerContent() {
   }
 
   useEffect(() => {
-    if (insp.state === "done" && phaseRef.current === "inspecting") { addSolve(0, "DNF"); setPhase("stopped") }
+    // Also catch expiry while holding spacebar to arm the timer (inspHoldRef)
+    if (insp.state === "done" && (phaseRef.current === "inspecting" || inspHoldRef.current)) {
+      inspHoldRef.current = false; addSolve(0, "DNF"); setPhase("stopped")
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [insp.state])
 
@@ -166,13 +174,6 @@ export function TimerContent() {
     return () => { window.removeEventListener("keydown", dn); window.removeEventListener("keyup", up) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typing])
-
-  function handlePointerDown(e: React.PointerEvent) {
-    if (typing) return; e.preventDefault(); handlePress()
-  }
-  function handlePointerUp(e: React.PointerEvent) {
-    if (typing) return; e.preventDefault(); heldRef.current = false; releaseHold()
-  }
 
   function setPenalty(id: string, p: Penalty) {
     setSolves((prev) => prev.map((s) => (s.id === id ? { ...s, penalty: p } : s)))
@@ -203,10 +204,12 @@ export function TimerContent() {
 
   const last = solves[solves.length - 1]
 
+  const inInspHold = (phase === "holding" || phase === "ready") && inspHoldRef.current
+
   function getDisplay(): string {
     if (phase === "running") return fmt(elapsed)
+    if (phase === "inspecting" || inInspHold) return String(Math.max(0, 15 - insp.secondsLeft))
     if (phase === "ready") return "0.00"
-    if (phase === "inspecting") return String(Math.max(0, 15 - insp.secondsLeft))
     if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms, 3)
     return "0.00"
   }
@@ -237,7 +240,7 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <p className="flex-1 min-w-0 text-center text-xs sm:text-sm font-mono text-muted-foreground leading-snug line-clamp-2">
+        <p className="flex-1 min-w-0 text-center text-sm sm:text-base font-mono font-bold text-white leading-snug line-clamp-2">
           {scramble}
         </p>
         <div className="flex gap-2 shrink-0">
@@ -362,12 +365,8 @@ export function TimerContent() {
           )}
         </div>
 
-        {/* Right: invisible touch/pointer target for timer start/stop */}
-        <div
-          className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0"
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-        />
+        {/* Right: spacer to push timer display to center */}
+        <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
 
       </div>
     </div>
