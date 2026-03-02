@@ -4,16 +4,33 @@
 **Git root:** `/Users/brandontrue/Documents/Coding/speed-cube-hub/`
 **GitHub CLI:** Installed and authenticated as `Brandonius813`
 
-**Branching workflow:**
-- **`dev` branch** — All new work happens here. Commit to `dev` after every working feature.
-- **Vercel preview deployments** — Every push to `dev` creates a preview URL for testing before going live. Pushes cost build minutes, so batch them.
-- **`main` branch** — Production only. Pushing to `main` automatically deploys to production.
-- **To go live:** When a feature is tested and approved, merge `dev` into `main` and push.
+## Single-Agent Sessions (default)
 
-**Commit and Push:**
-- **Commit and push to `dev`** after every working feature. Tell the user what was committed and pushed.
-- Do not wait for permission to push — just push to `dev` automatically when the feature is done.
+When working alone (one Claude session, no parallel agents):
 
-When the user says to go live, merge `dev` into `main` and push. No need to ask — just do it and confirm.
+- **Commit to `dev`** after every working feature
+- **Push to `dev`** automatically when done — no need to ask permission
+- Pushes cost Vercel build minutes, so batch them when possible
 
-Never push broken code. Always tell the user what is being committed.
+## Parallel-Agent Sessions (worktree mode)
+
+When working as one of multiple parallel agents, **never push to `dev` directly.**
+
+Each agent has its own task branch (e.g., `task/t148-scramble-api`):
+
+- **Commit to your task branch** after every working feature
+- **Push to your task branch** when done: `git push origin task/<taskname>`
+- **Tell the user** the branch name and that it's ready to merge into `dev`
+- The user (or a coordinator session) handles merging into `dev` — not you
+
+## Branch Structure
+
+- **`main`** — Production. Auto-deploys to speedcubehub.com on push. Never push broken code.
+- **`dev`** — Staging. Every push creates a Vercel preview. Merge task branches here.
+- **`task/<taskname>`** — Per-agent work branches. Created with worktrees, merged into `dev` when done.
+
+## Going Live
+
+When the user says "go live": merge `dev` into `main` and push. Confirm when done.
+
+Never skip hooks (`--no-verify`). Never force-push to `main` or `dev`.
