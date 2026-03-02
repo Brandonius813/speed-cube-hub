@@ -634,3 +634,16 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Supabase/PostgREST silently drops unknown columns on insert — no error is thrown. This means code can appear to work while data is being lost. Always verify columns exist in the live DB, not just in migration files or TypeScript types.
 **Blockers:** None
 **Warnings:** None — `sessions.timer_session_id` now exists in production. Future `finalizeTimerSession()` and `importSolvesToSession()` calls will correctly persist the FK link.
+
+---
+
+### 2026-03-02 17:18 PT — SOR/Kinch Fix Session
+
+**Task:** Fix SOR/Kinch leaderboard not populating + add last-synced date display
+**Status:** Completed both fixes:
+- **Root cause of empty data:** `getSorKinchLeaderboard` and `getWcaCountries` use `unstable_cache`. Their callbacks called `createClient()` (SSR Supabase client) which calls `await cookies()` from `next/headers` — a dynamic API forbidden inside `unstable_cache`. Every call threw, was caught silently, and returned `{ entries: [], totalCount: 0 }`. Fix: added `createPublicClient()` using plain `@supabase/supabase-js` (no cookies needed — `wca_rankings` is publicly readable via RLS).
+- **Last-synced date:** Queries `MAX(updated_at)` from `wca_rankings` in the page server component, passes it as `wcaLastUpdated` prop, shows "WCA data last synced [date]" above controls when SOR/Kinch tab is active.
+**Files touched:** src/lib/actions/sor-kinch.ts, src/app/(main)/leaderboards/page.tsx, src/components/leaderboards/leaderboards-content.tsx
+**Learnings:** `unstable_cache` callbacks cannot use any Next.js dynamic APIs (cookies, headers, etc.). Always use plain Supabase client for public-data cached queries. The wca_rankings table had 280K rows and correct RLS — the bug was purely in the cache layer.
+**Blockers:** None
+**Warnings:** Pre-existing TS error in src/app/api/revalidate-wca/route.ts (`revalidateTag` called with 1 arg, type expects 2) — not introduced by this session, minor and doesn't affect runtime.
