@@ -158,7 +158,6 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
     return () => window.removeEventListener("keydown", handleGlobalKeyDown)
   }, [disabled, onSpacebar])
 
-  const displayText = formatStackmat(digits)
   const hasValue = digits.length > 0
 
   return (
@@ -166,13 +165,13 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
       className="flex flex-col items-center justify-center flex-1"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Visible input box styled like a time entry field */}
+      {/* Visible input box styled like a standard text field */}
       <div
         className={cn(
-          "relative w-full max-w-xl mx-auto rounded-2xl border-2 bg-background/50 px-8 py-8 transition-colors cursor-text",
+          "relative w-full max-w-sm mx-auto rounded-md border bg-background px-4 py-2 h-10 transition-colors cursor-text",
           hasValue
-            ? "border-primary/50 shadow-[0_0_25px_-3px] shadow-primary/20"
-            : "border-border/80"
+            ? "border-primary ring-1 ring-primary/30"
+            : "border-input hover:border-border/80"
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -189,32 +188,12 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
           aria-label="Type time"
         />
 
-        {/* Formatted time display */}
-        <div
-          className={cn(
-            "font-mono text-6xl sm:text-7xl md:text-8xl font-bold tabular-nums tracking-tight text-center transition-colors",
-            hasValue ? "text-foreground" : "text-muted-foreground/40"
-          )}
-        >
-          {displayText}
-        </div>
-
         {/* Blinking cursor indicator */}
-        {!hasValue && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="font-mono text-6xl sm:text-7xl md:text-8xl font-bold text-muted-foreground/40 animate-pulse">
-              |
-            </span>
-          </div>
-        )}
+        <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+          <span className="font-mono text-sm text-muted-foreground/60 animate-pulse">|</span>
+        </div>
       </div>
 
-      {/* Hint text */}
-      <p className="mt-4 text-sm text-muted-foreground text-center">
-        {hasValue
-          ? "Enter to log · Backspace to correct · Esc to clear"
-          : "Type digits like a stackmat (1032 = 10.32s · 10326 = 1:03.26) · Space for inspection"}
-      </p>
     </div>
   )
 }
