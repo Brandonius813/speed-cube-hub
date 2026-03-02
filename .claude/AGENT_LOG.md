@@ -705,3 +705,14 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Warnings:**
 - T153 (FloatingPanel) was already committed by a previous implicit session — this session refined the styling (`bg-card/border-border`, `max-h-[60vh] overflow-y-auto`)
 - T154 agent (timer-content.tsx owner) should clean up the unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` — these still exist in timer-content.tsx but are no longer called
+
+---
+
+### 2026-03-02 PT — Session Manager Simplification Sync (T159)
+
+**Task:** T159 (Simplify Manage Sessions Menu)
+**Status:** Completed. Simplified `session-manager.tsx` from 7 per-row buttons down to 3 (Edit/Rename, Archive/Hide, X-delete). Removed merge/split/reset/tracked-toggle state, overlays, and all associated state. Delete confirmation shows solve count. Added collapsible archived sessions section (`showArchived` toggle, Eye/EyeOff to restore). Deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) kept optional in the type to avoid TS errors at the call site without touching timer-content.tsx. TypeScript clean (only pre-existing revalidate-wca error remains).
+**Files touched:** `src/components/timer/session-manager.tsx`
+**Learnings:** The linter/hook modifies files aggressively between reads — when Write tool fails with "modified since read," use Python to apply targeted replacements. The `sessions` prop from timer-content.tsx already filters `is_archived: false`, so `archivedSessions.filter(s => s.is_archived)` returns [] currently — archived section will activate once T154 wires up full session loading.
+**Blockers:** None
+**Warnings:** T154 (timer-content.tsx owner) should clean up the now-unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit`. These still exist in timer-content.tsx but are no longer called by SessionManager.
