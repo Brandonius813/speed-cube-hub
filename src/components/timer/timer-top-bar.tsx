@@ -126,7 +126,7 @@ export function TimerTopBar({
   }, [showExport])
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+      <div className="relative z-50 flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
           <SessionSelector
             sessions={sessions}
