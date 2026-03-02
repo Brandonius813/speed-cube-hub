@@ -753,3 +753,24 @@ T157:
 
 **Blockers:** None
 **Warnings:** None — feature is complete and tested. Individual solves are saved to DB. The old `timer.ts` `addSolve()` and `finalizeTimerSession()` server actions are NOT used by this flow — we bypass them with a direct bulk insert in `saveTimerSession`.
+
+---
+
+### 2026-03-02 PT — Daily/Weekly Leaderboards Session
+
+**Task:** Ad-hoc — Daily and Weekly leaderboards for Solves and Practice Time
+**Status:** Complete. Pushed to dev and merged to main (live on speedcubehub.com).
+
+**What was built:**
+- **8 new DB RPC functions** (migration `daily_weekly_leaderboards`): `get_leaderboard_daily_solves`, `get_leaderboard_weekly_solves`, `get_leaderboard_daily_practice_time`, `get_leaderboard_weekly_practice_time` + 4 matching `get_user_rank_*` variants. All use `America/Los_Angeles` (auto-handles PST/PDT) for date boundaries. Weekly uses `date_trunc('week', ...)` (Monday start).
+- **`src/lib/leaderboard-types.ts`** (new): Shared types/constants file — `LeaderboardCategory`, `TimePeriod`, `LeaderboardPage`, `TIMED_CATEGORIES`. Created because `"use server"` files can only export async functions; plain objects/arrays/type-re-exports cause Next.js build failures.
+- **`src/lib/actions/leaderboards.ts`**: Added `TimePeriod = "all_time" | "daily" | "weekly"`, dual RPC maps (`LEADERBOARD_RPC` nested by timePeriod, `FLAT_LEADERBOARD_RPC` for streak), updated `getLeaderboard` and `getUserLeaderboardPosition` with optional `timePeriod` param (defaults to `"all_time"`).
+- **`src/components/leaderboards/leaderboard-controls.tsx`**: Added `All Time / This Week / Today` toggle row — only visible on Most Solves and Practice Time tabs. Shows a clock icon + "Pacific Time" label when not on All Time.
+- **`src/components/leaderboards/leaderboards-content.tsx`**: Added `timePeriod` state, `effectiveTimePeriod` derived value, updated cache keys to include time period, passes timePeriod to all fetch/Find Me calls.
+
+**Learnings:**
+- `"use server"` files in Next.js 16 with Turbopack cannot export non-async-function values — not even `export const`, `export type`, or re-exports. Any such export causes a build error: "A 'use server' file can only export async functions." Extract all shared types/constants to a plain file with no directive.
+- `export type { ... }` re-exports from a "use server" file also fail at build time — the bundler sees the export name in the actions manifest but can't find it at runtime.
+
+**Blockers:** None
+**Warnings:** None — all imports of `LeaderboardCategory`, `TimePeriod`, `LeaderboardPage`, `TIMED_CATEGORIES` must come from `@/lib/leaderboard-types`, not `@/lib/actions/leaderboards`.
