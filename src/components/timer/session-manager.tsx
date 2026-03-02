@@ -3,15 +3,11 @@
 import { useState } from "react"
 import {
   Pencil,
-  Archive,
-  ArchiveRestore,
-  X,
+  EyeOff,
+  Eye,
   Plus,
   Check,
-  Eye,
-  EyeOff,
-  ChevronDown,
-  ChevronRight,
+  X,
 } from "lucide-react"
 import {
   Dialog,
@@ -38,7 +34,7 @@ type SessionManagerProps = {
   onUnarchive?: (id: string) => void
   onDelete: (id: string) => void
   onCreate: (name: string, event: string, isTracked: boolean) => void
-  // Kept optional so timer-content.tsx compiles until T154 cleans up
+  // Deprecated — removed from UI, kept for call-site compatibility
   onToggleTracked?: (id: string, isTracked: boolean) => void
   onReset?: (id: string) => void
   onMerge?: (sourceId: string, targetId: string) => void
@@ -59,7 +55,7 @@ export function SessionManager({
 }: SessionManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
-  const [confirmDelete, setConfirmDelete] = useState<{
+  const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string
     name: string
     solveCount: number
@@ -70,11 +66,12 @@ export function SessionManager({
   const [newTracked, setNewTracked] = useState(true)
   const [showArchived, setShowArchived] = useState(false)
 
-  const activeSessions = sessions.filter((s) => !s.is_archived)
-  const archivedSessions = sessions.filter((s) => s.is_archived)
-
   const eventLabel = (eventId: string) =>
     ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
+
+  // Separate active and archived sessions
+  const activeSessions = sessions.filter((s) => !s.is_archived)
+  const archivedSessions = sessions.filter((s) => s.is_archived)
 
   // Group active sessions by event
   const grouped = activeSessions.reduce<Record<string, SolveSession[]>>(
@@ -119,7 +116,8 @@ export function SessionManager({
       key={session.id}
       className={cn(
         "flex items-center gap-2 p-2 rounded-md border border-transparent",
-        session.id === currentSessionId && !isArchived &&
+        session.id === currentSessionId &&
+          !isArchived &&
           "border-primary/30 bg-primary/5"
       )}
     >
@@ -157,14 +155,18 @@ export function SessionManager({
         /* Normal display mode */
         <>
           <button
-            className="flex-1 text-left text-sm truncate hover:text-primary transition-colors"
+            className={cn(
+              "flex-1 text-left text-sm truncate transition-colors",
+              isArchived
+                ? "text-muted-foreground cursor-default"
+                : "hover:text-primary"
+            )}
             onClick={() => {
               if (!isArchived) {
                 onSelect(session)
                 onClose()
               }
             }}
-            disabled={isArchived}
           >
             {session.name}
           </button>
@@ -181,7 +183,7 @@ export function SessionManager({
             </span>
           )}
 
-          {/* Action buttons: [Edit] [Hide/Unarchive] [X] */}
+          {/* Action buttons: [Edit] [Hide/Restore] [X] */}
           <div className="flex items-center gap-0.5 shrink-0">
             <button
               className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
@@ -196,7 +198,7 @@ export function SessionManager({
                 onClick={() => onUnarchive?.(session.id)}
                 title="Restore session"
               >
-                <ArchiveRestore className="h-3.5 w-3.5" />
+                <Eye className="h-3.5 w-3.5" />
               </button>
             ) : (
               <button
@@ -204,19 +206,19 @@ export function SessionManager({
                 onClick={() => onArchive(session.id)}
                 title="Hides this session. Your times are not deleted."
               >
-                <Archive className="h-3.5 w-3.5" />
+                <EyeOff className="h-3.5 w-3.5" />
               </button>
             )}
             <button
               className="p-1 rounded hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
               onClick={() =>
-                setConfirmDelete({
+                setDeleteConfirm({
                   id: session.id,
                   name: session.name,
                   solveCount: session.solve_count ?? 0,
                 })
               }
-              title="Delete session"
+              title="Delete"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -237,24 +239,21 @@ export function SessionManager({
         </DialogHeader>
 
         {/* Delete confirmation overlay */}
-        {confirmDelete && (
+        {deleteConfirm && (
           <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
             <div className="text-center space-y-4 max-w-xs">
               <p className="text-sm font-medium">
-                Delete &ldquo;{confirmDelete.name}&rdquo;?
+                Delete &ldquo;{deleteConfirm.name}&rdquo;?
               </p>
               <p className="text-xs text-muted-foreground">
-                This will permanently delete all{" "}
-                {confirmDelete.solveCount > 0
-                  ? `${confirmDelete.solveCount} solves`
-                  : "solves"}{" "}
-                in this session.
+                This will permanently delete all {deleteConfirm.solveCount}{" "}
+                solves.
               </p>
               <div className="flex gap-2 justify-center">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setConfirmDelete(null)}
+                  onClick={() => setDeleteConfirm(null)}
                 >
                   Cancel
                 </Button>
@@ -262,8 +261,8 @@ export function SessionManager({
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    onDelete(confirmDelete.id)
-                    setConfirmDelete(null)
+                    onDelete(deleteConfirm.id)
+                    setDeleteConfirm(null)
                   }}
                 >
                   Delete
@@ -292,22 +291,24 @@ export function SessionManager({
             </div>
           )}
 
-          {/* Archived sessions — collapsible */}
+          {/* Archived sessions collapsible */}
           {archivedSessions.length > 0 && (
-            <div>
+            <div className="border-t border-border pt-3">
               <button
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setShowArchived((v) => !v)}
               >
                 {showArchived ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <EyeOff className="h-3 w-3" />
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <Eye className="h-3 w-3" />
                 )}
-                Archived ({archivedSessions.length})
+                {showArchived
+                  ? "Hide archived"
+                  : `Show archived (${archivedSessions.length})`}
               </button>
               {showArchived && (
-                <div className="space-y-1 mt-1">
+                <div className="space-y-1 mt-2">
                   {archivedSessions.map((session) =>
                     renderSessionRow(session, true)
                   )}
