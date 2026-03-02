@@ -118,8 +118,9 @@ export function TimerContent() {
     if (idx < h.length - 1) {
       goToScramble(idx + 1)
     } else {
-      h.push(generateScramble(event))
-      goToScramble(h.length - 1)
+      // Cap history at 2 entries: [current, new] — Prev can only go back one scramble
+      scrambleHistoryRef.current = [h[idx], generateScramble(event)]
+      goToScramble(1)
     }
   }
 
@@ -140,9 +141,9 @@ export function TimerContent() {
   function addSolve(time_ms: number, penalty: Penalty) {
     setSolves((p) => [...p, { id: crypto.randomUUID(), time_ms, penalty, scramble: scrambleRef.current }])
     const s = generateScramble(eventRef.current)
-    const idx = scrambleIdxRef.current
-    scrambleHistoryRef.current = [...scrambleHistoryRef.current.slice(0, idx + 1), s]
-    goToScramble(idx + 1)
+    // Cap history at 2 entries: [just-used scramble, new scramble] — Prev goes back exactly one
+    scrambleHistoryRef.current = [scrambleHistoryRef.current[scrambleIdxRef.current], s]
+    goToScramble(1)
     setSelectedId(null)
   }
 
