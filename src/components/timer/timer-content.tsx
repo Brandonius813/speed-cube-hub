@@ -80,6 +80,7 @@ export function TimerContent() {
   })
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
   const [sessionElapsed, setSessionElapsed] = useState(0) // seconds elapsed in current session
+  const [sessionPaused, setSessionPaused] = useState(false)
   const [showEndModal, setShowEndModal] = useState(false)
   const [sessionSaved, setSessionSaved] = useState(false) // brief "Session saved!" flash
 
@@ -97,6 +98,8 @@ export function TimerContent() {
   const settingsRef = useRef<HTMLDivElement>(null)
   const scrambleHistoryRef = useRef<string[]>([])
   const scrambleIdxRef = useRef(0)
+  const sessionPausedMsRef = useRef(0)  // accumulated milliseconds spent paused
+  const pausedAtRef = useRef<number | null>(null) // timestamp when current pause began
 
   const insp = useInspection({ voice: true })
 
@@ -145,14 +148,14 @@ export function TimerContent() {
     return () => cancelAnimationFrame(rafRef.current)
   }, [phase])
 
-  // Running session clock — ticks every second while a session is active
+  // Running session clock — ticks every second; pauses when sessionPaused is true
   useEffect(() => {
-    if (!sessionStartTime) return
+    if (!sessionStartTime || sessionPaused) return
     const interval = setInterval(() => {
-      setSessionElapsed(Math.floor((Date.now() - sessionStartTime) / 1000))
+      setSessionElapsed(Math.floor((Date.now() - sessionStartTime - sessionPausedMsRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [sessionStartTime])
+  }, [sessionStartTime, sessionPaused])
 
   function addSolve(time_ms: number, penalty: Penalty) {
     setSolves((p) => [...p, { id: crypto.randomUUID(), time_ms, penalty, scramble: scrambleRef.current }])
@@ -175,11 +178,32 @@ export function TimerContent() {
     setPhase("idle")
     setSessionStartTime(Date.now())
     setSessionElapsed(0)
+    setSessionPaused(false)
     setSessionSaved(false)
+    sessionPausedMsRef.current = 0
+    pausedAtRef.current = null
+  }
+
+  function pauseSession() {
+    pausedAtRef.current = Date.now()
+    setSessionPaused(true)
+  }
+
+  function resumeSession() {
+    if (pausedAtRef.current !== null) {
+      sessionPausedMsRef.current += Date.now() - pausedAtRef.current
+      pausedAtRef.current = null
+    }
+    setSessionPaused(false)
   }
 
   function endSession() {
     if (solves.length === 0) return
+    // If paused when ending, finalize the pause accumulator so duration is correct
+    if (sessionPaused && pausedAtRef.current !== null) {
+      sessionPausedMsRef.current += Date.now() - pausedAtRef.current
+      pausedAtRef.current = null
+    }
     setShowEndModal(true)
   }
 
@@ -189,7 +213,10 @@ export function TimerContent() {
     setPhase("idle")
     setSessionStartTime(null)
     setSessionElapsed(0)
+    setSessionPaused(false)
     setSessionSaved(true)
+    sessionPausedMsRef.current = 0
+    pausedAtRef.current = null
     setTimeout(() => setSessionSaved(false), 3000)
   }
 
@@ -307,7 +334,8 @@ export function TimerContent() {
     if (solves.length > 0 && !confirm("Switching events will clear your current session. Continue?")) return
     cancelAnimationFrame(rafRef.current); insp.cancelInspection()
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
-    setSessionStartTime(null); setSessionElapsed(0); setShowEndModal(false)
+    setSessionStartTime(null); setSessionElapsed(0); setSessionPaused(false); setShowEndModal(false)
+    sessionPausedMsRef.current = 0; pausedAtRef.current = null
   }
   function updateStatCol(idx: 0 | 1, key: string) {
     setStatCols((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
@@ -553,43 +581,6 @@ export function TimerContent() {
         </div>
       </div>
 
-      {/* Session controls bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/20" onPointerDown={sp}>
-        {sessionStartTime ? (
-          <>
-            <div className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-              <span className="font-mono text-sm text-foreground">{fmtSession(sessionElapsed)}</span>
-              <span className="text-xs text-muted-foreground">
-                {solves.length} solve{solves.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <button
-              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors disabled:opacity-40"
-              onClick={endSession}
-              disabled={timingActive || solves.length === 0}
-            >
-              End Session
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="text-xs text-muted-foreground">
-              {sessionSaved
-                ? <span className="text-green-400">Session saved!</span>
-                : "Start a session to track and log your practice"
-              }
-            </div>
-            <button
-              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
-              onClick={startSession}
-            >
-              Start Session
-            </button>
-          </>
-        )}
-      </div>
-
       {/* Body: left panel + timer */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
 
@@ -649,12 +640,60 @@ export function TimerContent() {
 
       </div>
 
+      {/* Floating session widget — bottom right */}
+      <div
+        className="fixed bottom-4 right-4 z-40 w-48 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
+        onPointerDown={sp}
+      >
+        {sessionStartTime ? (
+          <>
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+              <div className={cn(
+                "w-2 h-2 rounded-full shrink-0",
+                sessionPaused ? "bg-yellow-400" : "bg-green-500 animate-pulse"
+              )} />
+              <span className="font-mono text-sm font-medium">{fmtSession(sessionElapsed)}</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {solves.length} solve{solves.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex border-t border-border/50">
+              <button
+                className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+                onClick={sessionPaused ? resumeSession : pauseSession}
+                disabled={timingActive}
+              >
+                {sessionPaused ? "▶ Resume" : "⏸ Pause"}
+              </button>
+              <div className="w-px bg-border/50" />
+              <button
+                className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+                onClick={endSession}
+                disabled={timingActive || solves.length === 0}
+              >
+                End
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            className="w-full px-4 py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors text-left"
+            onClick={startSession}
+          >
+            {sessionSaved
+              ? <span className="text-green-400">Session saved!</span>
+              : "Start Session"
+            }
+          </button>
+        )}
+      </div>
+
       {showEndModal && sessionStartTime && (
         <EndSessionModal
           solves={solves}
           event={event}
           eventName={EVENTS.find((e) => e.id === event)?.name ?? event}
-          durationMinutes={(Date.now() - sessionStartTime) / 1000 / 60}
+          durationMinutes={(Date.now() - sessionStartTime - sessionPausedMsRef.current) / 1000 / 60}
           sessionStartMs={sessionStartTime}
           onClose={() => setShowEndModal(false)}
           onSaved={handleSessionSaved}
