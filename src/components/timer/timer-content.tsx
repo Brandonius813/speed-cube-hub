@@ -9,6 +9,7 @@ import { type Penalty, type TimerSolve as Solve, computeStat, bestStat } from "@
 import { SolveListPanel } from "@/components/timer/solve-list-panel"
 import { useBluetoothTimer, type BtTimerCallbacks } from "@/components/timer/use-bluetooth-timer"
 import { isBleSupported } from "@/lib/timer/bluetooth"
+import { EndSessionModal } from "@/components/timer/end-session-modal"
 
 type Phase = "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
 
@@ -77,6 +78,10 @@ export function TimerContent() {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
     return ["ao5", "ao12"]
   })
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
+  const [sessionElapsed, setSessionElapsed] = useState(0) // seconds elapsed in current session
+  const [showEndModal, setShowEndModal] = useState(false)
+  const [sessionSaved, setSessionSaved] = useState(false) // brief "Session saved!" flash
 
   const startRef = useRef(0)
   const rafRef = useRef(0)
@@ -140,6 +145,15 @@ export function TimerContent() {
     return () => cancelAnimationFrame(rafRef.current)
   }, [phase])
 
+  // Running session clock — ticks every second while a session is active
+  useEffect(() => {
+    if (!sessionStartTime) return
+    const interval = setInterval(() => {
+      setSessionElapsed(Math.floor((Date.now() - sessionStartTime) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [sessionStartTime])
+
   function addSolve(time_ms: number, penalty: Penalty) {
     setSolves((p) => [...p, { id: crypto.randomUUID(), time_ms, penalty, scramble: scrambleRef.current }])
     const s = generateScramble(eventRef.current)
@@ -147,6 +161,36 @@ export function TimerContent() {
     scrambleHistoryRef.current = [scrambleHistoryRef.current[scrambleIdxRef.current], s]
     goToScramble(1)
     setSelectedId(null)
+  }
+
+  function fmtSession(seconds: number): string {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, "0")}`
+  }
+
+  function startSession() {
+    if (solves.length > 0 && !confirm("Starting a new session will clear your current solves. Continue?")) return
+    setSolves([])
+    setPhase("idle")
+    setSessionStartTime(Date.now())
+    setSessionElapsed(0)
+    setSessionSaved(false)
+  }
+
+  function endSession() {
+    if (solves.length === 0) return
+    setShowEndModal(true)
+  }
+
+  function handleSessionSaved() {
+    setShowEndModal(false)
+    setSolves([])
+    setPhase("idle")
+    setSessionStartTime(null)
+    setSessionElapsed(0)
+    setSessionSaved(true)
+    setTimeout(() => setSessionSaved(false), 3000)
   }
 
   function startTimer() { setPhase("running"); setElapsed(0); startRef.current = performance.now() }
@@ -263,6 +307,7 @@ export function TimerContent() {
     if (solves.length > 0 && !confirm("Switching events will clear your current session. Continue?")) return
     cancelAnimationFrame(rafRef.current); insp.cancelInspection()
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
+    setSessionStartTime(null); setSessionElapsed(0); setShowEndModal(false)
   }
   function updateStatCol(idx: 0 | 1, key: string) {
     setStatCols((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
@@ -508,6 +553,43 @@ export function TimerContent() {
         </div>
       </div>
 
+      {/* Session controls bar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/20" onPointerDown={sp}>
+        {sessionStartTime ? (
+          <>
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span className="font-mono text-sm text-foreground">{fmtSession(sessionElapsed)}</span>
+              <span className="text-xs text-muted-foreground">
+                {solves.length} solve{solves.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <button
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors disabled:opacity-40"
+              onClick={endSession}
+              disabled={timingActive || solves.length === 0}
+            >
+              End Session
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="text-xs text-muted-foreground">
+              {sessionSaved
+                ? <span className="text-green-400">Session saved!</span>
+                : "Start a session to track and log your practice"
+              }
+            </div>
+            <button
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
+              onClick={startSession}
+            >
+              Start Session
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Body: left panel + timer */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
 
@@ -566,6 +648,18 @@ export function TimerContent() {
         <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
 
       </div>
+
+      {showEndModal && sessionStartTime && (
+        <EndSessionModal
+          solves={solves}
+          event={event}
+          eventName={EVENTS.find((e) => e.id === event)?.name ?? event}
+          durationMinutes={(Date.now() - sessionStartTime) / 1000 / 60}
+          sessionStartMs={sessionStartTime}
+          onClose={() => setShowEndModal(false)}
+          onSaved={handleSessionSaved}
+        />
+      )}
     </div>
   )
 }
