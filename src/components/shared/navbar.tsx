@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Box, Rss, Search, Timer, Trophy, User } from "lucide-react"
+import { Box, ClipboardList, Rss, Search, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -143,17 +143,17 @@ export function Navbar() {
 
         {isLoggedIn ? (
           <div className="flex items-center gap-2 sm:gap-6">
-            <Link href="/log">
+            <Link href="/timer">
               <Button
                 size="sm"
                 className="bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:text-base"
               >
-                Log Session
+                Timer
               </Button>
             </Link>
-            <Link href="/timer" className={navLinkClass("/timer")} aria-label="Timer">
-              <Timer className={cn(navIconClass("/timer"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/timer") && "border-b-2 border-primary pb-0.5")}>Timer</span>
+            <Link href="/log" className={navLinkClass("/log")} aria-label="Log Session">
+              <ClipboardList className={cn(navIconClass("/log"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/log") && "border-b-2 border-primary pb-0.5")}>Log Session</span>
             </Link>
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
