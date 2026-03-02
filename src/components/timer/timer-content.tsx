@@ -31,10 +31,21 @@ function fmtSolve(s: Solve): string {
   return fmt(ms, 3) + (s.penalty === "+2" ? "+" : "")
 }
 
-// Accepts plain digits (e.g. "1234" → 12.34s) or decimals ("12.34" → 12.34s).
-// Strips non-digits, then reads right-to-left: last 2 digits = centiseconds,
+// Accepts plain digits (e.g. "1234" → 12.34s) or M:SS / M:SS.cc format.
+// If input contains a colon, parses explicitly as minutes:seconds[.centiseconds].
+// Otherwise strips non-digits and reads right-to-left: last 2 = centiseconds,
 // next 2 = seconds, remainder = minutes.
 function parseTime(raw: string): number | null {
+  if (raw.includes(":")) {
+    const colonMatch = raw.trim().match(/^(\d+):(\d{1,2})(?:[.,](\d{1,2}))?$/)
+    if (!colonMatch) return null
+    const mins = parseInt(colonMatch[1], 10)
+    const secs = parseInt(colonMatch[2], 10)
+    const cs = parseInt((colonMatch[3] ?? "0").padEnd(2, "0"), 10)
+    if (secs >= 60) return null
+    const ms = (mins * 60 + secs) * 1000 + cs * 10
+    return ms > 0 ? ms : null
+  }
   const digits = raw.replace(/\D/g, "")
   if (!digits) return null
   const padded = digits.padStart(3, "0")
@@ -242,7 +253,7 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <p className="flex-1 min-w-0 text-center text-base sm:text-lg font-mono font-bold text-white leading-snug line-clamp-2">
+        <p className="flex-1 min-w-0 text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug line-clamp-2">
           {scramble}
         </p>
         <div className="flex gap-2 shrink-0">
