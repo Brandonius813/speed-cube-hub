@@ -705,3 +705,24 @@ T157:
 **Learnings:** The preview text `<p>` under the input was shifting the entire typing block upward because the parent centering included both elements. Absolute positioning removes it from the flow entirely.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Scramble & Display Fixes
+
+**Task:** Ad-hoc (timer scramble fixes)
+**Status:** Done — pushed to dev (commit 882c6e5)
+
+**What was done:**
+- Removed `line-clamp-2` from scramble display — scrambles now expand naturally for long events (7x7, Megaminx)
+- Changed top bar to `items-start` so event dropdown and settings gear stay anchored at top as scramble grows
+- Discovered `cstimer_module` npm package returns `""` for 5x5, 6x6, 7x7, and Megaminx — not implemented
+- Added custom `generateFallbackScramble()` in `src/lib/timer/scrambles.ts` with WCA-correct random-move scramblers for all four events
+- Cleaned up polling/retry logic since fallback always returns immediately
+
+**Key finding for future sessions:**
+- `cstimer_module` does NOT support: 555wca, 666wca, 777wca, mgmp — returns "" every time
+- All other WCA events (3x3, 2x2, 4x4, 3BLD, Pyram, Skewb, Clock, SQ-1) work fine
+- WCA uses random-move for 6x6 and 7x7 in competition anyway, so fallback is correct
+
+**Files touched:** `src/lib/timer/scrambles.ts`, `src/components/timer/timer-content.tsx`
