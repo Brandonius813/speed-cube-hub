@@ -10,6 +10,8 @@ export type LeaderboardCategory =
   | "sor"
   | "kinch"
 
+export type TimePeriod = "all_time" | "daily" | "weekly"
+
 export type LeaderboardPage = {
   entries: LeaderboardEntry[]
   totalCount: number
@@ -17,6 +19,9 @@ export type LeaderboardPage = {
 
 const PAGE_SIZE = 50
 const FIND_ME_WINDOW = 25
+
+/** Categories that support daily/weekly time periods */
+export const TIMED_CATEGORIES: LeaderboardCategory[] = ["most_solves", "most_practice_time"]
 
 /**
  * Get user IDs that a given user follows (+ self).
@@ -32,17 +37,50 @@ async function getFriendUserIds(userId: string): Promise<string[]> {
   return ids
 }
 
-// Map category → RPC function name
-const LEADERBOARD_RPC: Record<string, string> = {
-  most_solves: "get_leaderboard_most_solves",
-  longest_streak: "get_leaderboard_longest_streak",
-  most_practice_time: "get_leaderboard_most_practice_time",
+// Map category + timePeriod → RPC function name
+const LEADERBOARD_RPC: Record<string, Record<TimePeriod, string>> = {
+  most_solves: {
+    all_time: "get_leaderboard_most_solves",
+    daily: "get_leaderboard_daily_solves",
+    weekly: "get_leaderboard_weekly_solves",
+  },
+  most_practice_time: {
+    all_time: "get_leaderboard_most_practice_time",
+    daily: "get_leaderboard_daily_practice_time",
+    weekly: "get_leaderboard_weekly_practice_time",
+  },
 }
 
-const RANK_RPC: Record<string, string> = {
-  most_solves: "get_user_rank_most_solves",
+// Non-timed categories use a flat RPC name
+const FLAT_LEADERBOARD_RPC: Record<string, string> = {
+  longest_streak: "get_leaderboard_longest_streak",
+}
+
+const RANK_RPC: Record<string, Record<TimePeriod, string>> = {
+  most_solves: {
+    all_time: "get_user_rank_most_solves",
+    daily: "get_user_rank_daily_solves",
+    weekly: "get_user_rank_weekly_solves",
+  },
+  most_practice_time: {
+    all_time: "get_user_rank_most_practice_time",
+    daily: "get_user_rank_daily_practice_time",
+    weekly: "get_user_rank_weekly_practice_time",
+  },
+}
+
+const FLAT_RANK_RPC: Record<string, string> = {
   longest_streak: "get_user_rank_longest_streak",
-  most_practice_time: "get_user_rank_most_practice_time",
+}
+
+function getRpcName(category: LeaderboardCategory, timePeriod: TimePeriod): string | null {
+  if (LEADERBOARD_RPC[category]) return LEADERBOARD_RPC[category][timePeriod]
+  return FLAT_LEADERBOARD_RPC[category] ?? null
+}
+
+function getRankRpcName(category: LeaderboardCategory, timePeriod: TimePeriod): string | null {
+  if (RANK_RPC[category]) return RANK_RPC[category][timePeriod]
+  return FLAT_RANK_RPC[category] ?? null
 }
 
 /**
@@ -55,9 +93,10 @@ export async function getLeaderboard(
   friendsOnly?: boolean,
   userId?: string,
   offset: number = 0,
-  limit: number = PAGE_SIZE
+  limit: number = PAGE_SIZE,
+  timePeriod: TimePeriod = "all_time"
 ): Promise<LeaderboardPage> {
-  const rpcName = LEADERBOARD_RPC[category]
+  const rpcName = getRpcName(category, timePeriod)
   if (!rpcName) return { entries: [], totalCount: 0 }
 
   const supabase = await createClient()
@@ -129,13 +168,14 @@ export async function getAllLeaderboards(): Promise<
 export async function getUserLeaderboardPosition(
   category: LeaderboardCategory,
   userId: string,
-  friendsOnly?: boolean
+  friendsOnly?: boolean,
+  timePeriod: TimePeriod = "all_time"
 ): Promise<{
   entries: LeaderboardEntry[]
   userRank: number
   totalCount: number
 } | null> {
-  const rankRpcName = RANK_RPC[category]
+  const rankRpcName = getRankRpcName(category, timePeriod)
   if (!rankRpcName) return null
 
   const supabase = await createClient()
@@ -163,7 +203,8 @@ export async function getUserLeaderboardPosition(
     friendsOnly,
     userId,
     start,
-    windowSize
+    windowSize,
+    timePeriod
   )
 
   return { entries, userRank, totalCount }

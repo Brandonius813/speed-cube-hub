@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button"
 import {
   getLeaderboard,
   getUserLeaderboardPosition,
+  TIMED_CATEGORIES,
 } from "@/lib/actions/leaderboards"
 import type {
   LeaderboardCategory,
   LeaderboardPage,
+  TimePeriod,
 } from "@/lib/actions/leaderboards"
 import {
   getSorKinchLeaderboard,
@@ -78,6 +80,7 @@ export function LeaderboardsContent({
   const [practiceCache, setPracticeCache] =
     useState<Record<string, LeaderboardPage>>(initialData)
   const [category, setCategory] = useState<LeaderboardCategory>("most_solves")
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all_time")
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -100,8 +103,9 @@ export function LeaderboardsContent({
 
   const isWca = isWcaCategory(category)
 
-  // Cache keys
-  const practiceKey = `${friendsOnly ? "following:" : ""}${category}`
+  // Cache keys — include timePeriod for timed categories
+  const effectiveTimePeriod = TIMED_CATEGORIES.includes(category) ? timePeriod : "all_time"
+  const practiceKey = `${friendsOnly ? "following:" : ""}${category}:${effectiveTimePeriod}`
 
   // Kinch is one combined score — don't include sorKinchType in its cache key
   const wcaKey = category === "kinch"
@@ -147,12 +151,15 @@ export function LeaderboardsContent({
       const data = await getLeaderboard(
         category,
         friendsOnly,
-        userId ?? undefined
+        userId ?? undefined,
+        0,
+        50,
+        effectiveTimePeriod
       )
       setPracticeCache((prev) => ({ ...prev, [practiceKey]: data }))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [practiceKey, category, friendsOnly, userId, isWca])
+  }, [practiceKey, category, friendsOnly, userId, isWca, effectiveTimePeriod])
 
   // Fetch WCA data when cache misses
   useEffect(() => {
@@ -173,7 +180,7 @@ export function LeaderboardsContent({
 
   useEffect(() => {
     setViewingMyRank(false); setPracticeMyRank(null); setWcaMyRank(null); setFindMeNoData(false)
-  }, [category, friendsOnly, sorKinchType, region])
+  }, [category, friendsOnly, timePeriod, sorKinchType, region])
 
   const handleLoadMore = () => {
     if (isWca) {
@@ -201,7 +208,9 @@ export function LeaderboardsContent({
           category,
           friendsOnly,
           userId ?? undefined,
-          currentPracticePage.entries.length
+          currentPracticePage.entries.length,
+          50,
+          effectiveTimePeriod
         )
         setPracticeCache((prev) => ({
           ...prev,
@@ -243,7 +252,8 @@ export function LeaderboardsContent({
         const result = await getUserLeaderboardPosition(
           category,
           userId,
-          friendsOnly
+          friendsOnly,
+          effectiveTimePeriod
         )
         if (result) {
           setPracticeMyRank(result)
@@ -292,6 +302,8 @@ export function LeaderboardsContent({
         friendsOnly={friendsOnly}
         setFriendsOnly={setFriendsOnly}
         userId={userId}
+        timePeriod={timePeriod}
+        setTimePeriod={setTimePeriod}
         sorKinchType={sorKinchType}
         setSorKinchType={setSorKinchType}
         region={region}

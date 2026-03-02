@@ -1,8 +1,9 @@
 "use client"
 
-import { Loader2, MapPin, ArrowUp } from "lucide-react"
+import { Loader2, MapPin, ArrowUp, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { LeaderboardCategory } from "@/lib/actions/leaderboards"
+import type { LeaderboardCategory, TimePeriod } from "@/lib/actions/leaderboards"
+import { TIMED_CATEGORIES } from "@/lib/actions/leaderboards"
 import type { SorKinchType, WcaCountry } from "@/lib/actions/sor-kinch"
 import { RegionFilter } from "@/components/leaderboards/region-filter"
 import type { RegionSelection } from "@/components/leaderboards/region-filter"
@@ -20,6 +21,12 @@ const WCA_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
 
 export const ALL_CATEGORIES = [...PRACTICE_CATEGORIES, ...WCA_CATEGORIES]
 
+const TIME_PERIODS: { id: TimePeriod; label: string }[] = [
+  { id: "all_time", label: "All Time" },
+  { id: "weekly", label: "This Week" },
+  { id: "daily", label: "Today" },
+]
+
 export function LeaderboardControls({
   category,
   setCategory,
@@ -27,6 +34,8 @@ export function LeaderboardControls({
   friendsOnly,
   setFriendsOnly,
   userId,
+  timePeriod,
+  setTimePeriod,
   sorKinchType,
   setSorKinchType,
   region,
@@ -45,6 +54,8 @@ export function LeaderboardControls({
   friendsOnly: boolean
   setFriendsOnly: (f: boolean) => void
   userId: string | null
+  timePeriod: TimePeriod
+  setTimePeriod: (t: TimePeriod) => void
   sorKinchType: SorKinchType
   setSorKinchType: (t: SorKinchType) => void
   region: RegionSelection
@@ -57,6 +68,9 @@ export function LeaderboardControls({
   isFindingMe: boolean
   userWcaId?: string | null
 }) {
+  const isTimedCategory = TIMED_CATEGORIES.includes(category)
+  const showTimePeriod = !isWca && isTimedCategory
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
@@ -105,6 +119,34 @@ export function LeaderboardControls({
           </div>
         )}
       </div>
+
+      {/* Time period row — only for Most Solves and Practice Time */}
+      {showTimePeriod && (
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-full bg-muted/50 p-0.5">
+            {TIME_PERIODS.map((tp) => (
+              <button
+                key={tp.id}
+                type="button"
+                onClick={() => setTimePeriod(tp.id)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  timePeriod === tp.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tp.label}
+              </button>
+            ))}
+          </div>
+          {timePeriod !== "all_time" && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              Pacific Time
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Second row: filters + Find Me */}
       <div className="flex items-center justify-between gap-3">

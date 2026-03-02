@@ -59,16 +59,25 @@ function parseTime(raw: string): number | null {
 }
 
 export function TimerContent() {
-  const [event, setEvent] = useState("333")
+  const [event, setEvent] = useState(() => {
+    try { return localStorage.getItem("timer-event") ?? "333" } catch { return "333" }
+  })
   const [scramble, setScramble] = useState("")
-  const [solves, setSolves] = useState<Solve[]>([])
+  const [solves, setSolves] = useState<Solve[]>(() => {
+    try { const s = localStorage.getItem("timer-solves"); if (s) return JSON.parse(s) } catch {}
+    return []
+  })
   const [phase, setPhase] = useState<Phase>("idle")
   const [elapsed, setElapsed] = useState(0)
-  const [inspOn, setInspOn] = useState(false)
+  const [inspOn, setInspOn] = useState(() => {
+    try { return localStorage.getItem("timer-insp-on") === "true" } catch { return false }
+  })
   const [btReset, setBtReset] = useState(false)
   const [btHandsOnMat, setBtHandsOnMat] = useState(false) // hands placed on mat during BT inspection
   const [btArmed, setBtArmed] = useState(false)           // hardware armed (GET_SET fired) during inspection
-  const [typing, setTyping] = useState(false)
+  const [typing, setTyping] = useState(() => {
+    try { return localStorage.getItem("timer-typing") === "true" } catch { return false }
+  })
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
@@ -78,7 +87,9 @@ export function TimerContent() {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
     return ["ao5", "ao12"]
   })
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
+    try { const s = localStorage.getItem("timer-session-start"); return s ? Number(s) : null } catch { return null }
+  })
   const [sessionElapsed, setSessionElapsed] = useState(0) // seconds elapsed in current session
   const [sessionPaused, setSessionPaused] = useState(false)
   const [showEndModal, setShowEndModal] = useState(false)
@@ -98,7 +109,9 @@ export function TimerContent() {
   const settingsRef = useRef<HTMLDivElement>(null)
   const scrambleHistoryRef = useRef<string[]>([])
   const scrambleIdxRef = useRef(0)
-  const sessionPausedMsRef = useRef(0)  // accumulated milliseconds spent paused
+  const sessionPausedMsRef = useRef<number>((() => {
+    try { return Number(localStorage.getItem("timer-session-paused-ms") ?? 0) } catch { return 0 }
+  })())  // accumulated milliseconds spent paused
   const pausedAtRef = useRef<number | null>(null) // timestamp when current pause began
 
   const insp = useInspection({ voice: true })
@@ -148,6 +161,18 @@ export function TimerContent() {
     return () => cancelAnimationFrame(rafRef.current)
   }, [phase])
 
+  // Persist solves and session start to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem("timer-solves", JSON.stringify(solves)) } catch {}
+  }, [solves])
+
+  useEffect(() => {
+    try {
+      if (sessionStartTime !== null) localStorage.setItem("timer-session-start", String(sessionStartTime))
+      else localStorage.removeItem("timer-session-start")
+    } catch {}
+  }, [sessionStartTime])
+
   // Running session clock — ticks every second; pauses when sessionPaused is true
   useEffect(() => {
     if (!sessionStartTime || sessionPaused) return
@@ -182,17 +207,20 @@ export function TimerContent() {
     setSessionSaved(false)
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
+    try { localStorage.removeItem("timer-session-paused-ms") } catch {}
   }
 
   function pauseSession() {
     pausedAtRef.current = Date.now()
     setSessionPaused(true)
+    try { localStorage.setItem("timer-session-paused-ms", String(sessionPausedMsRef.current)) } catch {}
   }
 
   function resumeSession() {
     if (pausedAtRef.current !== null) {
       sessionPausedMsRef.current += Date.now() - pausedAtRef.current
       pausedAtRef.current = null
+      try { localStorage.setItem("timer-session-paused-ms", String(sessionPausedMsRef.current)) } catch {}
     }
     setSessionPaused(false)
   }
@@ -218,6 +246,7 @@ export function TimerContent() {
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
     setTimeout(() => setSessionSaved(false), 3000)
+    try { localStorage.removeItem("timer-session-paused-ms") } catch {}
   }
 
   function startTimer() { setPhase("running"); setElapsed(0); startRef.current = performance.now() }
@@ -336,6 +365,7 @@ export function TimerContent() {
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
     setSessionStartTime(null); setSessionElapsed(0); setSessionPaused(false); setShowEndModal(false)
     sessionPausedMsRef.current = 0; pausedAtRef.current = null
+    try { localStorage.setItem("timer-event", newEvent); localStorage.removeItem("timer-session-paused-ms") } catch {}
   }
   function updateStatCol(idx: 0 | 1, key: string) {
     setStatCols((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
@@ -541,7 +571,7 @@ export function TimerContent() {
               <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
-                  onClick={() => setTyping((t) => !t)}
+                  onClick={() => setTyping((t) => { const next = !t; try { localStorage.setItem("timer-typing", String(next)) } catch {} return next })}
                 >
                   <span className="text-foreground">⌨ Typing Mode</span>
                   <span className={cn("font-mono text-[12px]", typing ? "text-primary font-medium" : "text-muted-foreground")}>
@@ -550,7 +580,7 @@ export function TimerContent() {
                 </button>
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  onClick={() => setInspOn((v) => !v)}
+                  onClick={() => setInspOn((v) => { const next = !v; try { localStorage.setItem("timer-insp-on", String(next)) } catch {} return next })}
                   disabled={typing}
                 >
                   <span className="text-foreground">⏱ Inspection</span>
