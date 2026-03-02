@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { Settings } from "lucide-react"
 import { generateScramble } from "@/lib/timer/scrambles"
 import { useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
@@ -67,6 +68,7 @@ export function TimerContent() {
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
+  const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
@@ -85,6 +87,8 @@ export function TimerContent() {
   const tapToInspectRef = useRef(false) // true when a tap from idle/stopped should start inspection on release
   const btConnectedRef = useRef(false)  // mirrors btStatus === "connected"; read in keydown without re-subscribing
   const settingsRef = useRef<HTMLDivElement>(null)
+  const scrambleHistoryRef = useRef<string[]>([])
+  const scrambleIdxRef = useRef(0)
 
   const insp = useInspection({ voice: true })
 
@@ -94,7 +98,36 @@ export function TimerContent() {
   inspOnRef.current = inspOn
   inspRef.current = insp
 
-  useEffect(() => { setScramble(generateScramble(event)) }, [event])
+  function goToScramble(idx: number) {
+    scrambleIdxRef.current = idx
+    setScramble(scrambleHistoryRef.current[idx])
+    setScrambleCanGoPrev(idx > 0)
+  }
+
+  function resetScrambleHistory(s: string) {
+    scrambleHistoryRef.current = [s]
+    scrambleIdxRef.current = 0
+    setScramble(s)
+    setScrambleCanGoPrev(false)
+  }
+
+  function nextScramble() {
+    const h = scrambleHistoryRef.current
+    const idx = scrambleIdxRef.current
+    if (idx < h.length - 1) {
+      goToScramble(idx + 1)
+    } else {
+      h.push(generateScramble(event))
+      goToScramble(h.length - 1)
+    }
+  }
+
+  function prevScramble() {
+    if (scrambleIdxRef.current > 0) goToScramble(scrambleIdxRef.current - 1)
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { resetScrambleHistory(generateScramble(event)) }, [event])
 
   useEffect(() => {
     if (phase !== "running") return
@@ -105,7 +138,10 @@ export function TimerContent() {
 
   function addSolve(time_ms: number, penalty: Penalty) {
     setSolves((p) => [...p, { id: crypto.randomUUID(), time_ms, penalty, scramble: scrambleRef.current }])
-    setScramble(generateScramble(eventRef.current))
+    const s = generateScramble(eventRef.current)
+    const idx = scrambleIdxRef.current
+    scrambleHistoryRef.current = [...scrambleHistoryRef.current.slice(0, idx + 1), s]
+    goToScramble(idx + 1)
     setSelectedId(null)
   }
 
@@ -304,70 +340,96 @@ export function TimerContent() {
     "text-foreground"
 
   const sp = (e: React.PointerEvent) => e.stopPropagation()
-  const tog = (base: string, active: boolean) =>
-    cn(base, active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")
+  const timingActive = phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"
+  const scrambleNavBtn = "text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
 
   return (
     <div
       className="flex flex-col min-h-screen bg-background select-none"
     >
       {/* Top bar — full width */}
-      <div className="relative flex items-start px-4 py-4 gap-3 border-b border-border" onPointerDown={sp}>
-        {/* Settings gear — opens dropdown */}
-        <div ref={settingsRef} className="relative shrink-0">
-          <button
-            className={tog("text-sm px-2 py-1.5 rounded border transition-colors", settingsOpen)}
-            onClick={() => setSettingsOpen((v) => !v)}
-            title="Timer settings"
-          >⚙</button>
-          {settingsOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-md p-3 z-50 w-52 shadow-lg" onPointerDown={sp}>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">Input Mode</p>
-                  <div className="flex gap-1">
-                    <button
-                      className={tog("text-xs px-2 py-1 rounded border transition-colors flex-1", !typing && btStatus !== "connected")}
-                      onClick={() => { setTyping(false); if (btStatus === "connected") btDisconnect() }}
-                    >Space</button>
-                    <button
-                      className={tog("text-xs px-2 py-1 rounded border transition-colors flex-1", typing)}
-                      onClick={() => { setTyping(true); if (btStatus === "connected") btDisconnect() }}
-                    >Type</button>
-                    {isBleSupported() && (
-                      <button
-                        className={tog("text-xs px-2 py-1 rounded border transition-colors flex-1", btStatus === "connected")}
-                        onClick={() => { setTyping(false); btStatus === "connected" ? btDisconnect() : btConnect() }}
-                        disabled={btStatus === "connecting"}
-                      >{btStatus === "connecting" ? "…" : btStatus === "connected" ? "BT ●" : "BT"}</button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">Inspection</p>
+      <div className="relative border-b border-border px-4" onPointerDown={sp}>
+        {/* Row 1: event selector (left) + scramble nav + settings gear (right) */}
+        <div className="flex items-center justify-between py-3 gap-3">
+          <select
+            className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
+            value={event}
+            onChange={(e) => changeEvent(e.target.value)}
+          >
+            {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+          </select>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              className={scrambleNavBtn}
+              onClick={prevScramble}
+              disabled={!scrambleCanGoPrev || timingActive}
+              title="Go back to previous scramble"
+            >
+              ← Prev
+            </button>
+            <button
+              className={scrambleNavBtn}
+              onClick={nextScramble}
+              disabled={timingActive}
+              title="Skip to next scramble"
+            >
+              Next →
+            </button>
+            <div className="relative" ref={settingsRef}>
+              <button
+                className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setSettingsOpen((v) => !v)}
+                title="Timer settings"
+              >
+                <Settings size={14} />
+              </button>
+              {settingsOpen && (
+                <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
                   <button
-                    className={tog("text-xs px-3 py-1 rounded border transition-colors", inspOn && !typing && btStatus !== "connected")}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                    onClick={() => setTyping((t) => !t)}
+                  >
+                    <span className="text-foreground">⌨ Typing Mode</span>
+                    <span className={typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                      {typing ? "On" : "Off"}
+                    </span>
+                  </button>
+                  <button
+                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     onClick={() => setInspOn((v) => !v)}
-                    disabled={typing || btStatus === "connected"}
-                  >{inspOn ? "On" : "Off"}</button>
-                  {(typing || btStatus === "connected") && (
-                    <p className="text-xs text-muted-foreground mt-1 opacity-60">Not available in this mode</p>
+                    disabled={typing}
+                  >
+                    <span className="text-foreground">⏱ Inspection</span>
+                    <span className={inspOn && !typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                      {inspOn ? "On" : "Off"}
+                    </span>
+                  </button>
+                  {isBleSupported() && (
+                    <>
+                      <div className="my-1 border-t border-border" />
+                      <button
+                        className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={btStatus === "connected" ? btDisconnect : btConnect}
+                        disabled={btStatus === "connecting"}
+                        onPointerDown={sp}
+                        title={btStatus === "connected" ? "Disconnect Bluetooth timer" : "Connect GAN Halo via Bluetooth"}
+                      >
+                        <span className="text-foreground">🔵 Bluetooth</span>
+                        <span className={btStatus === "connected" ? "text-primary font-medium" : "text-muted-foreground"}>
+                          {btStatus === "connecting" ? "Connecting…" : btStatus === "connected" ? "Connected" : "Disconnected"}
+                        </span>
+                      </button>
+                    </>
                   )}
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-        <select
-          className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
-          value={event}
-          onChange={(e) => changeEvent(e.target.value)}
-        >
-          {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-        </select>
-        <div className="flex-1 min-w-0 flex items-center justify-center">
+        {/* Row 2: scramble — true horizontal center */}
+        <div className="pb-3 text-center">
           <button
-            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer min-w-0"
+            className="font-mono text-lg sm:text-xl font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer"
             onClick={() => {
               navigator.clipboard.writeText(scramble).then(() => {
                 setScrambleCopied(true)
@@ -388,12 +450,6 @@ export function TimerContent() {
         >
           Scramble copied!
         </span>
-        <button
-          className="text-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-          onClick={() => setScramble(generateScramble(event))}
-          disabled={phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"}
-          title="New scramble"
-        >↺</button>
       </div>
 
       {/* Body: left panel + timer */}
