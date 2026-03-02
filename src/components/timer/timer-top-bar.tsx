@@ -129,7 +129,8 @@ export function TimerTopBar({
 
   return (
     <>
-      <div className="relative z-50 flex items-center justify-between px-3 py-2 border-b border-border/50">
+      <div className="relative z-50 border-b border-border/50">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <SessionSelector
             sessions={sessions}
@@ -255,15 +256,14 @@ export function TimerTopBar({
         </div>
       </div>
 
-      {/* Scramble row */}
-      <div className="border-b border-border/50">
-        <ScrambleDisplay
-          scramble={scramble}
-          event={event}
-          isManualScramble={isManualScramble}
-          onManualScramble={onManualScramble}
-          onClearManualScramble={onClearManualScramble}
-        />
+      {/* Scramble row — inside the top bar */}
+      <ScrambleDisplay
+        scramble={scramble}
+        event={event}
+        isManualScramble={isManualScramble}
+        onManualScramble={onManualScramble}
+        onClearManualScramble={onClearManualScramble}
+      />
       </div>
 
       {saveError && (
