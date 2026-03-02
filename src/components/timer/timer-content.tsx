@@ -69,7 +69,7 @@ export function TimerContent() {
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showColSettings, setShowColSettings] = useState(false)
+  const [editingCol, setEditingCol] = useState<0 | 1 | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
@@ -338,28 +338,26 @@ export function TimerContent() {
                 <tr className="text-muted-foreground border-b border-border">
                   <th className="text-right pr-1.5 py-1.5 w-7 font-normal">#</th>
                   <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
-                  <th className="text-right pr-1.5 py-1.5 font-normal">
-                    <button className="hover:text-foreground transition-colors" title="Click to change" onClick={() => setShowColSettings((v) => !v)}>{statCols[0]}</button>
-                  </th>
-                  <th className="text-right pr-2 py-1.5 font-normal">
-                    <button className="hover:text-foreground transition-colors" title="Click to change" onClick={() => setShowColSettings((v) => !v)}>{statCols[1]}</button>
-                  </th>
+                  {([0, 1] as const).map((idx) => (
+                    <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
+                      {editingCol === idx ? (
+                        <select
+                          autoFocus
+                          className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground text-right"
+                          value={statCols[idx]}
+                          onChange={(e) => { updateStatCol(idx, e.target.value); setEditingCol(null) }}
+                          onBlur={() => setEditingCol(null)}
+                        >
+                          {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <button className="w-full text-right hover:text-foreground transition-colors" title="Click to change" onClick={() => setEditingCol(idx)}>
+                          {statCols[idx]}
+                        </button>
+                      )}
+                    </th>
+                  ))}
                 </tr>
-                {showColSettings && (
-                  <tr className="border-b border-border bg-muted/40">
-                    <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-[10px]">columns:</td>
-                    <td className="py-1 pr-1">
-                      <select className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground" value={statCols[0]} onChange={(e) => { updateStatCol(0, e.target.value); setShowColSettings(false) }}>
-                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </td>
-                    <td className="py-1 pr-2">
-                      <select className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground" value={statCols[1]} onChange={(e) => { updateStatCol(1, e.target.value); setShowColSettings(false) }}>
-                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                )}
               </thead>
               <tbody>
                 {[...solves].reverse().map((s, i) => {
