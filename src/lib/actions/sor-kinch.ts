@@ -1,7 +1,19 @@
 "use server"
 
 import { unstable_cache } from "next/cache"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
+
+/**
+ * Cookie-free Supabase client for public read-only queries.
+ * Required inside unstable_cache callbacks — cookies() cannot be called there.
+ */
+function createPublicClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 export type SorKinchCategory = "sor" | "kinch"
 export type SorKinchType = "single" | "average"
@@ -98,7 +110,7 @@ async function fetchSorKinchLeaderboard(
   offset: number,
   limit: number
 ): Promise<WcaLeaderboardPage> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const isSor = category === "sor"
   const column = isSor ? getSorColumn(type, region) : getKinchColumn()
@@ -318,7 +330,7 @@ export async function getUserSorKinchStats(
  */
 export const getWcaCountries = unstable_cache(
   async (): Promise<WcaCountry[]> => {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const { data } = await supabase
       .from("wca_countries")
       .select("id, name, continent_id")
