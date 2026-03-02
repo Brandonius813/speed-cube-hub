@@ -677,3 +677,31 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** None new
 **Blockers:** None
 **Warnings:** T154 owns timer-content.tsx for its core changes — but `onUnarchive`/`handleManagerUnarchive` and `unarchiveSolveSession` import are already wired in. T154 should NOT re-add these. The deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) are still passed from timer-content.tsx but ignored by session-manager — T154 can clean those up as part of its work.
+
+---
+
+### 2026-03-02 PT — Timer Overhaul Session (T153 + T159)
+
+**Task:** T153 (FloatingPanel shared component) + T159 (Simplify Manage Sessions)
+**Status:** Both complete.
+
+**T153 — FloatingPanel:**
+- Created `src/components/timer/floating-panel.tsx` — shared floating panel used by T155 (charts) and T156 (analyzers)
+- Props: `position: "bottom-left" | "bottom-right"`, `title`, `onClose`, `children`, `className?`
+- Style: `fixed bottom-20 z-40`, `bg-card border-border rounded-xl shadow-lg`, `max-h-[60vh]` scrollable content, dismissable X
+- T155 and T156 are now unblocked
+
+**T159 — Session Manager Simplification:**
+- `session-manager.tsx`: removed 5 of 7 action buttons per session row (Eye, RotateCcw, Merge, Scissors, Trash)
+- Kept: Pencil (rename), Archive/Hide (EyeOff icon, tooltip: "Hides this session. Your times are not deleted."), X (delete, red, with confirmation dialog)
+- Added: `onUnarchive?` prop; archived sessions shown in collapsible "Show archived (N)" section at bottom; archived rows have Restore (Eye) + X
+- Delete confirmation shows solve count: "permanently delete all N solves in this session"
+- `timer-content.tsx`: removed deprecated props from SessionManager call site, deduplicated `handleManagerUnarchive` function
+- Deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) are still optional in the type for call-site safety — T154 agent can remove the unused handlers from timer-content.tsx
+- TypeScript: clean (only pre-existing revalidate-wca error)
+
+**Files touched:** `src/components/timer/floating-panel.tsx` (new), `src/components/timer/session-manager.tsx`, `src/components/timer/timer-content.tsx`
+**Blockers:** None
+**Warnings:**
+- T153 (FloatingPanel) was already committed by a previous implicit session — this session refined the styling (`bg-card/border-border`, `max-h-[60vh] overflow-y-auto`)
+- T154 agent (timer-content.tsx owner) should clean up the unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` — these still exist in timer-content.tsx but are no longer called
