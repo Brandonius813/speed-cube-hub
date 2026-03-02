@@ -660,3 +660,18 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** The "hidden input + fake display" pattern is fragile — focus transfer fails on mobile and can break on desktop too. Prefer making the visible element the actual input.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Scramble UI Simplification Session
+
+**Task:** General work — Timer scramble toolbar simplification (user-driven)
+**Status:** Completed three rounds of timer UI cleanup per user requests:
+1. **Removed custom scramble editing** — pencil button, X (clear manual) button, `setManualScramble()` function, `isManualScramble` state, click-to-edit behavior on scramble text.
+2. **Removed play/animator button** — `ScrambleAnimator` component no longer rendered or imported from `scramble-display.tsx`.
+3. **Removed copy button** — Replaced with click-to-copy on scramble text itself (green flash + checkmark on success).
+4. **Removed scramble settings gear** — Font toggle and compact mode removed entirely. Scramble Size option moved to the main TimerSettings modal. State lifted from `scramble-display.tsx` → `timer-content.tsx`, threaded through `timer-top-bar.tsx` and `timer-settings.tsx`.
+**Files touched:** src/components/timer/scramble-display.tsx, src/components/timer/timer-top-bar.tsx, src/components/timer/timer-content.tsx, src/components/timer/timer-settings.tsx, src/lib/timer/use-timer-scramble.ts
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** Pre-existing TS error in `src/app/api/revalidate-wca/route.ts` (revalidateTag called with 1 arg) — not introduced here, does not affect runtime.
