@@ -1,7 +1,7 @@
 "use client"
 
 import { Settings, X } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -13,8 +13,6 @@ import {
 
 export type InputMode = "timer" | "typing" | "stackmat"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
-export type AutoBackupInterval = 0 | 10 | 25 | 50 | 100
-export const AUTO_BACKUP_OPTIONS: AutoBackupInterval[] = [0, 10, 25, 50, 100]
 
 export const PHASE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export type PhaseCount = (typeof PHASE_COUNT_OPTIONS)[number]
@@ -46,8 +44,6 @@ type TimerSettingsProps = {
   onSidebarPositionChange: (position: SidebarPosition) => void
   statIndicators: string
   onStatIndicatorsChange: (indicators: string) => void
-  autoBackupInterval?: AutoBackupInterval
-  onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
   phaseCount?: PhaseCount
   onPhaseCountChange?: (count: PhaseCount) => void
   phaseLabels?: string[]
@@ -80,8 +76,6 @@ export function TimerSettings({
   onSidebarPositionChange,
   statIndicators,
   onStatIndicatorsChange,
-  autoBackupInterval,
-  onAutoBackupIntervalChange,
   phaseCount = 1,
   onPhaseCountChange,
   phaseLabels,
@@ -93,48 +87,43 @@ export function TimerSettings({
   onStackmatDisconnect,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const popoverRef = useRef<HTMLDivElement>(null)
-
-  // Close popover on outside click
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [isOpen])
 
   return (
-    <div className="relative" ref={popoverRef}>
+    <>
       {/* Settings toggle button */}
       <Button
         variant="ghost"
         size="sm"
         className="h-9 w-9 p-0"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
       >
         <Settings className="h-4 w-4" />
       </Button>
 
-      {/* Settings popover — floats above content, never rearranges layout */}
+      {/* Full-screen settings modal */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-72 max-h-[80vh] overflow-y-auto bg-card border border-border rounded-lg shadow-lg z-50">
-          <div className="p-4 space-y-5">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Settings</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false) }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60" />
+
+          {/* Panel */}
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-card border border-border rounded-xl shadow-2xl">
+            <div className="p-5 space-y-5">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold">Settings</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
 
               {/* Mode toggle */}
               <div className="space-y-2">
@@ -247,7 +236,7 @@ export function TimerSettings({
                       className="text-xs"
                       onClick={() => onHoldDurationChange?.(ms)}
                     >
-                      {ms === 0 ? "None" : `${ms}ms`}
+                      {ms === 0 ? "None" : ms === 300 ? "Stackmat" : `${ms}ms`}
                     </Button>
                   ))}
                 </div>
@@ -389,31 +378,6 @@ export function TimerSettings({
                 />
               </div>
 
-              {/* Auto-backup */}
-              {onAutoBackupIntervalChange && (
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                    Auto-Backup
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Auto-download JSON backup every N solves
-                  </p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {AUTO_BACKUP_OPTIONS.map((n) => (
-                      <Button
-                        key={n}
-                        variant={autoBackupInterval === n ? "default" : "outline"}
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => onAutoBackupIntervalChange(n)}
-                      >
-                        {n === 0 ? "Off" : `${n}`}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Sidebar position */}
               <div className="space-y-2">
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
@@ -442,8 +406,9 @@ export function TimerSettings({
               </div>
             </div>
           </div>
+        </div>
       )}
-    </div>
+    </>
   )
 }
 

@@ -6,8 +6,8 @@ import { SessionSelector } from "@/components/timer/session-selector"
 import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
-import { SeedInput } from "@/components/timer/seed-input"
-import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
+import { ScrambleDisplay } from "@/components/timer/scramble-display"
+import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
@@ -47,10 +47,6 @@ export function TimerTopBar({
   caseFilter,
   onCaseFilterChange,
   trainingCstimerType,
-  autoBackupInterval,
-  onAutoBackupIntervalChange,
-  raceSeed,
-  onRaceSeedChange,
   phaseCount,
   onPhaseCountChange,
   phaseLabels,
@@ -60,6 +56,11 @@ export function TimerTopBar({
   stackmatError,
   onStackmatConnect,
   onStackmatDisconnect,
+  scramble,
+  event,
+  isManualScramble,
+  onManualScramble,
+  onClearManualScramble,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -96,10 +97,6 @@ export function TimerTopBar({
   caseFilter?: number[] | null
   onCaseFilterChange?: (cases: number[] | null) => void
   trainingCstimerType?: string
-  autoBackupInterval?: AutoBackupInterval
-  onAutoBackupIntervalChange?: (interval: AutoBackupInterval) => void
-  raceSeed?: string | null
-  onRaceSeedChange?: (seed: string | null) => void
   phaseCount?: PhaseCount
   onPhaseCountChange?: (count: PhaseCount) => void
   phaseLabels?: string[]
@@ -109,6 +106,11 @@ export function TimerTopBar({
   stackmatError?: string | null
   onStackmatConnect?: () => void
   onStackmatDisconnect?: () => void
+  scramble: string | null
+  event?: string
+  isManualScramble?: boolean
+  onManualScramble?: (scramble: string) => void
+  onClearManualScramble?: () => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -124,9 +126,10 @@ export function TimerTopBar({
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [showExport])
+
   return (
     <>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+      <div className="relative z-50 flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
           <SessionSelector
             sessions={sessions}
@@ -149,9 +152,6 @@ export function TimerTopBar({
               onSelectedCasesChange={onCaseFilterChange}
             />
           )}
-          {onRaceSeedChange && (
-            <SeedInput seed={raceSeed ?? null} onSeedChange={onRaceSeedChange} />
-          )}
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim
@@ -160,11 +160,6 @@ export function TimerTopBar({
           {phaseCount && phaseCount > 1 && (
             <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">
               {phaseCount}-Phase
-            </span>
-          )}
-          {inputMode === "typing" && (
-            <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
-              Typing
             </span>
           )}
           {inputMode === "stackmat" && (
@@ -247,8 +242,6 @@ export function TimerTopBar({
             onSidebarPositionChange={onSidebarPositionChange}
             statIndicators={statIndicators}
             onStatIndicatorsChange={onStatIndicatorsChange}
-            autoBackupInterval={autoBackupInterval}
-            onAutoBackupIntervalChange={onAutoBackupIntervalChange}
             phaseCount={phaseCount}
             onPhaseCountChange={onPhaseCountChange}
             phaseLabels={phaseLabels}
@@ -260,6 +253,17 @@ export function TimerTopBar({
             onStackmatDisconnect={onStackmatDisconnect}
           />
         </div>
+      </div>
+
+      {/* Scramble row */}
+      <div className="border-b border-border/50">
+        <ScrambleDisplay
+          scramble={scramble}
+          event={event}
+          isManualScramble={isManualScramble}
+          onManualScramble={onManualScramble}
+          onClearManualScramble={onClearManualScramble}
+        />
       </div>
 
       {saveError && (

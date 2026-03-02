@@ -68,7 +68,7 @@ function decodeMbldKinchScore(wcaValue) {
   return points + Math.max(0, (3600 - timeSeconds) / 3600)
 }
 
-const BATCH_SIZE = 500
+const BATCH_SIZE = 2000
 const TMP_DIR = join(process.cwd(), ".wca-sync-tmp")
 
 // ─── Supabase Client ─────────────────────────────────────────────────
@@ -455,35 +455,6 @@ async function uploadRankings(rankings) {
   log(`  Uploaded ${count.toLocaleString()} rankings`)
 }
 
-/**
- * Clear the wca_rankings table before inserting fresh data.
- * This is safer than trying to diff old vs new rows because Supabase's
- * API row limit can cause pagination to miss stale rows.
- */
-async function clearRankingsTable() {
-  log("Clearing wca_rankings table for fresh insert...")
-  let totalDeleted = 0
-
-  // Delete in a loop — Supabase REST API has a row limit per request
-  while (true) {
-    const { data, error } = await supabase
-      .from("wca_rankings")
-      .delete()
-      .neq("wca_id", "")
-      .select("wca_id")
-      .limit(5000)
-
-    if (error) {
-      console.error("Delete batch failed:", error.message)
-      throw error
-    }
-    if (!data || data.length === 0) break
-    totalDeleted += data.length
-    if (totalDeleted % 50000 === 0) log(`  Deleted ${totalDeleted.toLocaleString()} rows...`)
-  }
-
-  log(`  Cleared ${totalDeleted.toLocaleString()} rows`)
-}
 
 // ─── Cleanup ─────────────────────────────────────────────────────────
 
@@ -511,7 +482,6 @@ async function main() {
     const rankings = computeRankings(persons, countries, singleData, averageData)
 
     await uploadCountries(countries)
-    await clearRankingsTable()
     await uploadRankings(rankings)
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
