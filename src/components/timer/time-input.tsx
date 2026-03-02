@@ -165,13 +165,13 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
       className="flex flex-col items-center justify-center flex-1"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Visible input box styled like a standard text field */}
+      {/* Large clickable input area — like csTimer / CubeDesk */}
       <div
         className={cn(
-          "relative w-full max-w-sm mx-auto rounded-md border bg-background px-4 py-2 h-10 transition-colors cursor-text",
+          "relative w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors cursor-text flex items-center justify-center h-40 sm:h-52",
           hasValue
-            ? "border-primary ring-1 ring-primary/30"
-            : "border-input hover:border-border/80"
+            ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20"
+            : "border-border/60 hover:border-border"
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -188,10 +188,16 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
           aria-label="Type time"
         />
 
-        {/* Blinking cursor indicator */}
-        <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
-          <span className="font-mono text-sm text-muted-foreground/60 animate-pulse">|</span>
-        </div>
+        {/* Placeholder + blinking cursor */}
+        {!hasValue && (
+          <div className="flex items-center gap-1 pointer-events-none select-none">
+            <span className="text-muted-foreground/40 text-lg font-mono">Type your time</span>
+            <span className="font-mono text-lg text-muted-foreground/40 animate-pulse">|</span>
+          </div>
+        )}
+        {hasValue && (
+          <span className="font-mono text-lg text-muted-foreground/60 animate-pulse pointer-events-none select-none">|</span>
+        )}
       </div>
 
     </div>
