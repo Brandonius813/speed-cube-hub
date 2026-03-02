@@ -726,3 +726,33 @@ T157:
 - WCA uses random-move for 6x6 and 7x7 in competition anyway, so fallback is correct
 
 **Files touched:** `src/lib/timer/scrambles.ts`, `src/components/timer/timer-content.tsx`
+
+---
+
+### 2026-03-02 PT — GAN Halo Bluetooth Timer Session
+
+**Task:** Ad-hoc — GAN Halo physical timer BLE connectivity (no TASKS.md ID — distinct from T160 which is about smart cubes)
+**Status:** Complete. GAN Halo Timer can now connect via Web Bluetooth and drive the timer UI. Hardware-measured times are recorded; inspection, penalties, and solve list all work as expected.
+
+**What was built:**
+- `src/lib/timer/bluetooth.ts` (new, ~120 lines): Raw BLE protocol handler. GAN timer BLE service UUID `0000fff0-...`, notify characteristic `0000fff5-...`. CRC-16/CCITT-FALSE validation over packet bytes [2..len-2]. Parses 8 state codes (HANDS_ON, GET_SET, HANDS_OFF, RUNNING, STOPPED, IDLE, FINISHED, DISCONNECT). STOPPED packets include minutes/seconds/ms bytes decoded to `time_ms`.
+- `src/components/timer/use-bluetooth-timer.ts` (new, ~120 lines): React hook managing BLE connection lifecycle. `BtConnectionStatus` ("unsupported" | "disconnected" | "connecting" | "connected"). Uses `callbacksRef.current = callbacks` pattern (updated every render) to prevent stale closures. Auto-disconnects on unmount. Maps GAN events → phase machine callbacks.
+- `src/components/timer/solve-list-panel.tsx` (new, ~160 lines): Extracted the left stats+solve-list panel from timer-content.tsx to keep it under 400 lines after BT additions.
+- `src/components/timer/timer-content.tsx` (modified): Added BT hook, `btConnectedRef` (gates keydown handler without dep array change), `btCallbacksRef` updated each render with fresh callbacks. BT connect button added to settings gear dropdown. Spacebar fully suppressed when BT connected.
+
+**Follow-up fixes applied (user feedback):**
+1. **IDLE event (physical reset button):** Now calls `onIdle` → `setPhase("idle")` to immediately clear timer display to 0.00. Previously ignored.
+2. **Inspection with BT:** `onHandsOn` checks `inspOnRef.current` — if inspection is enabled, starts inspection countdown instead of going straight to holding. `onGetSet` calls `finishInspection()` if in inspecting phase.
+3. **Removed btState status hint** — the text showing raw hardware state between timer display and penalty buttons.
+
+**Key architectural notes:**
+- Web Bluetooth is Chrome/Chromium-only — `isBleSupported()` gates the UI. Firefox/Safari/iOS users see nothing.
+- No external npm package — protocol implemented natively (avoids RxJS ~40KB).
+- `btConnectedRef` pattern: mirrors `btStatus === "connected"` as a ref so the keydown `useEffect` reads it without re-registering on every BT state change.
+- TS fix: `data.buffer.slice(...) as ArrayBuffer` resolves `ArrayBuffer | SharedArrayBuffer` mismatch in `crc16()`.
+- The linter restructured timer-content.tsx significantly during this session — BT connect button is now inside the ⚙ settings gear dropdown under an "Input Mode" section (Space | Type | BT).
+
+**Files touched:** `src/lib/timer/bluetooth.ts` (new), `src/components/timer/use-bluetooth-timer.ts` (new), `src/components/timer/solve-list-panel.tsx` (new), `src/components/timer/timer-content.tsx`
+**Learnings:** T160 in TASKS.md is about connecting the GAN smart **cube** (the puzzle) to track moves — a completely different device and protocol (encrypted, firmware-versioned). Our work is the GAN **Halo Timer** (timing pad), which uses a simple unencrypted BLE protocol. These are not related. Do not mark T160 done.
+**Blockers:** None
+**Warnings:** None — BT timer integration is complete and on dev.
