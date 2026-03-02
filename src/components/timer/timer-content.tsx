@@ -32,12 +32,20 @@ function fmtSolve(s: Solve): string {
   return fmt(ms, 3) + (s.penalty === "+2" ? "+" : "")
 }
 
+// Accepts plain digits (e.g. "1234" → 12.34s) or decimals ("12.34" → 12.34s).
+// Strips non-digits, then reads right-to-left: last 2 digits = centiseconds,
+// next 2 = seconds, remainder = minutes.
 function parseTime(raw: string): number | null {
-  const m = raw.trim().match(/^(?:(\d+):)?(\d{1,2})(?:\.(\d{1,3}))?$/)
-  if (!m) return null
-  const total = (parseInt(m[1] ?? "0", 10) * 60 + parseInt(m[2], 10)) * 1000
-    + parseInt((m[3] ?? "").padEnd(3, "0"), 10)
-  return total > 0 ? total : null
+  const digits = raw.replace(/\D/g, "")
+  if (!digits) return null
+  const padded = digits.padStart(3, "0")
+  const cs = parseInt(padded.slice(-2), 10)
+  const rest = padded.slice(0, -2)
+  const secs = parseInt(rest.slice(-2) || "0", 10)
+  const mins = parseInt(rest.slice(0, -2) || "0", 10)
+  if (secs >= 60) return null
+  const ms = (mins * 60 + secs) * 1000 + cs * 10
+  return ms > 0 ? ms : null
 }
 
 function computeAo(solves: Solve[], n: number): number | null {
@@ -49,6 +57,16 @@ function computeAo(solves: Solve[], n: number): number | null {
   const trimmed = [...times].sort((a, b) => a - b).slice(1, -1)
   if (trimmed.some((t) => t === Infinity)) return null
   return Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length)
+}
+
+function bestAo(solves: Solve[], n: number): number | null {
+  if (solves.length < n) return null
+  let best: number | null = null
+  for (let i = n; i <= solves.length; i++) {
+    const r = computeAo(solves.slice(0, i), n)
+    if (r !== null && (best === null || r < best)) best = r
+  }
+  return best
 }
 
 export function TimerContent() {
@@ -73,7 +91,6 @@ export function TimerContent() {
 
   const insp = useInspection({ voice: true })
 
-  // Sync all refs on every render so event handlers never have stale values
   phaseRef.current = phase
   scrambleRef.current = scramble
   eventRef.current = event
@@ -126,7 +143,6 @@ export function TimerContent() {
     if (p === "idle" || p === "stopped") startHold()
   }
 
-  // Auto-DNF when inspection expires
   useEffect(() => {
     if (insp.state === "done" && phaseRef.current === "inspecting") { addSolve(0, "DNF"); setPhase("stopped") }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,7 +183,15 @@ export function TimerContent() {
 
   const stats = useMemo(() => {
     const valid = solves.filter((s) => s.penalty !== "DNF").map((s) => s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
-    return { best: valid.length ? Math.min(...valid) : null, ao5: computeAo(solves, 5), ao12: computeAo(solves, 12) }
+    const mean = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null
+    return {
+      best: valid.length ? Math.min(...valid) : null,
+      mean,
+      ao5: computeAo(solves, 5),
+      ao12: computeAo(solves, 12),
+      bestAo5: bestAo(solves, 5),
+      bestAo12: bestAo(solves, 12),
+    }
   }, [solves])
 
   const last = solves[solves.length - 1]
@@ -191,108 +215,138 @@ export function TimerContent() {
   const tog = (base: string, active: boolean) =>
     cn(base, active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")
 
+  const D = (v: number | null) => v !== null ? fmt(v, 3) : "—"
+
   return (
     <div
-      className="flex flex-col items-center min-h-screen bg-background select-none"
+      className="flex flex-col min-h-screen bg-background select-none"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       style={{ touchAction: "none" }}
     >
-      {/* Top bar */}
-      <div className="w-full max-w-xl flex items-center justify-between px-4 pt-4 pb-2 gap-2">
+      {/* Top bar — full width */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 gap-2 border-b border-border" onPointerDown={sp}>
         <select
           className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground"
           value={event}
           onChange={(e) => changeEvent(e.target.value)}
-          onPointerDown={sp}
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <div className="flex gap-2" onPointerDown={sp}>
-          <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>
-            ⌨ Type
-          </button>
-          <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>
-            Insp.
-          </button>
+        <div className="flex gap-2">
+          <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
+          <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
         </div>
       </div>
 
-      {/* Scramble */}
-      <p className="w-full max-w-xl px-4 text-center text-sm font-mono text-muted-foreground leading-relaxed min-h-12 flex items-center justify-center">
-        {scramble}
-      </p>
+      {/* Body: left panel + timer */}
+      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
 
-      {/* Timer or typing input */}
-      <div className="flex-1 flex items-center justify-center w-full px-4">
-        {typing ? (
-          <input
-            type="text" inputMode="decimal" placeholder="0.00" value={typeVal} autoFocus
-            onChange={(e) => setTypeVal(e.target.value)}
-            onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
-            onPointerDown={sp}
-            className="bg-transparent border-b-2 border-border text-center font-mono text-7xl w-full max-w-sm outline-none placeholder:text-muted-foreground/30"
-          />
-        ) : (
-          <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
-            {getDisplay()}
+        {/* Left panel: stats on top, solve list below — appears after timer on mobile */}
+        <div className="w-full lg:w-52 xl:w-60 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first" onPointerDown={sp}>
+
+          {/* Stats table */}
+          <div className="px-3 pt-3 pb-2 border-b border-border text-xs font-mono">
+            <table className="w-full">
+              <thead>
+                <tr className="text-muted-foreground">
+                  <th className="text-left font-normal pb-1 w-10"></th>
+                  <th className="text-right font-normal pb-1 pr-2">cur</th>
+                  <th className="text-right font-normal pb-1">best</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="text-muted-foreground py-0.5 pr-2">single</td>
+                  <td className="text-right pr-2">{last ? fmtSolve(last) : "—"}</td>
+                  <td className="text-right">{D(stats.best)}</td>
+                </tr>
+                <tr>
+                  <td className="text-muted-foreground py-0.5 pr-2">ao5</td>
+                  <td className="text-right pr-2">{D(stats.ao5)}</td>
+                  <td className="text-right">{D(stats.bestAo5)}</td>
+                </tr>
+                <tr>
+                  <td className="text-muted-foreground py-0.5 pr-2">ao12</td>
+                  <td className="text-right pr-2">{D(stats.ao12)}</td>
+                  <td className="text-right">{D(stats.bestAo12)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="flex justify-between text-muted-foreground border-t border-border mt-2 pt-1.5">
+              <span>count: {solves.length}</span>
+              <span>mean: {D(stats.mean)}</span>
+            </div>
           </div>
-        )}
+
+          {/* Solve list */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+            {[...solves].reverse().map((s, i) => (
+              <div key={s.id} className="flex items-center text-xs min-w-0">
+                <span className="w-6 shrink-0 text-right text-muted-foreground mr-1.5">{solves.length - i}.</span>
+                {selectedId === s.id ? (
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="font-mono mr-1 shrink-0">{fmtSolve(s)}</span>
+                    <button className="px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "+2" ? null : "+2")}>+2</button>
+                    <button className="px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}>DNF</button>
+                    <button className="px-1 py-0.5 rounded bg-destructive/20 text-destructive shrink-0" onClick={() => deleteSolve(s.id)}>Del</button>
+                    <button className="px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0" onClick={() => setSelectedId(null)}>✕</button>
+                  </div>
+                ) : (
+                  <button className="font-mono text-left hover:text-primary transition-colors" onClick={() => setSelectedId(selectedId === s.id ? null : s.id)}>
+                    {fmtSolve(s)}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: scramble + timer + penalties */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4 order-first lg:order-last min-h-[60vh] lg:min-h-0">
+          <p className="w-full max-w-xl text-center text-sm font-mono text-muted-foreground leading-relaxed mb-4">
+            {scramble}
+          </p>
+
+          <div className="flex-1 flex items-center justify-center w-full">
+            {typing ? (
+              <div className="flex flex-col items-center gap-2 w-full max-w-sm" onPointerDown={sp}>
+                <input
+                  type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
+                  onChange={(e) => setTypeVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
+                  className="bg-transparent border-b-2 border-border text-center font-mono text-7xl w-full outline-none placeholder:text-muted-foreground/30"
+                />
+                <p className="text-sm font-mono text-muted-foreground h-5">
+                  {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!, 3)}` : "invalid") : ""}
+                </p>
+              </div>
+            ) : (
+              <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
+                {getDisplay()}
+              </div>
+            )}
+          </div>
+
+          {phase === "stopped" && last && (
+            <div className="flex gap-3 py-3" onPointerDown={sp}>
+              <button
+                className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "+2" ? "bg-yellow-500 text-black border-yellow-500" : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400")}
+                onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
+              >+2</button>
+              <button
+                className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "DNF" ? "bg-red-500 text-white border-red-500" : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400")}
+                onClick={() => setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")}
+              >DNF</button>
+              <button
+                className="text-sm px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                onClick={() => { deleteSolve(last.id); setPhase("idle") }}
+              >Delete</button>
+            </div>
+          )}
+        </div>
+
       </div>
-
-      {/* Penalty buttons */}
-      {phase === "stopped" && last && (
-        <div className="flex gap-3 py-2" onPointerDown={sp}>
-          <button
-            className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "+2" ? "bg-yellow-500 text-black border-yellow-500" : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400")}
-            onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
-          >+2</button>
-          <button
-            className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "DNF" ? "bg-red-500 text-white border-red-500" : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400")}
-            onClick={() => setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")}
-          >DNF</button>
-          <button
-            className="text-sm px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-            onClick={() => { deleteSolve(last.id); setPhase("idle") }}
-          >Delete</button>
-        </div>
-      )}
-
-      {/* Stats */}
-      {solves.length > 0 && (
-        <div className="w-full max-w-xl px-4 py-3 grid grid-cols-4 gap-2 border-t border-border text-center">
-          {([["Best", stats.best !== null ? fmt(stats.best, 3) : "—"], ["Ao5", stats.ao5 !== null ? fmt(stats.ao5, 3) : "—"], ["Ao12", stats.ao12 !== null ? fmt(stats.ao12, 3) : "—"], ["Solves", String(solves.length)]] as const).map(([label, val]) => (
-            <div key={label}>
-              <div className="text-xs text-muted-foreground">{label}</div>
-              <div className="font-mono text-sm">{val}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Solve list */}
-      {solves.length > 0 && (
-        <div className="w-full max-w-xl px-4 pb-6 space-y-0.5 overflow-y-auto max-h-64">
-          {[...solves].reverse().map((s, i) => (
-            <div key={s.id} className="flex items-center text-sm min-w-0">
-              <span className="w-7 shrink-0 text-right text-muted-foreground mr-2">{solves.length - i}.</span>
-              {selectedId === s.id ? (
-                <div className="flex items-center gap-1 flex-1 min-w-0" onPointerDown={sp}>
-                  <span className="font-mono mr-1 shrink-0">{fmtSolve(s)}</span>
-                  <button className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "+2" ? null : "+2")}>+2</button>
-                  <button className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}>DNF</button>
-                  <button className="text-xs px-1.5 py-0.5 rounded bg-destructive/20 text-destructive shrink-0" onClick={() => deleteSolve(s.id)}>Del</button>
-                  <button className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0" onClick={() => setSelectedId(null)}>✕</button>
-                </div>
-              ) : (
-                <button className="font-mono text-left hover:text-primary transition-colors" onPointerDown={sp} onClick={() => setSelectedId(selectedId === s.id ? null : s.id)}>
-                  {fmtSolve(s)}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
