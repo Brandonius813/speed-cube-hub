@@ -36,6 +36,7 @@ import {
   updateSolveSession,
   resetSolveSession,
   archiveSolveSession,
+  unarchiveSolveSession,
   deleteSolveSession,
 } from "@/lib/actions/solve-sessions"
 import {
@@ -1074,6 +1075,11 @@ export function TimerContent() {
     }
   }
 
+  const handleManagerUnarchive = async (id: string) => {
+    await unarchiveSolveSession(id)
+    await refreshSessions()
+  }
+
   const handleManagerDelete = async (id: string) => {
     await deleteSolveSession(id)
     await refreshSessions()
@@ -1379,6 +1385,7 @@ export function TimerContent() {
         onToggleTracked={handleManagerToggleTracked}
         onReset={handleManagerReset}
         onArchive={handleManagerArchive}
+        onUnarchive={handleManagerUnarchive}
         onDelete={handleManagerDelete}
         onCreate={handleCreateSession}
         onMerge={handleManagerMerge}

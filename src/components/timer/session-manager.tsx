@@ -3,16 +3,15 @@
 import { useState } from "react"
 import {
   Pencil,
-  RotateCcw,
   Archive,
-  Trash2,
-  Eye,
-  EyeOff,
+  ArchiveRestore,
+  X,
   Plus,
   Check,
-  X,
-  Merge,
-  Scissors,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import {
   Dialog,
@@ -24,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { WCA_EVENTS, ALL_TIMER_EVENTS } from "@/lib/constants"
+import { ALL_TIMER_EVENTS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import type { SolveSession } from "@/lib/types"
 
@@ -35,11 +34,13 @@ type SessionManagerProps = {
   currentSessionId: string | null
   onSelect: (session: SolveSession) => void
   onRename: (id: string, name: string) => void
-  onToggleTracked: (id: string, isTracked: boolean) => void
-  onReset: (id: string) => void
   onArchive: (id: string) => void
+  onUnarchive?: (id: string) => void
   onDelete: (id: string) => void
   onCreate: (name: string, event: string, isTracked: boolean) => void
+  // Kept optional so timer-content.tsx compiles until T154 cleans up
+  onToggleTracked?: (id: string, isTracked: boolean) => void
+  onReset?: (id: string) => void
   onMerge?: (sourceId: string, targetId: string) => void
   onSplit?: (sessionId: string, splitAfter: number) => void
 }
@@ -51,34 +52,32 @@ export function SessionManager({
   currentSessionId,
   onSelect,
   onRename,
-  onToggleTracked,
-  onReset,
   onArchive,
+  onUnarchive,
   onDelete,
   onCreate,
-  onMerge,
-  onSplit,
 }: SessionManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
-  const [confirmAction, setConfirmAction] = useState<{
-    type: "reset" | "delete"
+  const [confirmDelete, setConfirmDelete] = useState<{
     id: string
     name: string
+    solveCount: number
   } | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
   const [newEvent, setNewEvent] = useState("333")
   const [newTracked, setNewTracked] = useState(true)
-  const [mergeSource, setMergeSource] = useState<SolveSession | null>(null)
-  const [splitSession, setSplitSession] = useState<SolveSession | null>(null)
-  const [splitNumber, setSplitNumber] = useState("")
+  const [showArchived, setShowArchived] = useState(false)
+
+  const activeSessions = sessions.filter((s) => !s.is_archived)
+  const archivedSessions = sessions.filter((s) => s.is_archived)
 
   const eventLabel = (eventId: string) =>
     ALL_TIMER_EVENTS.find((e) => e.id === eventId)?.label ?? eventId
 
-  // Group by event
-  const grouped = sessions.reduce<Record<string, SolveSession[]>>(
+  // Group active sessions by event
+  const grouped = activeSessions.reduce<Record<string, SolveSession[]>>(
     (acc, session) => {
       const key = session.event
       if (!acc[key]) acc[key] = []
@@ -115,35 +114,147 @@ export function SessionManager({
     setShowCreate(false)
   }
 
+  const renderSessionRow = (session: SolveSession, isArchived = false) => (
+    <div
+      key={session.id}
+      className={cn(
+        "flex items-center gap-2 p-2 rounded-md border border-transparent",
+        session.id === currentSessionId && !isArchived &&
+          "border-primary/30 bg-primary/5"
+      )}
+    >
+      {editingId === session.id ? (
+        /* Inline edit mode */
+        <div className="flex-1 flex items-center gap-1">
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="h-7 text-sm flex-1"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveEdit(session.id)
+              if (e.key === "Escape") setEditingId(null)
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => saveEdit(session.id)}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setEditingId(null)}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ) : (
+        /* Normal display mode */
+        <>
+          <button
+            className="flex-1 text-left text-sm truncate hover:text-primary transition-colors"
+            onClick={() => {
+              if (!isArchived) {
+                onSelect(session)
+                onClose()
+              }
+            }}
+            disabled={isArchived}
+          >
+            {session.name}
+          </button>
+
+          {!session.is_tracked && (
+            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              Untracked
+            </span>
+          )}
+
+          {session.solve_count !== undefined && (
+            <span className="text-xs text-muted-foreground font-mono min-w-6 text-right">
+              {session.solve_count}
+            </span>
+          )}
+
+          {/* Action buttons: [Edit] [Hide/Unarchive] [X] */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              onClick={() => startEdit(session)}
+              title="Rename"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            {isArchived ? (
+              <button
+                className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                onClick={() => onUnarchive?.(session.id)}
+                title="Restore session"
+              >
+                <ArchiveRestore className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <button
+                className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                onClick={() => onArchive(session.id)}
+                title="Hides this session. Your times are not deleted."
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button
+              className="p-1 rounded hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
+              onClick={() =>
+                setConfirmDelete({
+                  id: session.id,
+                  name: session.name,
+                  solveCount: session.solve_count ?? 0,
+                })
+              }
+              title="Delete session"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Manage Sessions</DialogTitle>
           <DialogDescription>
-            Create, rename, reset, or delete your timer sessions.
+            Create, rename, or delete your timer sessions.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Confirmation dialog overlay */}
-        {confirmAction && (
+        {/* Delete confirmation overlay */}
+        {confirmDelete && (
           <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
             <div className="text-center space-y-4 max-w-xs">
               <p className="text-sm font-medium">
-                {confirmAction.type === "reset"
-                  ? `Reset "${confirmAction.name}"?`
-                  : `Delete "${confirmAction.name}"?`}
+                Delete &ldquo;{confirmDelete.name}&rdquo;?
               </p>
               <p className="text-xs text-muted-foreground">
-                {confirmAction.type === "reset"
-                  ? "This will clear your current solve list. Your all-time stats are not affected."
-                  : "This will permanently remove this session. Solves are preserved but unlinked."}
+                This will permanently delete all{" "}
+                {confirmDelete.solveCount > 0
+                  ? `${confirmDelete.solveCount} solves`
+                  : "solves"}{" "}
+                in this session.
               </p>
               <div className="flex gap-2 justify-center">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setConfirmAction(null)}
+                  onClick={() => setConfirmDelete(null)}
                 >
                   Cancel
                 </Button>
@@ -151,89 +262,11 @@ export function SessionManager({
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    if (confirmAction.type === "reset") {
-                      onReset(confirmAction.id)
-                    } else {
-                      onDelete(confirmAction.id)
-                    }
-                    setConfirmAction(null)
+                    onDelete(confirmDelete.id)
+                    setConfirmDelete(null)
                   }}
                 >
-                  {confirmAction.type === "reset" ? "Reset" : "Delete"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Merge target picker overlay */}
-        {mergeSource && (
-          <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
-            <div className="text-center space-y-3 max-w-xs w-full">
-              <p className="text-sm font-medium">
-                Merge &ldquo;{mergeSource.name}&rdquo; into:
-              </p>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {sessions
-                  .filter((s) => s.event === mergeSource.event && s.id !== mergeSource.id)
-                  .map((s) => (
-                    <button
-                      key={s.id}
-                      className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-secondary transition-colors"
-                      onClick={() => {
-                        onMerge?.(mergeSource.id, s.id)
-                        setMergeSource(null)
-                      }}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setMergeSource(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Split session overlay */}
-        {splitSession && (
-          <div className="absolute inset-0 z-10 bg-background/95 rounded-lg flex items-center justify-center p-6">
-            <div className="text-center space-y-3 max-w-xs">
-              <p className="text-sm font-medium">
-                Split &ldquo;{splitSession.name}&rdquo;
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Solves after this number move to a new session.
-              </p>
-              <Input
-                type="number"
-                min={1}
-                placeholder="Split after solve #"
-                value={splitNumber}
-                onChange={(e) => setSplitNumber(e.target.value)}
-                className="h-8 text-sm text-center"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const n = parseInt(splitNumber, 10)
-                    if (n > 0) { onSplit?.(splitSession.id, n); setSplitSession(null); setSplitNumber("") }
-                  }
-                  if (e.key === "Escape") { setSplitSession(null); setSplitNumber("") }
-                }}
-              />
-              <div className="flex gap-2 justify-center">
-                <Button variant="outline" size="sm" onClick={() => { setSplitSession(null); setSplitNumber("") }}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const n = parseInt(splitNumber, 10)
-                    if (n > 0) { onSplit?.(splitSession.id, n); setSplitSession(null); setSplitNumber("") }
-                  }}
-                >
-                  Split
+                  Delete
                 </Button>
               </div>
             </div>
@@ -248,155 +281,38 @@ export function SessionManager({
                 {eventLabel(eventId)}
               </div>
               <div className="space-y-1">
-                {grouped[eventId].map((session) => (
-                  <div
-                    key={session.id}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-md border border-transparent",
-                      session.id === currentSessionId &&
-                        "border-primary/30 bg-primary/5"
-                    )}
-                  >
-                    {editingId === session.id ? (
-                      /* Inline edit mode */
-                      <div className="flex-1 flex items-center gap-1">
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="h-7 text-sm flex-1"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit(session.id)
-                            if (e.key === "Escape") setEditingId(null)
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => saveEdit(session.id)}
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => setEditingId(null)}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      /* Normal display mode */
-                      <>
-                        <button
-                          className="flex-1 text-left text-sm truncate hover:text-primary transition-colors"
-                          onClick={() => {
-                            onSelect(session)
-                            onClose()
-                          }}
-                        >
-                          {session.name}
-                        </button>
-
-                        {!session.is_tracked && (
-                          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                            Untracked
-                          </span>
-                        )}
-
-                        {session.solve_count !== undefined && (
-                          <span className="text-xs text-muted-foreground font-mono min-w-6 text-right">
-                            {session.solve_count}
-                          </span>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() => startEdit(session)}
-                            title="Rename"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                              onToggleTracked(session.id, !session.is_tracked)
-                            }
-                            title={session.is_tracked ? "Make untracked" : "Make tracked"}
-                          >
-                            {session.is_tracked ? (
-                              <Eye className="h-3.5 w-3.5" />
-                            ) : (
-                              <EyeOff className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <button
-                            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                              setConfirmAction({
-                                type: "reset",
-                                id: session.id,
-                                name: session.name,
-                              })
-                            }
-                            title="Reset session"
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() => onArchive(session.id)}
-                            title="Archive"
-                          >
-                            <Archive className="h-3.5 w-3.5" />
-                          </button>
-                          {onMerge && sessions.filter((s) => s.event === session.event && s.id !== session.id).length > 0 && (
-                            <button
-                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                              onClick={() => setMergeSource(session)}
-                              title="Merge into another session"
-                            >
-                              <Merge className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {onSplit && (
-                            <button
-                              className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                              onClick={() => setSplitSession(session)}
-                              title="Split session"
-                            >
-                              <Scissors className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          <button
-                            className="p-1 rounded hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
-                            onClick={() =>
-                              setConfirmAction({
-                                type: "delete",
-                                id: session.id,
-                                name: session.name,
-                              })
-                            }
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {grouped[eventId].map((session) => renderSessionRow(session))}
               </div>
             </div>
           ))}
 
-          {sessions.length === 0 && (
+          {activeSessions.length === 0 && (
             <div className="text-center text-sm text-muted-foreground py-8">
               No sessions yet. Create one to get started.
+            </div>
+          )}
+
+          {/* Archived sessions — collapsible */}
+          {archivedSessions.length > 0 && (
+            <div>
+              <button
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                onClick={() => setShowArchived((v) => !v)}
+              >
+                {showArchived ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                Archived ({archivedSessions.length})
+              </button>
+              {showArchived && (
+                <div className="space-y-1 mt-1">
+                  {archivedSessions.map((session) =>
+                    renderSessionRow(session, true)
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

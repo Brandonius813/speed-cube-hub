@@ -2834,8 +2834,8 @@ No images in this task — that's deferred (T162). Focus on UI improvements only
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
-| **Claimed by** | [this session] |
+| **Status** | ✅ Done |
+| **Claimed by** | — |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 | **Key files** | `src/components/timer/session-manager.tsx` |
