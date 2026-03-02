@@ -10,7 +10,7 @@ export default async function LeaderboardsPage() {
   // Fetch leaderboards + user WCA ID all in parallel
   // The profile query chains off the auth promise so it starts as soon as auth resolves
   const authPromise = supabase.auth.getUser()
-  const [initialData, countries, sorSingleData, kinchSingleData, userWcaId] = await Promise.all([
+  const [initialData, countries, sorSingleData, kinchSingleData, userWcaId, wcaLastUpdatedRow] = await Promise.all([
     getAllLeaderboards(),
     getWcaCountries().catch(() => []),
     getSorKinchLeaderboard("sor", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
@@ -24,7 +24,16 @@ export default async function LeaderboardsPage() {
         .single()
       return profile?.wca_id ?? null
     }),
+    supabase
+      .from("wca_rankings")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => data?.updated_at ?? null, () => null),
   ])
+
+  const wcaLastUpdated = wcaLastUpdatedRow ?? null
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -39,6 +48,7 @@ export default async function LeaderboardsPage() {
         }}
         countries={countries}
         userWcaId={userWcaId}
+        wcaLastUpdated={wcaLastUpdated}
       />
     </main>
   )
