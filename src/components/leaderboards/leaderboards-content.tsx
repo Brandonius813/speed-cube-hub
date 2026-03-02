@@ -80,7 +80,7 @@ export function LeaderboardsContent({
   const [practiceCache, setPracticeCache] =
     useState<Record<string, LeaderboardPage>>(initialData)
   const [category, setCategory] = useState<LeaderboardCategory>("most_solves")
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all_time")
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("weekly")
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
