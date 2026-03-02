@@ -15,6 +15,7 @@ import {
 import type { SessionStats } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { FloatingPanel } from "@/components/timer/floating-panel"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
 import { DailySolveChart } from "@/components/timer/daily-solve-chart"
@@ -32,6 +33,7 @@ type StatsPanelProps = {
   solves?: Solve[]
   event?: string
   statIndicators?: string
+  sidebarPosition?: "left" | "right"
   onStatClick?: (statLabel: string, column: "current" | "best") => void
   sessionNames?: Map<string, string>
 }
@@ -107,6 +109,7 @@ export function StatsPanel({
   solves = [],
   event,
   statIndicators = DEFAULT_STAT_INDICATORS,
+  sidebarPosition = "right",
   onStatClick,
   sessionNames,
 }: StatsPanelProps) {
@@ -175,6 +178,9 @@ export function StatsPanel({
     ? computeWPA(solves, smallestAo.n) : null
   const bpaWpaLabel = smallestAo ? `ao${smallestAo.n}` : ""
 
+  // Charts panel floats opposite the sidebar to avoid overlapping it
+  const chartPanelPosition = sidebarPosition === "left" ? "bottom-right" : "bottom-left"
+
   return (
     <div className="p-2 space-y-1.5">
       {/* Header: solve count + session mean + session σ */}
@@ -220,13 +226,13 @@ export function StatsPanel({
       )}
 
       {/* csTimer-style stats table: label | current | best | σ */}
-      <table className="w-full text-xs font-mono tabular-nums">
+      <table className="w-full tabular-nums">
         <thead>
-          <tr className="text-muted-foreground/70">
-            <th className="text-left font-normal py-0.5 px-1 w-10"></th>
-            <th className="text-right font-normal py-0.5 px-1">current</th>
-            <th className="text-right font-normal py-0.5 px-1">best</th>
-            <th className="text-right font-normal py-0.5 px-1 w-14">σ</th>
+          <tr className="text-muted-foreground border-b border-border/30">
+            <th className="text-left font-semibold text-xs py-1.5 px-1 w-14"></th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1">current</th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1">best</th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1 w-16">σ</th>
           </tr>
         </thead>
         <tbody>
@@ -235,22 +241,22 @@ export function StatsPanel({
               row.best !== null && row.current !== null && row.best === row.current
             return (
               <tr key={row.label}>
-                <td className="text-left text-muted-foreground py-0.5 px-1">
+                <td className="text-left text-sm text-muted-foreground py-2 px-1">
                   {row.label}
                 </td>
                 <td
-                  className="text-right py-0.5 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
+                  className="text-right py-2 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
                   onClick={() => row.current !== null && onStatClick?.(row.label, "current")}
                 >
-                  <StatValue value={row.current} />
+                  <StatValue value={row.current} size="base" />
                 </td>
                 <td
-                  className="text-right py-0.5 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
+                  className="text-right py-2 px-1 cursor-pointer hover:bg-secondary/30 transition-colors rounded"
                   onClick={() => row.best !== null && onStatClick?.(row.label, "best")}
                 >
-                  <StatValue value={row.best} isBest={isBestCurrent} />
+                  <StatValue value={row.best} isBest={isBestCurrent} size="base" />
                 </td>
-                <td className="text-right py-0.5 px-1">
+                <td className="text-right py-2 px-1">
                   <StatValue value={row.sigma} muted />
                 </td>
               </tr>
@@ -267,57 +273,81 @@ export function StatsPanel({
         </div>
       )}
 
-      {/* Charts section */}
+      {/* Charts — rendered in a FloatingPanel so they don't take up sidebar space */}
       {showCharts && (
-        <div className="space-y-3 pt-1">
-          <div className="flex gap-1">
-            <Button
-              variant={chartScope === "session" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 text-xs px-2"
-              onClick={() => setChartScope("session")}
-            >
-              This Session
-            </Button>
-            <Button
-              variant={chartScope === "all" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 text-xs px-2"
-              onClick={() => setChartScope("all")}
-            >
-              All Time
-            </Button>
-          </div>
+        <FloatingPanel
+          position={chartPanelPosition}
+          title="Charts"
+          onClose={() => setShowCharts(false)}
+          className="w-96"
+        >
+          <div className="space-y-3">
+            <div className="flex gap-1">
+              <Button
+                variant={chartScope === "session" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => setChartScope("session")}
+              >
+                This Session
+              </Button>
+              <Button
+                variant={chartScope === "all" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => setChartScope("all")}
+              >
+                All Time
+              </Button>
+            </div>
 
-          {loadingAllTime && chartScope === "all" ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Loading solve data...
-            </p>
-          ) : (
-            <>
-              <TimeDistributionChart solves={chartSolves} />
-              <TimeTrendChart solves={chartSolves} />
-              {chartScope === "all" && (
-                <>
-                  <CrossSessionStats solves={chartSolves} sessionNames={sessionNames} />
-                  <SolveHeatmap solves={chartSolves} />
-                  <DailySolveChart solves={chartSolves} />
-                </>
-              )}
-            </>
-          )}
-        </div>
+            {loadingAllTime && chartScope === "all" ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Loading solve data...
+              </p>
+            ) : (
+              <>
+                <TimeDistributionChart solves={chartSolves} />
+                <TimeTrendChart solves={chartSolves} />
+                {chartScope === "all" && (
+                  <>
+                    <CrossSessionStats solves={chartSolves} sessionNames={sessionNames} />
+                    <SolveHeatmap solves={chartSolves} />
+                    <DailySolveChart solves={chartSolves} />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </FloatingPanel>
       )}
     </div>
   )
 }
 
-function StatValue({ value, isBest, muted }: { value: number | null; isBest?: boolean; muted?: boolean }) {
+function StatValue({
+  value,
+  isBest,
+  muted,
+  size = "sm",
+}: {
+  value: number | null
+  isBest?: boolean
+  muted?: boolean
+  size?: "sm" | "base"
+}) {
   if (value === null) {
-    return <span className="text-muted-foreground/30">-</span>
+    return <span className="text-muted-foreground/30 text-sm">-</span>
   }
   return (
-    <span className={cn(isBest && "text-green-400", muted && "text-muted-foreground/60")}>
+    <span
+      className={cn(
+        "font-mono",
+        size === "base" ? "text-base" : "text-xs",
+        isBest && "text-green-400",
+        muted && "text-muted-foreground/60 text-xs"
+      )}
+    >
       {formatTimeMs(value)}
     </span>
   )

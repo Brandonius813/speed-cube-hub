@@ -19,14 +19,25 @@ export type CsTimerParsedSession = {
   best_time: number | null; // null if all DNFs
 };
 
+/** Individual solve ready for bulkImportSolves */
+export type RawImportSolve = {
+  time_ms: number; // base time in ms (before penalty)
+  penalty: "+2" | "DNF" | null;
+  scramble: string; // empty string if none in export
+  date: string; // YYYY-MM-DD
+};
+
 type ParsedSolve = {
   time: number | null; // null = bare DNF with no recorded time
   isDnf: boolean;
+  isPlus2: boolean;
+  scramble: string;
   date: string; // YYYY-MM-DD
 };
 
 export function parseCsTimerCsv(text: string): {
   sessions: CsTimerParsedSession[];
+  rawSolves: RawImportSolve[];
   totalSolves: number;
   errors: string[];
 } {
@@ -38,7 +49,7 @@ export function parseCsTimerCsv(text: string): {
   const lines = splitIntoRows(cleaned);
 
   if (lines.length === 0) {
-    return { sessions: [], totalSolves: 0, errors: ["The file is empty."] };
+    return { sessions: [], rawSolves: [], totalSolves: 0, errors: ["The file is empty."] };
   }
 
   // Validate header row
@@ -47,10 +58,12 @@ export function parseCsTimerCsv(text: string): {
 
   const timeIdx = headers.indexOf("time");
   const dateIdx = headers.indexOf("date");
+  const scrambleIdx = headers.indexOf("scramble");
 
   if (timeIdx === -1 || dateIdx === -1) {
     return {
       sessions: [],
+      rawSolves: [],
       totalSolves: 0,
       errors: [
         'This doesn\'t look like a csTimer export. Expected "Time" and "Date" columns separated by semicolons.',
@@ -70,7 +83,7 @@ export function parseCsTimerCsv(text: string): {
     if (!rawTime || !rawDate) continue;
 
     // Parse time (extracts underlying time even from DNFs like "DNF(12.34)")
-    const { time, isDnf } = parseSolveTime(rawTime);
+    const { time, isDnf, isPlus2 } = parseSolveTime(rawTime);
 
     // Parse date
     const dateMatch = rawDate.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -80,17 +93,42 @@ export function parseCsTimerCsv(text: string): {
     }
 
     const dateStr = dateMatch[1];
+    const scramble = scrambleIdx >= 0 ? (fields[scrambleIdx] ?? "").trim() : "";
 
-    solves.push({ time, isDnf, date: dateStr });
+    solves.push({ time, isDnf, isPlus2, scramble, date: dateStr });
   }
 
   if (solves.length === 0) {
     return {
       sessions: [],
+      rawSolves: [],
       totalSolves: 0,
       errors: errors.length > 0 ? errors : ["No valid solves found in file."],
     };
   }
+
+  // Build individual solve records for bulk insert
+  const rawSolves: RawImportSolve[] = solves.map((s) => {
+    if (s.isDnf) {
+      return {
+        time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+        penalty: "DNF",
+        scramble: s.scramble,
+        date: s.date,
+      };
+    }
+    if (s.isPlus2) {
+      // csTimer Time column includes the +2 penalty — subtract 2s to get base time
+      const baseMs = s.time != null ? Math.max(0, Math.round((s.time - 2) * 1000)) : 0;
+      return { time_ms: baseMs, penalty: "+2", scramble: s.scramble, date: s.date };
+    }
+    return {
+      time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+      penalty: null,
+      scramble: s.scramble,
+      date: s.date,
+    };
+  });
 
   // Group solves by date
   const grouped = new Map<string, ParsedSolve[]>();
@@ -138,7 +176,7 @@ export function parseCsTimerCsv(text: string): {
     });
   }
 
-  return { sessions, totalSolves: solves.length, errors };
+  return { sessions, rawSolves, totalSolves: solves.length, errors };
 }
 
 /**
@@ -151,7 +189,7 @@ export function parseCsTimerCsv(text: string): {
  * - "DNF(12.34)"  → { time: 12.34, isDnf: true }
  * - "DNF"         → { time: null,  isDnf: true }
  */
-function parseSolveTime(raw: string): { time: number | null; isDnf: boolean } {
+function parseSolveTime(raw: string): { time: number | null; isDnf: boolean; isPlus2: boolean } {
   const trimmed = raw.trim();
 
   // DNF — could be "DNF" or "DNF(12.34)"
@@ -159,14 +197,15 @@ function parseSolveTime(raw: string): { time: number | null; isDnf: boolean } {
     const match = trimmed.match(/DNF\(([^)]+)\)/i);
     if (match) {
       const time = parseTimeValue(match[1].trim());
-      return { time, isDnf: true };
+      return { time, isDnf: true, isPlus2: false };
     }
-    return { time: null, isDnf: true };
+    return { time: null, isDnf: true, isPlus2: false };
   }
 
   // Strip trailing "+" for +2 penalty (time already includes the penalty)
-  const cleaned = trimmed.replace(/\+$/, "");
-  return { time: parseTimeValue(cleaned), isDnf: false };
+  const isPlus2 = trimmed.endsWith("+");
+  const cleaned = isPlus2 ? trimmed.slice(0, -1) : trimmed;
+  return { time: parseTimeValue(cleaned), isDnf: false, isPlus2 };
 }
 
 /** Parses a raw numeric time string (supports ss.cc and m:ss.cc formats). */

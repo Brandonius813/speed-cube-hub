@@ -1,71 +1,59 @@
 "use client"
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { WCA_EVENTS } from "@/lib/constants"
 import { formatTimeMs } from "@/lib/timer/averages"
+import { cn } from "@/lib/utils"
 
-type PBCelebrationProps = {
-  isOpen: boolean
-  onClose: () => void
+export type PBToast = {
   event: string
   pbType: string
   newTimeMs: number
   previousTimeMs?: number
-  scramble?: string
-  userName: string
-  handle: string
-  avatarUrl: string | null
 }
 
-export function PBCelebration({
-  isOpen,
-  onClose,
-  event,
-  pbType,
-  newTimeMs,
-  previousTimeMs,
-}: PBCelebrationProps) {
-  const eventLabel =
-    WCA_EVENTS.find((e) => e.id === event)?.label ?? event
+type PBCelebrationProps = {
+  toast: PBToast
+  onDismiss: () => void
+  className?: string
+}
+
+export function PBCelebration({ toast, onDismiss, className }: PBCelebrationProps) {
+  const eventLabel = WCA_EVENTS.find((e) => e.id === toast.event)?.label ?? toast.event
 
   const pbLabel =
-    pbType === "single"
+    toast.pbType === "Single"
       ? "Single"
-      : pbType.startsWith("ao")
-        ? pbType.toUpperCase()
-        : pbType
+      : toast.pbType.startsWith("Ao") || toast.pbType.startsWith("ao")
+        ? toast.pbType.toUpperCase()
+        : toast.pbType
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-sm text-center">
-        <DialogHeader>
-          <DialogTitle className="text-center text-lg">
-            New PB!
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          <p className="text-sm text-muted-foreground">
-            {eventLabel} &middot; {pbLabel}
-          </p>
-          <p className="text-3xl font-mono font-bold text-primary">
-            {formatTimeMs(newTimeMs)}
-          </p>
-          {previousTimeMs !== undefined && (
+    <div
+      className={cn(
+        "fixed bottom-4 right-4 z-50 rounded-xl border border-border shadow-lg bg-background px-4 py-3 min-w-[200px]",
+        "animate-in slide-in-from-bottom-2 fade-in duration-300",
+        className
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold text-primary uppercase tracking-wide">New PB!</p>
+          <p className="text-xs text-muted-foreground">{eventLabel} · {pbLabel}</p>
+          <p className="text-2xl font-mono font-bold">{formatTimeMs(toast.newTimeMs)}</p>
+          {toast.previousTimeMs !== undefined && (
             <p className="text-xs text-muted-foreground">
-              Previous: {formatTimeMs(previousTimeMs)}
+              Previous: {formatTimeMs(toast.previousTimeMs)}
             </p>
           )}
         </div>
-        <Button onClick={onClose} className="w-full">
-          Nice!
-        </Button>
-      </DialogContent>
-    </Dialog>
+        <button
+          onClick={onDismiss}
+          className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+    </div>
   )
 }

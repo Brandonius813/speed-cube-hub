@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Filter, X, Check } from "lucide-react"
+import { Filter, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   getCaseSet,
   hasCaseFiltering,
+  type AlgorithmCase,
   type AlgorithmCaseSet,
 } from "@/lib/timer/algorithm-cases"
 
@@ -122,6 +123,21 @@ export function CaseFilterPanel({
   )
 }
 
+/** Group cases by their `group` field, preserving the order first seen. */
+function groupCases(cases: AlgorithmCase[]): [string, AlgorithmCase[]][] {
+  const map = new Map<string, AlgorithmCase[]>()
+  for (const c of cases) {
+    const key = c.group ?? "Other"
+    const existing = map.get(key)
+    if (existing) {
+      existing.push(c)
+    } else {
+      map.set(key, [c])
+    }
+  }
+  return Array.from(map.entries())
+}
+
 function CaseFilterDropdown({
   caseSet,
   selectedSet,
@@ -153,10 +169,12 @@ function CaseFilterDropdown({
     return () => document.removeEventListener("mousedown", handleClick)
   }, [onClose])
 
+  const groups = groupCases(caseSet.cases)
+
   return (
     <div
       data-case-filter
-      className="absolute left-0 top-full mt-1 w-72 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+      className="absolute left-0 top-full mt-1 w-80 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
@@ -188,30 +206,36 @@ function CaseFilterDropdown({
         </Button>
       </div>
 
-      {/* Case grid */}
-      <div className="max-h-[50vh] overflow-y-auto p-2">
-        <div className="grid grid-cols-4 gap-1">
-          {caseSet.cases.map((c) => {
-            const isSelected = selectedSet.has(c.index)
-            return (
-              <button
-                key={c.index}
-                onClick={() => onToggle(c.index)}
-                className={cn(
-                  "relative flex items-center justify-center px-1 py-1.5 rounded text-xs font-medium transition-colors min-h-[32px]",
-                  isSelected
-                    ? "bg-primary/15 text-primary border border-primary/30"
-                    : "bg-secondary/30 text-muted-foreground border border-transparent hover:bg-secondary/50"
-                )}
-              >
-                {isSelected && (
-                  <Check className="h-2.5 w-2.5 absolute top-0.5 right-0.5 text-primary" />
-                )}
-                <span className="truncate">{c.name}</span>
-              </button>
-            )
-          })}
-        </div>
+      {/* Case grid — grouped by shape/category */}
+      <div className="max-h-[60vh] overflow-y-auto p-3 space-y-4">
+        {groups.map(([groupName, cases]) => (
+          <div key={groupName}>
+            {/* Group header */}
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1 mb-2">
+              {groupName}
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {cases.map((c) => {
+                const isSelected = selectedSet.has(c.index)
+                return (
+                  <button
+                    key={c.index}
+                    onClick={() => onToggle(c.index)}
+                    className={cn(
+                      "flex items-center justify-center rounded-md text-xs font-semibold transition-all min-h-[44px] min-w-[44px] px-1",
+                      isSelected
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-1 ring-offset-background"
+                        : "bg-secondary/40 text-foreground border border-border hover:bg-secondary/70 hover:border-primary/40"
+                    )}
+                    title={c.name}
+                  >
+                    {c.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

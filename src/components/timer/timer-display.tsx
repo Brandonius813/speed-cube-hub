@@ -11,9 +11,9 @@ import {
 
 type TimerState = "idle" | "holding" | "ready" | "running" | "stopped"
 
-export const HOLD_DURATION_OPTIONS = [0, 100, 200, 300, 500, 1000] as const
+export const HOLD_DURATION_OPTIONS = [100, 200, 550] as const
 export type HoldDuration = (typeof HOLD_DURATION_OPTIONS)[number]
-export const DEFAULT_HOLD_DURATION: HoldDuration = 300
+export const DEFAULT_HOLD_DURATION: HoldDuration = 200
 
 export type TimerSize = "small" | "medium" | "large"
 export type TimerUpdateMode = "realtime" | "seconds" | "hidden"
@@ -164,17 +164,12 @@ export function TimerDisplay({
       return
     }
 
-    // Start hold-to-ready: immediately go red, then green after threshold
+    // Start hold-to-ready: go red, then green after threshold
     if (currentState === "idle" || currentState === "stopped") {
-      if (holdDuration === 0) {
-        // No hold delay — go straight to ready
+      setTimerState("holding")
+      holdTimerRef.current = setTimeout(() => {
         setTimerState("ready")
-      } else {
-        setTimerState("holding")
-        holdTimerRef.current = setTimeout(() => {
-          setTimerState("ready")
-        }, holdDuration)
-      }
+      }, holdDuration)
     }
   }, [disabled, inspectionActive, onStartInspection, stopTimer, holdDuration])
 

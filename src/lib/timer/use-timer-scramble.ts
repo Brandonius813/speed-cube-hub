@@ -9,7 +9,6 @@ import {
 export function useTimerScramble() {
   const [currentScramble, setCurrentScramble] = useState<string | null>(null)
   const [currentCaseIndex, setCurrentCaseIndex] = useState<number | null>(null)
-  const [isManualScramble, setIsManualScramble] = useState(false)
   const nextRef = useRef<ScrambleWithCase | null>(null)
   const seedRef = useRef<string | null>(null)
   const seedCounterRef = useRef(0)
@@ -39,8 +38,6 @@ export function useTimerScramble() {
     trainingCstimerType?: string,
     caseFilter?: number[] | null
   ) => {
-    setIsManualScramble(false)
-
     // When using a race seed, reset the seed state for deterministic generation.
     // Each scramble increments the counter so both players get the same Nth scramble.
     if (seedRef.current) {
@@ -69,12 +66,6 @@ export function useTimerScramble() {
     }
   }
 
-  const setManualScramble = (scramble: string) => {
-    setCurrentScramble(scramble)
-    setCurrentCaseIndex(null)
-    setIsManualScramble(true)
-  }
-
   const clearNextScramble = () => {
     nextRef.current = null
   }
@@ -82,9 +73,7 @@ export function useTimerScramble() {
   return {
     currentScramble,
     currentCaseIndex,
-    isManualScramble,
     loadScramble,
-    setManualScramble,
     clearNextScramble,
     setRaceSeed,
   }

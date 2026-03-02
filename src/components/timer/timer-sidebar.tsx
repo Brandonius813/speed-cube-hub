@@ -19,7 +19,7 @@ export function TimerSidebar({
   onStatClick,
   sessionNames,
 }: {
-  sidebarPosition: "left" | "right" | "bottom"
+  sidebarPosition: "left" | "right"
   stats: SessionStats
   mode: "normal" | "comp_sim"
   solves: Solve[]
@@ -42,11 +42,9 @@ export function TimerSidebar({
     <div
       className={cn(
         "flex flex-col overflow-hidden",
-        sidebarPosition === "bottom"
-          ? "border-t border-border/50 max-h-[40vh]"
-          : sidebarPosition === "left"
-            ? "border-r border-border/50"
-            : "border-l border-border/50"
+        sidebarPosition === "left"
+          ? "border-r border-border/50"
+          : "border-l border-border/50"
       )}
     >
       <StatsPanel
@@ -58,6 +56,7 @@ export function TimerSidebar({
         solves={solves}
         event={event}
         statIndicators={statIndicators}
+        sidebarPosition={sidebarPosition}
         onStatClick={onStatClick}
         sessionNames={sessionNames}
       />

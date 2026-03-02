@@ -271,6 +271,35 @@ export async function archiveSolveSession(
   return {}
 }
 
+export async function unarchiveSolveSession(
+  id: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Not authenticated" }
+  }
+
+  const { error } = await supabase
+    .from("solve_sessions")
+    .update({
+      is_archived: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {}
+}
+
 /**
  * Hard delete a solve session.
  * Solves get solve_session_id set to NULL (preserved in DB).

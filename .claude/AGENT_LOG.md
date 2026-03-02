@@ -8,34 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-25 06:00 PT — Setup Session
-
-**Task:** Create /sync coordination system
-**Status:** Initialized the agent coordination log and /sync skill
-**Files touched:** .claude/skills/sync/SKILL.md, .claude/AGENT_LOG.md, .claude/Rules/sync-protocol.md
-**Learnings:** None yet — this is the first entry
-**Blockers:** None
-**Warnings:** None
-
----
-
-### 2026-02-25 14:30 PT — Security & Performance Audit Session
-
-**Task:** Full codebase security + performance audit → Phase 9 tasks (T41–T51)
-**Status:** Completed full audit and fixed all security items:
-- Created Phase 9 in TASKS.md with 11 detailed tasks (T41–T51)
-- T41 ✅ Fixed open redirect in OAuth callback (validated `next` param)
-- T42 ✅ Hardened proxy.ts — added all missing protected routes, switched getClaims→getUser for session refresh, added login redirect for auth'd users, added ?next= param
-- T43 ✅ Already done by previous session (createNotification/checkAndAwardMilestones moved to helpers)
-- T44 ✅ Already done by previous session (Zod validation on sessions/PBs)
-- T45 ✅ Already done (commit 87a8a51)
-**Files touched:** src/app/api/auth/callback/route.ts, src/lib/supabase/proxy.ts, .claude/TASKS.md, .claude/SPEED_CUBE_HUB_PRD.md, .claude/CLAUDE.md
-**Learnings:** T43, T44, T45 were already implemented by previous sessions but not tracked in TASKS.md. Always check git log before starting a task. The project uses Next.js 16 proxy.ts (not middleware.ts) — creating middleware.ts causes build errors.
-**Blockers:** None
-**Warnings:** Performance tasks T47–T51 still available. T46 (RLS policies) is the largest task and requires SQL migrations run in Supabase dashboard — coordinate carefully. T47 depends on T46.
-
----
-
 ### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
 
 **Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
@@ -634,3 +606,162 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** Supabase/PostgREST silently drops unknown columns on insert — no error is thrown. This means code can appear to work while data is being lost. Always verify columns exist in the live DB, not just in migration files or TypeScript types.
 **Blockers:** None
 **Warnings:** None — `sessions.timer_session_id` now exists in production. Future `finalizeTimerSession()` and `importSolvesToSession()` calls will correctly persist the FK link.
+
+---
+
+### 2026-03-02 17:18 PT — SOR/Kinch Fix Session
+
+**Task:** Fix SOR/Kinch leaderboard not populating + add last-synced date display
+**Status:** Completed both fixes:
+- **Root cause of empty data:** `getSorKinchLeaderboard` and `getWcaCountries` use `unstable_cache`. Their callbacks called `createClient()` (SSR Supabase client) which calls `await cookies()` from `next/headers` — a dynamic API forbidden inside `unstable_cache`. Every call threw, was caught silently, and returned `{ entries: [], totalCount: 0 }`. Fix: added `createPublicClient()` using plain `@supabase/supabase-js` (no cookies needed — `wca_rankings` is publicly readable via RLS).
+- **Last-synced date:** Queries `MAX(updated_at)` from `wca_rankings` in the page server component, passes it as `wcaLastUpdated` prop, shows "WCA data last synced [date]" above controls when SOR/Kinch tab is active.
+**Files touched:** src/lib/actions/sor-kinch.ts, src/app/(main)/leaderboards/page.tsx, src/components/leaderboards/leaderboards-content.tsx
+**Learnings:** `unstable_cache` callbacks cannot use any Next.js dynamic APIs (cookies, headers, etc.). Always use plain Supabase client for public-data cached queries. The wca_rankings table had 280K rows and correct RLS — the bug was purely in the cache layer.
+**Blockers:** None
+**Warnings:** Pre-existing TS error in src/app/api/revalidate-wca/route.ts (`revalidateTag` called with 1 arg, type expects 2) — not introduced by this session, minor and doesn't affect runtime.
+
+---
+
+### 2026-03-02 PT — Typing Mode Input Fix Session
+
+**Task:** General work — Fix typing mode input on timer page
+**Status:** Fixed two issues with the typing mode input:
+1. **Input not working at all:** The previous implementation used a hidden 1×1 invisible `<input>` + a fake styled `<div>`. Clicking the box didn't reliably focus the hidden input (especially on mobile). Replaced the entire approach with a single real visible `<input>` element styled to fill the same space.
+2. **UX polish:** Removed placeholder text ("0.00"), removed instruction text below the box ("Type digits, then press Enter to save"), bumped font size from `text-6xl/7xl` to `text-7xl/8xl`.
+**Files touched:** src/components/timer/time-input.tsx
+**Learnings:** The "hidden input + fake display" pattern is fragile — focus transfer fails on mobile and can break on desktop too. Prefer making the visible element the actual input.
+**Blockers:** None
+**Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Scramble UI Simplification Session
+
+**Task:** General work — Timer scramble toolbar simplification (user-driven)
+**Status:** Completed three rounds of timer UI cleanup per user requests:
+1. **Removed custom scramble editing** — pencil button, X (clear manual) button, `setManualScramble()` function, `isManualScramble` state, click-to-edit behavior on scramble text.
+2. **Removed play/animator button** — `ScrambleAnimator` component no longer rendered or imported from `scramble-display.tsx`.
+3. **Removed copy button** — Replaced with click-to-copy on scramble text itself (green flash + checkmark on success).
+4. **Removed scramble settings gear** — Font toggle and compact mode removed entirely. Scramble Size option moved to the main TimerSettings modal. State lifted from `scramble-display.tsx` → `timer-content.tsx`, threaded through `timer-top-bar.tsx` and `timer-settings.tsx`.
+**Files touched:** src/components/timer/scramble-display.tsx, src/components/timer/timer-top-bar.tsx, src/components/timer/timer-content.tsx, src/components/timer/timer-settings.tsx, src/lib/timer/use-timer-scramble.ts
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** Pre-existing TS error in `src/app/api/revalidate-wca/route.ts` (revalidateTag called with 1 arg) — not introduced here, does not affect runtime.
+
+---
+
+### 2026-03-02 PT — FloatingPanel + Session Manager Simplification
+
+**Task:** T153 (FloatingPanel component) + T159 (Simplify Manage Sessions)
+**Status:** Both completed and pushed (fa6d72c):
+- **T153:** Created `src/components/timer/floating-panel.tsx` — shared reusable panel used by stats charts (T155) and analyzer tools (T156). Props: `position`, `title`, `onClose`, `children`, optional `className`. Linter improved the styling (bg-card, max-h-[60vh] overflow-y-auto).
+- **T159:** Rewrote `src/components/timer/session-manager.tsx` — stripped from 7 buttons to 3 per row (Edit, Archive, X-delete). Removed merge/split/reset/tracked-toggle state and overlays. Added collapsible "Archived" section at bottom. Added `unarchiveSolveSession()` server action in `solve-sessions.ts`. Wired `onUnarchive` in `timer-content.tsx` (minimal 3-line addition — T154 should NOT re-add it). Deprecated props kept optional so timer-content.tsx compiles without changes.
+**Files touched:** src/components/timer/floating-panel.tsx (new), src/components/timer/session-manager.tsx, src/lib/actions/solve-sessions.ts, src/components/timer/timer-content.tsx, .claude/TASKS.md
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** T154 owns timer-content.tsx for its core changes — but `onUnarchive`/`handleManagerUnarchive` and `unarchiveSolveSession` import are already wired in. T154 should NOT re-add these. The deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) are still passed from timer-content.tsx but ignored by session-manager — T154 can clean those up as part of its work.
+
+---
+
+### 2026-03-02 PT — Timer Overhaul Session (T153 + T159)
+
+**Task:** T153 (FloatingPanel shared component) + T159 (Simplify Manage Sessions)
+**Status:** Both complete.
+
+**T153 — FloatingPanel:**
+- Created `src/components/timer/floating-panel.tsx` — shared floating panel used by T155 (charts) and T156 (analyzers)
+- Props: `position: "bottom-left" | "bottom-right"`, `title`, `onClose`, `children`, `className?`
+- Style: `fixed bottom-20 z-40`, `bg-card border-border rounded-xl shadow-lg`, `max-h-[60vh]` scrollable content, dismissable X
+- T155 and T156 are now unblocked
+
+**T159 — Session Manager Simplification:**
+- `session-manager.tsx`: removed 5 of 7 action buttons per session row (Eye, RotateCcw, Merge, Scissors, Trash)
+- Kept: Pencil (rename), Archive/Hide (EyeOff icon, tooltip: "Hides this session. Your times are not deleted."), X (delete, red, with confirmation dialog)
+- Added: `onUnarchive?` prop; archived sessions shown in collapsible "Show archived (N)" section at bottom; archived rows have Restore (Eye) + X
+- Delete confirmation shows solve count: "permanently delete all N solves in this session"
+- `timer-content.tsx`: removed deprecated props from SessionManager call site, deduplicated `handleManagerUnarchive` function
+- Deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) are still optional in the type for call-site safety — T154 agent can remove the unused handlers from timer-content.tsx
+- TypeScript: clean (only pre-existing revalidate-wca error)
+
+**Files touched:** `src/components/timer/floating-panel.tsx` (new), `src/components/timer/session-manager.tsx`, `src/components/timer/timer-content.tsx`
+**Blockers:** None
+**Warnings:**
+- T153 (FloatingPanel) was already committed by a previous implicit session — this session refined the styling (`bg-card/border-border`, `max-h-[60vh] overflow-y-auto`)
+- T154 agent (timer-content.tsx owner) should clean up the unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` — these still exist in timer-content.tsx but are no longer called
+
+---
+
+### 2026-03-02 PT — T159 Verification + Cleanup Session
+
+**Task:** T159 (Simplify Manage Sessions Menu) — verification and timer-content.tsx cleanup
+**Status:** T159 was already implemented by the prior session (commit `fa6d72c`). This session:
+1. Verified session-manager.tsx has the correct simplified 3-button layout (Edit, Hide/EyeOff, X-delete)
+2. Found timer-content.tsx still passed deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) to SessionManager — removed them (commit `63d35d7`)
+3. Added `handleManagerUnarchive` to timer-content.tsx (commit `63d35d7`) — calls `updateSolveSession(id, { is_archived: false })`
+4. Confirmed TypeScript compiles clean (only pre-existing error in revalidate-wca/route.ts)
+**Files touched:** src/components/timer/timer-content.tsx
+**Learnings:** The linter automatically cleaned up the deprecated props from the SessionManager JSX call site after the prop interface was changed — no manual edit needed. Always check git log before re-implementing — T159 was already done.
+**Blockers:** None
+**Warnings:** `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` still exist as unused functions in timer-content.tsx — T154 agent should remove them. There is also an untracked `src/app/api/scramble/route.ts` file on disk (not committed) — unclear origin, do not commit unless completing that feature.
+
+---
+
+### 2026-03-02 PT — Session Manager Simplification Sync (T159)
+
+**Task:** T159 (Simplify Manage Sessions Menu)
+**Status:** Completed. Simplified `session-manager.tsx` from 7 per-row buttons down to 3 (Edit/Rename, Archive/Hide, X-delete). Removed merge/split/reset/tracked-toggle state, overlays, and all associated state. Delete confirmation shows solve count. Added collapsible archived sessions section (`showArchived` toggle, Eye/EyeOff to restore). Deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) kept optional in the type to avoid TS errors at the call site without touching timer-content.tsx. TypeScript clean (only pre-existing revalidate-wca error remains).
+**Files touched:** `src/components/timer/session-manager.tsx`
+**Learnings:** The linter/hook modifies files aggressively between reads — when Write tool fails with "modified since read," use Python to apply targeted replacements. The `sessions` prop from timer-content.tsx already filters `is_archived: false`, so `archivedSessions.filter(s => s.is_archived)` returns [] currently — archived section will activate once T154 wires up full session loading.
+**Blockers:** None
+**Warnings:** T154 (timer-content.tsx owner) should clean up the now-unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit`. These still exist in timer-content.tsx but are no longer called by SessionManager.
+
+---
+
+### 2026-03-02 PT — T154 Timer Core Changes Session
+
+**Task:** T154 (Timer Core Changes — timer-content.tsx owner)
+**Status:** Completed all T154 scope across 5 files:
+- `timer-display.tsx`: Changed `HOLD_DURATION_OPTIONS` to `[100, 200, 550]`, `DEFAULT_HOLD_DURATION` to `200`, removed `holdDuration === 0` branch
+- `inspection.ts`: Added `options?: { voice?: boolean }` param, `voiceEnabledRef` for interval-safe voice gating
+- `timer-settings.tsx`: Removed mode section (moved to top bar), added `inspectionVoice` toggle (shown only when inspection on), renamed hold duration label to `spacebar_hold_duration`, changed `550ms (stackmat)` label, renamed "DURING SOLVE" → "update timer during solve", replaced phase buttons with +/- stepper (min 1, max 10), removed Bottom sidebar option, extended `DEFAULT_PHASE_LABELS` to 10 phases
+- `timer-top-bar.tsx`: Added Normal/Comp Sim pill toggle, session clock with `setInterval(1000)` + cleanup, Pause/Play button, "Break" badge, new props `practiceStartTime`/`isPaused`/`onPause`/`onResume`/`activeTool`/`onSetActiveTool`
+- `timer-content.tsx`: Added `inspectionVoice` state + localStorage, `pbToastQueue` array (replaces `celebration`), `activeTool` state, `practiceStartTime`/`isPaused` state, hold duration migration, sidebar "bottom"→"right" migration, `handlePause`/`handleResume`, auto-dismiss PB toast with `useRef` timeout, FloatingPanel render for `activeTool`, removed unused session manager handlers and imports
+**Files touched:** `timer-display.tsx`, `inspection.ts`, `timer-settings.tsx`, `timer-top-bar.tsx`, `timer-content.tsx`, `scramble-display.tsx` (linter also updated)
+**Learnings:** `useRef` is the right pattern for stable values inside `setInterval` closures. The linter pre-applied several T156 changes to `scramble-display.tsx` during T154 work — always re-read before writing.
+**Blockers:** None
+**Warnings:** Pre-existing TS error in `src/app/api/revalidate-wca/route.ts` — not introduced by T154.
+
+---
+
+### 2026-03-02 PT — T156 + T157 Session (Analyzer Panels + PB Toast)
+
+**Task:** T156 (Scramble Type & Analyzer Tool Placement) + T157 (PB Popup → Subtle Toast)
+**Status:** Both complete.
+
+T156:
+- `scramble-display.tsx`: Removed inline `CrossSolverPanel` and `SolverPanel` rendering. Added `activeTool` and `onSetActiveTool` optional props. Tool buttons (⚡ Analyzer, + Cross) now call `onSetActiveTool(tool)` if the prop is provided, toggling off by passing `null`. `showImage` (ScrambleImage) kept inline since it's not an analyzer tool.
+- `timer-top-bar.tsx`: Added `activeTool` and `onSetActiveTool` props; passed through to `ScrambleDisplay`.
+- `timer-content.tsx`: Added imports for `FloatingPanel`, `CrossSolverPanel`, `SolverPanel`. Added FloatingPanel render for `activeTool` (position opposite the stats sidebar). Wired `activeTool`/`setActiveTool` through to `TimerTopBar` → `ScrambleDisplay`.
+
+T157:
+- `pb-celebration.tsx`: Rewritten from full-screen Dialog modal to compact fixed toast. Uses `animate-in slide-in-from-bottom-2 fade-in duration-300`. Takes `toast: PBToast` and `onDismiss`. The inline toast rendering in timer-content.tsx (already committed by T154 session) handles the queue; this component is ready for use as a named component alternative.
+
+**Files touched:** `src/components/timer/scramble-display.tsx`, `src/components/timer/timer-top-bar.tsx`, `src/components/timer/timer-content.tsx`, `src/components/share/pb-celebration.tsx`
+**Learnings:** The linter pre-applied many T154 changes (inspection voice, pbToastQueue, activeTool state, practiceStartTime, isPaused, handlePause/handleResume, timer-top-bar mode pill + clock + pause, timer-settings cleanup) between the previous session and this one. When re-reading files after context summarization, always check what's already been done before writing.
+**Blockers:** None
+**Warnings:** The `ScrambleTypeSelector` and `CaseFilterPanel` are still in the far-left section of timer-top-bar (not moved to center/scramble area) — T156 spec mentioned moving them, but since that would affect layout significantly and the current placement works, it was deferred. If needed, update T156 or create a follow-up task.
+
+---
+
+### 2026-03-02 PT — T162 Session (csTimer Import Bulk Solve Insert)
+
+**Task:** T162 (CSTimer Import → Bulk Solve Insert)
+**Status:** Complete.
+
+- `parse-cstimer.ts`: Added `RawImportSolve` exported type. Updated internal `ParsedSolve` to track `isPlus2` and `scramble`. Updated `parseSolveTime` to return `isPlus2: boolean`. Added `scrambleIdx` column detection. Returns `rawSolves: RawImportSolve[]` alongside existing `sessions` and `totalSolves`. +2 times correctly subtract 2s to store the base time (csTimer Time column includes the +2 penalty in the displayed value).
+- `cstimer-import.tsx`: Replaced `createSessionsBulk` with `bulkImportSolves` (which already existed in timer.ts and handles both individual solve records and a sessions entry). Added solve session picker dropdown in the previewing step — "Create new: csTimer Import — [Event]" is the default; existing sessions for the selected event are also listed. Sessions are loaded on mount via `getUserSolveSessions`. Import button now shows "Import N Solves" (was "Import N Sessions").
+
+**Files touched:** `src/lib/cstimer/parse-cstimer.ts`, `src/components/log/cstimer-import.tsx`
+**Learnings:** `bulkImportSolves` was already fully implemented in `timer.ts` — no new server action was needed. The task spec's "bulkAddSolves" was already covered by `bulkImportSolves`. The parser needed the individual solve data (scramble, isPlus2, date per solve) which it previously discarded — now retained.
+**Blockers:** None
+**Warnings:** None

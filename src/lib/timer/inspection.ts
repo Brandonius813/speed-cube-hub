@@ -28,8 +28,14 @@ type InspectionResult = {
  * - Judge says "12 seconds" at 12s remaining (3 seconds remaining)
  * - Starting after 15s but before 17s = +2 penalty
  * - Starting after 17s = DNF
+ *
+ * @param options.voice - Whether to play WCA voice warnings (default: true)
  */
-export function useInspection(): InspectionResult {
+export function useInspection(options?: { voice?: boolean }): InspectionResult {
+  // Ref so the interval always reads the latest voice setting without recreating startInspection
+  const voiceEnabledRef = useRef(options?.voice !== false)
+  voiceEnabledRef.current = options?.voice !== false
+
   const [state, setState] = useState<InspectionState>("idle")
   const [secondsLeft, setSecondsLeft] = useState(15)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -74,11 +80,11 @@ export function useInspection(): InspectionResult {
       // Voice warnings
       if (remaining <= 7 && !has8sWarned.current) {
         has8sWarned.current = true
-        speak("8 seconds")
+        if (voiceEnabledRef.current) speak("8 seconds")
       }
       if (remaining <= 3 && !has12sWarned.current) {
         has12sWarned.current = true
-        speak("12 seconds")
+        if (voiceEnabledRef.current) speak("12 seconds")
       }
 
       // Overtime (past 15s)

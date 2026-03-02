@@ -1,4 +1,4 @@
-import { Square, X, Download } from "lucide-react"
+import { Square, X, Download, Pause, Play } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -7,9 +7,16 @@ import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
-import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, PhaseCount, ScrambleSize } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
+
+/** Format elapsed seconds as mm:ss */
+function formatClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${String(s).padStart(2, "0")}`
+}
 
 export function TimerTopBar({
   sessions,
@@ -23,6 +30,8 @@ export function TimerTopBar({
   onInputModeChange,
   inspectionEnabled,
   onInspectionChange,
+  inspectionVoice,
+  onInspectionVoiceChange,
   timerUpdateMode,
   onTimerUpdateModeChange,
   timerSize,
@@ -58,9 +67,14 @@ export function TimerTopBar({
   onStackmatDisconnect,
   scramble,
   event,
-  isManualScramble,
-  onManualScramble,
-  onClearManualScramble,
+  scrambleSize,
+  onScrambleSizeChange,
+  practiceStartTime,
+  isPaused,
+  onPause,
+  onResume,
+  activeTool,
+  onSetActiveTool,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -73,6 +87,8 @@ export function TimerTopBar({
   onInputModeChange: (mode: InputMode) => void
   inspectionEnabled: boolean
   onInspectionChange: (enabled: boolean) => void
+  inspectionVoice: boolean
+  onInspectionVoiceChange: (enabled: boolean) => void
   timerUpdateMode: TimerUpdateMode
   onTimerUpdateModeChange: (mode: TimerUpdateMode) => void
   timerSize: TimerSize
@@ -108,12 +124,38 @@ export function TimerTopBar({
   onStackmatDisconnect?: () => void
   scramble: string | null
   event?: string
-  isManualScramble?: boolean
-  onManualScramble?: (scramble: string) => void
-  onClearManualScramble?: () => void
+  scrambleSize: ScrambleSize
+  onScrambleSizeChange: (size: ScrambleSize) => void
+  /** When the current practice sitting started (for session clock) */
+  practiceStartTime?: Date | null
+  /** Whether the session is paused (break mode) */
+  isPaused?: boolean
+  onPause?: () => void
+  onResume?: () => void
+  activeTool?: "cross" | "eo" | "analyzer" | null
+  onSetActiveTool?: (tool: "cross" | "eo" | "analyzer" | null) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
+
+  // Session clock: elapsed seconds (excludes paused time)
+  const [clockSeconds, setClockSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!practiceStartTime) {
+      setClockSeconds(0)
+      return
+    }
+    if (isPaused) return  // clock freezes while paused
+
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - practiceStartTime.getTime()) / 1000)
+      setClockSeconds(elapsed)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [practiceStartTime, isPaused])
 
   // Close export dropdown on outside click
   useEffect(() => {
@@ -129,8 +171,11 @@ export function TimerTopBar({
 
   return (
     <>
-      <div className="relative z-50 flex items-center justify-between px-3 py-2 border-b border-border/50">
-        <div className="flex items-center gap-2">
+      <div className="relative z-50 border-b border-border/50">
+      <div className="flex items-center gap-2 px-3 py-1">
+
+        {/* Left: session selector + mode pill + status chips */}
+        <div className="flex items-center gap-2 shrink-0">
           <SessionSelector
             sessions={sessions}
             currentSessionId={currentSession?.id ?? null}
@@ -138,6 +183,21 @@ export function TimerTopBar({
             onCreate={onCreateSession}
             onManage={onManageSessions}
           />
+
+          {/* Comp Sim / Normal pill toggle — always visible, always clickable */}
+          <button
+            onClick={() => onModeChange(mode === "normal" ? "comp_sim" : "normal")}
+            className={cn(
+              "text-xs px-2 py-0.5 rounded-full transition-colors",
+              mode === "comp_sim"
+                ? "bg-accent/20 text-accent hover:bg-accent/30"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+            title={mode === "comp_sim" ? "Switch to Normal mode" : "Switch to Comp Sim mode"}
+          >
+            {mode === "comp_sim" ? "Comp Sim" : "Normal"}
+          </button>
+
           {scrambleTypeId && onScrambleTypeChange && currentSession && (
             <ScrambleTypeSelector
               eventId={currentSession.event}
@@ -151,11 +211,6 @@ export function TimerTopBar({
               selectedCases={caseFilter ?? null}
               onSelectedCasesChange={onCaseFilterChange}
             />
-          )}
-          {mode === "comp_sim" && (
-            <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-              Comp Sim
-            </span>
           )}
           {phaseCount && phaseCount > 1 && (
             <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">
@@ -175,7 +230,46 @@ export function TimerTopBar({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Center: scramble */}
+        <div className="flex-1 min-w-0">
+          <ScrambleDisplay
+            scramble={scramble}
+            event={event}
+            scrambleSize={scrambleSize}
+            activeTool={activeTool}
+            onSetActiveTool={onSetActiveTool}
+          />
+        </div>
+
+        {/* Right: session clock, pause, export, end practice, settings */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Session clock + pause (only when a practice session is active) */}
+          {practiceStartTime && (
+            <>
+              {isPaused ? (
+                <span className="text-xs bg-yellow-500/15 text-yellow-400 px-2 py-0.5 rounded-full">
+                  Break
+                </span>
+              ) : (
+                <span className="text-xs font-mono text-muted-foreground px-1">
+                  {formatClock(clockSeconds)}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={isPaused ? onResume : onPause}
+                title={isPaused ? "Resume practice" : "Take a break"}
+              >
+                {isPaused
+                  ? <Play className="h-3.5 w-3.5" />
+                  : <Pause className="h-3.5 w-3.5" />
+                }
+              </Button>
+            </>
+          )}
+
           {solveCount > 0 && onExport && (
             <div className="relative" ref={exportRef}>
               <Button
@@ -222,10 +316,10 @@ export function TimerTopBar({
             </Button>
           )}
           <TimerSettings
-            mode={mode}
-            onModeChange={onModeChange}
             inspectionEnabled={inspectionEnabled}
             onInspectionChange={onInspectionChange}
+            inspectionVoice={inspectionVoice}
+            onInspectionVoiceChange={onInspectionVoiceChange}
             timerUpdateMode={timerUpdateMode}
             onTimerUpdateModeChange={onTimerUpdateModeChange}
             timerSize={timerSize}
@@ -251,19 +345,11 @@ export function TimerTopBar({
             stackmatError={stackmatError}
             onStackmatConnect={onStackmatConnect}
             onStackmatDisconnect={onStackmatDisconnect}
+            scrambleSize={scrambleSize}
+            onScrambleSizeChange={onScrambleSizeChange}
           />
         </div>
       </div>
-
-      {/* Scramble row */}
-      <div className="border-b border-border/50">
-        <ScrambleDisplay
-          scramble={scramble}
-          event={event}
-          isManualScramble={isManualScramble}
-          onManualScramble={onManualScramble}
-          onClearManualScramble={onClearManualScramble}
-        />
       </div>
 
       {saveError && (

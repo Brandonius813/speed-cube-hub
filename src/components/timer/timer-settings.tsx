@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings, X } from "lucide-react"
+import { Settings, X, Minus, Plus } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,7 +12,8 @@ import {
 } from "@/components/timer/timer-display"
 
 export type InputMode = "timer" | "typing" | "stackmat"
-export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
+export type SidebarPosition = "right" | "left" | "hidden"
+export type ScrambleSize = "auto" | "small" | "medium" | "large"
 
 export const PHASE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export type PhaseCount = (typeof PHASE_COUNT_OPTIONS)[number]
@@ -20,14 +21,21 @@ export type PhaseCount = (typeof PHASE_COUNT_OPTIONS)[number]
 /** Default phase labels for common phase counts */
 export const DEFAULT_PHASE_LABELS: Record<number, string[]> = {
   2: ["First", "Last"],
+  3: ["Phase 1", "Phase 2", "Phase 3"],
   4: ["Cross", "F2L", "OLL", "PLL"],
+  5: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"],
+  6: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6"],
+  7: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7"],
+  8: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Phase 8"],
+  9: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Phase 8", "Phase 9"],
+  10: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Phase 8", "Phase 9", "Phase 10"],
 }
 
 type TimerSettingsProps = {
-  mode: "normal" | "comp_sim"
-  onModeChange: (mode: "normal" | "comp_sim") => void
   inspectionEnabled: boolean
   onInspectionChange: (enabled: boolean) => void
+  inspectionVoice: boolean
+  onInspectionVoiceChange: (enabled: boolean) => void
   timerUpdateMode: TimerUpdateMode
   onTimerUpdateModeChange: (mode: TimerUpdateMode) => void
   timerSize: TimerSize
@@ -53,13 +61,15 @@ type TimerSettingsProps = {
   stackmatError?: string | null
   onStackmatConnect?: () => void
   onStackmatDisconnect?: () => void
+  scrambleSize: ScrambleSize
+  onScrambleSizeChange: (size: ScrambleSize) => void
 }
 
 export function TimerSettings({
-  mode,
-  onModeChange,
   inspectionEnabled,
   onInspectionChange,
+  inspectionVoice,
+  onInspectionVoiceChange,
   timerUpdateMode,
   onTimerUpdateModeChange,
   timerSize,
@@ -85,6 +95,8 @@ export function TimerSettings({
   stackmatError,
   onStackmatConnect,
   onStackmatDisconnect,
+  scrambleSize,
+  onScrambleSizeChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -125,31 +137,6 @@ export function TimerSettings({
                 </Button>
               </div>
 
-              {/* Mode toggle */}
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  Mode
-                </label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={mode === "normal" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => onModeChange("normal")}
-                  >
-                    Normal
-                  </Button>
-                  <Button
-                    variant={mode === "comp_sim" ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => onModeChange("comp_sim")}
-                  >
-                    Comp Sim
-                  </Button>
-                </div>
-              </div>
-
               {/* Inspection toggle */}
               <ToggleSetting
                 label="WCA Inspection"
@@ -158,10 +145,20 @@ export function TimerSettings({
                 onChange={onInspectionChange}
               />
 
+              {/* WCA voice warnings — only shown when inspection is on */}
+              {inspectionEnabled && (
+                <ToggleSetting
+                  label="WCA voice warnings"
+                  description="Announce 8 seconds and 12 seconds"
+                  enabled={inspectionVoice}
+                  onChange={onInspectionVoiceChange}
+                />
+              )}
+
               {/* Timer update mode */}
               <div className="space-y-2">
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  During Solve
+                  update timer during solve
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {([
@@ -206,6 +203,31 @@ export function TimerSettings({
                 </div>
               </div>
 
+              {/* Scramble size */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Scramble Size
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { value: "auto", label: "Auto" },
+                    { value: "small", label: "Small" },
+                    { value: "medium", label: "Medium" },
+                    { value: "large", label: "Large" },
+                  ] as const).map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={scrambleSize === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onScrambleSizeChange(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               {/* Small decimals toggle */}
               <ToggleSetting
                 label="Small Decimals"
@@ -222,10 +244,10 @@ export function TimerSettings({
                 onChange={onHideWhileTimingChange ?? (() => {})}
               />
 
-              {/* Hold duration */}
+              {/* Spacebar hold duration */}
               <div className="space-y-2">
-                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  Hold Duration
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium font-mono">
+                  spacebar_hold_duration
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {HOLD_DURATION_OPTIONS.map((ms) => (
@@ -236,7 +258,7 @@ export function TimerSettings({
                       className="text-xs"
                       onClick={() => onHoldDurationChange?.(ms)}
                     >
-                      {ms === 0 ? "None" : ms === 300 ? "Stackmat" : `${ms}ms`}
+                      {ms === 550 ? "550ms (stackmat)" : `${ms}ms`}
                     </Button>
                   ))}
                 </div>
@@ -251,18 +273,29 @@ export function TimerSettings({
                   <p className="text-xs text-muted-foreground">
                     Split timing into phases (tap/key to advance)
                   </p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {([1, 2, 3, 4, 5, 6] as const).map((n) => (
-                      <Button
-                        key={n}
-                        variant={phaseCount === n ? "default" : "outline"}
-                        size="sm"
-                        className="text-xs w-10"
-                        onClick={() => onPhaseCountChange(n as PhaseCount)}
-                      >
-                        {n === 1 ? "Off" : n}
-                      </Button>
-                    ))}
+                  {/* +/- stepper */}
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onPhaseCountChange(Math.max(1, phaseCount - 1) as PhaseCount)}
+                      disabled={phaseCount <= 1}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="text-sm font-medium font-mono w-10 text-center">
+                      {phaseCount === 1 ? "Off" : phaseCount}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onPhaseCountChange(Math.min(10, phaseCount + 1) as PhaseCount)}
+                      disabled={phaseCount >= 10}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                   {phaseCount > 1 && onPhaseLabelsChange && (
                     <div className="space-y-1.5">
@@ -383,12 +416,11 @@ export function TimerSettings({
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                   Stats Panel
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(
                     [
                       { value: "right", label: "Right" },
                       { value: "left", label: "Left" },
-                      { value: "bottom", label: "Bottom" },
                       { value: "hidden", label: "Hidden" },
                     ] as const
                   ).map((opt) => (

@@ -66,11 +66,13 @@ export function LeaderboardsContent({
   initialWcaData = {},
   countries = [],
   userWcaId,
+  wcaLastUpdated,
 }: {
   initialData: Record<string, LeaderboardPage>
   initialWcaData?: Record<string, WcaLeaderboardPage>
   countries?: WcaCountry[]
   userWcaId?: string | null
+  wcaLastUpdated?: string | null
 }) {
   // Practice leaderboard state
   const [practiceCache, setPracticeCache] =
@@ -266,8 +268,23 @@ export function LeaderboardsContent({
   const myRankData = isWca ? wcaMyRank : practiceMyRank
   const canFindMe = isWca ? !!userWcaId : !!userId
 
+  const wcaUpdatedLabel = isWca && wcaLastUpdated
+    ? new Date(wcaLastUpdated).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })
+    : null
+
   return (
     <div className="flex flex-col gap-6">
+      {wcaUpdatedLabel && (
+        <p className="text-xs text-muted-foreground">
+          WCA data last synced{" "}
+          <span className="font-medium text-foreground/70">{wcaUpdatedLabel}</span>
+        </p>
+      )}
       <LeaderboardControls
         category={category}
         setCategory={setCategory}
