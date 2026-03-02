@@ -291,24 +291,27 @@ export function TimerContent() {
   btCallbacksRef.current = {
     onHandsOn: () => {
       setBtReset(false)
-      // If software inspection is enabled, start the 15s countdown (mirrors WCA inspection).
-      // The GAN Halo handles its own grace period (~0.5s); the app shows the inspection timer.
-      if (inspOnRef.current) {
-        setPhase("inspecting"); inspRef.current?.startInspection()
-      } else {
-        setPhase("holding") // show red while hands are on the mat
+      if (phaseRef.current === "inspecting") {
+        // Inspection is running (started by the reset button) — don't interrupt it.
+        // Just wait for GET_SET to fire when the hardware arms.
+        return
       }
+      setPhase("holding") // show red while hands are on the mat
     },
     onGetSet: () => {
-      // Grace period done — hardware is armed. Always cancel inspection here.
-      // We cannot check phaseRef.current because React may not have re-rendered yet after
-      // onHandsOn fired (stale ref race condition) — so we always call cancelInspection(),
-      // which is a safe no-op if no countdown is running.
+      // Grace period done — hardware is armed. Cancel any running inspection and show green.
+      // Always called unconditionally: cancelInspection() is a no-op if nothing is running,
+      // and we must not rely on phaseRef here due to async React state timing.
       inspRef.current?.cancelInspection()
       setPhase("ready")
     },
     onHandsOff: () => {
-      // Premature lift before grace period — cancel any running inspection and revert to idle.
+      if (phaseRef.current === "inspecting") {
+        // User briefly touched the mat during inspection (from the reset button) then lifted —
+        // this is normal; keep the inspection countdown running, don't revert to idle.
+        return
+      }
+      // Premature lift before grace period and no inspection — revert to idle.
       inspRef.current?.cancelInspection()
       setPhase("idle")
     },
@@ -322,10 +325,17 @@ export function TimerContent() {
       setElapsed(time_ms); setPhase("stopped"); addSolve(time_ms, null)
     },
     onIdle: () => {
-      // Physical reset button pressed — cancel any running inspection and clear the display.
+      // Physical reset button pressed.
+      // If inspection is enabled: start the countdown (this is the inspection trigger in BT mode).
+      // If inspection is disabled: clear the display back to 0.00.
       inspRef.current?.cancelInspection()
-      setBtReset(true)
-      setPhase("idle")
+      if (inspOnRef.current && phaseRef.current !== "running") {
+        setPhase("inspecting")
+        inspRef.current?.startInspection()
+      } else {
+        setBtReset(true)
+        setPhase("idle")
+      }
     },
     onDisconnect: () => {
       inspRef.current?.cancelInspection()
