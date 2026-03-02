@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { cn } from "@/lib/utils"
 
 type InspectionOverlayProps = {
@@ -13,6 +14,20 @@ export function InspectionOverlay({
   state,
   onStart,
 }: InspectionOverlayProps) {
+  // Prevent spacebar from scrolling the page and trigger start instead
+  useEffect(() => {
+    if (state === "idle" || state === "done") return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        e.preventDefault()
+        if (!e.repeat) onStart()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [state, onStart])
+
   if (state === "idle" || state === "done") return null
 
   const getColor = () => {
@@ -33,7 +48,8 @@ export function InspectionOverlay({
     if (state === "overtime") {
       return secondsLeft <= -2 ? "DNF" : "+2"
     }
-    return Math.max(0, secondsLeft).toString()
+    // Count up from 0: elapsed = 15 - secondsLeft
+    return (15 - Math.max(0, secondsLeft)).toString()
   }
 
   return (
