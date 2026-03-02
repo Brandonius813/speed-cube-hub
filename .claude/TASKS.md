@@ -2706,8 +2706,8 @@ Phases 19-23: See individual task deps
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
-| **Claimed by** | [this session] |
+| **Status** | ✅ Done |
+| **Claimed by** | — |
 | **Dependencies** | None |
 | **Estimated scope** | 1 new file (~30 lines) |
 | **Key files** | `src/components/timer/floating-panel.tsx` (new) |
@@ -2834,8 +2834,8 @@ No images in this task — that's deferred (T162). Focus on UI improvements only
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | [this session] |
 | **Dependencies** | None |
 | **Estimated scope** | 1 file |
 | **Key files** | `src/components/timer/session-manager.tsx` |
