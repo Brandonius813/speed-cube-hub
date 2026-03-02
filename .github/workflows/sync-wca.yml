@@ -31,6 +31,7 @@ jobs:
         run: node scripts/sync-wca-rankings.mjs
 
       - name: Bust leaderboard cache
+        continue-on-error: true
         run: |
           curl -sf -X POST https://www.speedcubehub.com/api/revalidate-wca \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+            -H "Authorization: Bearer ${{ secrets.REVALIDATE_SECRET }}"
