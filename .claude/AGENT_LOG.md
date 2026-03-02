@@ -789,3 +789,14 @@ T157:
 **Learnings:** None new
 **Blockers:** None
 **Warnings:** This session is still on the `dev` branch (the `timer-rebuild` branch was previously merged into `dev` per commit `555b5a3`). The timer is the clean single-file rebuild.
+
+---
+
+### 2026-03-02 PT — Timer Typing Mode Bug Fix Session
+
+**Task:** General work — Bug fix (no TASKS.md ID)
+**Status:** Fixed `parseTime()` in `timer-content.tsx`. Typing a colon-separated time like "8:20" was previously stripping the colon and reading it as "820" = 8.20 seconds. Worse, typing "8200" (4-digit, no trailing centisecond zero) caused `secs=82 ≥ 60 → null → "invalid"`. Added an early branch: if input contains ":", parse as `M:SS[.cc]` explicitly with a regex before falling back to digit-only logic. Also noted the linter had added `scrambleCopied` state and a scramble copy-to-clipboard feature to `timer-content.tsx` since the last sync.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** The right-to-left digit parser only fails for minute-range times typed without full centisecond trailing zeros (e.g., "8200" breaks because "82" becomes the seconds). The colon branch fixes this cleanly.
+**Blockers:** None
+**Warnings:** None
