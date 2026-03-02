@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, FileSpreadsheet, Timer, Smartphone } from "lucide-react";
+import { ClipboardList, Upload } from "lucide-react";
 import { SessionForm } from "./session-form";
-import { CsvImport } from "./csv-import";
-import { CsTimerImport } from "./cstimer-import";
-import { CubeTimeImport } from "./cubetime-import";
+import { ImportContent } from "@/components/import/import-content";
 
-type Mode = "single" | "import" | "cstimer" | "cubetime";
+type Mode = "single" | "import";
 
 export function LogPageContent() {
   const [mode, setMode] = useState<Mode>("single");
@@ -43,36 +41,14 @@ export function LogPageContent() {
           onClick={() => setMode("import")}
           className="gap-2"
         >
-          <FileSpreadsheet className="h-4 w-4" />
-          Import CSV
-        </Button>
-        <Button
-          type="button"
-          variant={mode === "cstimer" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setMode("cstimer")}
-          className="gap-2"
-        >
-          <Timer className="h-4 w-4" />
-          csTimer
-        </Button>
-        <Button
-          type="button"
-          variant={mode === "cubetime" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setMode("cubetime")}
-          className="gap-2"
-        >
-          <Smartphone className="h-4 w-4" />
-          CubeTime
+          <Upload className="h-4 w-4" />
+          Import from Timer
         </Button>
       </div>
 
       {/* Content */}
       {mode === "single" && <SessionForm />}
-      {mode === "import" && <CsvImport />}
-      {mode === "cstimer" && <CsTimerImport />}
-      {mode === "cubetime" && <CubeTimeImport />}
+      {mode === "import" && <ImportContent hideHeader />}
     </div>
   );
 }
