@@ -9,7 +9,7 @@ type Penalty = "+2" | "DNF" | null
 type Phase = "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
 type Solve = { id: string; time_ms: number; penalty: Penalty; scramble: string }
 
-const HOLD_MS = 200
+const HOLD_MS = 550
 
 const EVENTS = [
   { id: "333", name: "3x3" }, { id: "222", name: "2x2" }, { id: "444", name: "4x4" },
@@ -88,6 +88,7 @@ export function TimerContent() {
   const eventRef = useRef("333")
   const inspOnRef = useRef(false)
   const inspRef = useRef<ReturnType<typeof useInspection> | null>(null)
+  const inspHoldRef = useRef(false) // true when holding spacebar during inspection to arm the timer
 
   const insp = useInspection({ voice: true })
 
@@ -126,9 +127,14 @@ export function TimerContent() {
   }
 
   function releaseHold() {
-    if (phaseRef.current === "holding") { setPhase("idle"); return }
+    if (phaseRef.current === "holding") {
+      if (inspHoldRef.current) { inspHoldRef.current = false; setPhase("inspecting") }
+      else setPhase("idle")
+      return
+    }
     if (phaseRef.current !== "ready") return
-    if (inspOnRef.current) { setPhase("inspecting"); inspRef.current?.startInspection() }
+    if (inspHoldRef.current) { inspHoldRef.current = false; startTimer() }
+    else if (inspOnRef.current) { setPhase("inspecting"); inspRef.current?.startInspection() }
     else startTimer()
   }
 
@@ -136,11 +142,18 @@ export function TimerContent() {
     const p = phaseRef.current
     if (p === "running") { stopTimer(); return }
     if (p === "inspecting") {
-      const pen = inspRef.current?.finishInspection() ?? null
-      if (pen === "DNF") { addSolve(0, "DNF"); setPhase("stopped") } else startTimer()
-      return
+      // Hold to arm the timer during inspection
+      inspHoldRef.current = true; startHold(); return
     }
-    if (p === "idle" || p === "stopped") startHold()
+    if (p === "idle" || p === "stopped") {
+      inspHoldRef.current = false
+      if (inspOnRef.current) {
+        // Tap to start inspection — show green immediately, no hold required
+        heldRef.current = true; setPhase("ready")
+      } else {
+        startHold()
+      }
+    }
   }
 
   useEffect(() => {
@@ -222,15 +235,18 @@ export function TimerContent() {
       className="flex flex-col min-h-screen bg-background select-none"
     >
       {/* Top bar — full width */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 gap-2 border-b border-border" onPointerDown={sp}>
+      <div className="flex items-center px-4 pt-4 pb-2 gap-3 border-b border-border" onPointerDown={sp}>
         <select
-          className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground"
+          className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
           value={event}
           onChange={(e) => changeEvent(e.target.value)}
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <div className="flex gap-2">
+        <p className="flex-1 min-w-0 text-center text-xs sm:text-sm font-mono text-muted-foreground leading-snug line-clamp-2">
+          {scramble}
+        </p>
+        <div className="flex gap-2 shrink-0">
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
         </div>
@@ -299,12 +315,8 @@ export function TimerContent() {
           </div>
         </div>
 
-        {/* Right: scramble + timer + penalties */}
+        {/* Right: timer + penalties */}
         <div className="flex-1 flex flex-col items-center justify-center px-4 order-first lg:order-last min-h-[60vh] lg:min-h-0">
-          <p className="w-full max-w-xl text-center text-sm font-mono text-muted-foreground leading-relaxed mb-4">
-            {scramble}
-          </p>
-
           <div className="flex-1 flex items-center justify-center w-full">
             {typing ? (
               <div className="flex flex-col items-center gap-2 w-full max-w-sm" onPointerDown={sp}>
