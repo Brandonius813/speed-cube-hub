@@ -254,19 +254,28 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <button
-          className="flex-1 min-w-0 text-center text-lg sm:text-xl font-mono font-bold leading-snug line-clamp-2 transition-colors hover:text-primary active:text-primary cursor-pointer"
-          style={{ color: scrambleCopied ? "var(--color-primary)" : "white" }}
-          onClick={() => {
-            navigator.clipboard.writeText(scramble).then(() => {
-              setScrambleCopied(true)
-              setTimeout(() => setScrambleCopied(false), 1500)
-            })
-          }}
-          title="Click to copy scramble"
-        >
-          {scrambleCopied ? "Copied!" : scramble}
-        </button>
+        <div className="flex-1 min-w-0 flex flex-col items-center gap-1 relative">
+          <button
+            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug line-clamp-2 hover:text-primary transition-colors cursor-pointer w-full"
+            onClick={() => {
+              navigator.clipboard.writeText(scramble).then(() => {
+                setScrambleCopied(true)
+                setTimeout(() => setScrambleCopied(false), 1500)
+              })
+            }}
+            title="Click to copy scramble"
+          >
+            {scramble}
+          </button>
+          <span
+            className={cn(
+              "text-xs text-green-400 font-mono transition-all duration-200",
+              scrambleCopied ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none"
+            )}
+          >
+            Scramble copied!
+          </span>
+        </div>
         <div className="flex gap-2 shrink-0">
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
