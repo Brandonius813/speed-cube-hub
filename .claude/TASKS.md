@@ -2691,3 +2691,221 @@ Phase 17: All no deps, fully parallel
 Phase 18: T129/T130/T133 need Phase 14 (T96-T105)
 Phases 19-23: See individual task deps
 ```
+
+---
+
+## Phase 24 — Timer UX Overhaul
+
+> All tasks in this phase come from the timer overhaul plan (`streamed-gliding-pretzel.md`).
+> **Read the plan file before starting any task.**
+> **Key constraint:** Tasks T154, T156, T157 all require edits to `timer-content.tsx`. These must be done by the SAME agent (or sequenced) to avoid merge conflicts on that 1430-line file.
+
+---
+
+### T153: Shared FloatingPanel Component
+
+| | |
+|---|---|
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | [this session] |
+| **Dependencies** | None |
+| **Estimated scope** | 1 new file (~30 lines) |
+| **Key files** | `src/components/timer/floating-panel.tsx` (new) |
+
+Create a shared `FloatingPanel` wrapper component used by both the stats charts (T155) and the analyzer tools (T156). This is a prerequisite — build it first.
+
+Props: `position: "bottom-left" | "bottom-right"`, `title: string`, `onClose: () => void`, `children: React.ReactNode`.
+
+Style: `fixed bottom-20`, `z-40`, `rounded-xl shadow-lg bg-background border`, `max-w-xs md:max-w-sm`, dismissable with X button in header. Use conditional rendering at the call site (`activeTool && <FloatingPanel>`) — never render hidden via CSS.
+
+---
+
+### T154: Timer Core Changes (timer-content.tsx owner)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | T153 |
+| **Estimated scope** | 4-5 files |
+| **Key files** | `src/components/timer/timer-content.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-top-bar.tsx`, `src/lib/timer/inspection.ts` (or wherever `useInspection` is defined) |
+
+**This agent owns `timer-content.tsx`. No other agent should touch that file.**
+
+Changes span 4 plan tasks (A, C-partial, D, E). Read the full plan before starting.
+
+**From Task A (Settings Cleanup):**
+- `timer-settings.tsx`: rename hold duration section to `spacebar_hold_duration`, change options to `100ms | 200ms | 550ms (stackmat)`, add hold duration migration (`!([100,200,550].includes(saved)) → 200`), rename "DURING SOLVE" header to "update timer during solve", add WCA Voice toggle (shown only when inspection is on, persists to `sch_inspection_voice`), move Comp Sim out of settings entirely, change phase stepper from buttons to +/− (min 1, max 10), add generic phase label defaults for phases 5–10
+- `timer-top-bar.tsx`: add clickable Normal/Comp Sim pill toggle next to session selector (replaces passive badge; existing mode-switch guard must still work)
+- `timer-content.tsx`: add `inspectionVoice` state, thread into `useInspection` hook
+- `useInspection` hook: add `options: { voice: boolean }` param, skip `speechSynthesis.speak()` when `voice: false`
+
+**From Task C (Analyzer tools — timer-content.tsx portions only):**
+- `timer-content.tsx`: add `activeTool: "cross" | "eo" | "analyzer" | null` state
+- Render `<FloatingPanel>` for the active tool in bottom-right (if sidebar=left) or bottom-left (if sidebar=right/hidden)
+- Opening a second tool replaces the first (single `activeTool` value)
+- Pass `activeTool`/`setActiveTool` down to ScrambleDisplay via props
+
+**From Task D (PB Toast — timer-content.tsx only):**
+- Replace `celebration` modal state with a `pbToastQueue: PBToast[]` state
+- Render the hand-rolled toast div (`fixed bottom-4 right-4 z-50`, CSS translate/opacity transition, 4s auto-dismiss)
+- If multiple PBs fire (single + Ao5), queue and show 500ms apart; store `setTimeout` ID in `useRef`, clear on unmount
+- Remove import of `PBCelebration` modal
+
+**From Task E (Session Clock + Break):**
+- `timer-content.tsx`: add `isPaused: boolean` and `pausedElapsedMs: number` state
+- `timer-top-bar.tsx`: show running clock ("32:14") built from `timerSessionId` created_at + elapsed; `useEffect` with `setInterval(1000)` that returns `() => clearInterval(id)`
+- Add Pause button next to clock; when paused show "Break" badge and timer display shows "On Break"
+- Spacebar during break: end break AND immediately begin solve hold (don't require separate keypress)
+
+---
+
+### T155: Stats Panel Redesign
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | T153 |
+| **Estimated scope** | 1-2 files |
+| **Key files** | `src/components/timer/stats-panel.tsx`, `src/components/timer/timer-settings.tsx` |
+
+- Increase font sizes: stat labels → `text-sm`, stat values → `text-base`/`text-lg font-mono`, more `py-2` row padding, bolder column headers
+- Remove "Bottom" sidebar position from `timer-settings.tsx` button grid; in `timer-content.tsx` load: if saved value is "bottom", treat as "right" (**NOTE: timer-content.tsx is owned by T154 agent — coordinate this one-liner or just let T154 handle it**)
+- Move inline charts to FloatingPanel (use T153's component); chart toggle button opens/closes the panel in bottom-right (sidebar=left) or bottom-left (sidebar=right/hidden)
+- Remove the old inline chart section from stats-panel.tsx once floating works
+
+---
+
+### T156: Scramble Type & Analyzer Tool Placement
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | T153, T154 |
+| **Estimated scope** | 2 files |
+| **Key files** | `src/components/timer/scramble-display.tsx`, `src/components/timer/timer-top-bar.tsx` |
+
+- `timer-top-bar.tsx`: move `ScrambleTypeSelector` and `CaseFilterPanel` from the far-left section to immediately below or adjacent to the scramble display (center section); add small "Scramble type:" label
+- `scramble-display.tsx`: remove inline rendering of `CrossSolverPanel` and `SolverPanel`; instead, when `+` / `⚡` / puzzle buttons are clicked, call `setActiveTool(...)` via prop passed from T154 (timer-content.tsx); T154 handles the actual floating panel rendering
+
+---
+
+### T157: PB Popup → Subtle Toast (pb-celebration.tsx only)
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | T154 |
+| **Estimated scope** | 1 file |
+| **Key files** | `src/components/share/pb-celebration.tsx` |
+
+Rewrite `PBCelebration` from a full-screen modal to a compact animated toast div:
+- `fixed bottom-4 right-4 z-50`, `rounded-xl border shadow-lg bg-background px-4 py-3`
+- CSS animation: slide in from bottom-right (`translate-y` from 100% to 0, opacity 0→1), 300ms ease
+- Content: "New PB!" label + "Event · PB Type" + time in `text-2xl font-mono` + previous PB in small gray
+- Auto-dismiss after 4 seconds (handled by T154's queue logic — this component just receives `toast` prop and `onDismiss` callback)
+- No confetti, no overlay, no blocking UI
+
+T154 handles the queue state; this file just handles the visual component.
+
+---
+
+### T158: Algorithm Case Filter UI Improvements
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+| **Key files** | `src/lib/timer/algorithm-cases.ts`, `src/components/timer/case-filter-panel.tsx` |
+
+No images in this task — that's deferred (T162). Focus on UI improvements only:
+
+- `algorithm-cases.ts`: add `group?: string` to existing PLL cases (groups: "Edges-only", "Corners-only", "Diagonal", "Adjacent", "H/Z"); add groups to OLL cases (shapes: "Dot", "Line", "L-shape", "T-shape", "Square", "C-shape", "P-shape", "S-shape", "W-shape", etc.)
+- `case-filter-panel.tsx`: render group headers above each group section (bold label, separator line); increase cell size from current small buttons to larger touch-friendly cells (min 44×44px per CLAUDE.md mobile rules); make selected state more visible (colored ring, filled background); keep Select All / Deselect All controls
+
+---
+
+### T159: Simplify Manage Sessions Menu
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | None |
+| **Estimated scope** | 1 file |
+| **Key files** | `src/components/timer/session-manager.tsx` |
+
+Strip the per-row action buttons from 7 down to 3:
+
+**Remove entirely:** Eye/EyeOff (tracked toggle), RotateCcw (reset), Merge (⤴️), Scissors (✂️ split), Trash (existing delete)
+
+**Keep:** Pencil (rename inline — keep as-is)
+
+**Add:** Archive/Hide button (icon: `ArchiveIcon` or `EyeOffIcon`; tooltip: "Hides this session. Your times are not deleted."), red X delete button (`text-destructive`, `XIcon`; confirmation dialog: "Delete '[Name]'? This will permanently delete all [N] solves." with Cancel/Delete)
+
+**Row layout:** `[Session Name] [Event Badge] [Solve Count] [Edit] [Hide] [X]`
+
+**Archived sessions section:** collapsible at bottom of list ("Show archived" toggle, default collapsed). Archived rows show `[Edit] [Unarchive] [X]`. Delete works directly on archived sessions without un-archiving first.
+
+**Clean up orphaned state:** Remove merge picker state, split dialog state, reset confirmation state, tracked toggle handlers. Keep only: rename state, archive confirm, delete confirm.
+
+**Note:** Tracked/untracked toggle stays in the session *creation* form inside `session-selector.tsx` — do NOT touch that file. Users set it once at creation.
+
+---
+
+## Phase 24 — Deferred Tasks (DO NOT START — needs research/decision first)
+
+---
+
+### T160: GAN Smart Cube Bluetooth Input
+
+| | |
+|---|---|
+| **Status** | 🚫 Blocked — needs research |
+| **Claimed by** | — |
+| **Dependencies** | None |
+| **Estimated scope** | 3-4 files |
+| **Key files** | `src/lib/timer/use-gan-bluetooth.ts` (new), `timer-settings.tsx`, `timer-content.tsx` |
+
+**Do not start without research.** The GAN BLE protocol is proprietary and encrypted. The UUID `6e400001-b5a3-f393-e0a9-e50e24dcca9e` is Nordic UART Service — NOT GAN-specific. GAN cubes use a firmware-versioned encrypted protocol requiring dedicated research.
+
+**Before starting:** Investigate `cubing/cubing.js` for GAN BLE support. Reference `src/lib/timer/use-stackmat.ts` as the architectural pattern. Then build `use-gan-bluetooth.ts` hook and integrate into settings `inputMode` radio group.
+
+---
+
+### T161: Algorithm Case Filter with Images
+
+| | |
+|---|---|
+| **Status** | 🚫 Blocked — needs hosting decision |
+| **Claimed by** | — |
+| **Dependencies** | T158 |
+| **Estimated scope** | 2 files |
+| **Key files** | `src/lib/timer/algorithm-cases.ts`, `src/components/timer/case-filter-panel.tsx` |
+
+**Do not start without a hosting decision.** Speedsolving.com wiki URLs are unreliable. WCA has no public CDN for alg images.
+
+**Decide hosting approach first:** (1) host SVG images in Supabase Storage, (2) use `cubing.js`/`twisty-player` to render SVG on the fly, (3) static build-time asset generation. Once decided: add `imageUrl?: string` to `AlgorithmCase` type; update `case-filter-panel.tsx` to show a visual image grid (60×60px cells, case name below, ring highlight on selection, group headers).
+
+---
+
+### T162: CSTimer Import → Bulk Solve Insert
+
+| | |
+|---|---|
+| **Status** | 🔲 Available |
+| **Claimed by** | — |
+| **Dependencies** | None |
+| **Estimated scope** | 2 files |
+| **Key files** | `src/lib/actions/timer.ts`, `src/components/log/cstimer-import.tsx` |
+
+Write a `bulkAddSolves(solveSessionId: string, solves: NewSolve[])` server action in `timer.ts` that does a single `supabase.from("solves").insert(rows)`. Add a solve session picker step to the CSTimer import preview in `cstimer-import.tsx` — defaults to auto-creating "csTimer Import — [Event]" solve_session. After import, users can rename the session in Manage Sessions.
+
+Keep existing `createSessionsBulk` call — this adds individual solve records on top.
+
+What to write per solve: `time_ms` (convert from seconds × 1000), `penalty`, `scramble`, `created_at` (original timestamp if available), `solve_session_id`, `event`.
