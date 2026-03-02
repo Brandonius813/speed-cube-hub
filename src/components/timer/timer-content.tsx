@@ -335,8 +335,8 @@ export function TimerContent() {
             <table className="w-full text-xs font-mono border-collapse">
               <thead className="sticky top-0 bg-background z-10">
                 <tr className="text-muted-foreground border-b border-border">
-                  <th className="text-right pr-1.5 py-1.5 w-7 font-normal">#</th>
-                  <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
+                  <th className="pr-1.5 py-1.5 w-7 font-normal"></th>
+                  <th className="text-left pr-1.5 py-1.5 font-normal">single</th>
                   {([0, 1] as const).map((idx) => (
                     <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
                       <select
