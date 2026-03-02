@@ -4,10 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { generateScramble } from "@/lib/timer/scrambles"
 import { useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
+import { type Penalty, type TimerSolve as Solve, STAT_OPTIONS, computeStat, bestStat } from "@/lib/timer/stats"
 
-type Penalty = "+2" | "DNF" | null
 type Phase = "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
-type Solve = { id: string; time_ms: number; penalty: Penalty; scramble: string }
 
 const HOLD_MS = 550
 
@@ -48,48 +47,6 @@ function parseTime(raw: string): number | null {
   return ms > 0 ? ms : null
 }
 
-function computeAo(solves: Solve[], n: number): number | null {
-  if (solves.length < n) return null
-  const times = solves.slice(-n).map((s) =>
-    s.penalty === "DNF" ? Infinity : s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
-  )
-  if (times.filter((t) => t === Infinity).length > 1) return null
-  const trimmed = [...times].sort((a, b) => a - b).slice(1, -1)
-  if (trimmed.some((t) => t === Infinity)) return null
-  return Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length)
-}
-
-function bestAo(solves: Solve[], n: number): number | null {
-  if (solves.length < n) return null
-  let best: number | null = null
-  for (let i = n; i <= solves.length; i++) {
-    const r = computeAo(solves.slice(0, i), n)
-    if (r !== null && (best === null || r < best)) best = r
-  }
-  return best
-}
-
-const STAT_OPTIONS = ["mo3", "ao5", "ao10", "ao12", "ao25", "ao50", "ao100"]
-
-function computeMo(solves: Solve[], n: number): number | null {
-  if (solves.length < n) return null
-  const times = solves.slice(-n).map((s) => s.penalty === "DNF" ? Infinity : s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
-  if (times.some((t) => t === Infinity)) return null
-  return Math.round(times.reduce((a, b) => a + b, 0) / times.length)
-}
-
-function computeStat(solves: Solve[], key: string): number | null {
-  const n = parseInt(key.slice(2)); return key.startsWith("mo") ? computeMo(solves, n) : computeAo(solves, n)
-}
-
-function bestStat(solves: Solve[], key: string): number | null {
-  const n = parseInt(key.slice(2)); const fn = key.startsWith("mo") ? computeMo : computeAo
-  if (solves.length < n) return null
-  let best: number | null = null
-  for (let i = n; i <= solves.length; i++) { const r = fn(solves.slice(0, i), n); if (r !== null && (best === null || r < best)) best = r }
-  return best
-}
-
 export function TimerContent() {
   const [event, setEvent] = useState("333")
   const [scramble, setScramble] = useState("")
@@ -102,7 +59,6 @@ export function TimerContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showStatSettings, setShowStatSettings] = useState(false)
   const [statRows, setStatRows] = useState<[string, string]>(() => {
-    if (typeof window === "undefined") return ["ao5", "ao12"]
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
     return ["ao5", "ao12"]
   })
@@ -229,11 +185,9 @@ export function TimerContent() {
     cancelAnimationFrame(rafRef.current); insp.cancelInspection()
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
   }
-
   function updateStatRow(idx: 0 | 1, key: string) {
     setStatRows((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
   }
-
   const stats = useMemo(() => {
     const valid = solves.filter((s) => s.penalty !== "DNF").map((s) => s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
     const mean = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null
@@ -370,30 +324,28 @@ export function TimerContent() {
           </div>
         </div>
 
-        {/* Right: timer + penalties */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4 order-first lg:order-last min-h-[60vh] lg:min-h-0">
-          <div className="flex-1 flex items-center justify-center w-full">
-            {typing ? (
-              <div className="flex flex-col items-center gap-2 w-full max-w-sm" onPointerDown={sp}>
-                <input
-                  type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
-                  onChange={(e) => setTypeVal(e.target.value)}
-                  onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
-                  className="bg-transparent border-b-2 border-border text-center font-mono text-7xl w-full outline-none placeholder:text-muted-foreground/30"
-                />
-                <p className="text-sm font-mono text-muted-foreground h-5">
-                  {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!, 3)}` : "invalid") : ""}
-                </p>
-              </div>
-            ) : (
-              <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
-                {getDisplay()}
-              </div>
-            )}
-          </div>
+        {/* Timer display — fixed to true viewport center; pointer-events-none so touches fall through to the touch target below */}
+        <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+          {typing ? (
+            <div className="flex flex-col items-center gap-2 w-full max-w-sm pointer-events-auto" onPointerDown={sp}>
+              <input
+                type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
+                onChange={(e) => setTypeVal(e.target.value)}
+                onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
+                className="bg-transparent border-b-2 border-border text-center font-mono text-7xl w-full outline-none placeholder:text-muted-foreground/30"
+              />
+              <p className="text-sm font-mono text-muted-foreground h-5">
+                {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!, 3)}` : "invalid") : ""}
+              </p>
+            </div>
+          ) : (
+            <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
+              {getDisplay()}
+            </div>
+          )}
 
           {phase === "stopped" && last && (
-            <div className="flex gap-3 py-3" onPointerDown={sp}>
+            <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
               <button
                 className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "+2" ? "bg-yellow-500 text-black border-yellow-500" : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400")}
                 onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
@@ -409,6 +361,13 @@ export function TimerContent() {
             </div>
           )}
         </div>
+
+        {/* Right: invisible touch/pointer target for timer start/stop */}
+        <div
+          className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+        />
 
       </div>
     </div>
