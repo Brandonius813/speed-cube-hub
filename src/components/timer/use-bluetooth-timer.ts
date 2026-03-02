@@ -16,7 +16,7 @@ export type BtConnectionStatus =
   | "connected"    // Fully connected, receiving events
 
 export interface BtTimerCallbacks {
-  /** Hands placed on mat (0x06 HANDS_ON) — show red/holding state */
+  /** Hands placed on mat (0x06 HANDS_ON) — show red/holding or start inspection */
   onHandsOn: () => void
   /** Grace period complete (0x01 GET_SET) — show green/ready state */
   onGetSet: () => void
@@ -26,6 +26,8 @@ export interface BtTimerCallbacks {
   onRunning: () => void
   /** Hardware timer stopped (0x04 STOPPED) — record time from hardware */
   onStopped: (time_ms: number) => void
+  /** Hardware reset button pressed (0x05 IDLE) — clear display to 0.00 */
+  onIdle: () => void
   /** BLE disconnected mid-session — abort any in-progress solve */
   onDisconnect: () => void
 }
@@ -86,8 +88,12 @@ export function useBluetoothTimer(callbacks: BtTimerCallbacks): UseBluetoothTime
         break
 
       case "IDLE":
+        // Hardware reset button pressed — tell the app to clear the display.
+        cb.onIdle()
+        break
+
       case "FINISHED":
-        // Hardware reset or auto-transition — no action needed in the app.
+        // Auto-transition after stop — no action needed.
         break
 
       case "DISCONNECT":

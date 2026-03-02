@@ -92,26 +92,7 @@ export function TimerContent() {
   inspOnRef.current = inspOn
   inspRef.current = insp
 
-  // Pre-warm all scramble types on mount so switching events is instant (mirrors csTimer behavior)
-  useEffect(() => {
-    EVENTS.forEach((ev) => generateScramble(ev.id))
-  }, [])
-
-  useEffect(() => {
-    const s = generateScramble(event)
-    if (s) { setScramble(s); return }
-    // Still not ready — poll until warm (only happens on very first mount before pre-warm completes)
-    setScramble("Generating scramble…")
-    let cancelled = false
-    const poll = () => {
-      const result = generateScramble(event)
-      if (cancelled) return
-      if (result) { setScramble(result); return }
-      setTimeout(poll, 250)
-    }
-    setTimeout(poll, 250)
-    return () => { cancelled = true }
-  }, [event])
+  useEffect(() => { setScramble(generateScramble(event)) }, [event])
 
   useEffect(() => {
     if (phase !== "running") return
@@ -250,8 +231,20 @@ export function TimerContent() {
   // avoiding stale references to addSolve and other functions that close over timer state.
   const btCallbacksRef = useRef<BtTimerCallbacks>(null!)
   btCallbacksRef.current = {
-    onHandsOn:  () => setPhase("holding"),
-    onGetSet:   () => setPhase("ready"),
+    onHandsOn: () => {
+      // If software inspection is enabled, start the 15s countdown (mirrors WCA inspection).
+      // The GAN Halo handles its own grace period (~0.5s); the app shows the inspection timer.
+      if (inspOnRef.current) {
+        setPhase("inspecting"); inspRef.current?.startInspection()
+      } else {
+        setPhase("holding") // show red while hands are on the mat
+      }
+    },
+    onGetSet: () => {
+      // Grace period done — hardware is armed. Clean up any software inspection and show green.
+      if (phaseRef.current === "inspecting") inspRef.current?.finishInspection()
+      setPhase("ready")
+    },
     onHandsOff: () => setPhase("idle"),
     onRunning: () => {
       if (phaseRef.current !== "running") {
@@ -262,6 +255,10 @@ export function TimerContent() {
       cancelAnimationFrame(rafRef.current)
       setElapsed(time_ms); setPhase("stopped"); addSolve(time_ms, null)
     },
+    onIdle: () => {
+      // Physical reset button pressed — clear the display back to 0.00.
+      setPhase("idle")
+    },
     onDisconnect: () => {
       if (phaseRef.current === "running") {
         cancelAnimationFrame(rafRef.current); setPhase("idle"); setElapsed(0)
@@ -269,7 +266,7 @@ export function TimerContent() {
     },
   }
 
-  const { btStatus, btState, connect: btConnect, disconnect: btDisconnect } =
+  const { btStatus, connect: btConnect, disconnect: btDisconnect } =
     useBluetoothTimer(btCallbacksRef.current)
 
   // Keep ref in sync so keydown handler gates without being re-registered on every BT state change.
@@ -312,7 +309,7 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <div className="flex-1 min-w-0 flex items-center justify-center gap-2">
+        <div className="flex-1 min-w-0 flex items-center justify-center">
           <button
             className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer min-w-0"
             onClick={() => {
@@ -325,14 +322,6 @@ export function TimerContent() {
           >
             {scramble}
           </button>
-          <button
-            className="shrink-0 text-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            onClick={() => setScramble(generateScramble(event))}
-            disabled={phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"}
-            title="New scramble"
-          >
-            ↺
-          </button>
         </div>
         {/* Scramble copied popup — absolutely positioned below top bar, no layout impact */}
         <span
@@ -344,11 +333,19 @@ export function TimerContent() {
           Scramble copied!
         </span>
         <div className="flex gap-2 shrink-0">
+          <button
+            className="text-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => setScramble(generateScramble(event))}
+            disabled={phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"}
+            title="New scramble"
+          >
+            ↺
+          </button>
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
           <button
-            className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing && btStatus !== "connected")}
+            className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)}
             onClick={() => setInspOn((v) => !v)}
-            disabled={typing || btStatus === "connected"}
+            disabled={typing}
           >Insp.</button>
           {isBleSupported() && (
             <button
@@ -395,13 +392,6 @@ export function TimerContent() {
           ) : (
             <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
               {getDisplay()}
-            </div>
-          )}
-
-          {/* BT hardware state hint — visible when Bluetooth is connected */}
-          {btStatus === "connected" && btState && (
-            <div className="text-xs font-mono text-muted-foreground mt-3 pointer-events-none">
-              {btState.replace(/_/g, " ").toLowerCase()}
             </div>
           )}
 
