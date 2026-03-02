@@ -11,7 +11,7 @@ import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
-import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, PhaseCount, ScrambleSize } from "@/components/timer/timer-settings"
 import { DEFAULT_PHASE_LABELS } from "@/components/timer/timer-settings"
 import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
@@ -93,6 +93,7 @@ const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
 const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
+const SCRAMBLE_SIZE_KEY = "sch_scramble_size"
 const PHASE_COUNT_KEY = "sch_phase_count"
 const PHASE_LABELS_KEY = "sch_phase_labels"
 // Cache keys for instant load (stale-while-revalidate)
@@ -211,6 +212,13 @@ export function TimerContent() {
     return []
   })
   const [lastPhases, setLastPhases] = useState<number[] | null>(null)
+  const [scrambleSize, setScrambleSize] = useState<ScrambleSize>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(SCRAMBLE_SIZE_KEY)
+      if (stored === "small" || stored === "medium" || stored === "large") return stored
+    }
+    return "auto"
+  })
 
   // UI state
   const [showSummary, setShowSummary] = useState(false)
@@ -947,6 +955,13 @@ export function TimerContent() {
     }
   }
 
+  const handleScrambleSizeChange = (size: ScrambleSize) => {
+    setScrambleSize(size)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SCRAMBLE_SIZE_KEY, size)
+    }
+  }
+
   // Compute effective phase labels (use stored or defaults)
   const effectivePhaseLabels = useMemo(() => {
     if (phaseCount <= 1) return undefined
@@ -1247,6 +1262,8 @@ export function TimerContent() {
         onStackmatDisconnect={stackmat.disconnect}
         scramble={currentScramble}
         event={event}
+        scrambleSize={scrambleSize}
+        onScrambleSizeChange={handleScrambleSizeChange}
       />)}
 
       <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">

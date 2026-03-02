@@ -13,6 +13,7 @@ import {
 
 export type InputMode = "timer" | "typing" | "stackmat"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
+export type ScrambleSize = "auto" | "small" | "medium" | "large"
 
 export const PHASE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export type PhaseCount = (typeof PHASE_COUNT_OPTIONS)[number]
@@ -53,6 +54,8 @@ type TimerSettingsProps = {
   stackmatError?: string | null
   onStackmatConnect?: () => void
   onStackmatDisconnect?: () => void
+  scrambleSize: ScrambleSize
+  onScrambleSizeChange: (size: ScrambleSize) => void
 }
 
 export function TimerSettings({
@@ -85,6 +88,8 @@ export function TimerSettings({
   stackmatError,
   onStackmatConnect,
   onStackmatDisconnect,
+  scrambleSize,
+  onScrambleSizeChange,
 }: TimerSettingsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -199,6 +204,31 @@ export function TimerSettings({
                       size="sm"
                       className="text-xs"
                       onClick={() => onTimerSizeChange(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scramble size */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Scramble Size
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { value: "auto", label: "Auto" },
+                    { value: "small", label: "Small" },
+                    { value: "medium", label: "Medium" },
+                    { value: "large", label: "Large" },
+                  ] as const).map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={scrambleSize === opt.value ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => onScrambleSizeChange(opt.value)}
                     >
                       {opt.label}
                     </Button>

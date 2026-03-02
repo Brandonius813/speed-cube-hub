@@ -7,7 +7,7 @@ import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
 import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
-import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, PhaseCount, ScrambleSize } from "@/components/timer/timer-settings"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
 import type { SolveSession } from "@/lib/types"
 
@@ -58,6 +58,8 @@ export function TimerTopBar({
   onStackmatDisconnect,
   scramble,
   event,
+  scrambleSize,
+  onScrambleSizeChange,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -105,6 +107,8 @@ export function TimerTopBar({
   onStackmatDisconnect?: () => void
   scramble: string | null
   event?: string
+  scrambleSize: ScrambleSize
+  onScrambleSizeChange: (size: ScrambleSize) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -177,6 +181,7 @@ export function TimerTopBar({
           <ScrambleDisplay
             scramble={scramble}
             event={event}
+            scrambleSize={scrambleSize}
           />
         </div>
 
@@ -257,6 +262,8 @@ export function TimerTopBar({
             stackmatError={stackmatError}
             onStackmatConnect={onStackmatConnect}
             onStackmatDisconnect={onStackmatDisconnect}
+            scrambleSize={scrambleSize}
+            onScrambleSizeChange={onScrambleSizeChange}
           />
         </div>
       </div>
