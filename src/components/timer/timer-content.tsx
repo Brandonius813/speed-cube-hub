@@ -1382,14 +1382,10 @@ export function TimerContent() {
         currentSessionId={currentSession?.id ?? null}
         onSelect={handleSelectSession}
         onRename={handleManagerRename}
-        onToggleTracked={handleManagerToggleTracked}
-        onReset={handleManagerReset}
         onArchive={handleManagerArchive}
         onUnarchive={handleManagerUnarchive}
         onDelete={handleManagerDelete}
         onCreate={handleCreateSession}
-        onMerge={handleManagerMerge}
-        onSplit={handleManagerSplit}
       />
 
       <SolveDetailModal
