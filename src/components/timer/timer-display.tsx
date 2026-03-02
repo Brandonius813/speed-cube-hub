@@ -45,6 +45,10 @@ type TimerDisplayProps = {
   disabled?: boolean
   inspectionActive?: boolean
   onStartInspection?: () => void
+  /** Whether the inspection countdown is currently running */
+  isInspecting?: boolean
+  /** Called when the user presses space/taps during active inspection — finishes inspection and starts hold flow */
+  onFinishInspection?: () => void
   /** Number of timing phases (1 = normal, 2-10 = multi-phase) */
   phaseCount?: number
   /** Optional labels for each phase (e.g. ["Cross","F2L","OLL","PLL"]) */
@@ -66,6 +70,8 @@ export function TimerDisplay({
   disabled = false,
   inspectionActive = false,
   onStartInspection,
+  isInspecting = false,
+  onFinishInspection,
   phaseCount = 1,
   phaseLabels,
   hasSolves = false,
@@ -158,8 +164,14 @@ export function TimerDisplay({
       return
     }
 
-    // If inspection is enabled and we're idle, start inspection instead
-    if (currentState === "idle" && inspectionActive && onStartInspection) {
+    // If inspection is currently active, finish it and start hold-to-ready
+    if (isInspecting && onFinishInspection) {
+      onFinishInspection()
+      // Fall through to hold-to-ready below
+    }
+
+    // If inspection is enabled (but not yet running) and we're idle, start inspection
+    if (currentState === "idle" && !isInspecting && inspectionActive && onStartInspection) {
       onStartInspection()
       return
     }
@@ -171,7 +183,7 @@ export function TimerDisplay({
         setTimerState("ready")
       }, holdDuration)
     }
-  }, [disabled, inspectionActive, onStartInspection, stopTimer, holdDuration])
+  }, [disabled, isInspecting, onFinishInspection, inspectionActive, onStartInspection, stopTimer, holdDuration])
 
   const handleHoldEnd = useCallback(() => {
     // Clear hold timer
