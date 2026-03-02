@@ -9,6 +9,7 @@ import { type Penalty, type TimerSolve as Solve, STAT_OPTIONS, computeStat, best
 type Phase = "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
 
 const HOLD_MS = 550
+const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
 
 const EVENTS = [
   { id: "333", name: "3x3" }, { id: "222", name: "2x2" }, { id: "444", name: "4x4" },
@@ -28,7 +29,7 @@ function fmt(ms: number, dec = 2): string {
 function fmtSolve(s: Solve): string {
   if (s.penalty === "DNF") return "DNF"
   const ms = s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
-  return fmt(ms, 3) + (s.penalty === "+2" ? "+" : "")
+  return fmt(ms) + (s.penalty === "+2" ? "+" : "")
 }
 
 // Accepts plain digits (e.g. "1234" → 12.34s) or M:SS / M:SS.cc format.
@@ -68,9 +69,9 @@ export function TimerContent() {
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showStatSettings, setShowStatSettings] = useState(false)
+  const [showColSettings, setShowColSettings] = useState(false)
   const [scrambleCopied, setScrambleCopied] = useState(false)
-  const [statRows, setStatRows] = useState<[string, string]>(() => {
+  const [statCols, setStatCols] = useState<[string, string]>(() => {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
     return ["ao5", "ao12"]
   })
@@ -113,7 +114,7 @@ export function TimerContent() {
 
   function stopTimer() {
     cancelAnimationFrame(rafRef.current)
-    const ms = Math.round(performance.now() - startRef.current)
+    const ms = Math.round((performance.now() - startRef.current) / 10) * 10
     setElapsed(ms); setPhase("stopped"); addSolve(ms, null)
   }
 
@@ -175,10 +176,14 @@ export function TimerContent() {
 
   useEffect(() => {
     const dn = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return
-      e.preventDefault() // always prevent spacebar scrolling, even on repeat
-      if (e.repeat || typing) return
-      handlePress()
+      if (e.code === "Space") {
+        e.preventDefault() // always prevent spacebar scrolling, even on repeat
+        if (e.repeat || typing) return
+        handlePress()
+        return
+      }
+      // Any non-space key stops the timer while running
+      if (!typing && phaseRef.current === "running") stopTimer()
     }
     const up = (e: KeyboardEvent) => {
       if (e.code !== "Space" || typing) return
@@ -200,21 +205,27 @@ export function TimerContent() {
     cancelAnimationFrame(rafRef.current); insp.cancelInspection()
     setEvent(newEvent); setSolves([]); setPhase("idle"); setElapsed(0)
   }
-  function updateStatRow(idx: 0 | 1, key: string) {
-    setStatRows((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
+  function updateStatCol(idx: 0 | 1, key: string) {
+    setStatCols((prev) => { const n: [string, string] = [prev[0], prev[1]]; n[idx] = key; localStorage.setItem("timer-stat-rows", JSON.stringify(n)); return n })
   }
   const stats = useMemo(() => {
     const valid = solves.filter((s) => s.penalty !== "DNF").map((s) => s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms)
     const mean = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null
+    // Auto-growing milestone rows: each appears once you have enough solves
+    const milestoneRows = MILESTONES
+      .filter((n) => solves.length >= n)
+      .map((n) => { const key = `ao${n}`; return { key, cur: computeStat(solves, key), best: bestStat(solves, key) } })
+    // Rolling averages at each solve position for the 4-column solve list
+    const rolling1 = solves.map((_, i) => computeStat(solves.slice(0, i + 1), statCols[0]))
+    const rolling2 = solves.map((_, i) => computeStat(solves.slice(0, i + 1), statCols[1]))
     return {
       best: valid.length ? Math.min(...valid) : null,
       mean,
-      row1cur: computeStat(solves, statRows[0]),
-      row1best: bestStat(solves, statRows[0]),
-      row2cur: computeStat(solves, statRows[1]),
-      row2best: bestStat(solves, statRows[1]),
+      milestoneRows,
+      rolling1,
+      rolling2,
     }
-  }, [solves, statRows])
+  }, [solves, statCols])
 
   const last = solves[solves.length - 1]
 
@@ -224,7 +235,7 @@ export function TimerContent() {
     if (phase === "running") return fmt(elapsed)
     if (phase === "inspecting" || inInspHold) return String(Math.max(0, 15 - insp.secondsLeft))
     if (phase === "ready") return "0.00"
-    if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms, 3)
+    if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
     return "0.00"
   }
 
@@ -239,14 +250,14 @@ export function TimerContent() {
   const tog = (base: string, active: boolean) =>
     cn(base, active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")
 
-  const D = (v: number | null) => v !== null ? fmt(v, 3) : "—"
+  const D = (v: number | null) => v !== null ? fmt(v) : "—"
 
   return (
     <div
       className="flex flex-col min-h-screen bg-background select-none"
     >
       {/* Top bar — full width */}
-      <div className="flex items-center px-4 pt-4 pb-2 gap-3 border-b border-border" onPointerDown={sp}>
+      <div className="relative flex items-center px-4 py-4 gap-3 border-b border-border" onPointerDown={sp}>
         <select
           className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
           value={event}
@@ -254,7 +265,7 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <div className="flex-1 min-w-0 flex flex-col items-center gap-1 relative">
+        <div className="flex-1 min-w-0 flex items-center justify-center">
           <button
             className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug line-clamp-2 hover:text-primary transition-colors cursor-pointer w-full"
             onClick={() => {
@@ -267,15 +278,16 @@ export function TimerContent() {
           >
             {scramble}
           </button>
-          <span
-            className={cn(
-              "text-xs text-green-400 font-mono transition-all duration-200",
-              scrambleCopied ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none"
-            )}
-          >
-            Scramble copied!
-          </span>
         </div>
+        {/* Scramble copied popup — absolutely positioned below top bar, no layout impact */}
+        <span
+          className={cn(
+            "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs text-green-400 font-mono transition-all duration-200 z-20 pointer-events-none",
+            scrambleCopied ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+          )}
+        >
+          Scramble copied!
+        </span>
         <div className="flex gap-2 shrink-0">
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
@@ -286,14 +298,14 @@ export function TimerContent() {
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
 
         {/* Left panel: stats on top, solve list below — appears after timer on mobile */}
-        <div className="w-full lg:w-52 xl:w-60 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first" onPointerDown={sp}>
+        <div className="w-full lg:w-56 xl:w-64 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first" onPointerDown={sp}>
 
-          {/* Stats table */}
+          {/* Stats table — auto-grows as milestones are reached */}
           <div className="px-3 pt-3 pb-2 border-b border-border text-xs font-mono">
             <table className="w-full">
               <thead>
                 <tr className="text-muted-foreground">
-                  <th className="text-left font-normal pb-1 w-10"></th>
+                  <th className="text-left font-normal pb-1"></th>
                   <th className="text-right font-normal pb-1 pr-2">cur</th>
                   <th className="text-right font-normal pb-1">best</th>
                 </tr>
@@ -304,59 +316,83 @@ export function TimerContent() {
                   <td className="text-right pr-2">{last ? fmtSolve(last) : "—"}</td>
                   <td className="text-right">{D(stats.best)}</td>
                 </tr>
-                <tr>
-                  <td className="text-muted-foreground py-0.5 pr-2">{statRows[0]}</td>
-                  <td className="text-right pr-2">{D(stats.row1cur)}</td>
-                  <td className="text-right">{D(stats.row1best)}</td>
-                </tr>
-                <tr>
-                  <td className="text-muted-foreground py-0.5 pr-2">{statRows[1]}</td>
-                  <td className="text-right pr-2">{D(stats.row2cur)}</td>
-                  <td className="text-right">{D(stats.row2best)}</td>
-                </tr>
+                {stats.milestoneRows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="text-muted-foreground py-0.5 pr-2">{row.key}</td>
+                    <td className="text-right pr-2">{D(row.cur)}</td>
+                    <td className="text-right">{D(row.best)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
             <div className="flex justify-between text-muted-foreground border-t border-border mt-2 pt-1.5">
               <span>count: {solves.length}</span>
               <span>mean: {D(stats.mean)}</span>
             </div>
-            {showStatSettings ? (
-              <div className="mt-2 pt-2 border-t border-border space-y-1.5">
-                {([0, 1] as const).map((idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="text-muted-foreground shrink-0">row {idx + 2}:</span>
-                    <select className="flex-1 bg-muted text-xs rounded px-1.5 py-1 border border-border text-foreground" value={statRows[idx]} onChange={(e) => updateStatRow(idx, e.target.value)}>
-                      {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                ))}
-                <button className="text-[10px] text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowStatSettings(false)}>done</button>
-              </div>
-            ) : (
-              <button className="mt-1.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors" onClick={() => setShowStatSettings(true)}>⚙ customize</button>
-            )}
           </div>
 
-          {/* Solve list */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
-            {[...solves].reverse().map((s, i) => (
-              <div key={s.id} className="flex items-center text-xs min-w-0">
-                <span className="w-6 shrink-0 text-right text-muted-foreground mr-1.5">{solves.length - i}.</span>
-                {selectedId === s.id ? (
-                  <div className="flex items-center gap-1 flex-1 min-w-0">
-                    <span className="font-mono mr-1 shrink-0">{fmtSolve(s)}</span>
-                    <button className="px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "+2" ? null : "+2")}>+2</button>
-                    <button className="px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}>DNF</button>
-                    <button className="px-1 py-0.5 rounded bg-destructive/20 text-destructive shrink-0" onClick={() => deleteSolve(s.id)}>Del</button>
-                    <button className="px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0" onClick={() => setSelectedId(null)}>✕</button>
-                  </div>
-                ) : (
-                  <button className="font-mono text-left hover:text-primary transition-colors" onClick={() => setSelectedId(selectedId === s.id ? null : s.id)}>
-                    {fmtSolve(s)}
-                  </button>
+          {/* Solve list — 4-column grid: # | single | stat1 | stat2 */}
+          <div className="flex-1 overflow-y-auto">
+            <table className="w-full text-xs font-mono border-collapse">
+              <thead className="sticky top-0 bg-background z-10">
+                <tr className="text-muted-foreground border-b border-border">
+                  <th className="text-right pr-1.5 py-1.5 w-7 font-normal">#</th>
+                  <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
+                  <th className="text-right pr-1.5 py-1.5 font-normal">
+                    <button className="hover:text-foreground transition-colors" title="Click to change" onClick={() => setShowColSettings((v) => !v)}>{statCols[0]}</button>
+                  </th>
+                  <th className="text-right pr-2 py-1.5 font-normal">
+                    <button className="hover:text-foreground transition-colors" title="Click to change" onClick={() => setShowColSettings((v) => !v)}>{statCols[1]}</button>
+                  </th>
+                </tr>
+                {showColSettings && (
+                  <tr className="border-b border-border bg-muted/40">
+                    <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-[10px]">columns:</td>
+                    <td className="py-1 pr-1">
+                      <select className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground" value={statCols[0]} onChange={(e) => { updateStatCol(0, e.target.value); setShowColSettings(false) }}>
+                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-1 pr-2">
+                      <select className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground" value={statCols[1]} onChange={(e) => { updateStatCol(1, e.target.value); setShowColSettings(false) }}>
+                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                  </tr>
                 )}
-              </div>
-            ))}
+              </thead>
+              <tbody>
+                {[...solves].reverse().map((s, i) => {
+                  const idx = solves.length - 1 - i
+                  return (
+                    <tr key={s.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="text-right pr-1.5 py-0.5 text-muted-foreground">{solves.length - i}</td>
+                      {selectedId === s.id ? (
+                        <>
+                          <td className="text-right pr-1 py-0.5">{fmtSolve(s)}</td>
+                          <td colSpan={2} className="py-0.5">
+                            <div className="flex gap-0.5 justify-end pr-1.5">
+                              <button className="px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "+2" ? null : "+2")}>+2</button>
+                              <button className="px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}>DNF</button>
+                              <button className="px-1 py-0.5 rounded bg-destructive/20 text-destructive shrink-0" onClick={() => deleteSolve(s.id)}>Del</button>
+                              <button className="px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0" onClick={() => setSelectedId(null)}>✕</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="text-right pr-1.5 py-0.5">
+                            <button className="hover:text-primary transition-colors w-full text-right" onClick={() => setSelectedId(s.id)}>{fmtSolve(s)}</button>
+                          </td>
+                          <td className="text-right pr-1.5 py-0.5 text-muted-foreground/70">{D(stats.rolling1[idx])}</td>
+                          <td className="text-right pr-2 py-0.5 text-muted-foreground/70">{D(stats.rolling2[idx])}</td>
+                        </>
+                      )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -371,7 +407,7 @@ export function TimerContent() {
                 className="bg-transparent border-b-2 border-border text-center font-mono text-8xl font-light w-full outline-none placeholder:text-muted-foreground/30"
               />
               <p className="absolute top-full mt-2 text-sm font-mono text-muted-foreground h-5">
-                {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!, 3)}` : "invalid") : ""}
+                {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!)}` : "invalid") : ""}
               </p>
             </div>
           ) : (
