@@ -14,19 +14,19 @@ export function InspectionOverlay({
   state,
   onStart,
 }: InspectionOverlayProps) {
-  // Prevent spacebar from scrolling the page and trigger start instead
+  // Prevent spacebar from scrolling while inspection overlay is visible
   useEffect(() => {
     if (state === "idle" || state === "done") return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault()
-        if (!e.repeat) onStart()
+        // Keyboard start is handled by TimerDisplay — don't call onStart here
       }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [state, onStart])
+  }, [state])
 
   if (state === "idle" || state === "done") return null
 

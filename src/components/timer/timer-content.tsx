@@ -268,6 +268,8 @@ export function TimerContent() {
   // Inspection hook
   const inspection = useInspection({ voice: inspectionVoice })
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
+  // True when the user manually started solving from inspection (vs auto-timeout DNF)
+  const solveStartedFromInspectionRef = useRef(false)
 
   // Stackmat timer - handler ref set below after saveSolve is defined
   const stackmatSolveRef = useRef<(timeMs: number) => void>(() => {})
@@ -1119,8 +1121,12 @@ export function TimerContent() {
 
   useEffect(() => {
     if (inspection.state === "done" && inspectionEnabled) {
-      saveSolve(0, "DNF")
-      loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+      // Only auto-save DNF if the user didn't manually start solving
+      if (!solveStartedFromInspectionRef.current) {
+        saveSolve(0, "DNF")
+        loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
+      }
+      solveStartedFromInspectionRef.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inspection.state])
@@ -1131,6 +1137,7 @@ export function TimerContent() {
 
   const handleStartFromInspection = () => {
     if (!inspection.isInspecting) return
+    solveStartedFromInspectionRef.current = true
     const penalty = inspection.finishInspection()
     inspectionPenaltyRef.current = penalty
   }
@@ -1342,9 +1349,11 @@ export function TimerContent() {
               timerSize={timerSize}
               smallDecimals={smallDecimals}
               holdDuration={holdDuration}
-              disabled={showSummary || inspection.isInspecting}
+              disabled={showSummary}
               inspectionActive={inspectionEnabled && !inspection.isInspecting}
               onStartInspection={handleStartInspection}
+              isInspecting={inspection.isInspecting}
+              onFinishInspection={handleStartFromInspection}
               hasSolves={solves.length > 0}
               phaseCount={phaseCount}
               phaseLabels={effectivePhaseLabels}
