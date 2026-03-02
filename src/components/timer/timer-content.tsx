@@ -69,7 +69,6 @@ import { hasCaseFiltering } from "@/lib/timer/algorithm-cases"
 import { loadCaseFilter, saveCaseFilter } from "@/components/timer/case-filter-panel"
 import { SwipeFeedback } from "@/components/timer/swipe-feedback"
 import { TrainingCaseStats } from "@/components/timer/training-case-stats"
-import { SeedInput, loadPersistedSeed } from "@/components/timer/seed-input"
 import type { SwipeDirection } from "@/components/timer/timer-display"
 import { useStackmat } from "@/lib/timer/use-stackmat"
 
@@ -141,18 +140,8 @@ export function TimerContent() {
   })
 
   // Scramble management
-  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble, setRaceSeed } =
+  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
     useTimerScramble()
-
-  // Race seed state
-  const [raceSeed, setRaceSeedState] = useState<string | null>(() => loadPersistedSeed())
-  const handleRaceSeedChange = (seed: string | null) => {
-    setRaceSeedState(seed)
-    setRaceSeed(seed)
-    // Re-generate scramble with new seed
-    clearNextScramble()
-    loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)
-  }
 
   // Track which algorithm case each solve was for (solve ID → case index)
   const solveCaseMapRef = useRef(new Map<string, number>())
@@ -363,12 +352,6 @@ export function TimerContent() {
 
   const initializeSession = async () => {
     setIsLoading(true)
-
-    // Initialize race seed if persisted
-    const persistedSeed = loadPersistedSeed()
-    if (persistedSeed) {
-      setRaceSeed(persistedSeed)
-    }
 
     // On repeat visits: load from cache instantly, sync DB in background
     if (typeof window !== "undefined" && loadFromCache()) {
@@ -1278,8 +1261,6 @@ export function TimerContent() {
         trainingCstimerType={trainingCstimerType}
         autoBackupInterval={autoBackupInterval}
         onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
-        raceSeed={raceSeed}
-        onRaceSeedChange={handleRaceSeedChange}
         phaseCount={phaseCount}
         onPhaseCountChange={handlePhaseCountChange}
         phaseLabels={phaseLabels}
