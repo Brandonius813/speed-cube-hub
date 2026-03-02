@@ -4,25 +4,29 @@ import { useState } from "react"
 import { Check, Image, Plus, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrambleImage } from "@/components/timer/scramble-image"
-import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
-import { SolverPanel } from "@/components/timer/solver-panel"
 import type { ScrambleSize } from "@/components/timer/timer-settings"
+
+type ActiveTool = "cross" | "eo" | "analyzer" | null
 
 type ScrambleDisplayProps = {
   scramble: string | null
   event?: string
   scrambleSize: ScrambleSize
+  /** Currently open floating tool (controlled by timer-content) */
+  activeTool?: ActiveTool
+  /** Called when a tool button is clicked; timer-content renders the panel */
+  onSetActiveTool?: (tool: ActiveTool) => void
 }
 
 export function ScrambleDisplay({
   scramble,
   event,
   scrambleSize,
+  activeTool,
+  onSetActiveTool,
 }: ScrambleDisplayProps) {
   const [copied, setCopied] = useState(false)
   const [showImage, setShowImage] = useState(false)
-  const [showCross, setShowCross] = useState(false)
-  const [showSolver, setShowSolver] = useState(false)
   const is3x3 = event === "333"
   const isRelay = event?.startsWith("relay")
   const hasSolver = ["333", "333oh", "222", "pyram", "skewb"].includes(event ?? "")
@@ -36,6 +40,11 @@ export function ScrambleDisplay({
     } catch {
       // Clipboard API not available
     }
+  }
+
+  const toggleTool = (tool: "cross" | "analyzer") => {
+    if (!onSetActiveTool) return
+    onSetActiveTool(activeTool === tool ? null : tool)
   }
 
   const getFontSize = () => {
@@ -99,26 +108,26 @@ export function ScrambleDisplay({
               <Check className="h-4 w-4" />
             </span>
           )}
-          {hasSolver && (
+          {hasSolver && onSetActiveTool && (
             <button
-              onClick={() => setShowSolver(!showSolver)}
+              onClick={() => toggleTool("analyzer")}
               className={cn(
                 "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
-                showSolver && "bg-secondary text-foreground"
+                activeTool === "analyzer" && "bg-secondary text-foreground"
               )}
-              title={showSolver ? "Hide analysis" : "Show puzzle analysis"}
+              title={activeTool === "analyzer" ? "Hide analysis" : "Show puzzle analysis"}
             >
               <Zap className="h-4 w-4" />
             </button>
           )}
-          {is3x3 && (
+          {is3x3 && onSetActiveTool && (
             <button
-              onClick={() => setShowCross(!showCross)}
+              onClick={() => toggleTool("cross")}
               className={cn(
                 "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
-                showCross && "bg-secondary text-foreground"
+                activeTool === "cross" && "bg-secondary text-foreground"
               )}
-              title={showCross ? "Hide cross solutions" : "Show cross solutions"}
+              title={activeTool === "cross" ? "Hide cross solutions" : "Show cross solutions"}
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -139,12 +148,6 @@ export function ScrambleDisplay({
       </div>
       {showImage && event && scramble && (
         <ScrambleImage scramble={scramble} event={event} />
-      )}
-      {showCross && is3x3 && scramble && (
-        <CrossSolverPanel scramble={scramble} />
-      )}
-      {showSolver && hasSolver && scramble && (
-        <SolverPanel scramble={scramble} event={event!} />
       )}
     </div>
   )

@@ -1278,6 +1278,8 @@ export function TimerContent() {
         isPaused={isPaused}
         onPause={handlePause}
         onResume={handleResume}
+        activeTool={activeTool}
+        onSetActiveTool={setActiveTool}
       />)}
 
       <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">

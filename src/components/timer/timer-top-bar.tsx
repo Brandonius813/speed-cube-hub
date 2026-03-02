@@ -73,6 +73,8 @@ export function TimerTopBar({
   isPaused,
   onPause,
   onResume,
+  activeTool,
+  onSetActiveTool,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -130,6 +132,8 @@ export function TimerTopBar({
   isPaused?: boolean
   onPause?: () => void
   onResume?: () => void
+  activeTool?: "cross" | "eo" | "analyzer" | null
+  onSetActiveTool?: (tool: "cross" | "eo" | "analyzer" | null) => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -232,6 +236,8 @@ export function TimerTopBar({
             scramble={scramble}
             event={event}
             scrambleSize={scrambleSize}
+            activeTool={activeTool}
+            onSetActiveTool={onSetActiveTool}
           />
         </div>
 
