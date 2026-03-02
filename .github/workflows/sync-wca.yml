@@ -34,4 +34,4 @@ jobs:
         continue-on-error: true
         run: |
           curl -sf -X POST https://www.speedcubehub.com/api/revalidate-wca \
-            -H "Authorization: Bearer ${{ secrets.REVALIDATE_SECRET }}"
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
