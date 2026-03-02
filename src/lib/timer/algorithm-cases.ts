@@ -31,37 +31,79 @@ export type AlgorithmCaseSet = {
 
 // ---- PLL (21 cases) ----
 // Standard PLL naming, indices match cstimer order
+// Groups: Edges-only (pure 3-cycle edges), Corners-only (pure 3-cycle corners),
+//         H/Z (symmetric double swaps), Adjacent (cycle involves adjacent pieces),
+//         Diagonal (cycle involves diagonal pieces)
 
 const PLL_CASES: AlgorithmCase[] = [
-  { index: 0, name: "H", group: "Permutation" },
-  { index: 1, name: "Ua", group: "Permutation" },
-  { index: 2, name: "Ub", group: "Permutation" },
-  { index: 3, name: "Z", group: "Permutation" },
-  { index: 4, name: "Aa", group: "Permutation" },
-  { index: 5, name: "Ab", group: "Permutation" },
-  { index: 6, name: "E", group: "Permutation" },
-  { index: 7, name: "F", group: "Permutation" },
-  { index: 8, name: "Ga", group: "Permutation" },
-  { index: 9, name: "Gb", group: "Permutation" },
-  { index: 10, name: "Gc", group: "Permutation" },
-  { index: 11, name: "Gd", group: "Permutation" },
-  { index: 12, name: "Ja", group: "Permutation" },
-  { index: 13, name: "Jb", group: "Permutation" },
-  { index: 14, name: "Na", group: "Permutation" },
-  { index: 15, name: "Nb", group: "Permutation" },
-  { index: 16, name: "Ra", group: "Permutation" },
-  { index: 17, name: "Rb", group: "Permutation" },
-  { index: 18, name: "T", group: "Permutation" },
-  { index: 19, name: "V", group: "Permutation" },
-  { index: 20, name: "Y", group: "Permutation" },
+  { index: 0,  name: "H",  group: "H/Z" },
+  { index: 1,  name: "Ua", group: "Edges-only" },
+  { index: 2,  name: "Ub", group: "Edges-only" },
+  { index: 3,  name: "Z",  group: "H/Z" },
+  { index: 4,  name: "Aa", group: "Corners-only" },
+  { index: 5,  name: "Ab", group: "Corners-only" },
+  { index: 6,  name: "E",  group: "Diagonal" },
+  { index: 7,  name: "F",  group: "Adjacent" },
+  { index: 8,  name: "Ga", group: "Adjacent" },
+  { index: 9,  name: "Gb", group: "Adjacent" },
+  { index: 10, name: "Gc", group: "Adjacent" },
+  { index: 11, name: "Gd", group: "Adjacent" },
+  { index: 12, name: "Ja", group: "Adjacent" },
+  { index: 13, name: "Jb", group: "Adjacent" },
+  { index: 14, name: "Na", group: "Diagonal" },
+  { index: 15, name: "Nb", group: "Diagonal" },
+  { index: 16, name: "Ra", group: "Adjacent" },
+  { index: 17, name: "Rb", group: "Adjacent" },
+  { index: 18, name: "T",  group: "Adjacent" },
+  { index: 19, name: "V",  group: "Diagonal" },
+  { index: 20, name: "Y",  group: "Diagonal" },
 ]
 
 // ---- OLL (57 cases) ----
-// Standard OLL numbering
+// Standard OLL numbering with shape-based groups.
+// Groups describe the pattern of unoriented edge stickers visible from the top.
+
+const OLL_GROUPS: string[] = [
+  // 1-4: Dot (no edges oriented)
+  "Dot", "Dot", "Dot", "Dot",
+  // 5-6: Square (2-corner square pattern)
+  "Square", "Square",
+  // 7-10: Fish (Sune-based shapes)
+  "Fish", "Fish", "Fish", "Fish",
+  // 11-14: Lightning bolt shapes
+  "Lightning", "Lightning", "Lightning", "Lightning",
+  // 15-20: Headlights / small-L shapes
+  "Headlights", "Headlights", "Headlights", "Headlights", "Headlights", "Headlights",
+  // 21-27: Cross (all edges oriented — OCLL)
+  "Cross", "Cross", "Cross", "Cross", "Cross", "Cross", "Cross",
+  // 28-30: C-shape
+  "C-shape", "C-shape", "C-shape",
+  // 31-32: P-shape
+  "P-shape", "P-shape",
+  // 33: T-shape
+  "T-shape",
+  // 34-35: C-shape
+  "C-shape", "C-shape",
+  // 36-42: W-shape / miscellaneous
+  "W-shape", "W-shape", "W-shape", "W-shape", "W-shape", "W-shape", "W-shape",
+  // 43-44: S-shape
+  "S-shape", "S-shape",
+  // 45: T-shape
+  "T-shape",
+  // 46: Z-shape
+  "Z-shape",
+  // 47-50: L-shape
+  "L-shape", "L-shape", "L-shape", "L-shape",
+  // 51: Z-shape
+  "Z-shape",
+  // 52-57: Line (2 opposite edges oriented)
+  "Line", "Line", "Line", "Line", "Line", "Line",
+]
 
 const OLL_CASES: AlgorithmCase[] = Array.from({ length: 57 }, (_, i) => ({
   index: i,
   name: `OLL ${i + 1}`,
+  group: OLL_GROUPS[i],
 }))
 
 // ---- COLL (42 cases) ----
