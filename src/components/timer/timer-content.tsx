@@ -199,7 +199,7 @@ export function TimerContent() {
   function getDisplay(): string {
     if (phase === "running") return fmt(elapsed)
     if (phase === "ready") return "0.00"
-    if (phase === "inspecting") return String(Math.max(0, insp.secondsLeft))
+    if (phase === "inspecting") return String(Math.max(0, 15 - insp.secondsLeft))
     if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms, 3)
     return "0.00"
   }
@@ -220,9 +220,6 @@ export function TimerContent() {
   return (
     <div
       className="flex flex-col min-h-screen bg-background select-none"
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      style={{ touchAction: "none" }}
     >
       {/* Top bar — full width */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 gap-2 border-b border-border" onPointerDown={sp}>
