@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
 import type { TimerSolve } from "@/lib/timer/stats"
 
-const PRACTICE_TYPES = ["Solves", "Comp Sim", "Slow Solves"] as const
-
 function fmtTime(ms: number): string {
   const s = ms / 1000
   if (s < 60) return s.toFixed(2)
@@ -56,7 +54,6 @@ export function EndSessionModal({
 
   const [title, setTitle] = useState(`${eventName} Solves`)
   const [notes, setNotes] = useState("")
-  const [practiceType, setPracticeType] = useState<string>("Solves")
   const [shareToFeed, setShareToFeed] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -72,7 +69,7 @@ export function EndSessionModal({
           scramble: s.scramble,
         })),
         duration_minutes: durationMinutes,
-        practice_type: practiceType,
+        practice_type: "Solves",
         title: title.trim() || null,
         notes: notes.trim() || null,
         feed_visible: shareToFeed,
@@ -126,29 +123,6 @@ export function EndSessionModal({
           <div className="text-center">
             <div className="font-mono text-base font-medium">{avgMs ? fmtTime(avgMs) : "—"}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Avg</div>
-          </div>
-        </div>
-
-        {/* Practice type */}
-        <div className="mb-4">
-          <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-            Type
-          </label>
-          <div className="flex gap-2">
-            {PRACTICE_TYPES.map((t) => (
-              <button
-                key={t}
-                className={cn(
-                  "flex-1 py-1.5 rounded text-sm font-medium border transition-colors",
-                  practiceType === t
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setPracticeType(t)}
-              >
-                {t}
-              </button>
-            ))}
           </div>
         </div>
 
