@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { generateScramble } from "@/lib/timer/scrambles"
 import { useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
-import { type Penalty, type TimerSolve as Solve, STAT_OPTIONS, computeStat, bestStat } from "@/lib/timer/stats"
+import { type Penalty, type TimerSolve as Solve, computeStat, bestStat } from "@/lib/timer/stats"
+import { SolveListPanel } from "@/components/timer/solve-list-panel"
+import { useBluetoothTimer, type BtTimerCallbacks } from "@/components/timer/use-bluetooth-timer"
+import { isBleSupported } from "@/lib/timer/bluetooth"
 
 type Phase = "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
 
@@ -24,12 +27,6 @@ function fmt(ms: number, dec = 2): string {
   if (s < 60) return s.toFixed(dec)
   const m = Math.floor(s / 60)
   return `${m}:${(s % 60).toFixed(dec).padStart(dec + 3, "0")}`
-}
-
-function fmtSolve(s: Solve): string {
-  if (s.penalty === "DNF") return "DNF"
-  const ms = s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
-  return fmt(ms) + (s.penalty === "+2" ? "+" : "")
 }
 
 // Accepts plain digits (e.g. "1234" → 12.34s) or M:SS / M:SS.cc format.
@@ -83,8 +80,9 @@ export function TimerContent() {
   const eventRef = useRef("333")
   const inspOnRef = useRef(false)
   const inspRef = useRef<ReturnType<typeof useInspection> | null>(null)
-  const inspHoldRef = useRef(false)   // true when holding spacebar during inspection to arm the timer
+  const inspHoldRef = useRef(false)    // true when holding spacebar during inspection to arm the timer
   const tapToInspectRef = useRef(false) // true when a tap from idle/stopped should start inspection on release
+  const btConnectedRef = useRef(false)  // mirrors btStatus === "connected"; read in keydown without re-subscribing
 
   const insp = useInspection({ voice: true })
 
@@ -94,7 +92,26 @@ export function TimerContent() {
   inspOnRef.current = inspOn
   inspRef.current = insp
 
-  useEffect(() => { setScramble(generateScramble(event)) }, [event])
+  // Pre-warm all scramble types on mount so switching events is instant (mirrors csTimer behavior)
+  useEffect(() => {
+    EVENTS.forEach((ev) => generateScramble(ev.id))
+  }, [])
+
+  useEffect(() => {
+    const s = generateScramble(event)
+    if (s) { setScramble(s); return }
+    // Still not ready — poll until warm (only happens on very first mount before pre-warm completes)
+    setScramble("Generating scramble…")
+    let cancelled = false
+    const poll = () => {
+      const result = generateScramble(event)
+      if (cancelled) return
+      if (result) { setScramble(result); return }
+      setTimeout(poll, 250)
+    }
+    setTimeout(poll, 250)
+    return () => { cancelled = true }
+  }, [event])
 
   useEffect(() => {
     if (phase !== "running") return
@@ -175,6 +192,7 @@ export function TimerContent() {
 
   useEffect(() => {
     const dn = (e: KeyboardEvent) => {
+      if (btConnectedRef.current) return // BT device is the timing authority — ignore keyboard
       if (e.code === "Space") {
         e.preventDefault() // always prevent spacebar scrolling, even on repeat
         if (e.repeat || typing) return
@@ -185,6 +203,7 @@ export function TimerContent() {
       if (!typing && phaseRef.current === "running") stopTimer()
     }
     const up = (e: KeyboardEvent) => {
+      if (btConnectedRef.current) return
       if (e.code !== "Space" || typing) return
       e.preventDefault(); heldRef.current = false; releaseHold()
     }
@@ -226,6 +245,37 @@ export function TimerContent() {
     }
   }, [solves, statCols])
 
+  // --- Bluetooth integration ---
+  // btCallbacksRef is updated every render so the BLE event handler always has fresh closures,
+  // avoiding stale references to addSolve and other functions that close over timer state.
+  const btCallbacksRef = useRef<BtTimerCallbacks>(null!)
+  btCallbacksRef.current = {
+    onHandsOn:  () => setPhase("holding"),
+    onGetSet:   () => setPhase("ready"),
+    onHandsOff: () => setPhase("idle"),
+    onRunning: () => {
+      if (phaseRef.current !== "running") {
+        setPhase("running"); setElapsed(0); startRef.current = performance.now()
+      }
+    },
+    onStopped: (time_ms: number) => {
+      cancelAnimationFrame(rafRef.current)
+      setElapsed(time_ms); setPhase("stopped"); addSolve(time_ms, null)
+    },
+    onDisconnect: () => {
+      if (phaseRef.current === "running") {
+        cancelAnimationFrame(rafRef.current); setPhase("idle"); setElapsed(0)
+      }
+    },
+  }
+
+  const { btStatus, btState, connect: btConnect, disconnect: btDisconnect } =
+    useBluetoothTimer(btCallbacksRef.current)
+
+  // Keep ref in sync so keydown handler gates without being re-registered on every BT state change.
+  btConnectedRef.current = btStatus === "connected"
+  // ---
+
   const last = solves[solves.length - 1]
 
   const inInspHold = (phase === "holding" || phase === "ready") && inspHoldRef.current
@@ -249,14 +299,12 @@ export function TimerContent() {
   const tog = (base: string, active: boolean) =>
     cn(base, active ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")
 
-  const D = (v: number | null) => v !== null ? fmt(v) : "—"
-
   return (
     <div
       className="flex flex-col min-h-screen bg-background select-none"
     >
       {/* Top bar — full width */}
-      <div className="relative flex items-center px-4 py-4 gap-3 border-b border-border" onPointerDown={sp}>
+      <div className="relative flex items-start px-4 py-4 gap-3 border-b border-border" onPointerDown={sp}>
         <select
           className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
           value={event}
@@ -264,9 +312,9 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <div className="flex-1 min-w-0 flex items-center justify-center">
+        <div className="flex-1 min-w-0 flex items-center justify-center gap-2">
           <button
-            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug line-clamp-2 hover:text-primary transition-colors cursor-pointer w-full"
+            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer min-w-0"
             onClick={() => {
               navigator.clipboard.writeText(scramble).then(() => {
                 setScrambleCopied(true)
@@ -276,6 +324,14 @@ export function TimerContent() {
             title="Click to copy scramble"
           >
             {scramble}
+          </button>
+          <button
+            className="shrink-0 text-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => setScramble(generateScramble(event))}
+            disabled={phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"}
+            title="New scramble"
+          >
+            ↺
           </button>
         </div>
         {/* Scramble copied popup — absolutely positioned below top bar, no layout impact */}
@@ -289,102 +345,38 @@ export function TimerContent() {
         </span>
         <div className="flex gap-2 shrink-0">
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
-          <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
+          <button
+            className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing && btStatus !== "connected")}
+            onClick={() => setInspOn((v) => !v)}
+            disabled={typing || btStatus === "connected"}
+          >Insp.</button>
+          {isBleSupported() && (
+            <button
+              className={tog("text-xs px-2 py-1 rounded border transition-colors", btStatus === "connected")}
+              onClick={btStatus === "connected" ? btDisconnect : btConnect}
+              disabled={btStatus === "connecting"}
+              onPointerDown={sp}
+              title={btStatus === "connected" ? "Disconnect Bluetooth timer" : "Connect GAN Halo via Bluetooth"}
+            >
+              {btStatus === "connecting" ? "…" : btStatus === "connected" ? "BT ●" : "BT"}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Body: left panel + timer */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
 
-        {/* Left panel: stats on top, solve list below — appears after timer on mobile */}
-        <div className="w-full lg:w-56 xl:w-64 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first" onPointerDown={sp}>
-
-          {/* Stats table — auto-grows as milestones are reached */}
-          <div className="px-3 pt-3 pb-2 border-b border-border text-xs font-mono">
-            <table className="w-full">
-              <thead>
-                <tr className="text-muted-foreground">
-                  <th className="text-left font-normal pb-1"></th>
-                  <th className="text-right font-normal pb-1 pr-2">cur</th>
-                  <th className="text-right font-normal pb-1">best</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="text-muted-foreground py-0.5 pr-2">single</td>
-                  <td className="text-right pr-2">{last ? fmtSolve(last) : "—"}</td>
-                  <td className="text-right">{D(stats.best)}</td>
-                </tr>
-                {stats.milestoneRows.map((row) => (
-                  <tr key={row.key}>
-                    <td className="text-muted-foreground py-0.5 pr-2">{row.key}</td>
-                    <td className="text-right pr-2">{D(row.cur)}</td>
-                    <td className="text-right">{D(row.best)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex justify-between text-muted-foreground border-t border-border mt-2 pt-1.5">
-              <span>count: {solves.length}</span>
-              <span>mean: {D(stats.mean)}</span>
-            </div>
-          </div>
-
-          {/* Solve list — 4-column grid: # | single | stat1 | stat2 */}
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-xs font-mono border-collapse">
-              <thead className="sticky top-0 bg-background z-10">
-                <tr className="text-muted-foreground border-b border-border">
-                  <th className="pr-1.5 py-1.5 w-7 font-normal"></th>
-                  <th className="text-left pr-1.5 py-1.5 font-normal">single</th>
-                  {([0, 1] as const).map((idx) => (
-                    <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
-                      <select
-                        className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-left"
-                        value={statCols[idx]}
-                        onChange={(e) => updateStatCol(idx, e.target.value)}
-                        title="Click to change"
-                      >
-                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...solves].reverse().map((s, i) => {
-                  const idx = solves.length - 1 - i
-                  return (
-                    <tr key={s.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="text-right pr-1.5 py-0.5 text-muted-foreground">{solves.length - i}</td>
-                      {selectedId === s.id ? (
-                        <>
-                          <td className="text-right pr-1 py-0.5">{fmtSolve(s)}</td>
-                          <td colSpan={2} className="py-0.5">
-                            <div className="flex gap-0.5 justify-end pr-1.5">
-                              <button className="px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "+2" ? null : "+2")}>+2</button>
-                              <button className="px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0" onClick={() => setPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}>DNF</button>
-                              <button className="px-1 py-0.5 rounded bg-destructive/20 text-destructive shrink-0" onClick={() => deleteSolve(s.id)}>Del</button>
-                              <button className="px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0" onClick={() => setSelectedId(null)}>✕</button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="text-right pr-1.5 py-0.5">
-                            <button className="hover:text-primary transition-colors w-full text-right" onClick={() => setSelectedId(s.id)}>{fmtSolve(s)}</button>
-                          </td>
-                          <td className="text-right pr-1.5 py-0.5 text-muted-foreground/70">{D(stats.rolling1[idx])}</td>
-                          <td className="text-right pr-2 py-0.5 text-muted-foreground/70">{D(stats.rolling2[idx])}</td>
-                        </>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <SolveListPanel
+          solves={solves}
+          stats={stats}
+          statCols={statCols}
+          selectedId={selectedId}
+          onSetSelectedId={setSelectedId}
+          onSetPenalty={setPenalty}
+          onDeleteSolve={deleteSolve}
+          onUpdateStatCol={updateStatCol}
+        />
 
         {/* Timer display — fixed to true viewport center; pointer-events-none so touches fall through to the touch target below */}
         <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
@@ -403,6 +395,13 @@ export function TimerContent() {
           ) : (
             <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
               {getDisplay()}
+            </div>
+          )}
+
+          {/* BT hardware state hint — visible when Bluetooth is connected */}
+          {btStatus === "connected" && btState && (
+            <div className="text-xs font-mono text-muted-foreground mt-3 pointer-events-none">
+              {btState.replace(/_/g, " ").toLowerCase()}
             </div>
           )}
 
