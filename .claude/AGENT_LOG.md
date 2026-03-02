@@ -756,3 +756,28 @@ T157:
 **Learnings:** T160 in TASKS.md is about connecting the GAN smart **cube** (the puzzle) to track moves — a completely different device and protocol (encrypted, firmware-versioned). Our work is the GAN **Halo Timer** (timing pad), which uses a simple unencrypted BLE protocol. These are not related. Do not mark T160 done.
 **Blockers:** None
 **Warnings:** None — BT timer integration is complete and on dev.
+
+---
+
+### 2026-03-02 PT — Timer UI Polish Session
+
+**Task:** Ad-hoc — timer top bar reorganization + scramble history cap
+**Status:** Complete. Pushed to dev (commits 9d0c2f0, 00dff61, 7ef90fe).
+
+**What was done:**
+- Moved Typing Mode, Inspection, and GAN Smart Timer toggles into a ⚙ settings gear dropdown (Lucide Settings icon)
+  - Timer settings (Typing Mode, Inspection) are grouped together
+  - Bluetooth separated below a divider as a "device" setting
+  - Each row shows label + On/Off state; active items highlight in primary color
+- Top bar is now a single row: event select (left) | scramble text centered in flex-1 (middle) | Prev / Next / ⚙ gear (right)
+- "🔵 Bluetooth" renamed to "GAN Smart Timer" in settings dropdown
+- Scramble history capped at 2 entries — Prev can only go back exactly one scramble, no unbounded array growth
+  - Both `addSolve()` and `nextScramble()` now store `[previous, current]` and trim on every advance
+
+**Key architectural notes:**
+- `settingsOpen` state and `settingsRef` already existed in the component as unused leftovers from a prior session — wired them in
+- `tog()` helper removed (was only used by old inline toggle buttons)
+- Linter kept auto-modifying the file during edits; used a Python script for one replacement to avoid race conditions
+
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Warnings:** None
