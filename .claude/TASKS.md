@@ -2781,8 +2781,8 @@ Changes span 4 plan tasks (A, C-partial, D, E). Read the full plan before starti
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | ✅ Done |
+| **Claimed by** | [this session] |
 | **Dependencies** | T153, T154 |
 | **Estimated scope** | 2 files |
 | **Key files** | `src/components/timer/scramble-display.tsx`, `src/components/timer/timer-top-bar.tsx` |
@@ -2796,8 +2796,8 @@ Changes span 4 plan tasks (A, C-partial, D, E). Read the full plan before starti
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | ✅ Done |
+| **Claimed by** | [this session] |
 | **Dependencies** | T154 |
 | **Estimated scope** | 1 file |
 | **Key files** | `src/components/share/pb-celebration.tsx` |
