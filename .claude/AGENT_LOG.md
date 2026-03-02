@@ -717,6 +717,22 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 
 ---
 
+### 2026-03-02 PT — T154 Timer Core Changes Session
+
+**Task:** T154 (Timer Core Changes — timer-content.tsx owner)
+**Status:** Completed all T154 scope across 5 files:
+- `timer-display.tsx`: Changed `HOLD_DURATION_OPTIONS` to `[100, 200, 550]`, `DEFAULT_HOLD_DURATION` to `200`, removed `holdDuration === 0` branch
+- `inspection.ts`: Added `options?: { voice?: boolean }` param, `voiceEnabledRef` for interval-safe voice gating
+- `timer-settings.tsx`: Removed mode section (moved to top bar), added `inspectionVoice` toggle (shown only when inspection on), renamed hold duration label to `spacebar_hold_duration`, changed `550ms (stackmat)` label, renamed "DURING SOLVE" → "update timer during solve", replaced phase buttons with +/- stepper (min 1, max 10), removed Bottom sidebar option, extended `DEFAULT_PHASE_LABELS` to 10 phases
+- `timer-top-bar.tsx`: Added Normal/Comp Sim pill toggle, session clock with `setInterval(1000)` + cleanup, Pause/Play button, "Break" badge, new props `practiceStartTime`/`isPaused`/`onPause`/`onResume`/`activeTool`/`onSetActiveTool`
+- `timer-content.tsx`: Added `inspectionVoice` state + localStorage, `pbToastQueue` array (replaces `celebration`), `activeTool` state, `practiceStartTime`/`isPaused` state, hold duration migration, sidebar "bottom"→"right" migration, `handlePause`/`handleResume`, auto-dismiss PB toast with `useRef` timeout, FloatingPanel render for `activeTool`, removed unused session manager handlers and imports
+**Files touched:** `timer-display.tsx`, `inspection.ts`, `timer-settings.tsx`, `timer-top-bar.tsx`, `timer-content.tsx`, `scramble-display.tsx` (linter also updated)
+**Learnings:** `useRef` is the right pattern for stable values inside `setInterval` closures. The linter pre-applied several T156 changes to `scramble-display.tsx` during T154 work — always re-read before writing.
+**Blockers:** None
+**Warnings:** Pre-existing TS error in `src/app/api/revalidate-wca/route.ts` — not introduced by T154.
+
+---
+
 ### 2026-03-02 PT — T156 + T157 Session (Analyzer Panels + PB Toast)
 
 **Task:** T156 (Scramble Type & Analyzer Tool Placement) + T157 (PB Popup → Subtle Toast)

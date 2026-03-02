@@ -2764,8 +2764,8 @@ Changes span 4 plan tasks (A, C-partial, D, E). Read the full plan before starti
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | [this session] |
 | **Dependencies** | T153 |
 | **Estimated scope** | 1-2 files |
 | **Key files** | `src/components/timer/stats-panel.tsx`, `src/components/timer/timer-settings.tsx` |
