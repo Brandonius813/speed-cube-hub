@@ -69,7 +69,6 @@ export function TimerContent() {
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [editingCol, setEditingCol] = useState<0 | 1 | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
@@ -340,21 +339,14 @@ export function TimerContent() {
                   <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
                   {([0, 1] as const).map((idx) => (
                     <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
-                      {editingCol === idx ? (
-                        <select
-                          autoFocus
-                          className="w-full bg-muted text-xs rounded px-1 py-0.5 border border-border text-foreground text-right"
-                          value={statCols[idx]}
-                          onChange={(e) => { updateStatCol(idx, e.target.value); setEditingCol(null) }}
-                          onBlur={() => setEditingCol(null)}
-                        >
-                          {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      ) : (
-                        <button className="w-full text-right hover:text-foreground transition-colors" title="Click to change" onClick={() => setEditingCol(idx)}>
-                          {statCols[idx]}
-                        </button>
-                      )}
+                      <select
+                        className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
+                        value={statCols[idx]}
+                        onChange={(e) => updateStatCol(idx, e.target.value)}
+                        title="Click to change"
+                      >
+                        {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
                     </th>
                   ))}
                 </tr>
