@@ -781,3 +781,20 @@ T157:
 
 **Files touched:** `src/components/timer/timer-content.tsx`
 **Warnings:** None
+
+---
+
+### 2026-03-02 — Bluetooth Timer Inspection Overhaul Session
+
+**Task:** Ad-hoc — user-reported Bluetooth + inspection bugs
+**Status:** Completed. All BT + inspection issues fully resolved and verified working by user.
+**Changes made (5 commits to dev):**
+1. **Stale phase race + orphan inspection intervals** — `onGetSet` now always calls `cancelInspection()` unconditionally (not gated by `phaseRef.current`) to fix the race where React hadn't re-rendered yet; `onHandsOff`, `onIdle`, and `onDisconnect` also cancel inspection
+2. **BT reset button clears display** — `onIdle` sets `btReset=true`; `getDisplay()` returns "0.00" when true; `onHandsOn` clears it
+3. **Inspection trigger moved to reset button** — In BT mode, pressing the physical reset button starts the countdown; `onHandsOn` no longer starts inspection
+4. **Two-press reset flow** — First press after a solve clears to 0.00; second press (already at zero) starts inspection (guarded by `phaseRef.current !== "stopped"`)
+5. **Color feedback + clock keeps running** — Added `btHandsOnMat` (red) and `btArmed` (green) states; inspection clock now stops only in `onRunning`, not `onGetSet`; live count stays visible and ticking through the entire hand-placement sequence
+
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** GAN Halo sends `HANDS_ON → GET_SET → RUNNING` rapidly — GET_SET can fire before React re-renders after HANDS_ON, making `phaseRef.current` stale. Always call cleanup unconditionally rather than gating on stale refs. `onRunning` is the correct stop point for inspection in BT mode, not `onGetSet`.
+**Warnings:** None — BT + inspection flow fully functional and user-verified.
