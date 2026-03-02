@@ -10,33 +10,6 @@ type TimeInputProps = {
 }
 
 /**
- * Format a raw digit string into stackmat display format.
- * Digits fill right-to-left: last 2 = centiseconds, next 2 = seconds, rest = minutes.
- *
- * Examples:
- *   "1032"  → "10.32"      (10.32 seconds)
- *   "532"   → "5.32"       (5.32 seconds)
- *   "10326" → "1:03.26"    (1 min 3.26 sec)
- *   "50000" → "5:00.00"    (5 min 0 sec)
- *   ""      → "0.00"
- */
-function formatStackmat(digits: string): string {
-  if (digits.length === 0) return "0.00"
-
-  const padded = digits.padStart(5, "0")
-  const cs = padded.slice(-2)
-  const sec = padded.slice(-4, -2)
-  const min = padded.slice(0, -4)
-
-  const minNum = parseInt(min, 10)
-
-  if (minNum > 0) {
-    return `${minNum}:${sec}.${cs}`
-  }
-  return `${parseInt(sec, 10)}.${cs}`
-}
-
-/**
  * Convert a raw digit string to milliseconds.
  * Last 2 digits = centiseconds, next 2 = seconds, rest = minutes.
  */
@@ -163,33 +136,35 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
   return (
     <div
       className="flex flex-col items-center justify-center flex-1"
-      onClick={() => inputRef.current?.focus()}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }}
     >
+      {/* Hidden input — positioned offscreen so it doesn't interfere with clicks */}
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        className="sr-only"
+        value={digits}
+        onChange={() => {}}
+        onKeyDown={handleKeyDown}
+        autoFocus
+        aria-label="Type time"
+      />
+
       {/* Large clickable input area — like csTimer / CubeDesk */}
       <div
         className={cn(
-          "relative w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors cursor-text flex items-center justify-center h-40 sm:h-52",
+          "w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors cursor-text flex items-center justify-center h-40 sm:h-52",
           hasValue
             ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20"
             : "border-border/60 hover:border-border"
         )}
-        onClick={() => inputRef.current?.focus()}
       >
-        {/* The real input — visually hidden but functionally active */}
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode="numeric"
-          className="absolute inset-0 w-full h-full opacity-0 cursor-text"
-          value={digits}
-          onChange={() => {}}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          aria-label="Type time"
-        />
-
-        {/* Blinking cursor */}
-        <span className="font-mono text-lg text-muted-foreground/40 animate-pulse pointer-events-none select-none">|</span>
+        {/* Blinking cursor — sized to match the box */}
+        <span className="font-mono text-6xl sm:text-7xl text-muted-foreground/40 animate-pulse select-none leading-none">|</span>
       </div>
 
     </div>
