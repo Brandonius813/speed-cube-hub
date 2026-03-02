@@ -340,7 +340,7 @@ export function TimerContent() {
                   {([0, 1] as const).map((idx) => (
                     <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
                       <select
-                        className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
+                        className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-left"
                         value={statCols[idx]}
                         onChange={(e) => updateStatCol(idx, e.target.value)}
                         title="Click to change"
