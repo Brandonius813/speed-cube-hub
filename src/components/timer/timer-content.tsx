@@ -138,7 +138,7 @@ export function TimerContent() {
   })
 
   // Scramble management
-  const { currentScramble, currentCaseIndex, isManualScramble, loadScramble, setManualScramble, clearNextScramble } =
+  const { currentScramble, currentCaseIndex, loadScramble, clearNextScramble } =
     useTimerScramble()
 
   // Track which algorithm case each solve was for (solve ID → case index)
@@ -1247,14 +1247,11 @@ export function TimerContent() {
         onStackmatDisconnect={stackmat.disconnect}
         scramble={currentScramble}
         event={event}
-        isManualScramble={isManualScramble}
-        onManualScramble={setManualScramble}
-        onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
       />)}
 
       <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className={layoutClass}>
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className={cn("flex flex-col flex-1 min-h-0", inputMode === "typing" && "pb-11")}>
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}

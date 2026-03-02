@@ -58,9 +58,6 @@ export function TimerTopBar({
   onStackmatDisconnect,
   scramble,
   event,
-  isManualScramble,
-  onManualScramble,
-  onClearManualScramble,
 }: {
   sessions: SolveSession[]
   currentSession: SolveSession | null
@@ -108,9 +105,6 @@ export function TimerTopBar({
   onStackmatDisconnect?: () => void
   scramble: string | null
   event?: string
-  isManualScramble?: boolean
-  onManualScramble?: (scramble: string) => void
-  onClearManualScramble?: () => void
 }) {
   const [showExport, setShowExport] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -130,8 +124,10 @@ export function TimerTopBar({
   return (
     <>
       <div className="relative z-50 border-b border-border/50">
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-3 py-1">
+
+        {/* Left: session selector + status chips */}
+        <div className="flex items-center gap-2 shrink-0">
           <SessionSelector
             sessions={sessions}
             currentSessionId={currentSession?.id ?? null}
@@ -176,7 +172,16 @@ export function TimerTopBar({
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Center: scramble */}
+        <div className="flex-1 min-w-0">
+          <ScrambleDisplay
+            scramble={scramble}
+            event={event}
+          />
+        </div>
+
+        {/* Right: export, end practice, settings */}
+        <div className="flex items-center gap-1 shrink-0">
           {solveCount > 0 && onExport && (
             <div className="relative" ref={exportRef}>
               <Button
@@ -255,15 +260,6 @@ export function TimerTopBar({
           />
         </div>
       </div>
-
-      {/* Scramble row — inside the top bar */}
-      <ScrambleDisplay
-        scramble={scramble}
-        event={event}
-        isManualScramble={isManualScramble}
-        onManualScramble={onManualScramble}
-        onClearManualScramble={onClearManualScramble}
-      />
       </div>
 
       {saveError && (

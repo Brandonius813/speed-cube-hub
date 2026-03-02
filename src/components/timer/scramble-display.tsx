@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Copy, Check, Image, Plus, Pencil, X, Settings, Play, Zap } from "lucide-react"
+import { Copy, Check, Image, Plus, Settings, Play, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrambleImage } from "@/components/timer/scramble-image"
 import { ScrambleAnimator } from "@/components/timer/scramble-animator"
@@ -18,27 +18,18 @@ const SCRAMBLE_COMPACT_KEY = "sch_scramble_compact"
 type ScrambleDisplayProps = {
   scramble: string | null
   event?: string
-  isManualScramble?: boolean
-  onManualScramble?: (scramble: string) => void
-  onClearManualScramble?: () => void
 }
 
 export function ScrambleDisplay({
   scramble,
   event,
-  isManualScramble,
-  onManualScramble,
-  onClearManualScramble,
 }: ScrambleDisplayProps) {
   const [copied, setCopied] = useState(false)
   const [showImage, setShowImage] = useState(false)
   const [showCross, setShowCross] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState("")
   const [showSettings, setShowSettings] = useState(false)
   const [showAnimator, setShowAnimator] = useState(false)
   const [showSolver, setShowSolver] = useState(false)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const is3x3 = event === "333"
   const isRelay = event?.startsWith("relay")
@@ -88,40 +79,6 @@ export function ScrambleDisplay({
     }
   }
 
-  const handleStartEdit = () => {
-    setEditValue(scramble ?? "")
-    setIsEditing(true)
-  }
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [isEditing])
-
-  const handleSubmitEdit = () => {
-    const trimmed = editValue.trim()
-    if (trimmed && onManualScramble) {
-      onManualScramble(trimmed)
-    }
-    setIsEditing(false)
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditValue("")
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmitEdit()
-    } else if (e.key === "Escape") {
-      handleCancelEdit()
-    }
-  }
-
   // Adjust font size based on scramble length or manual override
   const getFontSize = () => {
     if (scrambleSize === "small") return "text-xs sm:text-sm"
@@ -151,56 +108,24 @@ export function ScrambleDisplay({
     localStorage.setItem(SCRAMBLE_COMPACT_KEY, String(compact))
   }
 
-  if (!scramble && !isEditing) {
+  if (!scramble) {
     return (
-      <div className="w-full px-4 py-3 text-center text-muted-foreground text-sm">
+      <div className="w-full py-1 text-center text-muted-foreground text-sm">
         Select an event to generate a scramble
       </div>
     )
   }
 
   return (
-    <div className="w-full px-4 py-3 space-y-2">
+    <div className="w-full py-1 space-y-1.5">
       <div className="flex items-start justify-center gap-2">
-        {isEditing ? (
-          <div className="flex-1 flex flex-col gap-2">
-            <textarea
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={2}
-              placeholder="Enter scramble notation (e.g. R U R' U')"
-              className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 font-mono text-sm sm:text-base text-center resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleSubmitEdit}
-                className="text-xs text-primary hover:underline"
-              >
-                Apply (Enter)
-              </button>
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleCancelEdit}
-                className="text-xs text-muted-foreground hover:underline"
-              >
-                Cancel (Esc)
-              </button>
-            </div>
-          </div>
-        ) : isRelay && scramble && scramble.includes("\n") ? (
+        {isRelay && scramble && scramble.includes("\n") ? (
           <div
             className={cn(
               "w-full space-y-2",
               scrambleFont === "mono" ? "font-mono" : "font-sans",
-              onManualScramble && "cursor-pointer hover:text-foreground/80 transition-colors",
-              isManualScramble && "text-blue-400",
               compactMode && "max-h-[6em] overflow-y-auto"
             )}
-            onClick={onManualScramble ? handleStartEdit : undefined}
-            title={onManualScramble ? "Click to edit scramble" : undefined}
           >
             {scramble.split("\n").filter(Boolean).map((line, i) => {
               const match = line.match(/^(\d+)\)\s*(.+)$/)
@@ -224,39 +149,13 @@ export function ScrambleDisplay({
               "text-center leading-relaxed break-words max-w-full",
               scrambleFont === "mono" ? "font-mono" : "font-sans",
               getFontSize(),
-              onManualScramble && "cursor-pointer hover:text-foreground/80 transition-colors",
-              isManualScramble && "text-blue-400",
               compactMode && "max-h-[3.5em] overflow-y-auto"
             )}
-            onClick={onManualScramble ? handleStartEdit : undefined}
-            title={onManualScramble ? "Click to edit scramble" : undefined}
           >
             {scramble}
           </p>
         )}
-        {!isEditing && (
-          <div className="flex shrink-0 gap-0.5">
-            {isManualScramble && onClearManualScramble && (
-              <button
-                onClick={onClearManualScramble}
-                className="p-1.5 rounded-md hover:bg-secondary transition-colors text-blue-400 hover:text-blue-300"
-                title="Clear manual scramble (return to auto)"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-            {onManualScramble && (
-              <button
-                onClick={handleStartEdit}
-                className={cn(
-                  "p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground",
-                  isManualScramble && "text-blue-400"
-                )}
-                title="Edit scramble"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            )}
+        <div className="flex shrink-0 gap-0.5">
             {hasSolver && (
               <button
                 onClick={() => setShowSolver(!showSolver)}
@@ -386,7 +285,6 @@ export function ScrambleDisplay({
               )}
             </div>
           </div>
-        )}
       </div>
       {showAnimator && event && scramble && (
         <ScrambleAnimator scramble={scramble} event={event} />
