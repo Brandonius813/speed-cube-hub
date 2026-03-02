@@ -34,16 +34,10 @@ import {
   getOrCreateDefaultSession,
   createSolveSession,
   updateSolveSession,
-  resetSolveSession,
   archiveSolveSession,
   unarchiveSolveSession,
   deleteSolveSession,
 } from "@/lib/actions/solve-sessions"
-import {
-  mergeSolveSessions,
-  splitSolveSession,
-} from "@/lib/actions/solve-session-merge"
-import { PBCelebration } from "@/components/share/pb-celebration"
 import { ShareModal } from "@/components/share/share-modal"
 import type { ShareCardData } from "@/components/share/share-card"
 import { getEffectiveTime, bestAoN } from "@/lib/timer/averages"
@@ -71,6 +65,9 @@ import { SwipeFeedback } from "@/components/timer/swipe-feedback"
 import { TrainingCaseStats } from "@/components/timer/training-case-stats"
 import type { SwipeDirection } from "@/components/timer/timer-display"
 import { useStackmat } from "@/lib/timer/use-stackmat"
+import { FloatingPanel } from "@/components/timer/floating-panel"
+import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
+import { SolverPanel } from "@/components/timer/solver-panel"
 
 type PBDetection = {
   event: string
@@ -97,6 +94,7 @@ const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 const SCRAMBLE_SIZE_KEY = "sch_scramble_size"
 const PHASE_COUNT_KEY = "sch_phase_count"
 const PHASE_LABELS_KEY = "sch_phase_labels"
+const INSPECTION_VOICE_KEY = "sch_inspection_voice"
 // Cache keys for instant load (stale-while-revalidate)
 const CACHE_SESSIONS_KEY = "sch_cache_solve_sessions"
 const CACHE_CURRENT_SESSION_KEY = "sch_cache_current_session"
@@ -149,6 +147,13 @@ export function TimerContent() {
 
   // Settings
   const [inspectionEnabled, setInspectionEnabled] = useState(false)
+  const [inspectionVoice, setInspectionVoice] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(INSPECTION_VOICE_KEY)
+      return stored !== "false"  // default true
+    }
+    return true
+  })
   const [timerUpdateMode, setTimerUpdateMode] = useState<TimerUpdateMode>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(TIMER_UPDATE_MODE_KEY)
@@ -177,7 +182,12 @@ export function TimerContent() {
   })
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [inputMode, setInputMode] = useState<InputMode>("timer")
-  const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
+  const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>(() => {
+    // "bottom" was removed — migrate to "right" on load
+    const stored = typeof window !== "undefined" ? localStorage.getItem("sch_sidebar_position") : null
+    if (stored === "right" || stored === "left" || stored === "hidden") return stored
+    return "right"
+  })
   const [statIndicators, setStatIndicators] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem(STAT_INDICATORS_KEY) ?? DEFAULT_STAT_INDICATORS
@@ -189,12 +199,12 @@ export function TimerContent() {
       const stored = localStorage.getItem(HOLD_DURATION_KEY)
       if (stored) {
         const parsed = parseInt(stored, 10)
-        if ([0, 100, 200, 300, 500, 1000].includes(parsed)) {
+        if ([100, 200, 550].includes(parsed)) {
           return parsed as HoldDuration
         }
       }
     }
-    return DEFAULT_HOLD_DURATION
+    return DEFAULT_HOLD_DURATION  // 200ms
   })
   const [phaseCount, setPhaseCount] = useState<PhaseCount>(() => {
     if (typeof window !== "undefined") {
@@ -236,8 +246,17 @@ export function TimerContent() {
   // PB detection + share state
   const pbMapRef = useRef<Map<string, number>>(new Map())
   const userInfoRef = useRef<UserInfo | null>(null)
-  const [celebration, setCelebration] = useState<PBDetection | null>(null)
+  // Queue of PBs to show as toasts; shifts out after each dismissal
+  const [pbToastQueue, setPbToastQueue] = useState<PBDetection[]>([])
+  const pbToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [shareVariant, setShareVariant] = useState<ShareCardData | null>(null)
+
+  // Active analyzer tool (cross solver, EO line, puzzle analyzer)
+  const [activeTool, setActiveTool] = useState<"cross" | "eo" | "analyzer" | null>(null)
+
+  // Session clock + break mode
+  const [practiceStartTime, setPracticeStartTime] = useState<Date | null>(null)
+  const [isPaused, setIsPaused] = useState(false)
 
   // Undo state
   const [undoSolve, setUndoSolve] = useState<Solve | null>(null)
@@ -247,7 +266,7 @@ export function TimerContent() {
   const [swipeFeedback, setSwipeFeedback] = useState<SwipeDirection | null>(null)
 
   // Inspection hook
-  const inspection = useInspection()
+  const inspection = useInspection({ voice: inspectionVoice })
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
 
   // Stackmat timer - handler ref set below after saveSolve is defined
@@ -257,6 +276,18 @@ export function TimerContent() {
     onSolveComplete: (timeMs: number) => stackmatSolveRef.current(timeMs),
     enabled: inputMode === "stackmat",
   })
+
+  // Auto-dismiss PB toast after 4 seconds; store ref so it clears on unmount
+  useEffect(() => {
+    if (pbToastQueue.length === 0) return
+    if (pbToastTimeoutRef.current) clearTimeout(pbToastTimeoutRef.current)
+    pbToastTimeoutRef.current = setTimeout(() => {
+      setPbToastQueue((prev) => prev.slice(1))
+    }, 4000)
+    return () => {
+      if (pbToastTimeoutRef.current) clearTimeout(pbToastTimeoutRef.current)
+    }
+  }, [pbToastQueue.length])
 
   // Compute stats from current solves
   const stats = computeSessionStats(solves)
@@ -535,6 +566,10 @@ export function TimerContent() {
     }
 
     setTimerSessionId(result.data.id)
+    // Start the session clock
+    if (!practiceStartTime) {
+      setPracticeStartTime(new Date())
+    }
     return result.data.id
   }
 
@@ -568,9 +603,14 @@ export function TimerContent() {
 
   const firePBDetection = (pbType: string, newTimeMs: number, previousTimeMs?: number, scramble?: string) => {
     pbMapRef.current.set(`${event}|${pbType}`, newTimeMs)
-    setCelebration({ event, pbType, newTimeMs, previousTimeMs, scramble })
+    setPbToastQueue((prev) => [...prev, { event, pbType, newTimeMs, previousTimeMs, scramble }])
     logNewPB({ event, pb_type: pbType, time_seconds: newTimeMs / 1000, date_achieved: getTodayPacific() })
   }
+
+  // Dismiss the current PB toast and show the next (500ms gap between multiple PBs)
+  const dismissPbToast = useCallback(() => {
+    setPbToastQueue((prev) => prev.slice(1))
+  }, [])
 
   // ---- Share handlers ----
 
@@ -597,15 +637,16 @@ export function TimerContent() {
   }
 
   const handleSharePB = () => {
-    if (!celebration) return
+    const current = pbToastQueue[0]
+    if (!current) return
     const user = userInfoRef.current
     setShareVariant({
-      variant: "pb", event: celebration.event, pbType: celebration.pbType,
-      timeSeconds: celebration.newTimeMs / 1000, dateAchieved: new Date().toLocaleDateString(),
+      variant: "pb", event: current.event, pbType: current.pbType,
+      timeSeconds: current.newTimeMs / 1000, dateAchieved: new Date().toLocaleDateString(),
       userName: user?.userName ?? "Cuber", handle: user?.handle ?? "cuber", avatarUrl: user?.avatarUrl ?? null,
-      previousTimeSeconds: celebration.previousTimeMs ? celebration.previousTimeMs / 1000 : undefined,
+      previousTimeSeconds: current.previousTimeMs ? current.previousTimeMs / 1000 : undefined,
     })
-    setCelebration(null)
+    dismissPbToast()
   }
 
   // ---- Solve handling ----
@@ -891,6 +932,9 @@ export function TimerContent() {
     setTimerSessionId(null)
   }
 
+  const handlePause = () => setIsPaused(true)
+  const handleResume = () => setIsPaused(false)
+
   const handleStatIndicatorsChange = (indicators: string) => {
     setStatIndicators(indicators)
     if (typeof window !== "undefined") {
@@ -902,6 +946,13 @@ export function TimerContent() {
     setHoldDuration(duration)
     if (typeof window !== "undefined") {
       localStorage.setItem(HOLD_DURATION_KEY, String(duration))
+    }
+  }
+
+  const handleInspectionVoiceChange = (enabled: boolean) => {
+    setInspectionVoice(enabled)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(INSPECTION_VOICE_KEY, String(enabled))
     }
   }
 
@@ -1016,6 +1067,8 @@ export function TimerContent() {
     setLastTime(null)
     setShowSummary(false)
     setSaveError(null)
+    setPracticeStartTime(null)
+    setIsPaused(false)
     router.refresh()
   }
 
@@ -1030,36 +1083,6 @@ export function TimerContent() {
     await refreshSessions()
     if (currentSession?.id === id) {
       setCurrentSession((prev) => prev ? { ...prev, name } : prev)
-    }
-  }
-
-  const handleManagerToggleTracked = async (id: string, isTracked: boolean) => {
-    await updateSolveSession(id, { is_tracked: isTracked })
-    await refreshSessions()
-    if (currentSession?.id === id) {
-      setCurrentSession((prev) => prev ? { ...prev, is_tracked: isTracked } : prev)
-    }
-  }
-
-  const handleManagerReset = async (id: string) => {
-    if (currentSession?.id === id && timerSessionId) {
-      await finalizeTimerSession(timerSessionId)
-      setTimerSessionId(null)
-    }
-
-    await resetSolveSession(id)
-    await refreshSessions()
-
-    if (currentSession?.id === id) {
-      const { data: sessions } = await getUserSolveSessions()
-      const updated = sessions.find((s) => s.id === id)
-      if (updated) {
-        setCurrentSession(updated)
-        setSolves([])
-        solveCaseMapRef.current.clear()
-        setSolveCaseMap(new Map())
-        setLastTime(null)
-      }
     }
   }
 
@@ -1089,25 +1112,6 @@ export function TimerContent() {
         await refreshSessions()
         await handleSelectSession(result.data)
       }
-    }
-  }
-
-  const handleManagerMerge = async (sourceId: string, targetId: string) => {
-    await mergeSolveSessions(sourceId, targetId)
-    await refreshSessions()
-    if (currentSession?.id === sourceId) {
-      const target = solveSessions.find((s) => s.id === targetId)
-      if (target) await handleSelectSession(target)
-    } else if (currentSession?.id === targetId) {
-      await loadSessionSolves(currentSession)
-    }
-  }
-
-  const handleManagerSplit = async (sessionId: string, splitAfter: number) => {
-    const result = await splitSolveSession(sessionId, splitAfter)
-    await refreshSessions()
-    if (result.newSession && currentSession?.id === sessionId) {
-      await loadSessionSolves(currentSession)
     }
   }
 
@@ -1231,6 +1235,8 @@ export function TimerContent() {
         onInputModeChange={setInputMode}
         inspectionEnabled={inspectionEnabled}
         onInspectionChange={setInspectionEnabled}
+        inspectionVoice={inspectionVoice}
+        onInspectionVoiceChange={handleInspectionVoiceChange}
         timerUpdateMode={timerUpdateMode}
         onTimerUpdateModeChange={handleTimerUpdateModeChange}
         timerSize={timerSize}
@@ -1268,6 +1274,10 @@ export function TimerContent() {
         event={event}
         scrambleSize={scrambleSize}
         onScrambleSizeChange={handleScrambleSizeChange}
+        practiceStartTime={practiceStartTime}
+        isPaused={isPaused}
+        onPause={handlePause}
+        onResume={handleResume}
       />)}
 
       <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1318,7 +1328,11 @@ export function TimerContent() {
           ) : (
             <TimerDisplay
               onSolveComplete={handleSolveComplete}
-              onRunningChange={setIsTimerRunning}
+              onRunningChange={(running) => {
+                setIsTimerRunning(running)
+                // Spacebar during break starts the timer — automatically end break
+                if (running && isPaused) setIsPaused(false)
+              }}
               onSwipe={handleSwipe}
               lastTime={lastTime}
               lastPhases={lastPhases}
@@ -1404,20 +1418,55 @@ export function TimerContent() {
         onSolveClick={handleSolveClick}
       />
 
-      {celebration && (
-        <PBCelebration
-          isOpen
-          onClose={() => setCelebration(null)}
-          event={celebration.event}
-          pbType={celebration.pbType}
-          newTimeMs={celebration.newTimeMs}
-          previousTimeMs={celebration.previousTimeMs}
-          scramble={celebration.scramble}
-          userName={userInfoRef.current?.userName ?? "Cuber"}
-          handle={userInfoRef.current?.handle ?? "cuber"}
-          avatarUrl={userInfoRef.current?.avatarUrl ?? null}
-        />
+      {/* Analyzer tool FloatingPanel — position opposite the stats sidebar */}
+      {activeTool && currentScramble && (
+        <FloatingPanel
+          position={sidebarPosition === "left" ? "bottom-right" : "bottom-left"}
+          title={activeTool === "cross" ? "Cross" : activeTool === "analyzer" ? "Analyzer" : "EO Line"}
+          onClose={() => setActiveTool(null)}
+        >
+          {activeTool === "cross" && <CrossSolverPanel scramble={currentScramble} />}
+          {activeTool === "analyzer" && (
+            <SolverPanel scramble={currentScramble} event={event} />
+          )}
+        </FloatingPanel>
       )}
+
+      {/* PB toast — slides in from bottom-right; T157 will refine the visual */}
+      {pbToastQueue.length > 0 && (() => {
+        const toast = pbToastQueue[0]!
+        return (
+          <div className="fixed bottom-4 right-4 z-50 bg-card border border-border rounded-xl shadow-lg px-4 py-3 w-64 animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-xs font-medium text-accent uppercase tracking-wide">New PB!</p>
+                <p className="text-xs text-muted-foreground truncate">{toast.event} · {toast.pbType}</p>
+                <p className="text-2xl font-mono font-bold">{formatTimeMs(toast.newTimeMs)}</p>
+                {toast.previousTimeMs && (
+                  <p className="text-xs text-muted-foreground">
+                    prev: {formatTimeMs(toast.previousTimeMs)}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={dismissPbToast}
+                className="shrink-0 p-0.5 rounded hover:bg-secondary text-muted-foreground transition-colors mt-0.5"
+              >
+                <span className="sr-only">Dismiss</span>
+                ×
+              </button>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={handleSharePB}
+                className="text-xs text-primary hover:underline"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {shareVariant && (
         <ShareModal
