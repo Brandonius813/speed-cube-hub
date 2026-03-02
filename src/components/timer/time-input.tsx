@@ -134,19 +134,14 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
   const hasValue = digits.length > 0
 
   return (
-    <div
-      className="flex flex-col items-center justify-center flex-1"
-      onMouseDown={(e) => {
-        e.preventDefault()
-        inputRef.current?.focus()
-      }}
-    >
-      {/* Hidden input — positioned offscreen so it doesn't interfere with clicks */}
+    // label wrapping the input means clicking anywhere in the area focuses the input
+    <label className="flex flex-col items-center justify-center flex-1 cursor-text relative">
+      {/* Hidden input — tiny + invisible, but fully functional (no clip, so it works in all browsers) */}
       <input
         ref={inputRef}
         type="text"
         inputMode="numeric"
-        className="sr-only"
+        className="absolute top-0 left-0 w-px h-px opacity-0 border-0 outline-none"
         value={digits}
         onChange={() => {}}
         onKeyDown={handleKeyDown}
@@ -157,7 +152,7 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
       {/* Large clickable input area — like csTimer / CubeDesk */}
       <div
         className={cn(
-          "w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors cursor-text flex items-center justify-center h-40 sm:h-52",
+          "w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors flex items-center justify-center h-40 sm:h-52",
           hasValue
             ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20"
             : "border-border/60 hover:border-border"
@@ -166,7 +161,6 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
         {/* Blinking cursor — sized to match the box */}
         <span className="font-mono text-6xl sm:text-7xl text-muted-foreground/40 animate-pulse select-none leading-none">|</span>
       </div>
-
-    </div>
+    </label>
   )
 }
