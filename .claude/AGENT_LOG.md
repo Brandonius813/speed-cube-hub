@@ -765,3 +765,16 @@ T157:
 **Learnings:** `bulkImportSolves` was already fully implemented in `timer.ts` — no new server action was needed. The task spec's "bulkAddSolves" was already covered by `bulkImportSolves`. The parser needed the individual solve data (scramble, isPlus2, date per solve) which it previously discarded — now retained.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-03-02 11:54 AM PT — Timer Rebuild Session (timer-rebuild branch)
+
+**Task:** Timer Rebuild (no TASKS.md ID — initiated by user, separate feature branch)
+**Status:** Working on `timer-rebuild` branch (branched off `dev`). Completed 3 commits:
+1. `78a18ca` — Deleted all 32 old timer components + 14 unused lib/timer files. Replaced with single 298-line `timer-content.tsx`. Features: hold-to-start, inspection countdown (voice), 13 events, in-memory solve list, inline penalty editing, basic stats (Best/Ao5/Ao12), typing mode with smart integer parsing.
+2. `03720b0` — Added cstimer-style left sidebar: stats table (cur/best columns for single/ao5/ao12 + count/mean footer) above scrollable solve list. Timer + scramble on the right. Smart integer typing: type `1234` → 12.34s (right-to-left centiseconds parsing). Live preview shows interpreted time as you type.
+**Files touched:** `src/components/timer/timer-content.tsx` (only file), `src/lib/timer/` (kept scrambles.ts, averages.ts, inspection.ts — deleted 14 others)
+**Learnings:** The `timer-rebuild` branch is completely isolated from `dev`. Old timer code is preserved in full on `dev` (git history). The new timer does NOT save to DB yet — in-memory only. `phaseRef` + `heldRef` + `scrambleRef` + `eventRef` + `inspRef` pattern prevents stale closures in keyboard/pointer event handlers without needing to add all dependencies to useEffect.
+**Blockers:** None
+**Warnings:** **DO NOT** merge `timer-rebuild` into `dev` without user instruction — it replaces the entire timer. The old timer on `dev` references `src/lib/timer/` files (cross-solver, stackmat, etc.) that no longer exist on `timer-rebuild`. `src/app/api/scramble/route.ts` exists as an untracked file in the working directory — it came from a previous session, do not commit it unless completing that feature.
