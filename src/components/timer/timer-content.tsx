@@ -65,6 +65,7 @@ export function TimerContent() {
   const [elapsed, setElapsed] = useState(0)
   const [inspOn, setInspOn] = useState(false)
   const [btReset, setBtReset] = useState(false)
+  const [btHandsOnMat, setBtHandsOnMat] = useState(false) // hands placed on mat during BT inspection
   const [typing, setTyping] = useState(false)
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -87,6 +88,7 @@ export function TimerContent() {
   const inspHoldRef = useRef(false)    // true when holding spacebar during inspection to arm the timer
   const tapToInspectRef = useRef(false) // true when a tap from idle/stopped should start inspection on release
   const btConnectedRef = useRef(false)  // mirrors btStatus === "connected"; read in keydown without re-subscribing
+  const btInspFrozen = useRef<number | null>(null) // frozen countdown value saved when GET_SET fires during inspection
   const settingsRef = useRef<HTMLDivElement>(null)
   const scrambleHistoryRef = useRef<string[]>([])
   const scrambleIdxRef = useRef(0)
@@ -292,30 +294,38 @@ export function TimerContent() {
     onHandsOn: () => {
       setBtReset(false)
       if (phaseRef.current === "inspecting") {
-        // Inspection is running (started by the reset button) — don't interrupt it.
-        // Just wait for GET_SET to fire when the hardware arms.
+        // Inspection is running — show red to signal hands are on the mat, but keep counting.
+        setBtHandsOnMat(true)
         return
       }
-      setPhase("holding") // show red while hands are on the mat
+      setPhase("holding") // show red while hands are on the mat (no inspection)
     },
     onGetSet: () => {
-      // Grace period done — hardware is armed. Cancel any running inspection and show green.
-      // Always called unconditionally: cancelInspection() is a no-op if nothing is running,
-      // and we must not rely on phaseRef here due to async React state timing.
-      inspRef.current?.cancelInspection()
-      setPhase("ready")
+      // Hardware armed. If inspection was running, freeze the countdown display and show green.
+      if (phaseRef.current === "inspecting") {
+        btInspFrozen.current = Math.max(0, 15 - (inspRef.current?.secondsLeft ?? 15))
+        inspRef.current?.cancelInspection()
+        setBtHandsOnMat(false)
+        setPhase("ready") // green — show frozen count (handled in getDisplay)
+      } else {
+        // Normal path (no inspection): just arm.
+        inspRef.current?.cancelInspection()
+        setPhase("ready")
+      }
     },
     onHandsOff: () => {
       if (phaseRef.current === "inspecting") {
-        // User briefly touched the mat during inspection (from the reset button) then lifted —
-        // this is normal; keep the inspection countdown running, don't revert to idle.
+        // Briefly touched the mat during inspection then lifted — keep counting.
+        setBtHandsOnMat(false)
         return
       }
-      // Premature lift before grace period and no inspection — revert to idle.
+      // Premature lift before grace period — revert to idle.
       inspRef.current?.cancelInspection()
       setPhase("idle")
     },
     onRunning: () => {
+      btInspFrozen.current = null
+      setBtHandsOnMat(false)
       if (phaseRef.current !== "running") {
         setPhase("running"); setElapsed(0); startRef.current = performance.now()
       }
@@ -326,10 +336,16 @@ export function TimerContent() {
     },
     onIdle: () => {
       // Physical reset button pressed.
-      // If inspection is enabled: start the countdown (this is the inspection trigger in BT mode).
-      // If inspection is disabled: clear the display back to 0.00.
+      // If a solve time is currently displayed (phase "stopped"), first press just clears to 0.00.
+      // In all other states (already at 0, mid-inspection), pressing reset starts inspection.
       inspRef.current?.cancelInspection()
-      if (inspOnRef.current && phaseRef.current !== "running") {
+      btInspFrozen.current = null
+      setBtHandsOnMat(false)
+      const shouldStartInsp = inspOnRef.current
+        && phaseRef.current !== "stopped"
+        && phaseRef.current !== "running"
+      if (shouldStartInsp) {
+        setBtReset(false)
         setPhase("inspecting")
         inspRef.current?.startInspection()
       } else {
@@ -339,6 +355,8 @@ export function TimerContent() {
     },
     onDisconnect: () => {
       inspRef.current?.cancelInspection()
+      btInspFrozen.current = null
+      setBtHandsOnMat(false)
       if (phaseRef.current === "running") {
         cancelAnimationFrame(rafRef.current); setElapsed(0)
       }
@@ -360,8 +378,9 @@ export function TimerContent() {
   function getDisplay(): string {
     if (phase === "running") return fmt(elapsed)
     if (phase === "inspecting" || inInspHold) return String(Math.max(0, 15 - insp.secondsLeft))
-    if (phase === "ready") return "0.00"
-    if (phase === "idle" && btReset) return "0.00" // BT reset button was pressed — clear the display
+    // After GET_SET during inspection: show the frozen count (not "0.00") in green
+    if (phase === "ready") return btInspFrozen.current !== null ? String(btInspFrozen.current) : "0.00"
+    if (phase === "idle" && btReset) return "0.00" // BT reset button — clear the display
     if (last) return last.penalty === "DNF" ? "DNF" : fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
     return "0.00"
   }
@@ -369,6 +388,7 @@ export function TimerContent() {
   const timeColor =
     phase === "holding" ? "text-red-400" :
     phase === "ready" ? "text-green-400" :
+    phase === "inspecting" && btHandsOnMat ? "text-red-400" : // hands on mat = red during inspection
     phase === "inspecting" && insp.secondsLeft <= 3 ? "text-red-400" :
     phase === "inspecting" && insp.secondsLeft <= 7 ? "text-yellow-400" :
     "text-foreground"
@@ -502,17 +522,19 @@ export function TimerContent() {
         {/* Timer display — fixed to true viewport center; pointer-events-none so touches fall through to the touch target below */}
         <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
           {typing ? (
-            <div className="relative flex items-center justify-center w-full max-w-sm pointer-events-auto" onPointerDown={sp}>
-              <input
-                type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
-                onChange={(e) => setTypeVal(e.target.value)}
-                onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
-                className="bg-transparent border-b-2 border-border text-center font-mono text-8xl font-light w-full outline-none placeholder:text-muted-foreground/30"
-              />
-              <p className="absolute top-full mt-2 text-sm font-mono text-muted-foreground h-5">
+            <>
+              <div className="flex items-center justify-center w-full max-w-sm pointer-events-auto" onPointerDown={sp}>
+                <input
+                  type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
+                  onChange={(e) => setTypeVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
+                  className="bg-transparent border-b-2 border-border text-center font-mono text-8xl font-light w-full outline-none placeholder:text-muted-foreground/30"
+                />
+              </div>
+              <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
                 {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!)}` : "invalid") : ""}
               </p>
-            </div>
+            </>
           ) : (
             <div className={cn("font-mono text-8xl font-light transition-colors duration-75 cursor-default", timeColor)}>
               {getDisplay()}
