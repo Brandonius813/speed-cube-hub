@@ -1115,7 +1115,14 @@ export function TimerContent() {
   const focusActive = hideWhileTiming && isTimerRunning
 
   const sidebarPanel = sidebarPosition !== "hidden" && !focusActive && (
-    <div className="flex flex-col overflow-hidden">
+    <div className={cn(
+      "fixed z-40 flex flex-col overflow-hidden border-border bg-background shadow-2xl",
+      sidebarPosition === "left"
+        ? "left-0 top-16 bottom-0 w-80 border-r"
+        : sidebarPosition === "right"
+          ? "right-0 top-16 bottom-0 w-80 border-l"
+          : "bottom-0 left-0 right-0 max-h-64 border-t"
+    )}>
       <TimerSidebar
         sidebarPosition={sidebarPosition}
         stats={stats}
@@ -1141,12 +1148,7 @@ export function TimerContent() {
     </div>
   )
 
-  const layoutClass =
-    focusActive || sidebarPosition === "hidden" || sidebarPosition === "bottom"
-      ? "flex-1 flex flex-col min-h-0 overflow-hidden"
-      : sidebarPosition === "left"
-        ? "flex-1 flex flex-col md:grid md:grid-cols-[320px_1fr] min-h-0 overflow-hidden"
-        : "flex-1 flex flex-col md:grid md:grid-cols-[1fr_320px] min-h-0 overflow-hidden"
+  const layoutClass = "flex-1 flex flex-col min-h-0 overflow-hidden"
 
   if (isLoading) {
     return (
@@ -1210,7 +1212,6 @@ export function TimerContent() {
       />)}
 
       <div className={layoutClass}>
-        {sidebarPosition === "left" && sidebarPanel}
         <div className="flex flex-col flex-1 min-h-0">
           {!focusActive && (
             <ScrambleDisplay
@@ -1276,9 +1277,9 @@ export function TimerContent() {
             />
           )}
         </div>
-        {sidebarPosition === "right" && sidebarPanel}
-        {sidebarPosition === "bottom" && sidebarPanel}
       </div>
+
+      {sidebarPanel}
 
       {undoSolve && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-2.5 flex items-center gap-3">
