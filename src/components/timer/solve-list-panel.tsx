@@ -56,47 +56,51 @@ export function SolveListPanel({
       onPointerDown={sp}
     >
       {/* Stats table — auto-grows as milestones are reached */}
-      <div className="px-3 pt-3 pb-2 border-b border-border text-xs font-mono">
+      <div className="px-3 pt-3 pb-2 border-b border-border">
         <table className="w-full">
           <thead>
             <tr className="text-muted-foreground">
-              <th className="text-left font-normal pb-1"></th>
-              <th className="text-right font-normal pb-1 pr-2">cur</th>
-              <th className="text-right font-normal pb-1">best</th>
+              <th className="text-left font-normal pb-1.5"></th>
+              <th className="text-right font-sans text-[10px] uppercase tracking-widest font-normal pb-1.5 pr-2">cur</th>
+              <th className="text-right font-sans text-[10px] uppercase tracking-widest font-normal pb-1.5">best</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="text-muted-foreground py-0.5 pr-2">single</td>
-              <td className="text-right pr-2">{last ? fmtSolve(last) : "—"}</td>
-              <td className="text-right">{D(stats.best)}</td>
+              <td className="font-sans text-[11px] text-muted-foreground py-0.5 pr-2">single</td>
+              <td className="text-right pr-2 font-mono text-[13px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
+              <td className="text-right font-mono text-[13px] text-muted-foreground">{D(stats.best)}</td>
             </tr>
             {stats.milestoneRows.map((row) => (
               <tr key={row.key}>
-                <td className="text-muted-foreground py-0.5 pr-2">{row.key}</td>
-                <td className="text-right pr-2">{D(row.cur)}</td>
-                <td className="text-right">{D(row.best)}</td>
+                <td className="font-sans text-[11px] text-muted-foreground py-0.5 pr-2">{row.key}</td>
+                <td className="text-right pr-2 font-mono text-[13px] text-foreground">{D(row.cur)}</td>
+                <td className="text-right font-mono text-[13px] text-muted-foreground">{D(row.best)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="flex justify-between text-muted-foreground border-t border-border mt-2 pt-1.5">
-          <span>count: {solves.length}</span>
-          <span>mean: {D(stats.mean)}</span>
+        <div className="flex justify-between border-t border-border mt-2 pt-1.5">
+          <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
+            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{solves.length}</span>
+          </span>
+          <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
+            Mean <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{D(stats.mean)}</span>
+          </span>
         </div>
       </div>
 
       {/* Solve list — 4-column grid: # | single | stat1 | stat2 */}
       <div className="flex-1 overflow-y-auto">
-        <table className="w-full text-xs font-mono border-collapse">
+        <table className="w-full text-[12px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-muted-foreground border-b border-border">
               <th className="pr-1.5 py-1.5 w-7 font-normal"></th>
-              <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
+              <th className="text-right pr-1.5 py-1.5 font-sans text-[10px] font-normal uppercase tracking-wider text-muted-foreground">single</th>
               {([0, 1] as const).map((idx) => (
                 <th key={idx} className={cn("py-1 font-normal text-right", idx === 0 ? "pr-1.5" : "pr-2")}>
                   <select
-                    className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
+                    className="bg-transparent text-[10px] font-sans uppercase tracking-wider text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
                     value={statCols[idx]}
                     onChange={(e) => onUpdateStatCol(idx, e.target.value)}
                     title="Click to change"
@@ -112,12 +116,12 @@ export function SolveListPanel({
               const idx = solves.length - 1 - i
               return (
                 <tr key={s.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground">
+                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
                     {solves.length - i}
                   </td>
                   {selectedId === s.id ? (
                     <>
-                      <td className="text-right pr-1 py-0.5">{fmtSolve(s)}</td>
+                      <td className="text-right pr-1 py-0.5 font-mono text-[13px]">{fmtSolve(s)}</td>
                       <td colSpan={2} className="py-0.5">
                         <div className="flex gap-0.5 justify-end pr-1.5">
                           <button
@@ -143,16 +147,16 @@ export function SolveListPanel({
                     <>
                       <td className="text-right pr-1.5 py-0.5">
                         <button
-                          className="hover:text-primary transition-colors w-full text-right"
+                          className="hover:text-primary transition-colors w-full text-right font-mono text-[13px]"
                           onClick={() => onSetSelectedId(s.id)}
                         >
                           {fmtSolve(s)}
                         </button>
                       </td>
-                      <td className="text-right pr-1.5 py-0.5 text-muted-foreground/70">
+                      <td className="text-right pr-1.5 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
                         {D(stats.rolling1[idx])}
                       </td>
-                      <td className="text-right pr-2 py-0.5 text-muted-foreground/70">
+                      <td className="text-right pr-2 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
                         {D(stats.rolling2[idx])}
                       </td>
                     </>

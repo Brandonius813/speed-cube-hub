@@ -398,7 +398,7 @@ export function TimerContent() {
 
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const timingActive = phase === "running" || phase === "holding" || phase === "ready" || phase === "inspecting"
-  const scrambleNavBtn = "text-xs px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+  const scrambleNavBtn = "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
 
   return (
     <div
@@ -408,7 +408,7 @@ export function TimerContent() {
       <div className="relative flex items-center px-4 py-3 gap-3 border-b border-border" onPointerDown={sp}>
         {/* Left: event selector */}
         <select
-          className="bg-muted text-sm rounded px-2 py-1.5 border border-border text-foreground shrink-0"
+          className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
           value={event}
           onChange={(e) => changeEvent(e.target.value)}
         >
@@ -417,7 +417,7 @@ export function TimerContent() {
         {/* Center: scramble */}
         <div className="flex-1 min-w-0 flex items-center justify-center">
           <button
-            className="text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug hover:text-primary transition-colors cursor-pointer"
+            className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
             onClick={() => {
               navigator.clipboard.writeText(scramble).then(() => {
                 setScrambleCopied(true)
@@ -458,7 +458,7 @@ export function TimerContent() {
           </button>
           <div className="relative" ref={settingsRef}>
             <button
-              className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
               onClick={() => setSettingsOpen((v) => !v)}
               title="Timer settings"
             >
@@ -471,7 +471,7 @@ export function TimerContent() {
                   onClick={() => setTyping((t) => !t)}
                 >
                   <span className="text-foreground">⌨ Typing Mode</span>
-                  <span className={typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                  <span className={cn("font-mono text-[12px]", typing ? "text-primary font-medium" : "text-muted-foreground")}>
                     {typing ? "On" : "Off"}
                   </span>
                 </button>
@@ -481,7 +481,7 @@ export function TimerContent() {
                   disabled={typing}
                 >
                   <span className="text-foreground">⏱ Inspection</span>
-                  <span className={inspOn && !typing ? "text-primary font-medium" : "text-muted-foreground"}>
+                  <span className={cn("font-mono text-[12px]", inspOn && !typing ? "text-primary font-medium" : "text-muted-foreground")}>
                     {inspOn ? "On" : "Off"}
                   </span>
                 </button>
@@ -496,7 +496,7 @@ export function TimerContent() {
                       title={btStatus === "connected" ? "Disconnect GAN Smart Timer" : "Connect GAN Smart Timer via Bluetooth"}
                     >
                       <span className="text-foreground">GAN Smart Timer</span>
-                      <span className={btStatus === "connected" ? "text-primary font-medium" : "text-muted-foreground"}>
+                      <span className={cn("font-mono text-[12px]", btStatus === "connected" ? "text-primary font-medium" : "text-muted-foreground")}>
                         {btStatus === "connecting" ? "Connecting…" : btStatus === "connected" ? "Connected" : "Disconnected"}
                       </span>
                     </button>
@@ -547,15 +547,15 @@ export function TimerContent() {
           {phase === "stopped" && last && (
             <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
               <button
-                className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "+2" ? "bg-yellow-500 text-black border-yellow-500" : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400")}
+                className={cn("text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors", last.penalty === "+2" ? "bg-yellow-500 text-black border-yellow-500" : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400")}
                 onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
               >+2</button>
               <button
-                className={cn("text-sm px-3 py-1.5 rounded border transition-colors", last.penalty === "DNF" ? "bg-red-500 text-white border-red-500" : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400")}
+                className={cn("text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors", last.penalty === "DNF" ? "bg-red-500 text-white border-red-500" : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400")}
                 onClick={() => setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")}
               >DNF</button>
               <button
-                className="text-sm px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
                 onClick={() => { deleteSolve(last.id); setPhase("idle") }}
               >Delete</button>
             </div>
