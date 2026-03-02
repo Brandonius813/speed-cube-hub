@@ -1,7 +1,7 @@
 export type Penalty = "+2" | "DNF" | null
 export type TimerSolve = { id: string; time_ms: number; penalty: Penalty; scramble: string }
 
-export const STAT_OPTIONS = ["mo3", "ao5", "ao10", "ao12", "ao25", "ao50", "ao100"]
+export const STAT_OPTIONS = ["mo3", "ao5", "ao10", "ao12", "ao25", "ao50", "ao100", "ao200", "ao500", "ao1000"]
 
 function computeAo(solves: TimerSolve[], n: number): number | null {
   if (solves.length < n) return null
