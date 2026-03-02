@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 type TimeInputProps = {
   onSubmit: (timeMs: number) => void
   disabled?: boolean
+  onSpacebar?: () => void
 }
 
 /**
@@ -50,7 +51,7 @@ function digitsToMs(digits: string): number {
   return min * 60000 + sec * 1000 + cs * 10
 }
 
-export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
+export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputProps) {
   const [digits, setDigits] = useState("")
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -82,6 +83,13 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (disabled) return
+
+      // Spacebar → trigger inspection callback
+      if (e.key === " ") {
+        e.preventDefault()
+        onSpacebar?.()
+        return
+      }
 
       // Enter = submit
       if (e.key === "Enter") {
@@ -119,7 +127,7 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
         e.preventDefault()
       }
     },
-    [disabled, digits, handleSubmit]
+    [disabled, digits, handleSubmit, onSpacebar]
   )
 
   // Global keyboard listener so user can type anywhere on the page
@@ -138,11 +146,17 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
       if (/^[0-9]$/.test(e.key) || e.key === "Backspace" || e.key === "Enter" || e.key === "Escape") {
         inputRef.current?.focus()
       }
+
+      // Route spacebar to the hidden input so handleKeyDown catches it
+      if (e.key === " ") {
+        e.preventDefault()
+        onSpacebar?.()
+      }
     }
 
     window.addEventListener("keydown", handleGlobalKeyDown)
     return () => window.removeEventListener("keydown", handleGlobalKeyDown)
-  }, [disabled])
+  }, [disabled, onSpacebar])
 
   const displayText = formatStackmat(digits)
   const hasValue = digits.length > 0
@@ -155,9 +169,9 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
       {/* Visible input box styled like a time entry field */}
       <div
         className={cn(
-          "relative w-full max-w-md mx-auto rounded-xl border-2 bg-background/50 px-6 py-5 transition-colors cursor-text",
+          "relative w-full max-w-xl mx-auto rounded-2xl border-2 bg-background/50 px-8 py-8 transition-colors cursor-text",
           hasValue
-            ? "border-primary/50 shadow-[0_0_15px_-3px] shadow-primary/20"
+            ? "border-primary/50 shadow-[0_0_25px_-3px] shadow-primary/20"
             : "border-border/80"
         )}
         onClick={() => inputRef.current?.focus()}
@@ -178,7 +192,7 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
         {/* Formatted time display */}
         <div
           className={cn(
-            "font-mono text-5xl sm:text-6xl md:text-7xl font-bold tabular-nums tracking-tight text-center transition-colors",
+            "font-mono text-6xl sm:text-7xl md:text-8xl font-bold tabular-nums tracking-tight text-center transition-colors",
             hasValue ? "text-foreground" : "text-muted-foreground/40"
           )}
         >
@@ -188,7 +202,7 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
         {/* Blinking cursor indicator */}
         {!hasValue && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="font-mono text-5xl sm:text-6xl md:text-7xl font-bold text-muted-foreground/40 animate-pulse">
+            <span className="font-mono text-6xl sm:text-7xl md:text-8xl font-bold text-muted-foreground/40 animate-pulse">
               |
             </span>
           </div>
@@ -199,7 +213,7 @@ export function TimeInput({ onSubmit, disabled = false }: TimeInputProps) {
       <p className="mt-4 text-sm text-muted-foreground text-center">
         {hasValue
           ? "Enter to log · Backspace to correct · Esc to clear"
-          : "Type digits like a stackmat (1032 = 10.32s · 10326 = 1:03.26)"}
+          : "Type digits like a stackmat (1032 = 10.32s · 10326 = 1:03.26) · Space for inspection"}
       </p>
     </div>
   )

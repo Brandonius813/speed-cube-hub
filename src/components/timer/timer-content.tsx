@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { TimerDisplay, DEFAULT_HOLD_DURATION } from "@/components/timer/timer-display"
 import type { HoldDuration, TimerSize, TimerUpdateMode } from "@/components/timer/timer-display"
-import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import { TimerTopBar } from "@/components/timer/timer-top-bar"
 import { TimerSidebar } from "@/components/timer/timer-sidebar"
 import { TimeInput } from "@/components/timer/time-input"
@@ -12,7 +11,7 @@ import { SessionManager } from "@/components/timer/session-manager"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import type { StatDetailInfo } from "@/components/timer/stat-detail-modal"
-import type { InputMode, SidebarPosition, AutoBackupInterval, PhaseCount } from "@/components/timer/timer-settings"
+import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
 import { DEFAULT_PHASE_LABELS } from "@/components/timer/timer-settings"
 import { DEFAULT_STAT_INDICATORS } from "@/components/timer/stats-panel"
 import { InspectionOverlay } from "@/components/timer/inspection-overlay"
@@ -93,7 +92,6 @@ const TIMER_UPDATE_MODE_KEY = "sch_timer_update_mode"
 const TIMER_SIZE_KEY = "sch_timer_size"
 const SMALL_DECIMALS_KEY = "sch_small_decimals"
 const HIDE_WHILE_TIMING_KEY = "sch_hide_while_timing"
-const AUTO_BACKUP_INTERVAL_KEY = "sch_auto_backup_interval"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 const PHASE_COUNT_KEY = "sch_phase_count"
 const PHASE_LABELS_KEY = "sch_phase_labels"
@@ -176,13 +174,6 @@ export function TimerContent() {
     return false
   })
   const [isTimerRunning, setIsTimerRunning] = useState(false)
-  const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>(() => {
-    if (typeof window !== "undefined") {
-      const stored = parseInt(localStorage.getItem(AUTO_BACKUP_INTERVAL_KEY) ?? "0", 10)
-      if ([0, 10, 25, 50, 100].includes(stored)) return stored as AutoBackupInterval
-    }
-    return 0
-  })
   const [inputMode, setInputMode] = useState<InputMode>("timer")
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>("right")
   const [statIndicators, setStatIndicators] = useState(() => {
@@ -679,13 +670,6 @@ export function TimerContent() {
       setSaveError(`Failed to save solve: ${message}`)
     }
 
-    // Auto-backup: download JSON every N solves
-    if (autoBackupInterval > 0 && solveNumber % autoBackupInterval === 0) {
-      const sessionName = currentSession?.name ?? event
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
-      const json = solvesToJSON(allSolvesNow, event)
-      downloadFile(json, `backup_${sessionName}_${timestamp}.json`, "application/json")
-    }
   }
 
   const handleSolveComplete = async (timeMs: number, phases?: number[]) => {
@@ -940,13 +924,6 @@ export function TimerContent() {
     }
   }
 
-  const handleAutoBackupIntervalChange = (interval: AutoBackupInterval) => {
-    setAutoBackupInterval(interval)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(AUTO_BACKUP_INTERVAL_KEY, String(interval))
-    }
-  }
-
   const handlePhaseCountChange = (count: PhaseCount) => {
     setPhaseCount(count)
     setLastPhases(null)
@@ -1179,11 +1156,11 @@ export function TimerContent() {
 
   const sidebarPanel = sidebarPosition !== "hidden" && !focusActive && (
     <div className={cn(
-      "fixed z-40 flex flex-col overflow-hidden border-border bg-background shadow-2xl",
+      "absolute z-40 flex flex-col overflow-hidden border-border bg-background shadow-2xl",
       sidebarPosition === "left"
-        ? "left-0 top-16 bottom-0 w-80 border-r"
+        ? "left-0 top-0 bottom-0 w-80 border-r"
         : sidebarPosition === "right"
-          ? "right-0 top-16 bottom-0 w-80 border-l"
+          ? "right-0 top-0 bottom-0 w-80 border-l"
           : "bottom-0 left-0 right-0 max-h-64 border-t"
     )}>
       <TimerSidebar
@@ -1259,8 +1236,6 @@ export function TimerContent() {
         caseFilter={caseFilter}
         onCaseFilterChange={handleCaseFilterChange}
         trainingCstimerType={trainingCstimerType}
-        autoBackupInterval={autoBackupInterval}
-        onAutoBackupIntervalChange={handleAutoBackupIntervalChange}
         phaseCount={phaseCount}
         onPhaseCountChange={handlePhaseCountChange}
         phaseLabels={phaseLabels}
@@ -1270,23 +1245,27 @@ export function TimerContent() {
         stackmatError={stackmat.error}
         onStackmatConnect={stackmat.connect}
         onStackmatDisconnect={stackmat.disconnect}
+        scramble={currentScramble}
+        event={event}
+        isManualScramble={isManualScramble}
+        onManualScramble={setManualScramble}
+        onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
       />)}
 
+      <div className="relative flex-1 min-h-0 overflow-hidden">
       <div className={layoutClass}>
         <div className="flex flex-col flex-1 min-h-0">
-          {!focusActive && (
-            <ScrambleDisplay
-              scramble={currentScramble}
-              event={event}
-              isManualScramble={isManualScramble}
-              onManualScramble={setManualScramble}
-              onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
-            />
-          )}
           {inputMode === "typing" ? (
             <TimeInput
               onSubmit={handleTypedTime}
               disabled={showSummary}
+              onSpacebar={
+                inspectionEnabled
+                  ? inspection.isInspecting
+                    ? handleStartFromInspection
+                    : handleStartInspection
+                  : undefined
+              }
             />
           ) : inputMode === "stackmat" ? (
             <div className="flex-1 flex flex-col items-center justify-center select-none">
@@ -1339,8 +1318,8 @@ export function TimerContent() {
           )}
         </div>
       </div>
-
       {sidebarPanel}
+      </div>
 
       {undoSolve && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-lg shadow-lg px-4 py-2.5 flex items-center gap-3">
