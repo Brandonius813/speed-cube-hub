@@ -122,7 +122,6 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
         onChange={() => {}} // controlled via keyDown only
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        placeholder="0.00"
         autoFocus
         autoComplete="off"
         autoCorrect="off"
@@ -130,17 +129,13 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
         aria-label="Type solve time"
         className={cn(
           "w-full max-w-2xl h-40 sm:h-52 rounded-2xl border-2 bg-background/50 transition-colors",
-          "font-mono text-6xl sm:text-7xl text-center outline-none cursor-text",
-          "placeholder:text-muted-foreground/30",
+          "font-mono text-7xl sm:text-8xl text-center outline-none cursor-text",
           hasValue
             ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20 text-foreground"
-            : "border-border/60 hover:border-border text-muted-foreground/40",
+            : "border-border/60 hover:border-border",
           disabled && "opacity-50 cursor-not-allowed"
         )}
       />
-      <p className="mt-3 text-sm text-muted-foreground/50">
-        Type digits, then press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to save
-      </p>
     </div>
   )
 }
