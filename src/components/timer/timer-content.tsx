@@ -363,14 +363,14 @@ export function TimerContent() {
         {/* Timer display — fixed to true viewport center; pointer-events-none so touches fall through to the touch target below */}
         <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
           {typing ? (
-            <div className="flex flex-col items-center gap-2 w-full max-w-sm pointer-events-auto" onPointerDown={sp}>
+            <div className="relative flex items-center justify-center w-full max-w-sm pointer-events-auto" onPointerDown={sp}>
               <input
                 type="text" inputMode="numeric" placeholder="0000" value={typeVal} autoFocus
                 onChange={(e) => setTypeVal(e.target.value)}
                 onKeyDown={(e) => { if (e.key !== "Enter") return; const ms = parseTime(typeVal); if (ms) { addSolve(ms, null); setTypeVal("") } }}
-                className="bg-transparent border-b-2 border-border text-center font-mono text-7xl w-full outline-none placeholder:text-muted-foreground/30"
+                className="bg-transparent border-b-2 border-border text-center font-mono text-8xl font-light w-full outline-none placeholder:text-muted-foreground/30"
               />
-              <p className="text-sm font-mono text-muted-foreground h-5">
+              <p className="absolute top-full mt-2 text-sm font-mono text-muted-foreground h-5">
                 {typeVal ? (parseTime(typeVal) !== null ? `= ${fmt(parseTime(typeVal)!, 3)}` : "invalid") : ""}
               </p>
             </div>

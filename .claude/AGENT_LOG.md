@@ -8,112 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
-
-**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
-**Status:** Completed remaining gaps in T44. Added `updatePBSchema` and `zodFirstError()` helper to validations.ts. Wired Zod validation into `updatePB()` in personal-bests.ts. Updated all error messages to use `zodFirstError()` consistently. Added "not in the future" date refinement to the shared dateField schema. Another parallel session had already created the base schemas and wired most functions — this session filled in the gaps.
-**Files touched:** src/lib/validations.ts, src/lib/actions/personal-bests.ts, src/lib/actions/sessions.ts
-**Learnings:** T43 session moved `checkAndAwardMilestones` import in sessions.ts from `@/lib/actions/badges` to `@/lib/helpers/check-milestones`. The `.next/lock` file gets stuck when parallel sessions try to build simultaneously — only one `npm run build` can run at a time.
-**Blockers:** None
-**Warnings:** None — all security Wave A tasks (T41-T45) are now complete. T46 + performance tasks remain.
-
----
-
-### 2026-02-25 12:30 PT — T44 Zod Validation Session (Initial)
-
-**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
-**Status:** Created the base Zod validation infrastructure for T44. Built `src/lib/validations.ts` with schemas that dynamically derive valid values from WCA_EVENTS, getPracticeTypesForEvent, and getPBTypesForEvent constants. Added validation to createSession, createSessionsBulk, updateSession in sessions.ts and logNewPB, bulkImportPBs in personal-bests.ts. Added 500-entry cap to bulkImportPBs. Also verified T41 (open redirect) and T45 (search sanitize) were already fixed in code but unmarked — marked both as done. A parallel session then completed the remaining gaps (updatePBSchema, zodFirstError helper, updatePB validation, date-not-in-future refinement).
-**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, .claude/TASKS.md
-**Learnings:** `.next/lock` conflicts are common when parallel agents build simultaneously — only one `npm run build` can run at a time. TypeScript type-checking (`npx tsc --noEmit`) is a good alternative to verify changes compile when the build is locked. Pre-existing TS errors in allrounding-results.tsx and sor-kinch.ts are from another agent's in-progress work.
-**Blockers:** None
-**Warnings:** All security Wave A tasks (T41-T45) complete. T46 (RLS policies) is the largest remaining task and requires SQL migrations. Performance tasks T48-T51 are all available with no deps.
-
----
-
-### 2026-02-25 15:00 PT — T44 + T48 Session
-
-**Task:** T44 (Zod Validation) and T48 (Landing Page Stats RPC)
-**Status:** Completed both tasks:
-- T44: Created `src/lib/validations.ts` with Zod schemas derived from WCA_EVENTS/PRACTICE_TYPES constants. Wired validation into createSession, createSessionsBulk, updateSession, logNewPB, bulkImportPBs. Added 500-entry cap to bulkImportPBs. A parallel session enhanced with zodFirstError(), updatePBSchema, date-not-in-future refinement.
-- T48: Created `supabase/migrations/014_create_global_stats_rpc.sql` with SECURITY DEFINER + GRANT for anon/authenticated. Updated `src/lib/actions/stats.ts` to single RPC call — no session rows transferred. User needs to run the SQL in Supabase SQL Editor.
-**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, supabase/migrations/014_create_global_stats_rpc.sql (created), src/lib/actions/stats.ts, .claude/TASKS.md
-**Learnings:** `.next/lock` contention is common with parallel agents — use `npx tsc --noEmit` as build alternative. T41 and T45 were already fixed in code but unmarked in TASKS.md — always check git log before starting a task.
-**Blockers:** None
-**Warnings:** T48 RPC won't work until user runs the SQL in Supabase dashboard. Remaining available tasks: T46 (RLS — largest), T47 (depends on T46), T50 (Dashboard Dedup), T51 (select("*") cleanup).
-
----
-
-### 2026-02-25 18:00 PT — Production Hotfix Session
-
-**Task:** Emergency fix — T51 explicit column lists broke production queries
-**Status:** Fixed and deployed to production. Commit `ee68efc` (merged to main) switched session queries from `select("*")` to `select(SESSION_COLUMNS)` with an explicit column list. One or more column names in that list (likely `best_time`, `title`, `feed_visible`, or `timer_session_id`) didn't match the production database schema — these columns were added via direct SQL, not tracked migrations. The Supabase/PostgREST query silently errored, returning empty arrays. Profile stats, practice stats, and other pages showed 0 for all users. The feed was unaffected because it still used `select("*")`. Reverted ALL explicit column lists back to `select("*")` across 7 files (sessions, badges, challenges, clubs, goals, personal-bests, profiles). Merged to main and pushed.
-**Files touched:** src/lib/actions/sessions.ts, src/lib/actions/badges.ts, src/lib/actions/challenges.ts, src/lib/actions/clubs.ts, src/lib/actions/goals.ts, src/lib/actions/personal-bests.ts, src/lib/actions/profiles.ts
-**Learnings:** NEVER use explicit column lists in Supabase queries unless you've verified the exact column names against the live database. Many columns in this project were added via Supabase SQL editor and are NOT tracked in migration files. The feed using `select("*")` continued working while explicit-column queries silently failed — this discrepancy is the telltale sign.
-**Blockers:** None
-**Warnings:** T51 (explicit column lists) should be considered REVERTED, not Done. If re-attempted, must first audit the actual production DB schema column-by-column before writing the lists. Do NOT assume migration files reflect the true schema.
-
----
-
-### 2026-02-25 14:57 PT — Phase 9 Completion + T47 Leaderboard RPC Session
-
-**Task:** T47 — Fix Leaderboards: Move Aggregation to Database (+ T34-T40 status update)
-**Status:** Completed T47 — the last remaining Phase 9 performance task. Created 6 SQL RPC functions (3 leaderboard + 3 rank-lookup) that do all aggregation inside PostgreSQL instead of loading the entire sessions table into Node.js memory. Also updated T34-T40 (Timer) status from Available → Done (timer was already fully built but TASKS.md wasn't updated). All Phase 9 tasks (T41-T51) are now complete. Only T52 (WCA-Standard Scrambles) remains as an available task.
-**Files touched:** supabase/migrations/016_create_leaderboard_rpcs.sql (created), src/lib/actions/leaderboards.ts (rewritten), .claude/TASKS.md
-**Learnings:** The SQL "islands and gaps" pattern (date - ROW_NUMBER() groups consecutive dates) works cleanly for streak calculation in PostgreSQL. Supabase RPC with `RETURNS TABLE(...)` returns arrays; scalar returns (like the rank functions returning `int`) come back as a plain number. `SECURITY DEFINER` + `SET search_path = public` is the safe pattern for RPC functions accessible to anon users.
-**Blockers:** None
-**Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor before leaderboards/follows/stats work with the new code: 014_create_global_stats_rpc.sql, 015_add_follows_rls.sql, 016_create_leaderboard_rpcs.sql. Without these, the RPC calls will fail with "function not found" errors.
-
----
-
-### 2026-02-25 16:01 PT — PB Migration + Event Order Session
-
-**Task:** General work — PB data migration from old Supabase + new PB event ordering feature
-**Status:** Completed two things:
-1. Migrated 221 historical PB records from user's old Supabase project via CSV export. Created `scripts/migrate-pbs.mjs` migration script. Had to fix event name mismatch (CSV used display names like "3x3" instead of WCA IDs like "333") — created and ran a fix script, then updated migrate-pbs.mjs with built-in event name mapping.
-2. Built customizable PB event ordering feature: users can organize PBs into "Main Events" (pinned to top, reorderable) and "Other Events" sections. Added `pbs_main_events` column to profiles, new server action, tabbed settings modal with Event Order tab (up/down arrows, add/remove), and section rendering in pbs-content.
-**Files touched:** scripts/migrate-pbs.mjs (created), supabase/migrations/017_add_pbs_main_events.sql (created), src/lib/types.ts, src/lib/actions/profiles.ts, src/components/pbs/pb-settings-modal.tsx, src/components/pbs/pbs-content.tsx, src/app/(main)/pbs/page.tsx
-**Learnings:** The old Supabase stored events by display name (e.g., "3x3", "Megaminx") while Speed Cube Hub uses WCA event IDs ("333", "minx"). Any future data migration must map these. The `personal_bests` table has no RLS policies — reads work because data is fetched server-side via authenticated client, but this should be addressed in T46.
-**Blockers:** User needs to run `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pbs_main_events text[] DEFAULT NULL;` in Supabase SQL Editor before the event ordering feature works.
-**Warnings:** New column `pbs_main_events` added to profiles table — any code that uses explicit column lists for profiles will need updating (though currently all use `select("*")`).
-
----
-
-### 2026-02-25 19:30 PT — Sync-only Session
-
-**Task:** Attempted T54 (Practice Stats Overhaul), discovered already completed
-**Status:** Claimed T54 but found it was already built and committed by Claude-Opus (commit `0b5a560`). Verified all T54 files are present and correct: practice-streak.tsx, heatmap-tooltip.tsx, time-by-event-chart.tsx, event-breakdown-table.tsx, updated filters.tsx, stats-cards.tsx, daily-bar-chart.tsx, dashboard-content.tsx, constants.ts. Deleted orphaned streak-card.tsx (already removed from git by T54 commit). Ran `npx tsc --noEmit` — passes clean. No remaining available tasks in TASKS.md.
-**Files touched:** .claude/TASKS.md (claimed T54, but it was already done)
-**Learnings:** Always check `git log` before claiming a task — another session may have completed and committed it even if TASKS.md showed Available when you first read it. The `npm run build` command requires significant memory and can get killed (exit 137) or timeout on this machine; use `npx tsc --noEmit` as a lighter alternative for type verification.
-**Blockers:** No available tasks remain. T56 is in progress by Claude-Opus.
-**Warnings:** None — all tasks except T56 are done. T56 has local uncommitted changes in `src/lib/actions/timer.ts` (29 lines for `getSolvesByEvent`).
-
----
-
-### 2026-02-25 16:12 PT — Timer Bug Fixes Session
-
-**Task:** General work — Timer solves not saving + UX improvements
-**Status:** Fixed three timer issues:
-1. **Solves silently failing:** The `timer_sessions` and `solves` tables didn't exist in Supabase. All save errors were silently caught and logged to console.error with no UI feedback. Added error banner to timer UI so failures are visible. User ran the CREATE TABLE SQL to create both tables with RLS policies.
-2. **Red/green hold feedback:** Added "holding" state to timer — numbers turn red immediately when spacebar is pressed, then green after 300ms threshold (matching csTimer behavior).
-3. **Slow solve list update:** Solves didn't appear in sidebar until after 2 server round-trips. Added optimistic updates — solve appears instantly, server save happens in background. If save fails, solve is removed and error shown.
-**Files touched:** src/components/timer/timer-content.tsx, src/components/timer/timer-display.tsx
-**Learnings:** The `timer_sessions` and `solves` tables were referenced in code but never created in Supabase — this was the root cause of timer solves not saving. The error banner we added immediately surfaced the real error message. `.next/lock` contention continues to be an issue with parallel builds — `npx tsc --noEmit` is a reliable alternative.
-**Blockers:** None
-**Warnings:** Two new tables (`timer_sessions`, `solves`) were created in Supabase via SQL. Any future schema changes to these tables need to be done in the Supabase dashboard.
-
----
-
-### 2026-02-25 20:30 PT — T54 + T56 Completion Session
-
-**Task:** T54 (Practice Stats Overhaul) + T56 (Solve Analytics Charts)
-**Status:** Both tasks were already committed by prior sessions. This session verified the integration, fixed stash-related regressions (dashboard-content.tsx and stats-panel.tsx lost edits during a git stash/checkout cycle), confirmed TypeScript compiles clean, and ensured all changes are pushed to dev. Also completed T53 (Navbar Active Tab + Notification Popup) and T55 (PB Ao5 Fix) earlier in this session and pushed those to main.
-**Files touched:** src/components/dashboard/dashboard-content.tsx, src/components/dashboard/solve-analytics.tsx (created), src/components/timer/stats-panel.tsx, src/components/shared/time-distribution-chart.tsx, src/components/shared/time-trend-chart.tsx
-**Learnings:** `npm run build` has a persistent Next.js 16 infrastructure bug (`pages-manifest.json` not found) that affects both dev and main branches — it's not caused by code changes. Use `npx tsc --noEmit` as the reliable compile check. Git stash/checkout can silently lose uncommitted edits in files that were modified by the linter after your edit — always re-verify file contents after stash operations.
-**Blockers:** None — `npm run build` fails on both dev and main due to Next.js infrastructure issue, but Vercel builds work fine.
-**Warnings:** Phase 10 (T53-T56) is fully complete. Phase 11 (Profile Rework, T57-T63) has 7 available tasks. The `npm run build` issue should be investigated separately — it may be a Node.js version or Next.js 16.1.6 Turbopack bug.
-
----
-
 ### 2026-02-25 21:45 PT — Phase 11 Profile Rework Session
 
 **Task:** T57–T63 (Phase 11 — Profile Rework: 5-Tab Layout with Sidebar)
@@ -798,5 +692,16 @@ T157:
 **Status:** Fixed `parseTime()` in `timer-content.tsx`. Typing a colon-separated time like "8:20" was previously stripping the colon and reading it as "820" = 8.20 seconds. Worse, typing "8200" (4-digit, no trailing centisecond zero) caused `secs=82 ≥ 60 → null → "invalid"`. Added an early branch: if input contains ":", parse as `M:SS[.cc]` explicitly with a regex before falling back to digit-only logic. Also noted the linter had added `scrambleCopied` state and a scramble copy-to-clipboard feature to `timer-content.tsx` since the last sync.
 **Files touched:** `src/components/timer/timer-content.tsx`
 **Learnings:** The right-to-left digit parser only fails for minute-range times typed without full centisecond trailing zeros (e.g., "8200" breaks because "82" becomes the seconds). The colon branch fixes this cleanly.
+**Blockers:** None
+**Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Typing Mode Alignment Fix Session
+
+**Task:** General work — UI polish (no TASKS.md ID)
+**Status:** Fixed size and vertical position mismatch between timer number display and typing mode input. Changed input from `text-7xl` to `text-8xl` and added `font-light` to match the timer display exactly. Changed the typing container from `flex-col gap-2` to `relative flex items-center justify-center` and made the preview text (`= 12.340`) absolutely positioned (`absolute top-full mt-2`) so it doesn't push the input above center.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** The preview text `<p>` under the input was shifting the entire typing block upward because the parent centering included both elements. Absolute positioning removes it from the flow entirely.
 **Blockers:** None
 **Warnings:** None
