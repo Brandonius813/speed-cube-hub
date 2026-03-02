@@ -1252,7 +1252,7 @@ export function TimerContent() {
         onClearManualScramble={() => loadScramble(event as WcaEventId, trainingCstimerType, caseFilter)}
       />)}
 
-      <div className="relative flex-1 min-h-0 overflow-hidden">
+      <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className={layoutClass}>
         <div className="flex flex-col flex-1 min-h-0">
           {inputMode === "typing" ? (
