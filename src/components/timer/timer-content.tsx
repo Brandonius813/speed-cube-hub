@@ -98,6 +98,11 @@ const AUTO_BACKUP_INTERVAL_KEY = "sch_auto_backup_interval"
 const SCRAMBLE_TYPE_KEY = "sch_scramble_type"
 const PHASE_COUNT_KEY = "sch_phase_count"
 const PHASE_LABELS_KEY = "sch_phase_labels"
+// Cache keys for instant load (stale-while-revalidate)
+const CACHE_SESSIONS_KEY = "sch_cache_solve_sessions"
+const CACHE_CURRENT_SESSION_KEY = "sch_cache_current_session"
+const CACHE_SOLVES_KEY = "sch_cache_solves"
+const CACHE_PBS_KEY = "sch_cache_pbs"
 
 export function TimerContent() {
   const router = useRouter()
@@ -290,10 +295,71 @@ export function TimerContent() {
 
   // ---- Initialization ----
 
+  // Tracks whether the initial DB load has completed (guards the auto-save effect)
+  const hasLoadedRef = useRef(false)
+
   useEffect(() => {
     initializeSession()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-save all timer state to localStorage after each change.
+  // On the next visit, loadFromCache() reads this and renders instantly.
+  useEffect(() => {
+    if (!hasLoadedRef.current || !currentSession) return
+    try {
+      localStorage.setItem(CACHE_SESSIONS_KEY, JSON.stringify(solveSessions))
+      localStorage.setItem(CACHE_CURRENT_SESSION_KEY, JSON.stringify(currentSession))
+      localStorage.setItem(CACHE_SOLVES_KEY, JSON.stringify({
+        sessionId: currentSession.id,
+        timerSessionId,
+        solves,
+      }))
+      localStorage.setItem(CACHE_PBS_KEY, JSON.stringify([...pbMapRef.current.entries()]))
+    } catch { /* ignore storage errors */ }
+  }, [solves, solveSessions, currentSession, timerSessionId])
+
+  // Reads cached state from localStorage and applies it synchronously.
+  // Returns true if a valid cache was found.
+  const loadFromCache = (): boolean => {
+    try {
+      const sessionsStr = localStorage.getItem(CACHE_SESSIONS_KEY)
+      const currentStr = localStorage.getItem(CACHE_CURRENT_SESSION_KEY)
+      if (!sessionsStr || !currentStr) return false
+
+      const sessions: SolveSession[] = JSON.parse(sessionsStr)
+      const session: SolveSession = JSON.parse(currentStr)
+      setSolveSessions(sessions)
+      setCurrentSession(session)
+
+      const solvesStr = localStorage.getItem(CACHE_SOLVES_KEY)
+      if (solvesStr) {
+        const cached: { sessionId: string; timerSessionId: string | null; solves: Solve[] } = JSON.parse(solvesStr)
+        if (cached.sessionId === session.id) {
+          setSolves(cached.solves)
+          setTimerSessionId(cached.timerSessionId)
+          if (cached.solves.length > 0) {
+            const last = cached.solves[cached.solves.length - 1]
+            setLastTime(last.penalty === "+2" ? last.time_ms + 2000 : last.penalty === "DNF" ? null : last.time_ms)
+          }
+        }
+      }
+
+      const pbsStr = localStorage.getItem(CACHE_PBS_KEY)
+      if (pbsStr) {
+        pbMapRef.current = new Map<string, number>(JSON.parse(pbsStr))
+      }
+
+      const savedType = localStorage.getItem(SCRAMBLE_TYPE_KEY) ?? NORMAL_SCRAMBLE_ID
+      const resolved = getTrainingType(session.event, savedType)
+      const savedFilter = resolved?.cstimerType ? loadCaseFilter(resolved.cstimerType) : null
+      setCaseFilter(savedFilter)
+      loadScramble(session.event as WcaEventId, resolved?.cstimerType, savedFilter)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   const initializeSession = async () => {
     setIsLoading(true)
@@ -304,6 +370,19 @@ export function TimerContent() {
       setRaceSeed(persistedSeed)
     }
 
+    // On repeat visits: load from cache instantly, sync DB in background
+    if (typeof window !== "undefined" && loadFromCache()) {
+      setIsLoading(false)
+      loadFromDB()
+      return
+    }
+
+    // First visit (no cache): load from DB, then render
+    await loadFromDB()
+    setIsLoading(false)
+  }
+
+  const loadFromDB = async () => {
     // Load PBs and profile in parallel with sessions
     const [{ data: sessions }, pbResult, profileResult] = await Promise.all([
       getUserSolveSessions(),
@@ -368,7 +447,8 @@ export function TimerContent() {
       loadScramble("333" as WcaEventId)
     }
 
-    setIsLoading(false)
+    // Mark load complete so the auto-save effect starts writing to cache
+    hasLoadedRef.current = true
   }
 
   // ---- Session management helpers ----
