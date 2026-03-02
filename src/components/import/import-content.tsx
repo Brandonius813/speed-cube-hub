@@ -39,7 +39,7 @@ type State =
   | "importing"
   | "complete"
 
-export function ImportContent() {
+export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [state, setState] = useState<State>("idle")
   const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState("")
@@ -291,15 +291,17 @@ export function ImportContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-          Import Data
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a file or paste data from any timer app. Known formats are
-          detected automatically \u2014 everything else is parsed by AI.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+            Import Data
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Upload a file or paste data from any timer app. Known formats are
+            detected automatically — everything else is parsed by AI.
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">

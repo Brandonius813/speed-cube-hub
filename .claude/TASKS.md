@@ -4,21 +4,30 @@ Shared task board for multiple Claude sessions. All MVP tasks are complete.
 
 ## How to Use This File
 
-**Before starting work:**
-1. `git pull origin dev` to get the latest
-2. Find a task that is `🔲 Available` with all dependencies `✅ Done`
-3. Change status to `🏗️ In Progress` and add your identifier (e.g., `[Claude-A]`)
-4. Commit and push the claim immediately
+**Before starting work — create your isolated worktree:**
+1. In the VS Code terminal (from the main repo): `git pull origin dev`
+2. Create a worktree + branch: `git worktree add ../speed-cube-hub-<taskname> -b task/<taskname>`
+   - Example: `git worktree add ../speed-cube-hub-t148 -b task/t148-scramble-api`
+3. Open that folder as a new VS Code window (File → Open Folder)
+4. Find a task that is `🔲 Available` with all dependencies `✅ Done`
+5. Change status to `🏗️ In Progress`, add your identifier + branch (e.g., `[Claude-A | task/t148-scramble-api]`)
+6. Push the claim: `git push -u origin task/<taskname>`
 
 **When you finish a task:**
-1. Change status to `✅ Done`
-2. Commit and push your code + this file update together
-3. Look for the next available task
+1. Change status to `✅ Done` — include the branch name so the user knows what to merge
+2. Push your final commit to your task branch (NOT to `dev`)
+3. Tell the user: "Task T### is done on branch `task/<taskname>` — ready to merge into dev"
+
+**Merging into dev (user or coordinator session):**
+1. From the main repo: `git merge task/<taskname>`
+2. Resolve any conflicts, push to dev
+3. Clean up: `git worktree remove ../speed-cube-hub-<taskname>`
 
 **Rules:**
+- **Never push directly to `dev`** — push to your task branch only
 - Never start a task whose dependencies aren't all `✅ Done`
-- Always pull before claiming
-- Each task must result in a passing build (`npm run build`)
+- Always `git pull origin dev` before creating your worktree
+- Use `npx tsc --noEmit` to verify TypeScript (avoids `.next/lock` conflicts with other agents)
 - Read the PRD and CLAUDE.md before starting any work
 
 ---

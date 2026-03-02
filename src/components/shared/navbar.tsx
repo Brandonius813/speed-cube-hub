@@ -214,13 +214,6 @@ export function Navbar() {
                   >
                     Profile
                   </Link>
-                  <Link
-                    href="/import"
-                    onClick={() => setProfileOpen(false)}
-                    className="block px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/50"
-                  >
-                    Import
-                  </Link>
                 </div>
 
                 {/* Bottom section — grayed out */}

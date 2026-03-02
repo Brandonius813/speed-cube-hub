@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
-  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const expected = process.env.REVALIDATE_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!expected || authHeader !== `Bearer ${expected}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
