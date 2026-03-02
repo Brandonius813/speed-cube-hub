@@ -8,23 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-25 14:30 PT — Security & Performance Audit Session
-
-**Task:** Full codebase security + performance audit → Phase 9 tasks (T41–T51)
-**Status:** Completed full audit and fixed all security items:
-- Created Phase 9 in TASKS.md with 11 detailed tasks (T41–T51)
-- T41 ✅ Fixed open redirect in OAuth callback (validated `next` param)
-- T42 ✅ Hardened proxy.ts — added all missing protected routes, switched getClaims→getUser for session refresh, added login redirect for auth'd users, added ?next= param
-- T43 ✅ Already done by previous session (createNotification/checkAndAwardMilestones moved to helpers)
-- T44 ✅ Already done by previous session (Zod validation on sessions/PBs)
-- T45 ✅ Already done (commit 87a8a51)
-**Files touched:** src/app/api/auth/callback/route.ts, src/lib/supabase/proxy.ts, .claude/TASKS.md, .claude/SPEED_CUBE_HUB_PRD.md, .claude/CLAUDE.md
-**Learnings:** T43, T44, T45 were already implemented by previous sessions but not tracked in TASKS.md. Always check git log before starting a task. The project uses Next.js 16 proxy.ts (not middleware.ts) — creating middleware.ts causes build errors.
-**Blockers:** None
-**Warnings:** Performance tasks T47–T51 still available. T46 (RLS policies) is the largest task and requires SQL migrations run in Supabase dashboard — coordinate carefully. T47 depends on T46.
-
----
-
 ### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
 
 **Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
@@ -705,6 +688,21 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Warnings:**
 - T153 (FloatingPanel) was already committed by a previous implicit session — this session refined the styling (`bg-card/border-border`, `max-h-[60vh] overflow-y-auto`)
 - T154 agent (timer-content.tsx owner) should clean up the unused handler functions: `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` — these still exist in timer-content.tsx but are no longer called
+
+---
+
+### 2026-03-02 PT — T159 Verification + Cleanup Session
+
+**Task:** T159 (Simplify Manage Sessions Menu) — verification and timer-content.tsx cleanup
+**Status:** T159 was already implemented by the prior session (commit `fa6d72c`). This session:
+1. Verified session-manager.tsx has the correct simplified 3-button layout (Edit, Hide/EyeOff, X-delete)
+2. Found timer-content.tsx still passed deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) to SessionManager — removed them (commit `63d35d7`)
+3. Added `handleManagerUnarchive` to timer-content.tsx (commit `63d35d7`) — calls `updateSolveSession(id, { is_archived: false })`
+4. Confirmed TypeScript compiles clean (only pre-existing error in revalidate-wca/route.ts)
+**Files touched:** src/components/timer/timer-content.tsx
+**Learnings:** The linter automatically cleaned up the deprecated props from the SessionManager JSX call site after the prop interface was changed — no manual edit needed. Always check git log before re-implementing — T159 was already done.
+**Blockers:** None
+**Warnings:** `handleManagerToggleTracked`, `handleManagerReset`, `handleManagerMerge`, `handleManagerSplit` still exist as unused functions in timer-content.tsx — T154 agent should remove them. There is also an untracked `src/app/api/scramble/route.ts` file on disk (not committed) — unclear origin, do not commit unless completing that feature.
 
 ---
 
