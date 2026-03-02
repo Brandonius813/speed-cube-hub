@@ -228,11 +228,11 @@ export function StatsPanel({
       {/* csTimer-style stats table: label | current | best | σ */}
       <table className="w-full tabular-nums">
         <thead>
-          <tr className="text-muted-foreground/70">
-            <th className="text-left font-medium text-xs py-1.5 px-1 w-14"></th>
-            <th className="text-right font-medium text-xs py-1.5 px-1">current</th>
-            <th className="text-right font-medium text-xs py-1.5 px-1">best</th>
-            <th className="text-right font-medium text-xs py-1.5 px-1 w-16">σ</th>
+          <tr className="text-muted-foreground border-b border-border/30">
+            <th className="text-left font-semibold text-xs py-1.5 px-1 w-14"></th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1">current</th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1">best</th>
+            <th className="text-right font-semibold text-xs py-1.5 px-1 w-16">σ</th>
           </tr>
         </thead>
         <tbody>

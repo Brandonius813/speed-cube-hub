@@ -2764,7 +2764,7 @@ Changes span 4 plan tasks (A, C-partial, D, E). Read the full plan before starti
 
 | | |
 |---|---|
-| **Status** | 🏗️ In Progress |
+| **Status** | ✅ Done |
 | **Claimed by** | [this session] |
 | **Dependencies** | T153 |
 | **Estimated scope** | 1-2 files |
