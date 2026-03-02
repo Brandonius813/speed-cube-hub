@@ -69,6 +69,7 @@ export function TimerContent() {
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showStatSettings, setShowStatSettings] = useState(false)
+  const [scrambleCopied, setScrambleCopied] = useState(false)
   const [statRows, setStatRows] = useState<[string, string]>(() => {
     try { const s = localStorage.getItem("timer-stat-rows"); if (s) return JSON.parse(s) } catch {}
     return ["ao5", "ao12"]
@@ -253,9 +254,19 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <p className="flex-1 min-w-0 text-center text-lg sm:text-xl font-mono font-bold text-white leading-snug line-clamp-2">
-          {scramble}
-        </p>
+        <button
+          className="flex-1 min-w-0 text-center text-lg sm:text-xl font-mono font-bold leading-snug line-clamp-2 transition-colors hover:text-primary active:text-primary cursor-pointer"
+          style={{ color: scrambleCopied ? "var(--color-primary)" : "white" }}
+          onClick={() => {
+            navigator.clipboard.writeText(scramble).then(() => {
+              setScrambleCopied(true)
+              setTimeout(() => setScrambleCopied(false), 1500)
+            })
+          }}
+          title="Click to copy scramble"
+        >
+          {scrambleCopied ? "Copied!" : scramble}
+        </button>
         <div className="flex gap-2 shrink-0">
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", typing)} onClick={() => setTyping((t) => !t)}>⌨ Type</button>
           <button className={tog("text-xs px-2 py-1 rounded border transition-colors", inspOn && !typing)} onClick={() => setInspOn((v) => !v)} disabled={typing}>Insp.</button>
