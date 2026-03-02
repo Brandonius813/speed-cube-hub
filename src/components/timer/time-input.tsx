@@ -188,16 +188,8 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
           aria-label="Type time"
         />
 
-        {/* Placeholder + blinking cursor */}
-        {!hasValue && (
-          <div className="flex items-center gap-1 pointer-events-none select-none">
-            <span className="text-muted-foreground/40 text-lg font-mono">Type your time</span>
-            <span className="font-mono text-lg text-muted-foreground/40 animate-pulse">|</span>
-          </div>
-        )}
-        {hasValue && (
-          <span className="font-mono text-lg text-muted-foreground/60 animate-pulse pointer-events-none select-none">|</span>
-        )}
+        {/* Blinking cursor */}
+        <span className="font-mono text-lg text-muted-foreground/40 animate-pulse pointer-events-none select-none">|</span>
       </div>
 
     </div>
