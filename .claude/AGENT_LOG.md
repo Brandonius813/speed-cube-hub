@@ -750,3 +750,18 @@ T157:
 **Learnings:** The linter pre-applied many T154 changes (inspection voice, pbToastQueue, activeTool state, practiceStartTime, isPaused, handlePause/handleResume, timer-top-bar mode pill + clock + pause, timer-settings cleanup) between the previous session and this one. When re-reading files after context summarization, always check what's already been done before writing.
 **Blockers:** None
 **Warnings:** The `ScrambleTypeSelector` and `CaseFilterPanel` are still in the far-left section of timer-top-bar (not moved to center/scramble area) — T156 spec mentioned moving them, but since that would affect layout significantly and the current placement works, it was deferred. If needed, update T156 or create a follow-up task.
+
+---
+
+### 2026-03-02 PT — T162 Session (csTimer Import Bulk Solve Insert)
+
+**Task:** T162 (CSTimer Import → Bulk Solve Insert)
+**Status:** Complete.
+
+- `parse-cstimer.ts`: Added `RawImportSolve` exported type. Updated internal `ParsedSolve` to track `isPlus2` and `scramble`. Updated `parseSolveTime` to return `isPlus2: boolean`. Added `scrambleIdx` column detection. Returns `rawSolves: RawImportSolve[]` alongside existing `sessions` and `totalSolves`. +2 times correctly subtract 2s to store the base time (csTimer Time column includes the +2 penalty in the displayed value).
+- `cstimer-import.tsx`: Replaced `createSessionsBulk` with `bulkImportSolves` (which already existed in timer.ts and handles both individual solve records and a sessions entry). Added solve session picker dropdown in the previewing step — "Create new: csTimer Import — [Event]" is the default; existing sessions for the selected event are also listed. Sessions are loaded on mount via `getUserSolveSessions`. Import button now shows "Import N Solves" (was "Import N Sessions").
+
+**Files touched:** `src/lib/cstimer/parse-cstimer.ts`, `src/components/log/cstimer-import.tsx`
+**Learnings:** `bulkImportSolves` was already fully implemented in `timer.ts` — no new server action was needed. The task spec's "bulkAddSolves" was already covered by `bulkImportSolves`. The parser needed the individual solve data (scramble, isPlus2, date per solve) which it previously discarded — now retained.
+**Blockers:** None
+**Warnings:** None
