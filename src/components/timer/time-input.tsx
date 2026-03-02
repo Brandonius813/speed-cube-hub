@@ -24,40 +24,46 @@ function digitsToMs(digits: string): number {
   return min * 60000 + sec * 1000 + cs * 10
 }
 
+/**
+ * Format raw digit string as a time display: M:SS.cs or SS.cs
+ */
+function formatDigits(digits: string): string {
+  if (digits.length === 0) return ""
+
+  const padded = digits.padStart(5, "0")
+  const cs = padded.slice(-2)
+  const sec = padded.slice(-4, -2)
+  const min = parseInt(padded.slice(0, -4), 10)
+
+  if (min > 0) {
+    return `${min}:${sec}.${cs}`
+  }
+  return `${parseInt(sec, 10)}.${cs}`
+}
+
 export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputProps) {
   const [digits, setDigits] = useState("")
-  const [hasSubmitted, setHasSubmitted] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus the input on mount
+  // Auto-focus on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
-  // Re-focus after submission
-  useEffect(() => {
-    if (hasSubmitted) {
-      inputRef.current?.focus()
-      setHasSubmitted(false)
-    }
-  }, [hasSubmitted])
-
   const handleSubmit = useCallback(() => {
     if (digits.length === 0) return
-
     const timeMs = digitsToMs(digits)
     if (timeMs <= 0) return
-
     onSubmit(timeMs)
     setDigits("")
-    setHasSubmitted(true)
+    inputRef.current?.focus()
   }, [digits, onSubmit])
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (disabled) return
 
-      // Spacebar → trigger inspection callback
+      // Spacebar → inspection callback
       if (e.key === " ") {
         e.preventDefault()
         onSpacebar?.()
@@ -95,7 +101,7 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
         return
       }
 
-      // Block everything else from modifying the value
+      // Block everything else
       if (e.key !== "Tab") {
         e.preventDefault()
       }
@@ -103,64 +109,38 @@ export function TimeInput({ onSubmit, disabled = false, onSpacebar }: TimeInputP
     [disabled, digits, handleSubmit, onSpacebar]
   )
 
-  // Global keyboard listener so user can type anywhere on the page
-  useEffect(() => {
-    if (disabled) return
-
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement &&
-        e.target !== inputRef.current
-      ) {
-        return
-      }
-      if (e.target instanceof HTMLTextAreaElement) return
-
-      if (/^[0-9]$/.test(e.key) || e.key === "Backspace" || e.key === "Enter" || e.key === "Escape") {
-        inputRef.current?.focus()
-      }
-
-      // Route spacebar to the hidden input so handleKeyDown catches it
-      if (e.key === " ") {
-        e.preventDefault()
-        onSpacebar?.()
-      }
-    }
-
-    window.addEventListener("keydown", handleGlobalKeyDown)
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
-  }, [disabled, onSpacebar])
-
+  const displayValue = formatDigits(digits)
   const hasValue = digits.length > 0
 
   return (
-    // label wrapping the input means clicking anywhere in the area focuses the input
-    <label className="flex flex-col items-center justify-center flex-1 cursor-text relative">
-      {/* Hidden input — tiny + invisible, but fully functional (no clip, so it works in all browsers) */}
+    <div className="flex flex-col items-center justify-center flex-1 w-full px-4">
       <input
         ref={inputRef}
         type="text"
         inputMode="numeric"
-        className="absolute top-0 left-0 w-px h-px opacity-0 border-0 outline-none"
-        value={digits}
-        onChange={() => {}}
+        value={displayValue}
+        onChange={() => {}} // controlled via keyDown only
         onKeyDown={handleKeyDown}
+        disabled={disabled}
+        placeholder="0.00"
         autoFocus
-        aria-label="Type time"
-      />
-
-      {/* Large clickable input area — like csTimer / CubeDesk */}
-      <div
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-label="Type solve time"
         className={cn(
-          "w-full max-w-2xl mx-auto rounded-2xl border-2 bg-background/50 transition-colors flex items-center justify-center h-40 sm:h-52",
+          "w-full max-w-2xl h-40 sm:h-52 rounded-2xl border-2 bg-background/50 transition-colors",
+          "font-mono text-6xl sm:text-7xl text-center outline-none cursor-text",
+          "placeholder:text-muted-foreground/30",
           hasValue
-            ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20"
-            : "border-border/60 hover:border-border"
+            ? "border-primary/60 shadow-[0_0_30px_-4px] shadow-primary/20 text-foreground"
+            : "border-border/60 hover:border-border text-muted-foreground/40",
+          disabled && "opacity-50 cursor-not-allowed"
         )}
-      >
-        {/* Blinking cursor — sized to match the box */}
-        <span className="font-mono text-6xl sm:text-7xl text-muted-foreground/40 animate-pulse select-none leading-none">|</span>
-      </div>
-    </label>
+      />
+      <p className="mt-3 text-sm text-muted-foreground/50">
+        Type digits, then press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to save
+      </p>
+    </div>
   )
 }
