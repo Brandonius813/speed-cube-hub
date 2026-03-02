@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,10 +15,13 @@ import { WCA_EVENTS, DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants";
 import {
   parseCsTimerCsv,
   type CsTimerParsedSession,
+  type RawImportSolve,
 } from "@/lib/cstimer/parse-cstimer";
-import { createSessionsBulk } from "@/lib/actions/sessions";
+import { getUserSolveSessions, createSolveSession } from "@/lib/actions/solve-sessions";
+import { bulkImportSolves } from "@/lib/actions/timer";
 import { formatDuration, formatSolveTime, parseSolveTime } from "@/lib/utils";
 import { CsTimerPreviewTable } from "./cstimer-preview-table";
+import type { SolveSession } from "@/lib/types";
 
 type ImportState = "idle" | "previewing" | "importing" | "complete";
 
@@ -34,10 +37,17 @@ export function CsTimerImport() {
     formatSolveTime(DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30)
   );
   const [sessions, setSessions] = useState<CsTimerParsedSession[]>([]);
+  const [rawSolves, setRawSolves] = useState<RawImportSolve[]>([]);
   const [totalSolves, setTotalSolves] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedCount, setImportedCount] = useState(0);
+  const [solveSessions, setSolveSessions] = useState<SolveSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("new");
+
+  useEffect(() => {
+    getUserSolveSessions().then(({ data }) => setSolveSessions(data ?? []));
+  }, []);
 
   function handleEventChange(newEvent: string) {
     setEvent(newEvent);
@@ -78,7 +88,9 @@ export function CsTimerImport() {
     }
 
     setSessions(result.sessions);
+    setRawSolves(result.rawSolves);
     setTotalSolves(result.totalSolves);
+    setSelectedSessionId("new");
     setState("previewing");
   }
 
@@ -86,20 +98,27 @@ export function CsTimerImport() {
     setImportError(null);
     setState("importing");
 
-    const rows = sessions.map((s) => ({
-      session_date: s.session_date,
-      event,
-      practice_type: "Solves",
-      num_solves: s.num_solves ?? 0,
-      num_dnf: s.num_dnf ?? 0,
-      duration_minutes: Math.min(1440, Math.max(1, Math.ceil((s.num_solves * secondsPerSolve) / 60))),
-      avg_time: s.avg_time,
-      best_time: s.best_time,
-      notes: "csTimer import",
-    }));
+    const label = WCA_EVENTS.find((e) => e.id === event)?.label ?? event;
 
     try {
-      const result = await createSessionsBulk(rows, { source: "csTimer" });
+      // Resolve solve session — create new or use existing
+      let solveSessionId = selectedSessionId;
+      if (selectedSessionId === "new") {
+        const created = await createSolveSession(
+          `csTimer Import — ${label}`,
+          event,
+          true
+        );
+        if (created.error || !created.data) {
+          setImportError(created.error ?? "Failed to create session.");
+          setState("previewing");
+          return;
+        }
+        solveSessionId = created.data.id;
+      }
+
+      // Bulk-insert individual solve records
+      const result = await bulkImportSolves(solveSessionId, event, rawSolves);
 
       if (result.error) {
         setImportError(result.error);
@@ -107,7 +126,7 @@ export function CsTimerImport() {
         return;
       }
 
-      setImportedCount(result.inserted);
+      setImportedCount(result.imported);
       setState("complete");
     } catch {
       setImportError("Something went wrong. Check your internet connection and try again.");
@@ -118,10 +137,12 @@ export function CsTimerImport() {
   function handleReset() {
     setState("idle");
     setSessions([]);
+    setRawSolves([]);
     setTotalSolves(0);
     setFileError(null);
     setImportError(null);
     setImportedCount(0);
+    setSelectedSessionId("new");
   }
 
   const eventLabel =
@@ -269,6 +290,29 @@ export function CsTimerImport() {
               <p className="text-sm text-destructive">{importError}</p>
             )}
 
+            {/* Solve session picker */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="cstimer-session" className="text-sm font-medium text-foreground">
+                Import into
+              </label>
+              <select
+                id="cstimer-session"
+                value={selectedSessionId}
+                onChange={(e) => setSelectedSessionId(e.target.value)}
+                className="h-10 w-full max-w-xs rounded-md border border-border/50 bg-secondary/50 px-3 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="new">Create new: csTimer Import — {eventLabel}</option>
+                {solveSessions
+                  .filter((s) => s.event === event)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                You can rename this session later in Manage Sessions.
+              </p>
+            </div>
+
             <CsTimerPreviewTable sessions={sessions} secondsPerSolve={secondsPerSolve} />
 
             {/* Action buttons */}
@@ -291,7 +335,7 @@ export function CsTimerImport() {
               >
                 {state === "importing"
                   ? "Importing..."
-                  : `Import ${sessions.length} Session${sessions.length !== 1 ? "s" : ""}`}
+                  : `Import ${totalSolves} Solve${totalSolves !== 1 ? "s" : ""}`}
               </Button>
             </div>
           </div>
@@ -307,7 +351,7 @@ export function CsTimerImport() {
                 Import Complete
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Successfully imported {importedCount} session
+                Successfully imported {importedCount} solve
                 {importedCount !== 1 ? "s" : ""} from csTimer.
               </p>
             </div>
