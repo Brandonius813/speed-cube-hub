@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Trophy, Medal, Award } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
-import type { LeaderboardCategory } from "@/lib/actions/leaderboards"
+import type { LeaderboardCategory } from "@/lib/leaderboard-types"
 import type { LeaderboardEntry } from "@/lib/types"
 import type { WcaLeaderboardEntry } from "@/lib/actions/sor-kinch"
 

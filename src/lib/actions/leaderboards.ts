@@ -2,26 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import type { LeaderboardEntry } from "@/lib/types"
-
-export type LeaderboardCategory =
-  | "most_solves"
-  | "longest_streak"
-  | "most_practice_time"
-  | "sor"
-  | "kinch"
-
-export type TimePeriod = "all_time" | "daily" | "weekly"
-
-export type LeaderboardPage = {
-  entries: LeaderboardEntry[]
-  totalCount: number
-}
+import type { LeaderboardCategory, TimePeriod, LeaderboardPage } from "@/lib/leaderboard-types"
 
 const PAGE_SIZE = 50
 const FIND_ME_WINDOW = 25
-
-/** Categories that support daily/weekly time periods */
-export const TIMED_CATEGORIES: LeaderboardCategory[] = ["most_solves", "most_practice_time"]
 
 /**
  * Get user IDs that a given user follows (+ self).
