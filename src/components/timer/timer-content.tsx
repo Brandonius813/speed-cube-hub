@@ -1180,9 +1180,7 @@ export function TimerContent() {
       "absolute z-40 flex flex-col overflow-hidden border-border bg-background shadow-2xl",
       sidebarPosition === "left"
         ? "left-0 top-0 bottom-0 w-80 border-r"
-        : sidebarPosition === "right"
-          ? "right-0 top-0 bottom-0 w-80 border-l"
-          : "bottom-0 left-0 right-0 max-h-64 border-t"
+        : "right-0 top-0 bottom-0 w-80 border-l"
     )}>
       <TimerSidebar
         sidebarPosition={sidebarPosition}

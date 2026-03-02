@@ -12,7 +12,7 @@ import {
 } from "@/components/timer/timer-display"
 
 export type InputMode = "timer" | "typing" | "stackmat"
-export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
+export type SidebarPosition = "right" | "left" | "hidden"
 export type ScrambleSize = "auto" | "small" | "medium" | "large"
 
 export const PHASE_COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
@@ -413,12 +413,11 @@ export function TimerSettings({
                 <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                   Stats Panel
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(
                     [
                       { value: "right", label: "Right" },
                       { value: "left", label: "Left" },
-                      { value: "bottom", label: "Bottom" },
                       { value: "hidden", label: "Hidden" },
                     ] as const
                   ).map((opt) => (
