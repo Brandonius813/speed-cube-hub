@@ -92,11 +92,11 @@ export function SolveListPanel({
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-muted-foreground border-b border-border">
               <th className="pr-1.5 py-1.5 w-7 font-normal"></th>
-              <th className="text-left pr-1.5 py-1.5 font-normal">single</th>
+              <th className="text-right pr-1.5 py-1.5 font-normal">single</th>
               {([0, 1] as const).map((idx) => (
-                <th key={idx} className={cn("py-1 font-normal", idx === 0 ? "pr-1.5" : "pr-2")}>
+                <th key={idx} className={cn("py-1 font-normal text-right", idx === 0 ? "pr-1.5" : "pr-2")}>
                   <select
-                    className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-left"
+                    className="bg-transparent text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
                     value={statCols[idx]}
                     onChange={(e) => onUpdateStatCol(idx, e.target.value)}
                     title="Click to change"
