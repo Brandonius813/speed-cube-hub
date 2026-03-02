@@ -2,8 +2,8 @@
 
 import { Loader2, MapPin, ArrowUp, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { LeaderboardCategory, TimePeriod } from "@/lib/actions/leaderboards"
-import { TIMED_CATEGORIES } from "@/lib/actions/leaderboards"
+import type { LeaderboardCategory, TimePeriod } from "@/lib/leaderboard-types"
+import { TIMED_CATEGORIES } from "@/lib/leaderboard-types"
 import type { SorKinchType, WcaCountry } from "@/lib/actions/sor-kinch"
 import { RegionFilter } from "@/components/leaderboards/region-filter"
 import type { RegionSelection } from "@/components/leaderboards/region-filter"

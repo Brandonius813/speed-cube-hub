@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button"
 import {
   getLeaderboard,
   getUserLeaderboardPosition,
-  TIMED_CATEGORIES,
 } from "@/lib/actions/leaderboards"
 import type {
   LeaderboardCategory,
   LeaderboardPage,
   TimePeriod,
-} from "@/lib/actions/leaderboards"
+} from "@/lib/leaderboard-types"
+import { TIMED_CATEGORIES } from "@/lib/leaderboard-types"
 import {
   getSorKinchLeaderboard,
   findUserInSorKinch,
