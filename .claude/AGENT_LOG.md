@@ -8,77 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-25 21:45 PT — Phase 11 Profile Rework Session
-
-**Task:** T57–T63 (Phase 11 — Profile Rework: 5-Tab Layout with Sidebar)
-**Status:** Completed all 7 Phase 11 tasks. Most code was pre-built by a parallel session; this session verified, filled gaps, and wired everything together:
-- T57: main_events schema — migration SQL existed, wired type/action/modal (multi-select chips UI)
-- T58: getPBsByUserId — already built by prior session
-- T59: SessionLog readOnly — added prop + conditional rendering (hides Select button, edit pencils, bulk delete)
-- T60: Profile sidebar — already built by prior session
-- T61: Profile tabs — created profile-tabs.tsx (5 tabs, swipe, URL sync)
-- T62: 5 tab content components — all pre-built by prior session
-- T63: Rewrote profile-content.tsx + public-profile-content.tsx to grid+tabs layout, widened pages to max-w-6xl, added PB data fetching
-**Files touched:** src/components/dashboard/session-log.tsx, src/components/profile/profile-tabs.tsx (created), src/components/profile/profile-content.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/edit-profile-modal.tsx, src/lib/types.ts, src/lib/actions/profiles.ts, src/app/(main)/profile/page.tsx, src/app/(main)/profile/[handle]/page.tsx, .claude/CLAUDE.md, .claude/SPEED_CUBE_HUB_PRD.md
-**Learnings:** The linter auto-applies changes and sometimes creates commits, which can cause `git add` to silently no-op when files were already staged/committed. Always check `git status` + `git log` to verify actual state before committing. Layout uses `grid gap-6 lg:grid-cols-[1fr_320px]` for proper sidebar sizing.
-**Blockers:** None — Phase 11 complete. No remaining tasks on the board.
-**Warnings:** User needs to run `supabase/migrations/018_add_main_events.sql` in Supabase SQL Editor for the main_events feature to work. The profile pages now use `max-w-6xl` instead of `max-w-4xl`.
-
-### 2026-02-25 21:30 PT — Phase 11 Profile Rework Session
-
-**Task:** T57–T63 — Full Phase 11 Profile Rework
-**Status:** Completed all 7 Phase 11 tasks. T58 (getPBsByUserId), T59 (SessionLog readOnly), T61 (ProfileTabs) were already built by a parallel session — committed those. Built T57 (main_events migration + ProfileHeader update), T60 (ProfileSidebar), T62 (5 tab content components), T63 (rewrote both profile-content and public-profile-content with grid + tabs layout). Another parallel session also committed overlapping work on the same tasks — no conflicts since we wrote the same code. User ran the SQL migration for `main_events`.
-**Files touched:** supabase/migrations/018_add_main_events.sql, src/components/profile/profile-header.tsx, src/components/profile/profile-sidebar.tsx (created), src/components/profile/profile-tabs.tsx (already existed), src/components/profile/tab-overview.tsx (created), src/components/profile/tab-pbs.tsx (created), src/components/profile/tab-stats.tsx (created), src/components/profile/tab-cubes.tsx (created), src/components/profile/tab-official.tsx (created), src/components/profile/profile-content.tsx (rewritten), src/components/profile/public-profile-content.tsx (rewritten), src/app/(main)/profile/page.tsx, src/app/(main)/profile/[handle]/page.tsx, src/lib/actions/personal-bests.ts, src/components/dashboard/session-log.tsx
-**Learnings:** Another parallel session was working on the same Phase 11 tasks simultaneously. The linter aggressively removes "unused" imports — when adding an import and its usage in separate edits, the linter strips the import before the usage is added. Solution: use Write tool for full file replacement so the linter sees all references together. `.next/lock` contention persists with parallel sessions — `npx tsc --noEmit` is the only reliable build check.
-**Blockers:** None — all Phase 11 tasks are complete. No remaining available tasks in TASKS.md.
-**Warnings:** User needs to have run `018_add_main_events.sql` in Supabase (confirmed done). The profile layout changed from `max-w-4xl` to `max-w-6xl` on both profile pages.
-
----
-
-### 2026-02-26 09:00 PT — Phase 11 Verification + Fixes Session
-
-**Task:** T57–T63 (Phase 11 — Profile Rework verification and fixes)
-**Status:** Found Phase 11 was mostly built by a parallel session but had uncommitted work and TypeScript errors. Pushed T60 (ProfileSidebar) which was committed locally but not pushed. Fixed TS error in tab-pbs.tsx (indexOf type mismatch with WCA_EVENTS const). Reconciled duplicate EditProfileModal between ProfileSidebar and profile-content.tsx by adding onEditProfile optional prop to sidebar. Cleaned up 7 junk * 2.tsx duplicate files. Verified all code pushed to dev.
-**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/tab-pbs.tsx
-**Learnings:** npm run build and npx tsc --noEmit both OOM-killed (exit 137) on this machine — Vercel builds are the only reliable check. The linter aggressively restores file state — work with it, not against it. ProfileSidebar now uses onEditProfile prop pattern: when provided by caller (profile-content.tsx), caller manages the EditProfileModal; when absent (public-profile-content.tsx), sidebar manages it internally.
-**Blockers:** None — no tasks remain in TASKS.md.
-**Warnings:** All phases complete (1-11). No available tasks. The npm run build OOM issue persists — may need Node.js memory limit increase or investigate Turbopack memory usage.
-
----
-
-### 2026-02-26 10:00 PT — Phase 11 Verification Session
-
-**Task:** Phase 11 (T57-T63) — Verification and sidebar edit fix
-**Status:** Verified all Phase 11 tasks are complete and pushed to dev. Found profile-content.tsx was missing EditProfileModal import and editOpen state — the sidebar Edit Profile button on desktop would not have worked without them. Fixed and confirmed TypeScript compiles clean. All tasks T10-T63 are Done (except T51 which was reverted). No remaining tasks in TASKS.md.
-**Files touched:** src/components/profile/profile-content.tsx (added EditProfileModal import + editOpen state + onEditProfile prop)
-**Learnings:** When a file has been modified by a linter between reads, the Edit tool rejects changes — always re-read first. Check git log for specific files before assuming local changes are not committed.
-**Blockers:** No remaining tasks. All phases (1-11) complete.
-**Warnings:** None — ready for new feature work.
-
----
-
-### 2026-02-26 10:30 PT — Phase 11 Polish Session (Continued)
-
-**Task:** T60-T63 — Phase 11 sidebar polish and layout fixes
-**Status:** Continued from a previous session that ran out of context. Verified all Phase 11 work is committed and pushed. Earlier in this session made three improvements to ProfileSidebar: (1) FollowListModal integration with clickable follower/following stats, (2) EditProfileModal self-management with backward-compatible onEditProfile callback pattern, (3) View Public eye-icon button for owner. Fixed layout in public-profile-content.tsx from flex to grid. Fixed TS error in tab-pbs.tsx (WCA_EVENTS indexOf type mismatch) using String(e.id). tsc --noEmit passes clean. All changes committed and pushed.
-**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/tab-pbs.tsx
-**Learnings:** Turbopack has persistent filesystem race condition on macOS (ENOENT errors during build) — not code-related. Vercel builds on Linux work fine. Use `npx tsc --noEmit` for local type checking.
-**Blockers:** No remaining tasks in TASKS.md. All phases (1-11) complete.
-**Warnings:** None — ready for new feature work.
-
----
-
-### 2026-02-26 10:45 PT — Build Investigation + T56 Session
-
-**Task:** T56 (Solve Analytics) + Build infrastructure investigation
-**Status:** Completed T56 — created solve-analytics.tsx wrapper and integrated into dashboard-content.tsx. Investigated persistent `npm run build` failures: found two root causes — (1) TypeScript error in tab-pbs.tsx (indexOf type mismatch with WcaEventId), fixed and pushed; (2) OOM kills (exit 137) from 8 parallel Claude sessions exhausting 16GB RAM. Fixed TS error, documented OOM workaround.
-**Files touched:** src/components/dashboard/solve-analytics.tsx (created), src/components/dashboard/dashboard-content.tsx (modified), src/components/profile/tab-pbs.tsx (fixed TS error)
-**Learnings:** `npx tsc --noEmit` is the only reliable local type-check when multiple Claude sessions are running — `npm run build` OOM-kills with 8+ sessions on 16GB RAM.
-**Blockers:** None — all phases complete.
-**Warnings:** None.
-
----
-
 ### 2026-02-26 11:00 PT — Sync Verification Session
 
 **Task:** General work — /sync check-in and verification
@@ -798,3 +727,29 @@ T157:
 **Files touched:** `src/components/timer/timer-content.tsx`
 **Learnings:** GAN Halo sends `HANDS_ON → GET_SET → RUNNING` rapidly — GET_SET can fire before React re-renders after HANDS_ON, making `phaseRef.current` stale. Always call cleanup unconditionally rather than gating on stale refs. `onRunning` is the correct stop point for inspection in BT mode, not `onGetSet`.
 **Warnings:** None — BT + inspection flow fully functional and user-verified.
+
+---
+
+### 2026-03-02 PT — Timer Session Logging Session
+
+**Task:** Ad-hoc — Timer → Session Logging flow (no TASKS.md ID)
+**Status:** Complete. All 3 commits pushed to dev.
+
+**What was built:**
+- `src/lib/actions/save-timer-session.ts` (new): Single server action that atomically creates a `timer_sessions` row, bulk-inserts all in-memory solves (one DB call), creates the `sessions` log entry with full stats, title, notes, and `feed_visible`, then links the timer session back to the sessions row. Uses `getTodayPacific()` for session date. Runs `checkAndAwardMilestones` in background.
+- `src/components/timer/end-session-modal.tsx` (new): Modal shown after "End Session". Displays stats summary (count/DNF/best/avg), session duration, title input (pre-filled to "3x3 Solves" etc.), notes textarea, and "Share to feed" toggle (default on). Calls `saveTimerSession`. Practice type toggle was added then removed by user — always saves as "Solves" for now.
+- `src/components/timer/timer-content.tsx` (modified): Added `sessionStartTime`, `sessionElapsed`, `sessionPaused` state + `sessionPausedMsRef` + `pausedAtRef` refs. Session clock ticks every second (stops when paused). `startSession`, `pauseSession`, `resumeSession`, `endSession`, `handleSessionSaved` functions. Pause correctly excludes paused time from `duration_minutes`. Session controls moved to a floating widget (fixed bottom-right, z-40) with green/yellow dot, clock, solve count, Pause/Resume, End buttons.
+
+**Data flow:** In-memory solves → End Session → modal → Save Session → DB (timer_sessions + solves bulk insert + sessions row)
+**Time conversion:** Timer stores ms; sessions table expects decimal seconds; convert: `Math.round(ms / 10) / 100`
+
+**Learnings:**
+- `addSolve()` in `timer.ts` requires `comp_sim_group: number | null` — pass `null` for normal solves
+- `timer_sessions` has a `session_id` column that links back to `sessions` — update this after session row is created
+- `sessions` table already has `timer_session_id` column — no migration needed
+- `createSessionSchema` validates `duration_minutes` as `z.number().int()` — must use `Math.round()`
+- Pause state uses refs (not just state) so the clock interval always reads fresh accumulated time
+- The floating widget has `onPointerDown={sp}` to prevent spacebar timer from triggering during button clicks
+
+**Blockers:** None
+**Warnings:** None — feature is complete and tested. Individual solves are saved to DB. The old `timer.ts` `addSolve()` and `finalizeTimerSession()` server actions are NOT used by this flow — we bypass them with a direct bulk insert in `saveTimerSession`.
