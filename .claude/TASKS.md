@@ -2898,7 +2898,7 @@ Strip the per-row action buttons from 7 down to 3:
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
+| **Status** | 🏗️ In Progress [this session] |
 | **Claimed by** | — |
 | **Dependencies** | None |
 | **Estimated scope** | 2 files |
