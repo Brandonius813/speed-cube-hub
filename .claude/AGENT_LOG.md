@@ -647,3 +647,16 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** `unstable_cache` callbacks cannot use any Next.js dynamic APIs (cookies, headers, etc.). Always use plain Supabase client for public-data cached queries. The wca_rankings table had 280K rows and correct RLS — the bug was purely in the cache layer.
 **Blockers:** None
 **Warnings:** Pre-existing TS error in src/app/api/revalidate-wca/route.ts (`revalidateTag` called with 1 arg, type expects 2) — not introduced by this session, minor and doesn't affect runtime.
+
+---
+
+### 2026-03-02 PT — Typing Mode Input Fix Session
+
+**Task:** General work — Fix typing mode input on timer page
+**Status:** Fixed two issues with the typing mode input:
+1. **Input not working at all:** The previous implementation used a hidden 1×1 invisible `<input>` + a fake styled `<div>`. Clicking the box didn't reliably focus the hidden input (especially on mobile). Replaced the entire approach with a single real visible `<input>` element styled to fill the same space.
+2. **UX polish:** Removed placeholder text ("0.00"), removed instruction text below the box ("Type digits, then press Enter to save"), bumped font size from `text-6xl/7xl` to `text-7xl/8xl`.
+**Files touched:** src/components/timer/time-input.tsx
+**Learnings:** The "hidden input + fake display" pattern is fragile — focus transfer fails on mobile and can break on desktop too. Prefer making the visible element the actual input.
+**Blockers:** None
+**Warnings:** None
