@@ -163,8 +163,10 @@ export function TimerContent() {
 
   useEffect(() => {
     const dn = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || e.repeat || typing) return
-      e.preventDefault(); handlePress()
+      if (e.code !== "Space") return
+      e.preventDefault() // always prevent spacebar scrolling, even on repeat
+      if (e.repeat || typing) return
+      handlePress()
     }
     const up = (e: KeyboardEvent) => {
       if (e.code !== "Space" || typing) return
@@ -240,7 +242,7 @@ export function TimerContent() {
         >
           {EVENTS.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
-        <p className="flex-1 min-w-0 text-center text-sm sm:text-base font-mono font-bold text-white leading-snug line-clamp-2">
+        <p className="flex-1 min-w-0 text-center text-base sm:text-lg font-mono font-bold text-white leading-snug line-clamp-2">
           {scramble}
         </p>
         <div className="flex gap-2 shrink-0">
