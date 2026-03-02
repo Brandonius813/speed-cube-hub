@@ -2724,8 +2724,8 @@ Style: `fixed bottom-20`, `z-40`, `rounded-xl shadow-lg bg-background border`, `
 
 | | |
 |---|---|
-| **Status** | 🔲 Available |
-| **Claimed by** | — |
+| **Status** | 🏗️ In Progress |
+| **Claimed by** | [this session] |
 | **Dependencies** | T153 |
 | **Estimated scope** | 4-5 files |
 | **Key files** | `src/components/timer/timer-content.tsx`, `src/components/timer/timer-settings.tsx`, `src/components/timer/timer-top-bar.tsx`, `src/lib/timer/inspection.ts` (or wherever `useInspection` is defined) |
