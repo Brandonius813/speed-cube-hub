@@ -8,183 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-25 12:10 PT — T44 Zod Validation Completion Session
-
-**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
-**Status:** Completed remaining gaps in T44. Added `updatePBSchema` and `zodFirstError()` helper to validations.ts. Wired Zod validation into `updatePB()` in personal-bests.ts. Updated all error messages to use `zodFirstError()` consistently. Added "not in the future" date refinement to the shared dateField schema. Another parallel session had already created the base schemas and wired most functions — this session filled in the gaps.
-**Files touched:** src/lib/validations.ts, src/lib/actions/personal-bests.ts, src/lib/actions/sessions.ts
-**Learnings:** T43 session moved `checkAndAwardMilestones` import in sessions.ts from `@/lib/actions/badges` to `@/lib/helpers/check-milestones`. The `.next/lock` file gets stuck when parallel sessions try to build simultaneously — only one `npm run build` can run at a time.
-**Blockers:** None
-**Warnings:** None — all security Wave A tasks (T41-T45) are now complete. T46 + performance tasks remain.
-
----
-
-### 2026-02-25 12:30 PT — T44 Zod Validation Session (Initial)
-
-**Task:** T44 — Add Zod Input Validation to Session and PB Server Actions
-**Status:** Created the base Zod validation infrastructure for T44. Built `src/lib/validations.ts` with schemas that dynamically derive valid values from WCA_EVENTS, getPracticeTypesForEvent, and getPBTypesForEvent constants. Added validation to createSession, createSessionsBulk, updateSession in sessions.ts and logNewPB, bulkImportPBs in personal-bests.ts. Added 500-entry cap to bulkImportPBs. Also verified T41 (open redirect) and T45 (search sanitize) were already fixed in code but unmarked — marked both as done. A parallel session then completed the remaining gaps (updatePBSchema, zodFirstError helper, updatePB validation, date-not-in-future refinement).
-**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, .claude/TASKS.md
-**Learnings:** `.next/lock` conflicts are common when parallel agents build simultaneously — only one `npm run build` can run at a time. TypeScript type-checking (`npx tsc --noEmit`) is a good alternative to verify changes compile when the build is locked. Pre-existing TS errors in allrounding-results.tsx and sor-kinch.ts are from another agent's in-progress work.
-**Blockers:** None
-**Warnings:** All security Wave A tasks (T41-T45) complete. T46 (RLS policies) is the largest remaining task and requires SQL migrations. Performance tasks T48-T51 are all available with no deps.
-
----
-
-### 2026-02-25 15:00 PT — T44 + T48 Session
-
-**Task:** T44 (Zod Validation) and T48 (Landing Page Stats RPC)
-**Status:** Completed both tasks:
-- T44: Created `src/lib/validations.ts` with Zod schemas derived from WCA_EVENTS/PRACTICE_TYPES constants. Wired validation into createSession, createSessionsBulk, updateSession, logNewPB, bulkImportPBs. Added 500-entry cap to bulkImportPBs. A parallel session enhanced with zodFirstError(), updatePBSchema, date-not-in-future refinement.
-- T48: Created `supabase/migrations/014_create_global_stats_rpc.sql` with SECURITY DEFINER + GRANT for anon/authenticated. Updated `src/lib/actions/stats.ts` to single RPC call — no session rows transferred. User needs to run the SQL in Supabase SQL Editor.
-**Files touched:** src/lib/validations.ts (created), src/lib/actions/sessions.ts, src/lib/actions/personal-bests.ts, supabase/migrations/014_create_global_stats_rpc.sql (created), src/lib/actions/stats.ts, .claude/TASKS.md
-**Learnings:** `.next/lock` contention is common with parallel agents — use `npx tsc --noEmit` as build alternative. T41 and T45 were already fixed in code but unmarked in TASKS.md — always check git log before starting a task.
-**Blockers:** None
-**Warnings:** T48 RPC won't work until user runs the SQL in Supabase dashboard. Remaining available tasks: T46 (RLS — largest), T47 (depends on T46), T50 (Dashboard Dedup), T51 (select("*") cleanup).
-
----
-
-### 2026-02-25 18:00 PT — Production Hotfix Session
-
-**Task:** Emergency fix — T51 explicit column lists broke production queries
-**Status:** Fixed and deployed to production. Commit `ee68efc` (merged to main) switched session queries from `select("*")` to `select(SESSION_COLUMNS)` with an explicit column list. One or more column names in that list (likely `best_time`, `title`, `feed_visible`, or `timer_session_id`) didn't match the production database schema — these columns were added via direct SQL, not tracked migrations. The Supabase/PostgREST query silently errored, returning empty arrays. Profile stats, practice stats, and other pages showed 0 for all users. The feed was unaffected because it still used `select("*")`. Reverted ALL explicit column lists back to `select("*")` across 7 files (sessions, badges, challenges, clubs, goals, personal-bests, profiles). Merged to main and pushed.
-**Files touched:** src/lib/actions/sessions.ts, src/lib/actions/badges.ts, src/lib/actions/challenges.ts, src/lib/actions/clubs.ts, src/lib/actions/goals.ts, src/lib/actions/personal-bests.ts, src/lib/actions/profiles.ts
-**Learnings:** NEVER use explicit column lists in Supabase queries unless you've verified the exact column names against the live database. Many columns in this project were added via Supabase SQL editor and are NOT tracked in migration files. The feed using `select("*")` continued working while explicit-column queries silently failed — this discrepancy is the telltale sign.
-**Blockers:** None
-**Warnings:** T51 (explicit column lists) should be considered REVERTED, not Done. If re-attempted, must first audit the actual production DB schema column-by-column before writing the lists. Do NOT assume migration files reflect the true schema.
-
----
-
-### 2026-02-25 14:57 PT — Phase 9 Completion + T47 Leaderboard RPC Session
-
-**Task:** T47 — Fix Leaderboards: Move Aggregation to Database (+ T34-T40 status update)
-**Status:** Completed T47 — the last remaining Phase 9 performance task. Created 6 SQL RPC functions (3 leaderboard + 3 rank-lookup) that do all aggregation inside PostgreSQL instead of loading the entire sessions table into Node.js memory. Also updated T34-T40 (Timer) status from Available → Done (timer was already fully built but TASKS.md wasn't updated). All Phase 9 tasks (T41-T51) are now complete. Only T52 (WCA-Standard Scrambles) remains as an available task.
-**Files touched:** supabase/migrations/016_create_leaderboard_rpcs.sql (created), src/lib/actions/leaderboards.ts (rewritten), .claude/TASKS.md
-**Learnings:** The SQL "islands and gaps" pattern (date - ROW_NUMBER() groups consecutive dates) works cleanly for streak calculation in PostgreSQL. Supabase RPC with `RETURNS TABLE(...)` returns arrays; scalar returns (like the rank functions returning `int`) come back as a plain number. `SECURITY DEFINER` + `SET search_path = public` is the safe pattern for RPC functions accessible to anon users.
-**Blockers:** None
-**Warnings:** User needs to run 3 SQL migrations in Supabase SQL Editor before leaderboards/follows/stats work with the new code: 014_create_global_stats_rpc.sql, 015_add_follows_rls.sql, 016_create_leaderboard_rpcs.sql. Without these, the RPC calls will fail with "function not found" errors.
-
----
-
-### 2026-02-25 16:01 PT — PB Migration + Event Order Session
-
-**Task:** General work — PB data migration from old Supabase + new PB event ordering feature
-**Status:** Completed two things:
-1. Migrated 221 historical PB records from user's old Supabase project via CSV export. Created `scripts/migrate-pbs.mjs` migration script. Had to fix event name mismatch (CSV used display names like "3x3" instead of WCA IDs like "333") — created and ran a fix script, then updated migrate-pbs.mjs with built-in event name mapping.
-2. Built customizable PB event ordering feature: users can organize PBs into "Main Events" (pinned to top, reorderable) and "Other Events" sections. Added `pbs_main_events` column to profiles, new server action, tabbed settings modal with Event Order tab (up/down arrows, add/remove), and section rendering in pbs-content.
-**Files touched:** scripts/migrate-pbs.mjs (created), supabase/migrations/017_add_pbs_main_events.sql (created), src/lib/types.ts, src/lib/actions/profiles.ts, src/components/pbs/pb-settings-modal.tsx, src/components/pbs/pbs-content.tsx, src/app/(main)/pbs/page.tsx
-**Learnings:** The old Supabase stored events by display name (e.g., "3x3", "Megaminx") while Speed Cube Hub uses WCA event IDs ("333", "minx"). Any future data migration must map these. The `personal_bests` table has no RLS policies — reads work because data is fetched server-side via authenticated client, but this should be addressed in T46.
-**Blockers:** User needs to run `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pbs_main_events text[] DEFAULT NULL;` in Supabase SQL Editor before the event ordering feature works.
-**Warnings:** New column `pbs_main_events` added to profiles table — any code that uses explicit column lists for profiles will need updating (though currently all use `select("*")`).
-
----
-
-### 2026-02-25 19:30 PT — Sync-only Session
-
-**Task:** Attempted T54 (Practice Stats Overhaul), discovered already completed
-**Status:** Claimed T54 but found it was already built and committed by Claude-Opus (commit `0b5a560`). Verified all T54 files are present and correct: practice-streak.tsx, heatmap-tooltip.tsx, time-by-event-chart.tsx, event-breakdown-table.tsx, updated filters.tsx, stats-cards.tsx, daily-bar-chart.tsx, dashboard-content.tsx, constants.ts. Deleted orphaned streak-card.tsx (already removed from git by T54 commit). Ran `npx tsc --noEmit` — passes clean. No remaining available tasks in TASKS.md.
-**Files touched:** .claude/TASKS.md (claimed T54, but it was already done)
-**Learnings:** Always check `git log` before claiming a task — another session may have completed and committed it even if TASKS.md showed Available when you first read it. The `npm run build` command requires significant memory and can get killed (exit 137) or timeout on this machine; use `npx tsc --noEmit` as a lighter alternative for type verification.
-**Blockers:** No available tasks remain. T56 is in progress by Claude-Opus.
-**Warnings:** None — all tasks except T56 are done. T56 has local uncommitted changes in `src/lib/actions/timer.ts` (29 lines for `getSolvesByEvent`).
-
----
-
-### 2026-02-25 16:12 PT — Timer Bug Fixes Session
-
-**Task:** General work — Timer solves not saving + UX improvements
-**Status:** Fixed three timer issues:
-1. **Solves silently failing:** The `timer_sessions` and `solves` tables didn't exist in Supabase. All save errors were silently caught and logged to console.error with no UI feedback. Added error banner to timer UI so failures are visible. User ran the CREATE TABLE SQL to create both tables with RLS policies.
-2. **Red/green hold feedback:** Added "holding" state to timer — numbers turn red immediately when spacebar is pressed, then green after 300ms threshold (matching csTimer behavior).
-3. **Slow solve list update:** Solves didn't appear in sidebar until after 2 server round-trips. Added optimistic updates — solve appears instantly, server save happens in background. If save fails, solve is removed and error shown.
-**Files touched:** src/components/timer/timer-content.tsx, src/components/timer/timer-display.tsx
-**Learnings:** The `timer_sessions` and `solves` tables were referenced in code but never created in Supabase — this was the root cause of timer solves not saving. The error banner we added immediately surfaced the real error message. `.next/lock` contention continues to be an issue with parallel builds — `npx tsc --noEmit` is a reliable alternative.
-**Blockers:** None
-**Warnings:** Two new tables (`timer_sessions`, `solves`) were created in Supabase via SQL. Any future schema changes to these tables need to be done in the Supabase dashboard.
-
----
-
-### 2026-02-25 20:30 PT — T54 + T56 Completion Session
-
-**Task:** T54 (Practice Stats Overhaul) + T56 (Solve Analytics Charts)
-**Status:** Both tasks were already committed by prior sessions. This session verified the integration, fixed stash-related regressions (dashboard-content.tsx and stats-panel.tsx lost edits during a git stash/checkout cycle), confirmed TypeScript compiles clean, and ensured all changes are pushed to dev. Also completed T53 (Navbar Active Tab + Notification Popup) and T55 (PB Ao5 Fix) earlier in this session and pushed those to main.
-**Files touched:** src/components/dashboard/dashboard-content.tsx, src/components/dashboard/solve-analytics.tsx (created), src/components/timer/stats-panel.tsx, src/components/shared/time-distribution-chart.tsx, src/components/shared/time-trend-chart.tsx
-**Learnings:** `npm run build` has a persistent Next.js 16 infrastructure bug (`pages-manifest.json` not found) that affects both dev and main branches — it's not caused by code changes. Use `npx tsc --noEmit` as the reliable compile check. Git stash/checkout can silently lose uncommitted edits in files that were modified by the linter after your edit — always re-verify file contents after stash operations.
-**Blockers:** None — `npm run build` fails on both dev and main due to Next.js infrastructure issue, but Vercel builds work fine.
-**Warnings:** Phase 10 (T53-T56) is fully complete. Phase 11 (Profile Rework, T57-T63) has 7 available tasks. The `npm run build` issue should be investigated separately — it may be a Node.js version or Next.js 16.1.6 Turbopack bug.
-
----
-
-### 2026-02-25 21:45 PT — Phase 11 Profile Rework Session
-
-**Task:** T57–T63 (Phase 11 — Profile Rework: 5-Tab Layout with Sidebar)
-**Status:** Completed all 7 Phase 11 tasks. Most code was pre-built by a parallel session; this session verified, filled gaps, and wired everything together:
-- T57: main_events schema — migration SQL existed, wired type/action/modal (multi-select chips UI)
-- T58: getPBsByUserId — already built by prior session
-- T59: SessionLog readOnly — added prop + conditional rendering (hides Select button, edit pencils, bulk delete)
-- T60: Profile sidebar — already built by prior session
-- T61: Profile tabs — created profile-tabs.tsx (5 tabs, swipe, URL sync)
-- T62: 5 tab content components — all pre-built by prior session
-- T63: Rewrote profile-content.tsx + public-profile-content.tsx to grid+tabs layout, widened pages to max-w-6xl, added PB data fetching
-**Files touched:** src/components/dashboard/session-log.tsx, src/components/profile/profile-tabs.tsx (created), src/components/profile/profile-content.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/edit-profile-modal.tsx, src/lib/types.ts, src/lib/actions/profiles.ts, src/app/(main)/profile/page.tsx, src/app/(main)/profile/[handle]/page.tsx, .claude/CLAUDE.md, .claude/SPEED_CUBE_HUB_PRD.md
-**Learnings:** The linter auto-applies changes and sometimes creates commits, which can cause `git add` to silently no-op when files were already staged/committed. Always check `git status` + `git log` to verify actual state before committing. Layout uses `grid gap-6 lg:grid-cols-[1fr_320px]` for proper sidebar sizing.
-**Blockers:** None — Phase 11 complete. No remaining tasks on the board.
-**Warnings:** User needs to run `supabase/migrations/018_add_main_events.sql` in Supabase SQL Editor for the main_events feature to work. The profile pages now use `max-w-6xl` instead of `max-w-4xl`.
-
-### 2026-02-25 21:30 PT — Phase 11 Profile Rework Session
-
-**Task:** T57–T63 — Full Phase 11 Profile Rework
-**Status:** Completed all 7 Phase 11 tasks. T58 (getPBsByUserId), T59 (SessionLog readOnly), T61 (ProfileTabs) were already built by a parallel session — committed those. Built T57 (main_events migration + ProfileHeader update), T60 (ProfileSidebar), T62 (5 tab content components), T63 (rewrote both profile-content and public-profile-content with grid + tabs layout). Another parallel session also committed overlapping work on the same tasks — no conflicts since we wrote the same code. User ran the SQL migration for `main_events`.
-**Files touched:** supabase/migrations/018_add_main_events.sql, src/components/profile/profile-header.tsx, src/components/profile/profile-sidebar.tsx (created), src/components/profile/profile-tabs.tsx (already existed), src/components/profile/tab-overview.tsx (created), src/components/profile/tab-pbs.tsx (created), src/components/profile/tab-stats.tsx (created), src/components/profile/tab-cubes.tsx (created), src/components/profile/tab-official.tsx (created), src/components/profile/profile-content.tsx (rewritten), src/components/profile/public-profile-content.tsx (rewritten), src/app/(main)/profile/page.tsx, src/app/(main)/profile/[handle]/page.tsx, src/lib/actions/personal-bests.ts, src/components/dashboard/session-log.tsx
-**Learnings:** Another parallel session was working on the same Phase 11 tasks simultaneously. The linter aggressively removes "unused" imports — when adding an import and its usage in separate edits, the linter strips the import before the usage is added. Solution: use Write tool for full file replacement so the linter sees all references together. `.next/lock` contention persists with parallel sessions — `npx tsc --noEmit` is the only reliable build check.
-**Blockers:** None — all Phase 11 tasks are complete. No remaining available tasks in TASKS.md.
-**Warnings:** User needs to have run `018_add_main_events.sql` in Supabase (confirmed done). The profile layout changed from `max-w-4xl` to `max-w-6xl` on both profile pages.
-
----
-
-### 2026-02-26 09:00 PT — Phase 11 Verification + Fixes Session
-
-**Task:** T57–T63 (Phase 11 — Profile Rework verification and fixes)
-**Status:** Found Phase 11 was mostly built by a parallel session but had uncommitted work and TypeScript errors. Pushed T60 (ProfileSidebar) which was committed locally but not pushed. Fixed TS error in tab-pbs.tsx (indexOf type mismatch with WCA_EVENTS const). Reconciled duplicate EditProfileModal between ProfileSidebar and profile-content.tsx by adding onEditProfile optional prop to sidebar. Cleaned up 7 junk * 2.tsx duplicate files. Verified all code pushed to dev.
-**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/tab-pbs.tsx
-**Learnings:** npm run build and npx tsc --noEmit both OOM-killed (exit 137) on this machine — Vercel builds are the only reliable check. The linter aggressively restores file state — work with it, not against it. ProfileSidebar now uses onEditProfile prop pattern: when provided by caller (profile-content.tsx), caller manages the EditProfileModal; when absent (public-profile-content.tsx), sidebar manages it internally.
-**Blockers:** None — no tasks remain in TASKS.md.
-**Warnings:** All phases complete (1-11). No available tasks. The npm run build OOM issue persists — may need Node.js memory limit increase or investigate Turbopack memory usage.
-
----
-
-### 2026-02-26 10:00 PT — Phase 11 Verification Session
-
-**Task:** Phase 11 (T57-T63) — Verification and sidebar edit fix
-**Status:** Verified all Phase 11 tasks are complete and pushed to dev. Found profile-content.tsx was missing EditProfileModal import and editOpen state — the sidebar Edit Profile button on desktop would not have worked without them. Fixed and confirmed TypeScript compiles clean. All tasks T10-T63 are Done (except T51 which was reverted). No remaining tasks in TASKS.md.
-**Files touched:** src/components/profile/profile-content.tsx (added EditProfileModal import + editOpen state + onEditProfile prop)
-**Learnings:** When a file has been modified by a linter between reads, the Edit tool rejects changes — always re-read first. Check git log for specific files before assuming local changes are not committed.
-**Blockers:** No remaining tasks. All phases (1-11) complete.
-**Warnings:** None — ready for new feature work.
-
----
-
-### 2026-02-26 10:30 PT — Phase 11 Polish Session (Continued)
-
-**Task:** T60-T63 — Phase 11 sidebar polish and layout fixes
-**Status:** Continued from a previous session that ran out of context. Verified all Phase 11 work is committed and pushed. Earlier in this session made three improvements to ProfileSidebar: (1) FollowListModal integration with clickable follower/following stats, (2) EditProfileModal self-management with backward-compatible onEditProfile callback pattern, (3) View Public eye-icon button for owner. Fixed layout in public-profile-content.tsx from flex to grid. Fixed TS error in tab-pbs.tsx (WCA_EVENTS indexOf type mismatch) using String(e.id). tsc --noEmit passes clean. All changes committed and pushed.
-**Files touched:** src/components/profile/profile-sidebar.tsx, src/components/profile/public-profile-content.tsx, src/components/profile/tab-pbs.tsx
-**Learnings:** Turbopack has persistent filesystem race condition on macOS (ENOENT errors during build) — not code-related. Vercel builds on Linux work fine. Use `npx tsc --noEmit` for local type checking.
-**Blockers:** No remaining tasks in TASKS.md. All phases (1-11) complete.
-**Warnings:** None — ready for new feature work.
-
----
-
-### 2026-02-26 10:45 PT — Build Investigation + T56 Session
-
-**Task:** T56 (Solve Analytics) + Build infrastructure investigation
-**Status:** Completed T56 — created solve-analytics.tsx wrapper and integrated into dashboard-content.tsx. Investigated persistent `npm run build` failures: found two root causes — (1) TypeScript error in tab-pbs.tsx (indexOf type mismatch with WcaEventId), fixed and pushed; (2) OOM kills (exit 137) from 8 parallel Claude sessions exhausting 16GB RAM. Fixed TS error, documented OOM workaround.
-**Files touched:** src/components/dashboard/solve-analytics.tsx (created), src/components/dashboard/dashboard-content.tsx (modified), src/components/profile/tab-pbs.tsx (fixed TS error)
-**Learnings:** `npx tsc --noEmit` is the only reliable local type-check when multiple Claude sessions are running — `npm run build` OOM-kills with 8+ sessions on 16GB RAM.
-**Blockers:** None — all phases complete.
-**Warnings:** None.
-
----
-
 ### 2026-02-26 11:00 PT — Sync Verification Session
 
 **Task:** General work — /sync check-in and verification
@@ -765,3 +588,168 @@ T157:
 **Learnings:** `bulkImportSolves` was already fully implemented in `timer.ts` — no new server action was needed. The task spec's "bulkAddSolves" was already covered by `bulkImportSolves`. The parser needed the individual solve data (scramble, isPlus2, date per solve) which it previously discarded — now retained.
 **Blockers:** None
 **Warnings:** None
+
+---
+
+### 2026-03-02 11:54 AM PT — Timer Rebuild Session (timer-rebuild branch)
+
+**Task:** Timer Rebuild (no TASKS.md ID — initiated by user, separate feature branch)
+**Status:** Working on `timer-rebuild` branch (branched off `dev`). Completed 3 commits:
+1. `78a18ca` — Deleted all 32 old timer components + 14 unused lib/timer files. Replaced with single 298-line `timer-content.tsx`. Features: hold-to-start, inspection countdown (voice), 13 events, in-memory solve list, inline penalty editing, basic stats (Best/Ao5/Ao12), typing mode with smart integer parsing.
+2. `03720b0` — Added cstimer-style left sidebar: stats table (cur/best columns for single/ao5/ao12 + count/mean footer) above scrollable solve list. Timer + scramble on the right. Smart integer typing: type `1234` → 12.34s (right-to-left centiseconds parsing). Live preview shows interpreted time as you type.
+**Files touched:** `src/components/timer/timer-content.tsx` (only file), `src/lib/timer/` (kept scrambles.ts, averages.ts, inspection.ts — deleted 14 others)
+**Learnings:** The `timer-rebuild` branch is completely isolated from `dev`. Old timer code is preserved in full on `dev` (git history). The new timer does NOT save to DB yet — in-memory only. `phaseRef` + `heldRef` + `scrambleRef` + `eventRef` + `inspRef` pattern prevents stale closures in keyboard/pointer event handlers without needing to add all dependencies to useEffect.
+**Blockers:** None
+**Warnings:** **DO NOT** merge `timer-rebuild` into `dev` without user instruction — it replaces the entire timer. The old timer on `dev` references `src/lib/timer/` files (cross-solver, stackmat, etc.) that no longer exist on `timer-rebuild`. `src/app/api/scramble/route.ts` exists as an untracked file in the working directory — it came from a previous session, do not commit it unless completing that feature.
+
+---
+
+### 2026-03-02 PT — Timer Scramble Top Bar Session
+
+**Task:** General work — Move scramble into top bar of timer (user request)
+**Status:** Moved scramble text from the body section into the top bar, placed between the event dropdown and the Type/Insp. buttons. Scramble now appears centered as `flex-1 min-w-0` with `line-clamp-2 text-xs sm:text-sm` — 2 lines allowed on mobile, single line typical on desktop. Removed the standalone `<p>` scramble from the right body section. Also noted the user's linter changed `HOLD_MS` from 200→550 and added `inspHoldRef` logic (hold-to-arm during inspection). That change is already on disk and included in the current `timer-content.tsx`.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** This session is still on the `dev` branch (the `timer-rebuild` branch was previously merged into `dev` per commit `555b5a3`). The timer is the clean single-file rebuild.
+
+---
+
+### 2026-03-02 PT — Timer Typing Mode Bug Fix Session
+
+**Task:** General work — Bug fix (no TASKS.md ID)
+**Status:** Fixed `parseTime()` in `timer-content.tsx`. Typing a colon-separated time like "8:20" was previously stripping the colon and reading it as "820" = 8.20 seconds. Worse, typing "8200" (4-digit, no trailing centisecond zero) caused `secs=82 ≥ 60 → null → "invalid"`. Added an early branch: if input contains ":", parse as `M:SS[.cc]` explicitly with a regex before falling back to digit-only logic. Also noted the linter had added `scrambleCopied` state and a scramble copy-to-clipboard feature to `timer-content.tsx` since the last sync.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** The right-to-left digit parser only fails for minute-range times typed without full centisecond trailing zeros (e.g., "8200" breaks because "82" becomes the seconds). The colon branch fixes this cleanly.
+**Blockers:** None
+**Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Typing Mode Alignment Fix Session
+
+**Task:** General work — UI polish (no TASKS.md ID)
+**Status:** Fixed size and vertical position mismatch between timer number display and typing mode input. Changed input from `text-7xl` to `text-8xl` and added `font-light` to match the timer display exactly. Changed the typing container from `flex-col gap-2` to `relative flex items-center justify-center` and made the preview text (`= 12.340`) absolutely positioned (`absolute top-full mt-2`) so it doesn't push the input above center.
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** The preview text `<p>` under the input was shifting the entire typing block upward because the parent centering included both elements. Absolute positioning removes it from the flow entirely.
+**Blockers:** None
+**Warnings:** None
+
+---
+
+### 2026-03-02 PT — Timer Scramble & Display Fixes
+
+**Task:** Ad-hoc (timer scramble fixes)
+**Status:** Done — pushed to dev (commit 882c6e5)
+
+**What was done:**
+- Removed `line-clamp-2` from scramble display — scrambles now expand naturally for long events (7x7, Megaminx)
+- Changed top bar to `items-start` so event dropdown and settings gear stay anchored at top as scramble grows
+- Discovered `cstimer_module` npm package returns `""` for 5x5, 6x6, 7x7, and Megaminx — not implemented
+- Added custom `generateFallbackScramble()` in `src/lib/timer/scrambles.ts` with WCA-correct random-move scramblers for all four events
+- Cleaned up polling/retry logic since fallback always returns immediately
+
+**Key finding for future sessions:**
+- `cstimer_module` does NOT support: 555wca, 666wca, 777wca, mgmp — returns "" every time
+- All other WCA events (3x3, 2x2, 4x4, 3BLD, Pyram, Skewb, Clock, SQ-1) work fine
+- WCA uses random-move for 6x6 and 7x7 in competition anyway, so fallback is correct
+
+**Files touched:** `src/lib/timer/scrambles.ts`, `src/components/timer/timer-content.tsx`
+
+---
+
+### 2026-03-02 PT — GAN Halo Bluetooth Timer Session
+
+**Task:** Ad-hoc — GAN Halo physical timer BLE connectivity (no TASKS.md ID — distinct from T160 which is about smart cubes)
+**Status:** Complete. GAN Halo Timer can now connect via Web Bluetooth and drive the timer UI. Hardware-measured times are recorded; inspection, penalties, and solve list all work as expected.
+
+**What was built:**
+- `src/lib/timer/bluetooth.ts` (new, ~120 lines): Raw BLE protocol handler. GAN timer BLE service UUID `0000fff0-...`, notify characteristic `0000fff5-...`. CRC-16/CCITT-FALSE validation over packet bytes [2..len-2]. Parses 8 state codes (HANDS_ON, GET_SET, HANDS_OFF, RUNNING, STOPPED, IDLE, FINISHED, DISCONNECT). STOPPED packets include minutes/seconds/ms bytes decoded to `time_ms`.
+- `src/components/timer/use-bluetooth-timer.ts` (new, ~120 lines): React hook managing BLE connection lifecycle. `BtConnectionStatus` ("unsupported" | "disconnected" | "connecting" | "connected"). Uses `callbacksRef.current = callbacks` pattern (updated every render) to prevent stale closures. Auto-disconnects on unmount. Maps GAN events → phase machine callbacks.
+- `src/components/timer/solve-list-panel.tsx` (new, ~160 lines): Extracted the left stats+solve-list panel from timer-content.tsx to keep it under 400 lines after BT additions.
+- `src/components/timer/timer-content.tsx` (modified): Added BT hook, `btConnectedRef` (gates keydown handler without dep array change), `btCallbacksRef` updated each render with fresh callbacks. BT connect button added to settings gear dropdown. Spacebar fully suppressed when BT connected.
+
+**Follow-up fixes applied (user feedback):**
+1. **IDLE event (physical reset button):** Now calls `onIdle` → `setPhase("idle")` to immediately clear timer display to 0.00. Previously ignored.
+2. **Inspection with BT:** `onHandsOn` checks `inspOnRef.current` — if inspection is enabled, starts inspection countdown instead of going straight to holding. `onGetSet` calls `finishInspection()` if in inspecting phase.
+3. **Removed btState status hint** — the text showing raw hardware state between timer display and penalty buttons.
+
+**Key architectural notes:**
+- Web Bluetooth is Chrome/Chromium-only — `isBleSupported()` gates the UI. Firefox/Safari/iOS users see nothing.
+- No external npm package — protocol implemented natively (avoids RxJS ~40KB).
+- `btConnectedRef` pattern: mirrors `btStatus === "connected"` as a ref so the keydown `useEffect` reads it without re-registering on every BT state change.
+- TS fix: `data.buffer.slice(...) as ArrayBuffer` resolves `ArrayBuffer | SharedArrayBuffer` mismatch in `crc16()`.
+- The linter restructured timer-content.tsx significantly during this session — BT connect button is now inside the ⚙ settings gear dropdown under an "Input Mode" section (Space | Type | BT).
+
+**Files touched:** `src/lib/timer/bluetooth.ts` (new), `src/components/timer/use-bluetooth-timer.ts` (new), `src/components/timer/solve-list-panel.tsx` (new), `src/components/timer/timer-content.tsx`
+**Learnings:** T160 in TASKS.md is about connecting the GAN smart **cube** (the puzzle) to track moves — a completely different device and protocol (encrypted, firmware-versioned). Our work is the GAN **Halo Timer** (timing pad), which uses a simple unencrypted BLE protocol. These are not related. Do not mark T160 done.
+**Blockers:** None
+**Warnings:** None — BT timer integration is complete and on dev.
+
+---
+
+### 2026-03-02 PT — Timer UI Polish Session
+
+**Task:** Ad-hoc — timer top bar reorganization + scramble history cap
+**Status:** Complete. Pushed to dev (commits 9d0c2f0, 00dff61, 7ef90fe).
+
+**What was done:**
+- Moved Typing Mode, Inspection, and GAN Smart Timer toggles into a ⚙ settings gear dropdown (Lucide Settings icon)
+  - Timer settings (Typing Mode, Inspection) are grouped together
+  - Bluetooth separated below a divider as a "device" setting
+  - Each row shows label + On/Off state; active items highlight in primary color
+- Top bar is now a single row: event select (left) | scramble text centered in flex-1 (middle) | Prev / Next / ⚙ gear (right)
+- "🔵 Bluetooth" renamed to "GAN Smart Timer" in settings dropdown
+- Scramble history capped at 2 entries — Prev can only go back exactly one scramble, no unbounded array growth
+  - Both `addSolve()` and `nextScramble()` now store `[previous, current]` and trim on every advance
+
+**Key architectural notes:**
+- `settingsOpen` state and `settingsRef` already existed in the component as unused leftovers from a prior session — wired them in
+- `tog()` helper removed (was only used by old inline toggle buttons)
+- Linter kept auto-modifying the file during edits; used a Python script for one replacement to avoid race conditions
+
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Warnings:** None
+
+---
+
+### 2026-03-02 — Bluetooth Timer Inspection Overhaul Session
+
+**Task:** Ad-hoc — user-reported Bluetooth + inspection bugs
+**Status:** Completed. All BT + inspection issues fully resolved and verified working by user.
+**Changes made (5 commits to dev):**
+1. **Stale phase race + orphan inspection intervals** — `onGetSet` now always calls `cancelInspection()` unconditionally (not gated by `phaseRef.current`) to fix the race where React hadn't re-rendered yet; `onHandsOff`, `onIdle`, and `onDisconnect` also cancel inspection
+2. **BT reset button clears display** — `onIdle` sets `btReset=true`; `getDisplay()` returns "0.00" when true; `onHandsOn` clears it
+3. **Inspection trigger moved to reset button** — In BT mode, pressing the physical reset button starts the countdown; `onHandsOn` no longer starts inspection
+4. **Two-press reset flow** — First press after a solve clears to 0.00; second press (already at zero) starts inspection (guarded by `phaseRef.current !== "stopped"`)
+5. **Color feedback + clock keeps running** — Added `btHandsOnMat` (red) and `btArmed` (green) states; inspection clock now stops only in `onRunning`, not `onGetSet`; live count stays visible and ticking through the entire hand-placement sequence
+
+**Files touched:** `src/components/timer/timer-content.tsx`
+**Learnings:** GAN Halo sends `HANDS_ON → GET_SET → RUNNING` rapidly — GET_SET can fire before React re-renders after HANDS_ON, making `phaseRef.current` stale. Always call cleanup unconditionally rather than gating on stale refs. `onRunning` is the correct stop point for inspection in BT mode, not `onGetSet`.
+**Warnings:** None — BT + inspection flow fully functional and user-verified.
+
+---
+
+### 2026-03-02 PT — Timer Session Logging Session
+
+**Task:** Ad-hoc — Timer → Session Logging flow (no TASKS.md ID)
+**Status:** Complete. All 3 commits pushed to dev.
+
+**What was built:**
+- `src/lib/actions/save-timer-session.ts` (new): Single server action that atomically creates a `timer_sessions` row, bulk-inserts all in-memory solves (one DB call), creates the `sessions` log entry with full stats, title, notes, and `feed_visible`, then links the timer session back to the sessions row. Uses `getTodayPacific()` for session date. Runs `checkAndAwardMilestones` in background.
+- `src/components/timer/end-session-modal.tsx` (new): Modal shown after "End Session". Displays stats summary (count/DNF/best/avg), session duration, title input (pre-filled to "3x3 Solves" etc.), notes textarea, and "Share to feed" toggle (default on). Calls `saveTimerSession`. Practice type toggle was added then removed by user — always saves as "Solves" for now.
+- `src/components/timer/timer-content.tsx` (modified): Added `sessionStartTime`, `sessionElapsed`, `sessionPaused` state + `sessionPausedMsRef` + `pausedAtRef` refs. Session clock ticks every second (stops when paused). `startSession`, `pauseSession`, `resumeSession`, `endSession`, `handleSessionSaved` functions. Pause correctly excludes paused time from `duration_minutes`. Session controls moved to a floating widget (fixed bottom-right, z-40) with green/yellow dot, clock, solve count, Pause/Resume, End buttons.
+
+**Data flow:** In-memory solves → End Session → modal → Save Session → DB (timer_sessions + solves bulk insert + sessions row)
+**Time conversion:** Timer stores ms; sessions table expects decimal seconds; convert: `Math.round(ms / 10) / 100`
+
+**Learnings:**
+- `addSolve()` in `timer.ts` requires `comp_sim_group: number | null` — pass `null` for normal solves
+- `timer_sessions` has a `session_id` column that links back to `sessions` — update this after session row is created
+- `sessions` table already has `timer_session_id` column — no migration needed
+- `createSessionSchema` validates `duration_minutes` as `z.number().int()` — must use `Math.round()`
+- Pause state uses refs (not just state) so the clock interval always reads fresh accumulated time
+- The floating widget has `onPointerDown={sp}` to prevent spacebar timer from triggering during button clicks
+
+**Blockers:** None
+**Warnings:** None — feature is complete and tested. Individual solves are saved to DB. The old `timer.ts` `addSolve()` and `finalizeTimerSession()` server actions are NOT used by this flow — we bypass them with a direct bulk insert in `saveTimerSession`.

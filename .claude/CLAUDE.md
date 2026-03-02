@@ -44,14 +44,16 @@ Each page uses a two-file pattern:
 1. **`page.tsx`** (server component) — Fetches data on the server via `Promise.all`, passes results as props. No `force-dynamic` — Next.js auto-detects dynamic pages based on cookie/auth usage.
 2. **`*-content.tsx`** (client component) — Receives initial data as props (no loading spinner), handles interactivity (filters, modals, admin controls). Auth check runs in a `useEffect` to determine `isAdmin` for showing edit/delete buttons.
 
-### Timer Data Hierarchy
+### Timer Architecture
 
-The timer uses a three-level data model:
-- **`solve_sessions`** — Persistent, named, event-locked containers (like csTimer sessions). Each has `active_from` (reset point) and `is_tracked` (throwaway toggle).
-- **`timer_sessions`** — Individual practice sittings within a solve session. Created lazily on first solve, finalized on "End Practice."
-- **`sessions`** — Practice log entries for feed/stats/streaks. Created by `finalizeTimerSession` only for tracked solve sessions.
+The timer is a **single client component** at `src/components/timer/timer-content.tsx` (~350 lines). It is intentionally minimal — in-memory session only (no DB saving yet). Features are added one at a time on request.
 
-Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`). New users get "Session 1" for 3x3 auto-created on first visit.
+**Do not add complexity to the timer without being explicitly asked.** The anti-bloat rules are:
+- One file until it hits 350 lines organically — only then split
+- No settings modal, no hooks, no panels, no sidebars beyond what exists
+- No DB saving until explicitly requested
+
+The timer server actions (`timer.ts`, `solve-sessions.ts`) and the old 3-tier data model (`solve_sessions` → `timer_sessions` → `solves`) still exist in the DB and server actions — they are not yet connected to the new timer UI.
 
 ### Server Actions vs Client-Side Supabase
 
@@ -97,7 +99,6 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/components/profile/tab-cubes.tsx` — Cubes tab (wrapper around MainCubes)
 - `src/components/profile/tab-official.tsx` — Official tab (WCA results, allrounding, accomplishments)
 - `src/components/feed/` — Activity feed components (feed-content, feed-item, like-button, share-button, following-sidebar)
-- `src/lib/timer/scrambles.ts` — Client-side scramble generation using cstimer_module (random-state for 3x3, 2x2, pyraminx, skewb, clock, sq1; random-move for big cubes + megaminx)
 - `src/app/api/og/route.tsx` — OG image generation API (share cards for sessions/PBs, uses @vercel/og)
 - `src/lib/actions/leaderboards.ts` — Leaderboards system (getLeaderboard with category/event/friends-only filtering)
 - `src/components/discover/` — Discover/search cubers components
@@ -131,20 +132,13 @@ Last-used session ID is persisted in localStorage (`sch_last_solve_session_id`).
 - `src/lib/import/normalize.ts` — Converts solves → session summaries for createSessionsBulk()
 - `src/components/import/` — Import page components (import-content, import-drop-zone, import-preview)
 - `src/app/api/import/parse/route.ts` — AI parsing API route (Claude Haiku for unknown formats)
-- `src/lib/actions/timer.ts` — Timer CRUD (createTimerSession, addSolve, updateSolve, deleteSolve, finalizeTimerSession, getSolvesByEvent, getSolvesBySession)
-- `src/lib/actions/solve-sessions.ts` — Solve session CRUD (getUserSolveSessions, getSolveSession, createSolveSession, updateSolveSession, resetSolveSession, archiveSolveSession, deleteSolveSession, getOrCreateDefaultSession)
-- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module — random-state for supported events, training scrambles)
-- `src/lib/timer/training-scrambles.ts` — Training scramble type definitions (PLL, OLL, F2L, Last Layer, LSLL) per event
-- `src/lib/timer/averages.ts` — Client-side average computation (Ao5, Ao12, Mo100, BPA, WPA)
-- `src/lib/timer/inspection.ts` — Inspection countdown hook (15s with voice warnings)
-- `src/lib/timer/cross-solver.ts` — Optimal cross solver (BFS pruning tables for all 6 faces, client-side)
-- `src/lib/timer/eoline-solver.ts` — EOLine analyzer + optimal solver for ZZ method
-- `src/lib/timer/puzzle-analyzers.ts` — Roux FB, 2x2 face, Pyraminx V, Skewb face analyzers
-- `src/lib/timer/stackmat.ts` — Stackmat timer RS-232 audio decoder (Web Audio API)
-- `src/lib/timer/use-stackmat.ts` — React hook for Stackmat timer integration
-- `src/lib/timer/export.ts` — Solve export utilities (CSV, JSON, csTimer TXT, clipboard)
+- `src/lib/actions/timer.ts` — Timer CRUD server actions (not yet connected to timer UI — for future DB saving)
+- `src/lib/actions/solve-sessions.ts` — Solve session CRUD server actions (not yet connected to timer UI)
+- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module — all WCA events + more)
+- `src/lib/timer/averages.ts` — Ao5, Ao12 average computation helpers
+- `src/lib/timer/inspection.ts` — 15s inspection countdown hook (voice warnings at 8s/12s)
 - `src/lib/bld/letter-scheme.ts` — BLD letter scheme data (Speffz), memo parser, parity detection
-- `src/components/timer/` — Timer UI components (timer-content, timer-display, scramble-display, solve-list, stats-panel, timer-settings, inspection-overlay, session-summary-modal, session-selector, session-manager, cross-solver-panel, scramble-type-selector)
+- `src/components/timer/timer-content.tsx` — **The entire timer UI** — single file (~350 lines). Left panel: cstimer-style stats table (cur/best: single/ao5/ao12, count, mean) + scrollable solve list. Right: scramble + timer display + penalty buttons. Spacebar hold-to-start, inspection toggle, typing mode (integer input).
 - `src/lib/battle/battle-room.ts` — Battle room system (Supabase Realtime broadcast + presence, ephemeral rooms)
 - `src/lib/battle/use-battle.ts` — React hook for battle state management
 - `src/components/tools/battle-content.tsx` — Battle mode UI (lobby, solving, round results, match results)

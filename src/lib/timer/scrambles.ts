@@ -64,9 +64,71 @@ function countMoves(scramble: string): number {
   return scramble.trim().split(/\s+/).length
 }
 
+// cstimer_module returns "" for 5x5, 6x6, 7x7, and Megaminx (not implemented in the npm package).
+// WCA uses random-move scrambles for these events anyway, so we generate our own.
+const rnd = (n: number) => Math.floor(Math.random() * n)
+const MODS = ["", "'", "2"]
+
+function randomMovesScramble(faces: string[], count: number): string {
+  // Track axis to avoid consecutive moves on the same axis
+  const axisOf = (f: string) => {
+    const base = f.replace(/^3/, "").replace(/w$/, "")
+    if ("UD".includes(base)) return 0
+    if ("LR".includes(base)) return 1
+    return 2
+  }
+  const moves: string[] = []
+  let lastAxis = -1
+  for (let i = 0; i < count; i++) {
+    let face: string
+    do { face = faces[rnd(faces.length)] } while (axisOf(face) === lastAxis)
+    lastAxis = axisOf(face)
+    moves.push(face + MODS[rnd(3)])
+  }
+  return moves.join(" ")
+}
+
+function generateFallbackScramble(eventId: string): string {
+  if (eventId === "555") {
+    return randomMovesScramble(
+      ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"],
+      60
+    )
+  }
+  if (eventId === "666") {
+    return randomMovesScramble(
+      ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"],
+      80
+    )
+  }
+  if (eventId === "777") {
+    return randomMovesScramble(
+      ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"],
+      100
+    )
+  }
+  if (eventId === "minx") {
+    // WCA Megaminx format: 7 rows of 5 R/D pairs + 1 U move
+    const rows: string[] = []
+    for (let r = 0; r < 7; r++) {
+      const row: string[] = []
+      for (let i = 0; i < 5; i++) {
+        row.push(rnd(2) === 0 ? "R++" : "R--")
+        row.push(rnd(2) === 0 ? "D++" : "D--")
+      }
+      row.push(rnd(2) === 0 ? "U++" : "U--")
+      rows.push(row.join(" "))
+    }
+    return rows.join("\n")
+  }
+  return ""
+}
+
 /**
  * Generate a scramble for the given WCA event.
  * Uses cstimer_module (same engine as csTimer) for random-state scrambles.
+ * Falls back to random-move generation for events the npm package doesn't support
+ * (5x5, 6x6, 7x7, Megaminx) — WCA uses random-move for these anyway.
  * Runs entirely client-side — no API calls needed.
  */
 export function generateScramble(eventId: string): string {
@@ -82,10 +144,12 @@ export function generateScramble(eventId: string): string {
       }
     }
 
-    return cstimerGetScramble(cstimerType)
+    const result = cstimerGetScramble(cstimerType)
+    // cstimer_module returns "" for some events (5x5, 6x6, 7x7, Megaminx) — use fallback
+    return result || generateFallbackScramble(eventId)
   } catch (err) {
     console.error("cstimer_module scramble generation failed:", err)
-    return "Error generating scramble — try refreshing"
+    return generateFallbackScramble(eventId) || "Error generating scramble — try refreshing"
   }
 }
 
