@@ -675,3 +675,16 @@ Also marked T73 and T74 as Done in TASKS.md (N+1 fixes using Promise.all). `npm 
 **Learnings:** None new
 **Blockers:** None
 **Warnings:** Pre-existing TS error in `src/app/api/revalidate-wca/route.ts` (revalidateTag called with 1 arg) — not introduced here, does not affect runtime.
+
+---
+
+### 2026-03-02 PT — FloatingPanel + Session Manager Simplification
+
+**Task:** T153 (FloatingPanel component) + T159 (Simplify Manage Sessions)
+**Status:** Both completed and pushed (fa6d72c):
+- **T153:** Created `src/components/timer/floating-panel.tsx` — shared reusable panel used by stats charts (T155) and analyzer tools (T156). Props: `position`, `title`, `onClose`, `children`, optional `className`. Linter improved the styling (bg-card, max-h-[60vh] overflow-y-auto).
+- **T159:** Rewrote `src/components/timer/session-manager.tsx` — stripped from 7 buttons to 3 per row (Edit, Archive, X-delete). Removed merge/split/reset/tracked-toggle state and overlays. Added collapsible "Archived" section at bottom. Added `unarchiveSolveSession()` server action in `solve-sessions.ts`. Wired `onUnarchive` in `timer-content.tsx` (minimal 3-line addition — T154 should NOT re-add it). Deprecated props kept optional so timer-content.tsx compiles without changes.
+**Files touched:** src/components/timer/floating-panel.tsx (new), src/components/timer/session-manager.tsx, src/lib/actions/solve-sessions.ts, src/components/timer/timer-content.tsx, .claude/TASKS.md
+**Learnings:** None new
+**Blockers:** None
+**Warnings:** T154 owns timer-content.tsx for its core changes — but `onUnarchive`/`handleManagerUnarchive` and `unarchiveSolveSession` import are already wired in. T154 should NOT re-add these. The deprecated props (`onToggleTracked`, `onReset`, `onMerge`, `onSplit`) are still passed from timer-content.tsx but ignored by session-manager — T154 can clean those up as part of its work.
