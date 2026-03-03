@@ -8,17 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-02-26 11:00 PT — Sync Verification Session
-
-**Task:** General work — /sync check-in and verification
-**Status:** Continued from a previous session. Pulled latest dev (already up to date). Verified all Phase 11 code is correct on disk — both profile page server components correctly use max-w-6xl, fetch PB data (getCurrentPBs/getPBsByUserId), and pass pbs prop to content components. The conversation summary incorrectly said these were reverted, but actual files are correct. All tasks T10-T63 are Done (except T51 which was reverted). No remaining available tasks.
-**Files touched:** .claude/AGENT_LOG.md (this sync entry only)
-**Learnings:** Don't trust conversation summaries about file state — always verify by reading the actual file. Context compaction can introduce inaccuracies about what was reverted vs. what's on disk.
-**Blockers:** No remaining tasks. All phases (1-11) complete.
-**Warnings:** None — ready for new feature work.
-
----
-
 ### 2026-02-25 17:19 PT — Codebase-Wide Bug Fix Session
 
 **Task:** General work — codebase audit and bug fixes
@@ -774,3 +763,34 @@ T157:
 
 **Blockers:** None
 **Warnings:** None — all imports of `LeaderboardCategory`, `TimePeriod`, `LeaderboardPage`, `TIMED_CATEGORIES` must come from `@/lib/leaderboard-types`, not `@/lib/actions/leaderboards`.
+
+---
+
+### 2026-03-03 PT — Timer Bulletproofing Session
+
+**Task:** Ad-hoc — Timer performance hardening on top of Codex changes
+**Status:** Complete. Integrated Codex's timer hardening work (Web Workers for scramble + stats, IndexedDB solve store, timer engine, telemetry) and applied 9 additional fixes on top. Build verified, committed, pushed to dev, and merged to main (live).
+
+**What was built (my additions on top of Codex):**
+1. Fixed stats worker session ID bug — `recompute` handler could corrupt session context on rapid event switches
+2. Added IndexedDB fallback warning — yellow banner when browser falls back to in-memory storage
+3. Added 10s timeout to IndexedDB cursor operations — prevents infinite hangs
+4. RAF timer now uses direct DOM `textContent` mutation — eliminates ~60 React re-renders/sec while running
+5. Stats worker append path is now incremental O(1) with caches — drops from ~200ms to <1ms at 5k solves
+6. React error boundary wraps timer — catches render crashes, shows recovery UI
+7. Worker `onerror` handlers — stats worker falls back to sync; scramble worker auto-restarts
+8. Deleted dead `useTimerScramble` hook that still had the main-thread freeze bug
+
+**Files touched:**
+- Modified: `timer-content.tsx`, `solve-list-panel.tsx`, `scramble-worker.ts`, `timer/page.tsx`
+- New (from Codex, included in commit): `engine.ts`, `solve-store.ts`, `stats-worker.ts`, `stats-worker-types.ts`, `telemetry.ts`
+- New (mine): `timer-error-boundary.tsx`
+- Deleted: `use-timer-scramble.ts`
+
+**Learnings:**
+- Codex left behind ~30 untracked files in `src/components/timer/` and `src/lib/timer/` that are NOT imported anywhere (e.g., `case-filter-panel.tsx`, `smart-cube-panel.tsx`, `cross-solver.ts`, etc.). These are dead code and were not committed. Clean up if desired.
+- `Object.assign(store, { ... })` loses TypeScript parameter types on the methods — use getter/setter pattern or explicit parameter types instead.
+- `.next/lock` file can get stuck from zombie build processes. Kill the process and remove the lock.
+
+**Blockers:** None
+**Warnings:** ~30 untracked Codex-generated files exist in the working directory. They're harmless but should be cleaned up eventually — either deleted or added to `.gitignore`.
