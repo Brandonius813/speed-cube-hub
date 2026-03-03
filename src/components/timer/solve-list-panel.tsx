@@ -1,5 +1,6 @@
 "use client"
 
+import { memo, useCallback, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 
@@ -18,7 +19,7 @@ function fmtSolve(s: Solve): string {
 
 const D = (v: number | null) => (v !== null ? fmt(v) : "—")
 
-interface SolveStats {
+export interface SolveStats {
   best: number | null
   mean: number | null
   milestoneRows: { key: string; cur: number | null; best: number | null }[]
@@ -26,36 +27,95 @@ interface SolveStats {
   rolling2: (number | null)[]
 }
 
+export type SolveListRow = {
+  solve: Solve
+  solveIndex: number
+  displayNumber: number
+}
+
 interface SolveListPanelProps {
-  solves: Solve[]
+  rows: SolveListRow[]
+  totalCount: number
+  rangeStart: number
+  rangeEnd: number
+  scrollOffset: number
+  frozen?: boolean
   stats: SolveStats
   statCols: [string, string]
   selectedId: string | null
+  selectedSolve: Solve | null
   onSetSelectedId: (id: string | null) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
   onUpdateStatCol: (idx: 0 | 1, key: string) => void
+  onRangeChange: (next: { start: number; end: number; scrollOffset: number }) => void
 }
 
-export function SolveListPanel({
-  solves,
+const ROW_HEIGHT = 28
+const OVERSCAN = 14
+
+export const SolveListPanel = memo(function SolveListPanel({
+  rows,
+  totalCount,
+  rangeStart,
+  rangeEnd,
+  scrollOffset,
+  frozen = false,
   stats,
   statCols,
   selectedId,
+  selectedSolve,
   onSetSelectedId,
   onSetPenalty,
   onDeleteSolve,
   onUpdateStatCol,
+  onRangeChange,
 }: SolveListPanelProps) {
-  const last = solves[solves.length - 1]
   const sp = (e: React.PointerEvent) => e.stopPropagation()
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const rangeRef = useRef({ start: -1, end: -1 })
+
+  const emitRange = useCallback(() => {
+    if (!listRef.current || frozen) return
+    const el = listRef.current
+    const viewHeight = el.clientHeight
+    const firstVisible = Math.floor(el.scrollTop / ROW_HEIGHT)
+    const visibleCount = Math.max(1, Math.ceil(viewHeight / ROW_HEIGHT))
+    const start = Math.max(0, firstVisible - OVERSCAN)
+    const end = Math.min(totalCount, firstVisible + visibleCount + OVERSCAN)
+    if (start === rangeRef.current.start && end === rangeRef.current.end) return
+    rangeRef.current = { start, end }
+    onRangeChange({ start, end, scrollOffset: el.scrollTop })
+  }, [frozen, onRangeChange, totalCount])
+
+  useEffect(() => {
+    if (!listRef.current) return
+    listRef.current.scrollTop = scrollOffset
+    emitRange()
+  }, [emitRange, scrollOffset, totalCount])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const onScroll = () => emitRange()
+    const onResize = () => emitRange()
+    el.addEventListener("scroll", onScroll)
+    window.addEventListener("resize", onResize)
+    return () => {
+      el.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onResize)
+    }
+  }, [emitRange])
+
+  const topSpacer = rangeStart * ROW_HEIGHT
+  const bottomSpacer = Math.max(0, totalCount - rangeEnd) * ROW_HEIGHT
+  const last = totalCount > 0 ? rows[0]?.solve ?? null : null
 
   return (
     <div
       className="w-full lg:w-56 xl:w-64 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
       onPointerDown={sp}
     >
-      {/* Stats table — auto-grows as milestones are reached */}
       <div className="px-3 pt-3 pb-2 border-b border-border">
         <table className="w-full">
           <thead>
@@ -82,16 +142,53 @@ export function SolveListPanel({
         </table>
         <div className="flex justify-between border-t border-border mt-2 pt-1.5">
           <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
-            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{solves.length}</span>
+            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{totalCount}</span>
           </span>
           <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
             Mean <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{D(stats.mean)}</span>
           </span>
         </div>
+        {selectedSolve && (
+          <div className="mt-2 flex gap-1.5">
+            <button
+              className={cn(
+                "text-[11px] font-sans px-2 py-1 rounded border transition-colors",
+                selectedSolve.penalty === "+2"
+                  ? "bg-yellow-500 text-black border-yellow-500"
+                  : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
+              )}
+              onClick={() => onSetPenalty(selectedSolve.id, selectedSolve.penalty === "+2" ? null : "+2")}
+            >
+              +2
+            </button>
+            <button
+              className={cn(
+                "text-[11px] font-sans px-2 py-1 rounded border transition-colors",
+                selectedSolve.penalty === "DNF"
+                  ? "bg-red-500 text-white border-red-500"
+                  : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400"
+              )}
+              onClick={() => onSetPenalty(selectedSolve.id, selectedSolve.penalty === "DNF" ? null : "DNF")}
+            >
+              DNF
+            </button>
+            <button
+              className="text-[11px] font-sans px-2 py-1 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+              onClick={() => onDeleteSolve(selectedSolve.id)}
+            >
+              Del
+            </button>
+            <button
+              className="text-[11px] font-sans px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => onSetSelectedId(null)}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Solve list — 4-column grid: # | single | stat1 | stat2 */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         <table className="w-full text-[12px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-muted-foreground border-b border-border">
@@ -112,61 +209,46 @@ export function SolveListPanel({
             </tr>
           </thead>
           <tbody>
-            {[...solves].reverse().map((s, i) => {
-              const idx = solves.length - 1 - i
-              return (
-                <tr key={s.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
-                    {solves.length - i}
-                  </td>
-                  {selectedId === s.id ? (
-                    <>
-                      <td className="text-right pr-1 py-0.5 font-mono text-[13px]">{fmtSolve(s)}</td>
-                      <td colSpan={2} className="py-0.5">
-                        <div className="flex gap-0.5 justify-end pr-1.5">
-                          <button
-                            className="px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-400 shrink-0"
-                            onClick={() => onSetPenalty(s.id, s.penalty === "+2" ? null : "+2")}
-                          >+2</button>
-                          <button
-                            className="px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0"
-                            onClick={() => onSetPenalty(s.id, s.penalty === "DNF" ? null : "DNF")}
-                          >DNF</button>
-                          <button
-                            className="px-1 py-0.5 rounded bg-destructive/20 text-destructive shrink-0"
-                            onClick={() => onDeleteSolve(s.id)}
-                          >Del</button>
-                          <button
-                            className="px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0"
-                            onClick={() => onSetSelectedId(null)}
-                          >✕</button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="text-right pr-1.5 py-0.5">
-                        <button
-                          className="hover:text-primary transition-colors w-full text-right font-mono text-[13px]"
-                          onClick={() => onSetSelectedId(s.id)}
-                        >
-                          {fmtSolve(s)}
-                        </button>
-                      </td>
-                      <td className="text-right pr-1.5 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
-                        {D(stats.rolling1[idx])}
-                      </td>
-                      <td className="text-right pr-2 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
-                        {D(stats.rolling2[idx])}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              )
-            })}
+            {topSpacer > 0 && (
+              <tr>
+                <td colSpan={4} style={{ height: `${topSpacer}px` }} />
+              </tr>
+            )}
+
+            {rows.map((row) => (
+              <tr
+                key={row.solve.id}
+                className={cn(
+                  "hover:bg-muted/30 transition-colors cursor-pointer",
+                  selectedId === row.solve.id && "bg-muted/40"
+                )}
+                onClick={() => onSetSelectedId(row.solve.id)}
+                style={{ height: `${ROW_HEIGHT}px` }}
+              >
+                <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
+                  {row.displayNumber}
+                </td>
+                <td className="text-right pr-1.5 py-0.5 font-mono text-[13px]">
+                  {fmtSolve(row.solve)}
+                </td>
+                <td className="text-right pr-1.5 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
+                  {D(stats.rolling1[row.solveIndex] ?? null)}
+                </td>
+                <td className="text-right pr-2 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
+                  {D(stats.rolling2[row.solveIndex] ?? null)}
+                </td>
+              </tr>
+            ))}
+
+            {bottomSpacer > 0 && (
+              <tr>
+                <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
     </div>
   )
-}
+})
+
