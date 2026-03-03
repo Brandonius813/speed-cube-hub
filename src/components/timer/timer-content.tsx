@@ -378,8 +378,17 @@ export function TimerContent() {
       .filter((n) => solves.length >= n)
       .map((n) => { const key = `ao${n}`; return { key, cur: computeStat(solves, key), best: bestStat(solves, key) } })
     // Rolling averages at each solve position for the 4-column solve list
-    const rolling1 = solves.map((_, i) => computeStat(solves.slice(0, i + 1), statCols[0]))
-    const rolling2 = solves.map((_, i) => computeStat(solves.slice(0, i + 1), statCols[1]))
+    // Pass only the needed window (e.g., last 5 solves for ao5) instead of the entire prefix
+    const n1 = parseInt(statCols[0].slice(2))
+    const n2 = parseInt(statCols[1].slice(2))
+    const rolling1 = solves.map((_, i) => {
+      if (i + 1 < n1) return null
+      return computeStat(solves.slice(i + 1 - n1, i + 1), statCols[0])
+    })
+    const rolling2 = solves.map((_, i) => {
+      if (i + 1 < n2) return null
+      return computeStat(solves.slice(i + 1 - n2, i + 1), statCols[1])
+    })
     return {
       best: valid.length ? Math.min(...valid) : null,
       mean,
