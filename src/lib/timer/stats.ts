@@ -16,7 +16,7 @@ function bestAo(solves: TimerSolve[], n: number): number | null {
   if (solves.length < n) return null
   let best: number | null = null
   for (let i = n; i <= solves.length; i++) {
-    const r = computeAo(solves.slice(0, i), n)
+    const r = computeAo(solves.slice(i - n, i), n)
     if (r !== null && (best === null || r < best)) best = r
   }
   return best
@@ -33,7 +33,7 @@ function bestMo(solves: TimerSolve[], n: number): number | null {
   if (solves.length < n) return null
   let best: number | null = null
   for (let i = n; i <= solves.length; i++) {
-    const r = computeMo(solves.slice(0, i), n)
+    const r = computeMo(solves.slice(i - n, i), n)
     if (r !== null && (best === null || r < best)) best = r
   }
   return best
