@@ -113,6 +113,9 @@ export function TimerContent() {
     try { return Number(localStorage.getItem("timer-session-paused-ms") ?? 0) } catch { return 0 }
   })())  // accumulated milliseconds spent paused
   const pausedAtRef = useRef<number | null>(null) // timestamp when current pause began
+  const workerRef = useRef<Worker | null>(null)           // Web Worker for off-thread scramble generation
+  const nextScrambleRef = useRef<string | null>(null)     // pre-generated scramble ready for next solve
+  const awaitingScrambleRef = useRef(false)               // waiting for Worker to deliver initial scramble
 
   const insp = useInspection({ voice: true })
 
@@ -141,9 +144,11 @@ export function TimerContent() {
     if (idx < h.length - 1) {
       goToScramble(idx + 1)
     } else {
-      // Cap history at 2 entries: [current, new] — Prev can only go back one scramble
-      scrambleHistoryRef.current = [h[idx], generateScramble(event)]
+      const s = nextScrambleRef.current ?? generateScramble(event)
+      nextScrambleRef.current = null
+      scrambleHistoryRef.current = [h[idx], s]
       goToScramble(1)
+      workerRef.current?.postMessage({ eventId: eventRef.current })
     }
   }
 
@@ -151,8 +156,41 @@ export function TimerContent() {
     if (scrambleIdxRef.current > 0) goToScramble(scrambleIdxRef.current - 1)
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { resetScrambleHistory(generateScramble(event)) }, [event])
+  // Create scramble Worker — generates scrambles in a separate thread
+  // so cstimer table initialization can never freeze the main thread
+  useEffect(() => {
+    try {
+      const w = new Worker(new URL("../../lib/timer/scramble-worker.ts", import.meta.url))
+      w.onmessage = (e: MessageEvent<{ scramble: string | null }>) => {
+        const s = e.data.scramble
+        if (!s) return
+        if (awaitingScrambleRef.current) {
+          awaitingScrambleRef.current = false
+          resetScrambleHistory(s)
+          w.postMessage({ eventId: eventRef.current })
+        } else {
+          nextScrambleRef.current = s
+        }
+      }
+      workerRef.current = w
+    } catch {
+      // Worker failed — will fall back to main-thread generation
+    }
+    return () => workerRef.current?.terminate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Request initial scramble from Worker (or sync fallback)
+  useEffect(() => {
+    nextScrambleRef.current = null
+    if (workerRef.current) {
+      awaitingScrambleRef.current = true
+      workerRef.current.postMessage({ eventId: event })
+    } else {
+      resetScrambleHistory(generateScramble(event))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event])
 
   useEffect(() => {
     if (phase !== "running") return
@@ -184,11 +222,14 @@ export function TimerContent() {
 
   function addSolve(time_ms: number, penalty: Penalty) {
     setSolves((p) => [...p, { id: crypto.randomUUID(), time_ms, penalty, scramble: scrambleRef.current }])
-    const s = generateScramble(eventRef.current)
-    // Cap history at 2 entries: [just-used scramble, new scramble] — Prev goes back exactly one
+    // Use pre-generated scramble from Worker (instant); sync fallback if not ready
+    const s = nextScrambleRef.current ?? generateScramble(eventRef.current)
+    nextScrambleRef.current = null
     scrambleHistoryRef.current = [scrambleHistoryRef.current[scrambleIdxRef.current], s]
     goToScramble(1)
     setSelectedId(null)
+    // Pre-generate next scramble in Worker
+    workerRef.current?.postMessage({ eventId: eventRef.current })
   }
 
   function fmtSession(seconds: number): string {
