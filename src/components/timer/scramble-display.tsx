@@ -218,6 +218,23 @@ export function ScrambleDisplay({
               )
             })}
           </div>
+        ) : scramble && scramble.includes("\n") ? (
+          <div
+            className={cn(
+              "text-center leading-relaxed break-words max-w-full space-y-1",
+              scrambleFont === "mono" ? "font-mono" : "font-sans",
+              getFontSize(),
+              onManualScramble && "cursor-pointer hover:text-foreground/80 transition-colors",
+              isManualScramble && "text-blue-400",
+              compactMode && "max-h-[6em] overflow-y-auto"
+            )}
+            onClick={onManualScramble ? handleStartEdit : undefined}
+            title={onManualScramble ? "Click to edit scramble" : undefined}
+          >
+            {scramble.split("\n").map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
         ) : (
           <p
             className={cn(
