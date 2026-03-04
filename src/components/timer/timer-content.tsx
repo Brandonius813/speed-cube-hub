@@ -1384,49 +1384,57 @@ export function TimerContent() {
           onTypeChange={changePracticeType}
         />
 
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          <button
-            className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
-            onClick={() => {
-              navigator.clipboard.writeText(scramble).then(() => {
-                setScrambleCopied(true)
-                setTimeout(() => setScrambleCopied(false), 1500)
-              })
-            }}
-            title="Click to copy scramble"
-          >
-            {scramble}
-          </button>
-        </div>
+        {practiceType !== "Comp Sim" && (
+          <div className="flex-1 min-w-0 flex items-center justify-center">
+            <button
+              className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
+              onClick={() => {
+                navigator.clipboard.writeText(scramble).then(() => {
+                  setScrambleCopied(true)
+                  setTimeout(() => setScrambleCopied(false), 1500)
+                })
+              }}
+              title="Click to copy scramble"
+            >
+              {scramble}
+            </button>
+          </div>
+        )}
 
-        <span
-          className={cn(
-            "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
-            scrambleCopied
-              ? "opacity-100 translate-y-0 text-green-400"
-              : "opacity-0 -translate-y-1 text-green-400"
-          )}
-        >
-          {scrambleError ?? "Scramble copied!"}
-        </span>
+        {practiceType !== "Comp Sim" && (
+          <span
+            className={cn(
+              "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
+              scrambleCopied
+                ? "opacity-100 translate-y-0 text-green-400"
+                : "opacity-0 -translate-y-1 text-green-400"
+            )}
+          >
+            {scrambleError ?? "Scramble copied!"}
+          </span>
+        )}
 
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            className={scrambleNavBtn}
-            onClick={prevScramble}
-            disabled={!scrambleCanGoPrev || timingActive}
-            title="Go back to previous scramble"
-          >
-            ← Prev
-          </button>
-          <button
-            className={scrambleNavBtn}
-            onClick={nextScramble}
-            disabled={timingActive}
-            title="Skip to next scramble"
-          >
-            Next →
-          </button>
+          {practiceType !== "Comp Sim" && (
+            <>
+              <button
+                className={scrambleNavBtn}
+                onClick={prevScramble}
+                disabled={!scrambleCanGoPrev || timingActive}
+                title="Go back to previous scramble"
+              >
+                ← Prev
+              </button>
+              <button
+                className={scrambleNavBtn}
+                onClick={nextScramble}
+                disabled={timingActive}
+                title="Skip to next scramble"
+              >
+                Next →
+              </button>
+            </>
+          )}
           <div className="relative" ref={settingsRef}>
             <button
               className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"

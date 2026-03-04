@@ -146,6 +146,11 @@ export function useCompSim({ event, sessionStartMs }: UseCompSimOptions): CompSi
     const snap = engine.getSnapshot()
     if (snap.phase !== "idle" && snap.phase !== "sim_complete") return
 
+    // Start noise immediately (before await) so it runs in the user-gesture
+    // call stack — browsers block autoplay if the gesture context is lost.
+    const noise = snap.backgroundNoise
+    if (noise !== "none") startNoise(noise)
+
     attemptRef.current++
     const scrambles = await generateScrambles(eventRef.current)
     scramblesRef.current = scrambles
@@ -155,10 +160,6 @@ export function useCompSim({ event, sessionStartMs }: UseCompSimOptions): CompSi
       scrambles,
       groupNumber: attemptRef.current,
     })
-
-    // Start background noise if selected
-    const noise = engine.getSnapshot().backgroundNoise
-    if (noise !== "none") startNoise(noise)
   }, [generateScrambles])
 
   // Confirm cube is under cover → start random wait
