@@ -64,7 +64,7 @@ Use the current date and time in Pacific Time. For the session identifier, use a
 
 ## Step 6: Keep the log tidy
 
-Count the entries in AGENT_LOG.md (each block separated by `---`). If there are more than 50 entries, remove the oldest ones from the **top** to bring it down to 50. The newest entries at the bottom are always kept. Old entries are preserved in git history.
+Count the `### ` headings in AGENT_LOG.md. If there are more than 20 entries, delete the oldest ones from the **top** to bring it down to 20. The newest entries at the bottom are always kept. Old entries are preserved in git history. This is a hard rule — never let the file exceed ~200 lines.
 
 ## Step 7: Commit and push
 

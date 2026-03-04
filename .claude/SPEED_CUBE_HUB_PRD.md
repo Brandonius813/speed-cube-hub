@@ -223,7 +223,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] 2x2 training (EG, CLL, EG1/2, TCLL, LS, No Bar) (T120)
 - [x] 4x4+ training (edges, centers, Yau/Hoya stages) + Pyra, Skewb, SQ1, Mega training (T121)
 - [x] Case filtering UI (checkbox grid, probability control) (T122)
-- [ ] Per-case performance statistics (T123)
+- [x] Per-case performance statistics (T123)
 
 **Phase 17 — Timer Modes & Advanced Input — T124-T128:**
 - [x] Multi-phase timing (Cross/F2L/OLL/PLL splits) (T124)
@@ -535,7 +535,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 ## Design Source
 
-**v0 repo:** `Brandonius813/speed-cube-hub-visual-design` (cloned to `/tmp/speed-cube-hub-visual-design/`)
+**v0 repo:** `Brandonius813/speed-cube-hub-visual-design`
 
 ### Pages Designed
 
@@ -589,48 +589,6 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - Activity: timeline-style with vertical dots
 
 **Public Assets:** Favicons (light/dark 32x32 PNGs + SVG), apple-icon.png, placeholder images
-
-## Completed Features
-
-- [x] Project scaffolding (Next.js, Supabase clients, Shadcn/ui, folder structure)
-- [x] Shadcn UI components installed (button, card, badge, avatar, input, label, select, textarea)
-- [x] Shared layout components (Navbar + Footer)
-- [x] Database schema SQL migration (profiles + sessions tables with RLS)
-- [x] TypeScript types (Profile, Session) and constants (WCA_EVENTS, PRACTICE_TYPES)
-- [x] Landing page (Hero with gradient glow, Features with visual mockups, SocialProof stats)
-- [x] Auth system (Login, Signup, Logout server actions + pages + middleware + auth-aware Navbar)
-- [x] Log Session page (form with validation, createSession server action, success state)
-- [x] Practice Stats page (filters, stats cards, event pie chart, daily bar chart, session log table/cards)
-- [x] Profile page (header, stats, main cubes, PB grid, links/sponsors, recent activity timeline)
-- [x] WCA API integration (fetch official results, display on profile, link/unlink WCA ID)
-- [x] WCA OAuth verification (users sign in through WCA to prove they own their WCA ID)
-- [x] Google sign-in (OAuth on both signup and login pages, auto profile creation)
-- [x] Signup with first name / last name / middle name (optional) instead of display name
-- [x] Mobile optimization (44px touch targets, no hover-only interactions, mobile nav icons, overflow protection)
-- [x] Vercel deployment (production at speedcubehub.com, preview on dev pushes)
-- [x] Login redirect loop fix (excluded auth routes from middleware, carry cookies on redirect)
-- [x] Dynamic landing page stats (real user/session/hours/solves counts from database)
-- [x] Practice activity heatmap on dashboard (GitHub-style 52-week grid)
-- [x] Profile customization schema (cubes, links, accomplishments JSONB columns)
-- [x] Profile edit mode (edit display name, bio, avatar via modal)
-- [x] Editable main cubes section on profile (add/edit/delete from cubes JSONB)
-- [x] Notable accomplishments section on profile (add/edit/delete milestones)
-- [x] Editable social links on profile (YouTube, IG, TikTok, X, Discord, WCA, website)
-- [x] Avatar file upload (replaces URL input, uploads to Supabase Storage avatars bucket)
-- [x] Social Wave 1: Public profiles at /profile/[handle] (viewable by anyone, reuses existing profile components)
-- [x] Social Wave 1: Follow/unfollow system (follows table, follow button, follower/following counts on profiles)
-- [x] Social Wave 1: Activity feed at /feed (sessions from followed users, cursor-based pagination)
-- [x] Social Wave 1: Discover page at /discover (search cubers by name/handle, browse all users)
-- [x] Social Wave 1: Updated navbar with Feed and Discover links
-- [x] Social Wave 1: Middleware updated (public profiles accessible to everyone, feed protected)
-- [x] Social Wave 2: Likes/Kudos on feed sessions (like button with optimistic UI, like count per session)
-- [x] Social Wave 2: Comments on feed sessions (expandable comment section, add/delete comments, lazy-loaded)
-- [x] Social Wave 3: Goals system on dashboard (create/edit/delete goals, progress bars, auto-achievement, auto-expiry)
-- [x] Social Wave 4: Public Leaderboards at /leaderboards (4 categories: fastest avg, most solves, longest streak, most practice time; event selector for fastest avg; friends-only toggle; top-3 medal styling; mobile cards + desktop table)
-- [x] Social Wave 3: Weekly/Monthly Challenges at /challenges (admin creates challenges, users join/leave, real-time progress from sessions, progress bars, active/past sections)
-- [x] Social Wave 3: Badges & Credentials on profiles (competition credentials with admin approval, sponsor badges self-reported, practice milestones auto-awarded after session creation)
-- [x] Social Wave 2: Notifications page at /notifications (notification cards with actor avatar, type-specific messages, relative timestamps, mark-as-read, mark-all-as-read, unread badge in navbar bell icon)
-- [x] SOR & Kinch Rank Leaderboards: WCA data import via weekly GitHub Action sync script (`scripts/sync-wca-rankings.mjs`), `wca_rankings` table (~200k rows), `wca_countries` reference table, SOR/Kinch tabs on /leaderboards with region filter (world/continent/country) + single/average toggle, "Find Me" for WCA-linked users, SOR rank + Kinch score on profile stats. WCA callback also saves `country_id` to profiles.
 
 ## Notes
 
