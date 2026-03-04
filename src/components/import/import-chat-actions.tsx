@@ -133,7 +133,7 @@ export function EventSelectAction({
 
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">
-          Seconds per solve (for duration estimates)
+          How long does one full solve take? (seconds)
         </label>
         <input
           type="number"
@@ -144,6 +144,9 @@ export function EventSelectAction({
           min={1}
           max={7200}
         />
+        <p className="mt-1 text-xs text-muted-foreground/70">
+          Include scrambling and inspection time — doesn&apos;t need to be exact
+        </p>
       </div>
 
       <Button
