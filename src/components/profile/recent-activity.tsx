@@ -1,10 +1,14 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Activity, Pencil } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
 import { formatDuration } from "@/lib/utils"
+import { EditSessionModal } from "@/components/dashboard/edit-session-modal"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -21,7 +25,9 @@ function formatTime(value: number | null, label: string): string {
   return `${label}: ${value.toFixed(2)}s`
 }
 
-export function RecentActivity({ sessions }: { sessions: Session[] }) {
+export function RecentActivity({ sessions, isOwner = false }: { sessions: Session[]; isOwner?: boolean }) {
+  const router = useRouter()
+  const [editSession, setEditSession] = useState<Session | null>(null)
   if (sessions.length === 0) {
     return (
       <Card className="border-border/50 bg-card">
@@ -69,9 +75,21 @@ export function RecentActivity({ sessions }: { sessions: Session[] }) {
                     <span className="text-sm text-muted-foreground">
                       {session.practice_type}
                     </span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {formatDate(session.session_date)}
-                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => setEditSession(session)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(session.session_date)}
+                      </span>
+                    </div>
                   </div>
                   <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     {description}
@@ -81,6 +99,18 @@ export function RecentActivity({ sessions }: { sessions: Session[] }) {
             )
           })}
         </div>
+
+        {editSession && (
+          <EditSessionModal
+            open={!!editSession}
+            onOpenChange={(open) => { if (!open) setEditSession(null) }}
+            session={editSession}
+            onSaved={() => {
+              setEditSession(null)
+              router.refresh()
+            }}
+          />
+        )}
       </CardContent>
     </Card>
   )

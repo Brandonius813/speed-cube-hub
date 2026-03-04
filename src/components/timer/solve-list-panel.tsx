@@ -44,6 +44,9 @@ interface SolveListPanelProps {
   statCols: [string, string]
   selectedId: string | null
   selectedSolve: Solve | null
+  savedSolveCount?: number
+  groupBoundaries?: Set<number>
+  currentSolveCount?: number
   onSetSelectedId: (id: string | null) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
@@ -65,6 +68,9 @@ export const SolveListPanel = memo(function SolveListPanel({
   statCols,
   selectedId,
   selectedSolve,
+  savedSolveCount = 0,
+  groupBoundaries,
+  currentSolveCount,
   onSetSelectedId,
   onSetPenalty,
   onDeleteSolve,
@@ -142,7 +148,10 @@ export const SolveListPanel = memo(function SolveListPanel({
         </table>
         <div className="flex justify-between border-t border-border mt-2 pt-1.5">
           <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
-            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{totalCount}</span>
+            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{currentSolveCount ?? totalCount}</span>
+            {savedSolveCount > 0 && (
+              <span className="font-mono normal-case tracking-normal text-[10px] text-muted-foreground/50 ml-1">/{totalCount}</span>
+            )}
           </span>
           <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
             Mean <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{D(stats.mean)}</span>
@@ -215,30 +224,42 @@ export const SolveListPanel = memo(function SolveListPanel({
               </tr>
             )}
 
-            {rows.map((row) => (
-              <tr
-                key={row.solve.id}
-                className={cn(
-                  "hover:bg-muted/30 transition-colors cursor-pointer",
-                  selectedId === row.solve.id && "bg-muted/40"
-                )}
-                onClick={() => onSetSelectedId(row.solve.id)}
-                style={{ height: `${ROW_HEIGHT}px` }}
-              >
-                <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
-                  {row.displayNumber}
-                </td>
-                <td className="text-right pr-1.5 py-0.5 font-mono text-[13px]">
-                  {fmtSolve(row.solve)}
-                </td>
-                <td className="text-right pr-1.5 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
-                  {D(stats.rolling1[row.solveIndex] ?? null)}
-                </td>
-                <td className="text-right pr-2 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
-                  {D(stats.rolling2[row.solveIndex] ?? null)}
-                </td>
-              </tr>
-            ))}
+            {rows.map((row, windowIdx) => {
+              const displayIdx = rangeStart + windowIdx
+              const isBoundary = groupBoundaries?.has(displayIdx)
+              const isSaved = !!row.solve.group
+              // Map to stats index: only current session solves have rolling stats
+              const statsIdx = !isSaved && savedSolveCount > 0
+                ? row.solveIndex - savedSolveCount
+                : isSaved ? -1 : row.solveIndex
+
+              return (
+                <tr
+                  key={row.solve.id}
+                  className={cn(
+                    "hover:bg-muted/30 transition-colors cursor-pointer",
+                    selectedId === row.solve.id && "bg-muted/40",
+                    isBoundary && "border-t-2 border-t-primary/20",
+                    isSaved && "opacity-60"
+                  )}
+                  onClick={() => onSetSelectedId(row.solve.id)}
+                  style={{ height: `${ROW_HEIGHT}px` }}
+                >
+                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
+                    {row.displayNumber}
+                  </td>
+                  <td className="text-right pr-1.5 py-0.5 font-mono text-[13px]">
+                    {fmtSolve(row.solve)}
+                  </td>
+                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
+                    {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
+                  </td>
+                  <td className="text-right pr-2 py-0.5 text-muted-foreground/60 font-mono text-[11px]">
+                    {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
+                  </td>
+                </tr>
+              )
+            })}
 
             {bottomSpacer > 0 && (
               <tr>

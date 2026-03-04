@@ -9,6 +9,7 @@ type SolveRecord = TimerSolve & {
   sessionId: string
   order: number
   updatedAt: number
+  group?: string | null
 }
 
 type RequestResult<T> = Promise<T>
@@ -71,6 +72,7 @@ export interface SolveStore {
   count(sessionId: string): Promise<number>
   loadSession(sessionId: string): Promise<TimerSolve[]>
   replaceSession(sessionId: string, solves: TimerSolve[]): Promise<void>
+  markGroup(sessionId: string, group: string): Promise<void>
   clearSession(sessionId: string): Promise<void>
   readonly storageMode: "indexeddb" | "memory"
   onFallback: ((reason: string) => void) | null
@@ -121,6 +123,7 @@ async function loadIndexedDbSession(
         time_ms: value.time_ms,
         penalty: value.penalty,
         scramble: value.scramble,
+        group: value.group ?? null,
       })
       cursor.continue()
     }
@@ -175,6 +178,7 @@ async function listIndexedDbWindow(
         time_ms: value.time_ms,
         penalty: value.penalty,
         scramble: value.scramble,
+        group: value.group ?? null,
       })
       cursor.continue()
     }
@@ -201,6 +205,34 @@ async function deleteIndexedDbSolve(db: IDBDatabase, id: string): Promise<void> 
   const tx = db.transaction(STORE_NAME, "readwrite")
   const store = tx.objectStore(STORE_NAME)
   store.delete(id)
+  await transactionDone(tx)
+}
+
+async function markIndexedDbGroup(
+  db: IDBDatabase,
+  sessionId: string,
+  group: string
+): Promise<void> {
+  const tx = db.transaction(STORE_NAME, "readwrite")
+  const store = tx.objectStore(STORE_NAME)
+  const index = store.index(INDEX_SESSION_ORDER)
+  const request = index.openCursor(keyRangeForSession(sessionId), "next")
+
+  await new Promise<void>((resolve, reject) => {
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) {
+        resolve()
+        return
+      }
+      const value = cursor.value as SolveRecord
+      if (!value.group) {
+        store.put({ ...value, group, updatedAt: Date.now() } satisfies SolveRecord)
+      }
+      cursor.continue()
+    }
+  })
   await transactionDone(tx)
 }
 
@@ -376,6 +408,19 @@ export function createSolveStore(): SolveStore {
         (db) => withTimeout(replaceIndexedDbSession(db, sessionId, normalized), "replaceSession"),
         async () => {
           memoryStore.bySession.set(sessionId, normalized)
+        }
+      )
+    },
+
+    async markGroup(sessionId: string, group: string) {
+      return withDb(
+        (db) => withTimeout(markIndexedDbGroup(db, sessionId, group), "markGroup"),
+        async () => {
+          const solves = getMemorySession(sessionId)
+          memoryStore.bySession.set(
+            sessionId,
+            solves.map((s) => (s.group ? s : { ...s, group }))
+          )
         }
       )
     },
