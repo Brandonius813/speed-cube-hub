@@ -25,7 +25,7 @@ Then run one Codex chat tab per window and keep each tab on only its assigned ta
 ## Suggested Prompt Per Agent
 
 Agent 1 (profile components):
-"Implement only: activate `UpcomingCompetitions` and `PBProgressChart` on profile. Follow `.claude/CLAUDE.md`, `.claude/Rules/*`, and update docs/tasks when done."
+"Implement only: activate `UpcomingCompetitions` and `PBProgressChart` on profile. Follow `AGENTS.md` and update docs/tasks when done."
 
 Agent 2 (rate limiting):
 "Implement only: rate limiting for `/api/scramble` and `/api/og` using production-safe storage (Upstash or equivalent). Follow existing conventions and update docs/tasks when done."
@@ -38,4 +38,4 @@ Agent 3 (challenges RLS):
 - One task per agent
 - Do not edit another agent's files unless required and coordinated
 - Verify with `npx tsc --noEmit` (avoid concurrent `npm run build`)
-- Record outcomes in `.claude/AGENT_LOG.md`
+- Record outcomes in `AGENT_LOG.md`
