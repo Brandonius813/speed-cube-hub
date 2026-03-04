@@ -747,7 +747,13 @@ export function TimerContent() {
 
       // Background cross-device sync: if DB has more solves than local,
       // pull them in. This is a one-time cost per device per event.
-      syncSolvesFromDb(event, loaded.length, solveStoreRef.current).then(
+      const shouldBackfillGroups =
+        loaded.length > 0 && loaded.every((solve) => !solve.group)
+
+      syncSolvesFromDb(event, loaded.length, solveStoreRef.current, {
+        forceGroupBackfill: shouldBackfillGroups,
+        localSolves: loaded,
+      }).then(
         (synced) => {
           if (cancelled || !synced) return
           setSolves(synced)

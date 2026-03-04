@@ -25,7 +25,19 @@ function dbSolveToTimer(s: Solve): TimerSolve {
     time_ms: s.time_ms,
     penalty: s.penalty,
     scramble: s.scramble,
+    // Preserve server-known timer session grouping so boundaries survive cross-device sync.
+    group: s.timer_session_id ?? null,
   }
+}
+
+type SyncOptions = {
+  /**
+   * If true, fetch DB solves even when counts match and backfill missing group ids
+   * into existing local solves by solve id. Preserves local-only unsaved solves.
+   */
+  forceGroupBackfill?: boolean
+  /** Optional loaded solves to avoid an extra store read during backfill. */
+  localSolves?: TimerSolve[]
 }
 
 /**
@@ -38,7 +50,8 @@ function dbSolveToTimer(s: Solve): TimerSolve {
 export async function syncSolvesFromDb(
   event: string,
   localCount: number,
-  store: SolveStore
+  store: SolveStore,
+  options?: SyncOptions
 ): Promise<TimerSolve[] | null> {
   try {
     // Get (or create) the default solve session for this event
@@ -54,12 +67,19 @@ export async function syncSolvesFromDb(
     const { count: dbCount, error: countError } =
       await getSolveCountBySession(session.id, session.active_from)
 
-    if (countError || dbCount <= localCount) {
-      // DB has same or fewer solves — no sync needed
+    if (countError) {
       return null
     }
 
-    // DB has more solves. Fetch them all in paginated chunks.
+    const shouldSyncAll = dbCount > localCount
+    const shouldBackfillGroups = options?.forceGroupBackfill === true
+
+    if (!shouldSyncAll && !shouldBackfillGroups) {
+      // DB has same or fewer solves and no forced group backfill requested.
+      return null
+    }
+
+    // Fetch DB solves in paginated chunks.
     const allSolves: TimerSolve[] = []
     let offset = 0
     let hasMore = true
@@ -88,11 +108,33 @@ export async function syncSolvesFromDb(
 
     if (allSolves.length === 0) return null
 
-    // Write all synced solves to IndexedDB (replaces existing for this event)
-    await store.clearSession(event)
-    await store.importSolves(event, allSolves)
+    if (shouldSyncAll) {
+      // DB has newer data: replace local cache with authoritative DB list.
+      await store.clearSession(event)
+      await store.importSolves(event, allSolves)
+      return allSolves
+    }
 
-    return allSolves
+    // Count matched (or was lower) but we were asked to recover missing grouping.
+    // Patch groups in-place by solve id so local-only unsaved solves are preserved.
+    const localSolves = options?.localSolves ?? (await store.loadSession(event))
+    if (localSolves.length === 0) return null
+
+    const groupBySolveId = new Map(
+      allSolves.map((solve) => [solve.id, solve.group ?? null])
+    )
+    let changed = false
+    const patched = localSolves.map((solve) => {
+      if (solve.group) return solve
+      const mappedGroup = groupBySolveId.get(solve.id)
+      if (!mappedGroup) return solve
+      changed = true
+      return { ...solve, group: mappedGroup }
+    })
+
+    if (!changed) return null
+    await store.replaceSession(event, patched)
+    return patched
   } catch {
     // Sync is best-effort — don't crash the timer
     return null
