@@ -28,6 +28,8 @@ export type CompSimApi = {
   snapshot: CompSimSnapshot
   startSim: () => void
   confirmCubeCovered: () => void
+  /** Transition from ready → inspecting (user presses spacebar/taps to begin inspection) */
+  beginInspection: () => void
   /** Transition from inspecting → solving (user released spacebar after hold) */
   startSolve: () => void
   handleSolveComplete: (time_ms: number, penalty: "+2" | "DNF" | null) => void
@@ -178,6 +180,11 @@ export function useCompSim({ event, sessionStartMs }: UseCompSimOptions): CompSi
     }, snap.waitDurationMs)
   }, [])
 
+  // Transition from ready → inspecting (user manually starts inspection)
+  const beginInspection = useCallback(() => {
+    engineRef.current.dispatch({ type: "READY_START" })
+  }, [])
+
   // Transition from inspecting → solving
   const startSolve = useCallback(() => {
     engineRef.current.dispatch({ type: "SOLVE_START" })
@@ -270,6 +277,7 @@ export function useCompSim({ event, sessionStartMs }: UseCompSimOptions): CompSi
     snapshot,
     startSim,
     confirmCubeCovered,
+    beginInspection,
     startSolve,
     handleSolveComplete,
     cancelSim,

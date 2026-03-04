@@ -125,6 +125,25 @@ export function CueScreen() {
   )
 }
 
+export function ReadyScreen({ onPointerDown }: { onPointerDown: () => void }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-6 w-full cursor-pointer select-none"
+      onPointerDown={onPointerDown}
+    >
+      <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-green-500" />
+      </div>
+      <p className="text-3xl font-bold text-green-400">
+        Ready
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Press spacebar or tap to start inspection
+      </p>
+    </div>
+  )
+}
+
 export function InspectionScreen({
   secondsLeft,
   holdReady,
@@ -221,9 +240,11 @@ export function SolveRecordedScreen({ solves }: { solves: CompSimSolve[] }) {
 export function ResultsScreen({
   compSim,
   ao5Result,
+  onExit,
 }: {
   compSim: CompSimApi
   ao5Result: Ao5Result | null
+  onExit: () => void
 }) {
   if (!ao5Result) return null
 
@@ -291,7 +312,7 @@ export function ResultsScreen({
           Go Again
         </button>
         <button
-          onClick={compSim.done}
+          onClick={onExit}
           className="flex-1 py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground font-medium transition-colors min-h-12"
         >
           Done

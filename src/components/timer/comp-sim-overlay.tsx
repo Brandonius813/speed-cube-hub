@@ -10,6 +10,7 @@ import {
   ScrambleScreen,
   WaitingScreen,
   CueScreen,
+  ReadyScreen,
   InspectionScreen,
   SolvingScreen,
   SolveRecordedScreen,
@@ -76,7 +77,7 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
 
   // --- Keyboard handler (capture phase to intercept before timer-content) ---
   useEffect(() => {
-    if (phase !== "inspecting" && phase !== "solving") {
+    if (phase !== "ready" && phase !== "inspecting" && phase !== "solving") {
       holdingRef.current = false
       setHoldReady(false)
       return
@@ -93,6 +94,11 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
         const penalty = inspPenaltyRef.current
         inspPenaltyRef.current = null
         compSim.handleSolveComplete(elapsed, penalty)
+        return
+      }
+
+      if (phase === "ready") {
+        compSim.beginInspection()
         return
       }
 
@@ -148,6 +154,8 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
       const penalty = inspPenaltyRef.current
       inspPenaltyRef.current = null
       compSim.handleSolveComplete(elapsed, penalty)
+    } else if (phase === "ready") {
+      compSim.beginInspection()
     } else if (phase === "inspecting") {
       holdingRef.current = true
       holdStartRef.current = Date.now()
@@ -215,6 +223,9 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
         {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
         {phase === "waiting" && <WaitingScreen solveIndex={snapshot.solveIndex} />}
         {phase === "solve_cue" && <CueScreen />}
+        {phase === "ready" && (
+          <ReadyScreen onPointerDown={handlePointerDown} />
+        )}
         {phase === "inspecting" && (
           <InspectionScreen
             secondsLeft={insp.secondsLeft}
@@ -231,7 +242,7 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
           <SolveRecordedScreen solves={snapshot.solves} />
         )}
         {phase === "sim_complete" && (
-          <ResultsScreen compSim={compSim} ao5Result={ao5Result} />
+          <ResultsScreen compSim={compSim} ao5Result={ao5Result} onExit={handleExit} />
         )}
       </div>
 

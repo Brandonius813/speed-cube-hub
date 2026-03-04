@@ -6,6 +6,7 @@ export type CompSimPhase =
   | "scramble_shown" // Scramble visible, "Cube is under cover" button
   | "waiting"        // Random delay, shows "Waiting for solve X"
   | "solve_cue"      // "Time to solve!" audio + visual cue
+  | "ready"          // Solver may start inspection at will (spacebar/tap)
   | "inspecting"     // WCA 15-second inspection
   | "solving"        // Timer running
   | "solve_recorded" // Brief pause showing the time, then auto-advances
@@ -35,6 +36,7 @@ export type CompSimEvent =
   | { type: "CONFIRM_CUBE_COVERED" }
   | { type: "WAIT_COMPLETE" }
   | { type: "CUE_DONE" }
+  | { type: "READY_START" }
   | { type: "INSPECTION_START" }
   | { type: "SOLVE_START" }
   | { type: "SOLVE_COMPLETE"; time_ms: number; penalty: "+2" | "DNF" | null; scramble: string }
@@ -90,6 +92,11 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
 
     case "CUE_DONE":
       return state.phase === "solve_cue"
+        ? { ...state, phase: "ready" }
+        : state
+
+    case "READY_START":
+      return state.phase === "ready"
         ? { ...state, phase: "inspecting" }
         : state
 
