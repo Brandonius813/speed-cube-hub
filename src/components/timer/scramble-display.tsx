@@ -124,16 +124,16 @@ export function ScrambleDisplay({
 
   // Adjust font size based on scramble length or manual override
   const getFontSize = () => {
-    if (scrambleSize === "small") return "text-xs sm:text-sm"
-    if (scrambleSize === "medium") return "text-sm sm:text-base md:text-lg"
-    if (scrambleSize === "large") return "text-lg sm:text-xl md:text-2xl"
+    if (scrambleSize === "small") return "text-sm sm:text-base"
+    if (scrambleSize === "medium") return "text-base sm:text-lg md:text-xl"
+    if (scrambleSize === "large") return "text-xl sm:text-2xl md:text-3xl"
     // Auto: scale based on scramble length
-    if (!scramble) return "text-base sm:text-lg"
+    if (!scramble) return "text-lg sm:text-xl"
     const len = scramble.length
-    if (len < 30) return "text-lg sm:text-xl md:text-2xl"
-    if (len < 60) return "text-base sm:text-lg md:text-xl"
-    if (len < 100) return "text-sm sm:text-base md:text-lg"
-    return "text-xs sm:text-sm md:text-base"
+    if (len < 30) return "text-xl sm:text-2xl md:text-3xl"
+    if (len < 60) return "text-lg sm:text-xl md:text-2xl"
+    if (len < 100) return "text-base sm:text-lg md:text-xl"
+    return "text-sm sm:text-base md:text-lg"
   }
 
   const handleSizeChange = (size: ScrambleSize) => {
@@ -217,6 +217,23 @@ export function ScrambleDisplay({
                 </div>
               )
             })}
+          </div>
+        ) : scramble && scramble.includes("\n") ? (
+          <div
+            className={cn(
+              "text-center leading-relaxed break-words max-w-full space-y-1",
+              scrambleFont === "mono" ? "font-mono" : "font-sans",
+              getFontSize(),
+              onManualScramble && "cursor-pointer hover:text-foreground/80 transition-colors",
+              isManualScramble && "text-blue-400",
+              compactMode && "max-h-[6em] overflow-y-auto"
+            )}
+            onClick={onManualScramble ? handleStartEdit : undefined}
+            title={onManualScramble ? "Click to edit scramble" : undefined}
+          >
+            {scramble.split("\n").map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
           </div>
         ) : (
           <p
