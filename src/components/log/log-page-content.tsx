@@ -48,7 +48,7 @@ export function LogPageContent() {
 
       {/* Content */}
       {mode === "single" && <SessionForm />}
-      {mode === "import" && <ImportContent hideHeader />}
+      {mode === "import" && <ImportContent />}
     </div>
   );
 }
