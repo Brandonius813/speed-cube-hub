@@ -8,7 +8,7 @@ export const GREETING = `Hey! I'll help you import your solve data into Speed Cu
 export const TIMER_INSTRUCTIONS: Record<string, { intro: string; steps: string }> = {
   cstimer: {
     intro: "Great — csTimer is fully supported!",
-    steps: `Here's how to export your data:\n\n1. Open **cstimer.net** in your browser\n2. Click **Session** (next to your session name) to open the Session Manager\n3. Click the **...** button on the right side of the session you want to export\n4. Select **Export CSV**\n5. It'll download a **.txt** file with that session's solves\n\nUpload that file below. You can repeat this for each session/event you want to import.`,
+    steps: `Here's how to export your data:\n\n1. Open **cstimer.net** in your browser\n2. Click **Session** (next to your session name) to open the Session Manager\n3. Click the **...** button on the right side of the session you want to export\n4. Select **Export CSV**\n5. It'll download a **.csv** file with that session's solves\n\nUpload that file below. You can repeat this for each session/event you want to import.`,
   },
   cubetime: {
     intro: "CubeTime is fully supported!",
