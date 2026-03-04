@@ -17,9 +17,20 @@ export type SessionDividers = {
   labels: Map<number, DividerLabel>
 }
 
-function normalizeTitle(title: string | undefined): string {
+function normalizeTitle(
+  title: string | undefined,
+  fallback = "Saved Session"
+): string {
   const trimmed = title?.trim()
-  return trimmed ? trimmed : "Saved Session"
+  return trimmed ? trimmed : fallback
+}
+
+function parseDateGroup(groupId: string): string | null {
+  if (!groupId.startsWith("date:")) return null
+  const day = groupId.slice(5)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null
+  // Noon UTC avoids day drift when formatting in Pacific Time.
+  return formatSessionDividerDate(new Date(`${day}T12:00:00.000Z`))
 }
 
 export function formatSessionDividerDate(value: number | Date): string | null {
@@ -56,12 +67,13 @@ export function computeSessionDividers(
 
     if (!currentGroup) continue
     const meta = groupById.get(currentGroup)
+    const dateFromGroup = parseDateGroup(currentGroup)
     labels.set(displayIdx, {
-      title: normalizeTitle(meta?.title),
+      title: normalizeTitle(meta?.title, dateFromGroup ? "Session" : "Saved Session"),
       date:
         typeof meta?.savedAt === "number"
           ? formatSessionDividerDate(meta.savedAt)
-          : null,
+          : dateFromGroup,
     })
   }
 

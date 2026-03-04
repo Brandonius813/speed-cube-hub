@@ -18,15 +18,22 @@ import { getSolveCountBySession, getSolvesBySession } from "@/lib/actions/timer"
 
 const PAGE_SIZE = 5000
 
+function dateGroupFromSolvedAt(solvedAt: string): string | null {
+  const day = solvedAt.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null
+  return `date:${day}`
+}
+
 /** Convert a database Solve row to the local TimerSolve format. */
 function dbSolveToTimer(s: Solve): TimerSolve {
+  const group = s.timer_session_id ?? dateGroupFromSolvedAt(s.solved_at)
   return {
     id: s.id,
     time_ms: s.time_ms,
     penalty: s.penalty,
     scramble: s.scramble,
-    // Preserve server-known timer session grouping so boundaries survive cross-device sync.
-    group: s.timer_session_id ?? null,
+    // Prefer timer session grouping; fall back to day-based grouping for old/imported solves.
+    group: group ?? null,
   }
 }
 

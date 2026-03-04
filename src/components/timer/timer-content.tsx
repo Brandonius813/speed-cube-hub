@@ -100,6 +100,26 @@ function saveSessionGroups(eventId: string, groups: SessionGroupMeta[]) {
   } catch {}
 }
 
+function needsHistoricGroupBackfill(solves: Solve[]): boolean {
+  if (solves.length === 0) return false
+  // Find the start of the trailing ungrouped suffix (expected current unsaved block).
+  let suffixStart = solves.length
+  for (let i = solves.length - 1; i >= 0; i--) {
+    if (!solves[i].group) continue
+    suffixStart = i + 1
+    break
+  }
+
+  // If everything is ungrouped, we definitely need a one-time backfill.
+  if (suffixStart === solves.length) return true
+
+  // If ungrouped solves exist before the trailing suffix, old history is missing groups.
+  for (let i = 0; i < suffixStart; i++) {
+    if (!solves[i].group) return true
+  }
+  return false
+}
+
 function fmt(ms: number, dec = 2): string {
   const s = ms / 1000
   if (s < 60) return s.toFixed(dec)
@@ -747,8 +767,7 @@ export function TimerContent() {
 
       // Background cross-device sync: if DB has more solves than local,
       // pull them in. This is a one-time cost per device per event.
-      const shouldBackfillGroups =
-        loaded.length > 0 && loaded.every((solve) => !solve.group)
+      const shouldBackfillGroups = needsHistoricGroupBackfill(loaded)
 
       syncSolvesFromDb(event, loaded.length, solveStoreRef.current, {
         forceGroupBackfill: shouldBackfillGroups,
