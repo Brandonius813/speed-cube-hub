@@ -42,7 +42,7 @@
 
 @theme inline {
   --font-sans: var(--font-nunito), 'Nunito', sans-serif;
-  --font-mono: var(--font-jetbrains), 'JetBrains Mono', monospace;
+  --font-mono: var(--font-nunito), 'Nunito', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
