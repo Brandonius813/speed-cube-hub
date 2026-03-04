@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
+import type { DividerLabel } from "@/lib/timer/session-dividers"
 
 function fmt(ms: number, dec = 2): string {
   const s = ms / 1000
@@ -46,6 +47,8 @@ interface SolveListPanelProps {
   selectedSolve: Solve | null
   savedSolveCount?: number
   groupBoundaries?: Set<number>
+  groupDividerLabels?: Map<number, DividerLabel>
+  currentSessionLabel?: DividerLabel | null
   currentSolveCount?: number
   onSetSelectedId: (id: string | null) => void
   onSetPenalty: (id: string, p: Penalty) => void
@@ -70,6 +73,8 @@ export const SolveListPanel = memo(function SolveListPanel({
   selectedSolve,
   savedSolveCount = 0,
   groupBoundaries,
+  groupDividerLabels,
+  currentSessionLabel,
   currentSolveCount,
   onSetSelectedId,
   onSetPenalty,
@@ -197,6 +202,19 @@ export const SolveListPanel = memo(function SolveListPanel({
         )}
       </div>
 
+      {currentSessionLabel && (
+        <div className="px-2 py-1 border-b border-border bg-background">
+          <div className="flex items-center gap-1.5">
+            <div className="h-px flex-1 bg-primary/25" />
+            <span className="max-w-[13.5rem] truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-[2px] text-[9px] font-sans uppercase tracking-wider text-primary/90">
+              {currentSessionLabel.title}
+              {currentSessionLabel.date ? ` · ${currentSessionLabel.date}` : ""}
+            </span>
+            <div className="h-px flex-1 bg-primary/25" />
+          </div>
+        </div>
+      )}
+
       <div ref={listRef} className="flex-1 overflow-y-auto">
         <table className="w-full text-[12px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
@@ -227,6 +245,9 @@ export const SolveListPanel = memo(function SolveListPanel({
             {rows.map((row, windowIdx) => {
               const displayIdx = rangeStart + windowIdx
               const isBoundary = groupBoundaries?.has(displayIdx)
+              const dividerLabel = isBoundary
+                ? groupDividerLabels?.get(displayIdx) ?? null
+                : null
               const isSaved = !!row.solve.group
               // Map to stats index: only current session solves have rolling stats
               const statsIdx = !isSaved && savedSolveCount > 0
@@ -245,7 +266,13 @@ export const SolveListPanel = memo(function SolveListPanel({
                   onClick={() => onSetSelectedId(row.solve.id)}
                   style={{ height: `${ROW_HEIGHT}px` }}
                 >
-                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
+                  <td className="relative overflow-visible text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
+                    {dividerLabel && (
+                      <span className="absolute -top-[10px] left-1 z-10 max-w-[13.5rem] truncate rounded-full border border-primary/30 bg-background px-2 py-[1px] text-[9px] font-sans uppercase tracking-wider text-primary/85">
+                        {dividerLabel.title}
+                        {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
+                      </span>
+                    )}
                     {row.displayNumber}
                   </td>
                   <td className="text-right pr-1.5 py-0.5 font-mono text-[13px]">
@@ -272,4 +299,3 @@ export const SolveListPanel = memo(function SolveListPanel({
     </div>
   )
 })
-

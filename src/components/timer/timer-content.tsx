@@ -29,6 +29,11 @@ import {
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
+import {
+  computeSessionDividers,
+  formatSessionDividerDate,
+  type SessionGroupMeta,
+} from "@/lib/timer/session-dividers"
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
@@ -79,13 +84,6 @@ type PendingScrambleRequest = {
   kind: "current" | "prefetch"
   attempt: number
   timeoutId: number
-}
-
-type SessionGroupMeta = {
-  id: string
-  title: string
-  savedAt: number
-  solveCount: number
 }
 
 function loadSessionGroups(eventId: string): SessionGroupMeta[] {
@@ -236,6 +234,7 @@ export function TimerContent() {
   const [showEndModal, setShowEndModal] = useState(false)
   const [sessionSaved, setSessionSaved] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
+  const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
   const [solveRange, setSolveRange] = useState({
     start: 0,
     end: INITIAL_SOLVE_WINDOW,
@@ -315,19 +314,19 @@ export function TimerContent() {
   const savedSolveCount = useMemo(() => solves.filter((s) => !!s.group).length, [solves])
   const currentSolveCount = solves.length - savedSolveCount
 
-  // Compute group boundaries for visual dividers (indices in reversed display order)
-  const groupBoundaries = useMemo(() => {
-    const boundaries = new Set<number>()
-    for (let i = solves.length - 2; i >= 0; i--) {
-      const displayIdx = solves.length - 1 - i
-      const curGroup = solves[i].group ?? null
-      const nextGroup = solves[i + 1].group ?? null
-      if (curGroup !== nextGroup) {
-        boundaries.add(displayIdx)
-      }
+  const groupDividers = useMemo(
+    () => computeSessionDividers(solves, sessionGroups),
+    [sessionGroups, solves]
+  )
+
+  const currentSessionLabel = useMemo(() => {
+    if (currentSolveCount <= 0) return null
+    const dateSource = sessionStartTime ? new Date(sessionStartTime) : new Date()
+    return {
+      title: "Current Session",
+      date: formatSessionDividerDate(dateSource),
     }
-    return boundaries
-  }, [solves])
+  }, [currentSolveCount, sessionStartTime])
 
   const setIdle = useCallback(() => {
     dispatchEngine({ type: "RESET_IDLE" })
@@ -729,6 +728,7 @@ export function TimerContent() {
 
   useEffect(() => {
     let cancelled = false
+    setSessionGroups(loadSessionGroups(event))
     ;(async () => {
       await migrateLegacySolves(event)
       const loaded = await solveStoreRef.current.loadSession(event)
@@ -1040,8 +1040,12 @@ export function TimerContent() {
 
     // Store group metadata for display
     const groups = loadSessionGroups(eventRef.current)
-    groups.push({ id: groupId, title: sessionTitle, savedAt: Date.now(), solveCount: currentCount })
-    saveSessionGroups(eventRef.current, groups)
+    const nextGroups = [
+      ...groups,
+      { id: groupId, title: sessionTitle, savedAt: Date.now(), solveCount: currentCount },
+    ]
+    saveSessionGroups(eventRef.current, nextGroups)
+    setSessionGroups(nextGroups)
 
     setSelectedId(null)
     setIdle()
@@ -1550,7 +1554,9 @@ export function TimerContent() {
             selectedId={selectedId}
             selectedSolve={selectedSolve}
             savedSolveCount={savedSolveCount}
-            groupBoundaries={groupBoundaries}
+            groupBoundaries={groupDividers.boundaries}
+            groupDividerLabels={groupDividers.labels}
+            currentSessionLabel={currentSessionLabel}
             currentSolveCount={currentSolveCount}
             onSetSelectedId={setSelectedId}
             onSetPenalty={setPenalty}
