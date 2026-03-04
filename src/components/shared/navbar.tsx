@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getNavbarData } from "@/lib/actions/auth"
 import { NotificationPopup } from "@/components/shared/notification-popup"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 function getInitials(name: string): string {
   return name
@@ -167,6 +168,7 @@ export function Navbar() {
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
+            <ThemeToggle />
             <NotificationPopup
               unreadCount={unreadCount}
               onUnreadCountChange={setUnreadCount}
@@ -175,7 +177,7 @@ export function Navbar() {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="rounded-full p-1 transition-all hover:bg-white/10"
+                  className="rounded-full p-1 transition-all hover:bg-foreground/10"
                   aria-label="User menu"
                 >
                   <Avatar className={cn("h-14 w-14 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
@@ -240,6 +242,7 @@ export function Navbar() {
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
               <span className={cn("hidden text-sm sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
+            <ThemeToggle />
             <Link href="/login">
               <Button
                 size="sm"

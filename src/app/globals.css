@@ -40,6 +40,41 @@
   --sidebar-ring: #6366F1;
 }
 
+.light {
+  --background: #FAFAFA;
+  --foreground: #0F0F14;
+  --card: #FFFFFF;
+  --card-foreground: #0F0F14;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F0F14;
+  --primary: #6366F1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F1F4;
+  --secondary-foreground: #0F0F14;
+  --muted: #F1F1F4;
+  --muted-foreground: #64648C;
+  --accent: #22D3EE;
+  --accent-foreground: #0F0F14;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #E2E2EA;
+  --input: #E2E2EA;
+  --ring: #6366F1;
+  --chart-1: #EF4444;
+  --chart-2: #6366F1;
+  --chart-3: #F97316;
+  --chart-4: #0EA5E9;
+  --chart-5: #A855F7;
+  --sidebar: #F5F5F8;
+  --sidebar-foreground: #0F0F14;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E8E8EE;
+  --sidebar-accent-foreground: #0F0F14;
+  --sidebar-border: #E2E2EA;
+  --sidebar-ring: #6366F1;
+}
+
 @theme inline {
   --font-sans: var(--font-nunito), 'Nunito', sans-serif;
   --font-mono: var(--font-nunito), 'Nunito', sans-serif;
