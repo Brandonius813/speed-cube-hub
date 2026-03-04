@@ -72,6 +72,8 @@ export interface SolveStore {
   count(sessionId: string): Promise<number>
   loadSession(sessionId: string): Promise<TimerSolve[]>
   replaceSession(sessionId: string, solves: TimerSolve[]): Promise<void>
+  /** Append imported solves to an existing session. No timeout — handles 50k+ solves. */
+  importSolves(sessionId: string, solves: TimerSolve[]): Promise<void>
   markGroup(sessionId: string, group: string): Promise<void>
   clearSession(sessionId: string): Promise<void>
   readonly storageMode: "indexeddb" | "memory"
@@ -408,6 +410,40 @@ export function createSolveStore(): SolveStore {
         (db) => withTimeout(replaceIndexedDbSession(db, sessionId, normalized), "replaceSession"),
         async () => {
           memoryStore.bySession.set(sessionId, normalized)
+        }
+      )
+    },
+
+    async importSolves(sessionId: string, solves: TimerSolve[]) {
+      if (solves.length === 0) return
+      const normalized = solves.map((solve) => ({
+        ...solve,
+        penalty: solve.penalty ?? null,
+      }))
+      return withDb(
+        async (db) => {
+          // Load existing solves to determine starting order
+          const existing = await loadIndexedDbSession(db, sessionId)
+          const startOrder = existing.length + 1
+          // Write in transaction batches of 5000 (no timeout — large imports)
+          for (let i = 0; i < normalized.length; i += 5000) {
+            const batch = normalized.slice(i, i + 5000)
+            const tx = db.transaction(STORE_NAME, "readwrite")
+            const store = tx.objectStore(STORE_NAME)
+            batch.forEach((solve, idx) => {
+              store.put({
+                ...solve,
+                sessionId,
+                order: startOrder + i + idx,
+                updatedAt: Date.now(),
+              } satisfies SolveRecord)
+            })
+            await transactionDone(tx)
+          }
+        },
+        async () => {
+          const existing = getMemorySession(sessionId)
+          memoryStore.bySession.set(sessionId, [...existing, ...normalized])
         }
       )
     },

@@ -42,6 +42,14 @@ export type ParseResult = {
   needsEventSelection: boolean // true if event could not be determined
 }
 
+/** Individual solve ready for bulkImportSolves() */
+export type RawImportSolve = {
+  time_ms: number // base time in ms (before penalty)
+  penalty: "+2" | "DNF" | null
+  scramble: string // empty string if none in export
+  date: string // YYYY-MM-DD
+}
+
 /** Shape expected by createSessionsBulk() */
 export type SessionSummary = {
   session_date: string

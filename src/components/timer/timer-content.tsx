@@ -28,6 +28,7 @@ import {
 } from "@/lib/timer/engine"
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
+import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
@@ -743,6 +744,17 @@ export function TimerContent() {
       // Stats only computed on current session solves (ungrouped)
       const currentSolves = loaded.filter((s) => !s.group)
       initStats(event, currentSolves)
+
+      // Background cross-device sync: if DB has more solves than local,
+      // pull them in. This is a one-time cost per device per event.
+      syncSolvesFromDb(event, loaded.length, solveStoreRef.current).then(
+        (synced) => {
+          if (cancelled || !synced) return
+          setSolves(synced)
+          const syncedCurrent = synced.filter((s) => !s.group)
+          initStats(event, syncedCurrent)
+        }
+      )
     })()
     return () => {
       cancelled = true
