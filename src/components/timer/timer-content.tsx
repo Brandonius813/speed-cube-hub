@@ -1522,121 +1522,129 @@ export function TimerContent() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
-        <SolveListPanel
-          rows={solveRows}
-          totalCount={solves.length}
-          rangeStart={solveRange.start}
-          rangeEnd={solveRange.end}
-          scrollOffset={solveRange.scrollOffset}
-          frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
-          stats={stats}
-          statCols={statCols}
-          selectedId={selectedId}
-          selectedSolve={selectedSolve}
-          savedSolveCount={savedSolveCount}
-          groupBoundaries={groupBoundaries}
-          currentSolveCount={currentSolveCount}
-          onSetSelectedId={setSelectedId}
-          onSetPenalty={setPenalty}
-          onDeleteSolve={deleteSolve}
-          onUpdateStatCol={updateStatCol}
-          onRangeChange={handleRangeChange}
+      {practiceType === "Comp Sim" ? (
+        <CompSimOverlay
+          event={event}
+          sessionStartMs={sessionStartTime}
+          onExit={() => changePracticeType("Solves")}
         />
+      ) : (
+        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+          <SolveListPanel
+            rows={solveRows}
+            totalCount={solves.length}
+            rangeStart={solveRange.start}
+            rangeEnd={solveRange.end}
+            scrollOffset={solveRange.scrollOffset}
+            frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
+            stats={stats}
+            statCols={statCols}
+            selectedId={selectedId}
+            selectedSolve={selectedSolve}
+            savedSolveCount={savedSolveCount}
+            groupBoundaries={groupBoundaries}
+            currentSolveCount={currentSolveCount}
+            onSetSelectedId={setSelectedId}
+            onSetPenalty={setPenalty}
+            onDeleteSolve={deleteSolve}
+            onUpdateStatCol={updateStatCol}
+            onRangeChange={handleRangeChange}
+          />
 
-        <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-          {typing ? (
-            <>
-              <div
-                className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
-                onPointerDown={sp}
-              >
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0000"
-                  value={typeVal}
-                  autoFocus
-                  onChange={(eventInput) => setTypeVal(eventInput.target.value)}
-                  onKeyDown={(eventInput) => {
-                    if (eventInput.key !== "Enter") return
-                    if (!parsedTypeTime) return
-                    addSolve(parsedTypeTime, null)
-                    setTypeVal("")
-                  }}
-                  className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
-                />
-              </div>
-              <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
-                {typeVal
-                  ? parsedTypeTime !== null
-                    ? `= ${fmt(parsedTypeTime)}`
-                    : "invalid"
-                  : ""}
-              </p>
-            </>
-          ) : (
-            <TimerReadout
-              className={cn(
-                "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
-                timeColor
-              )}
-              phase={phase}
-              startMs={startRef.current}
-              last={last}
-              inInspHold={inInspHold}
-              inspSecondsLeft={insp.secondsLeft}
-              btReset={engineSnapshot.btReset}
-              onStall={(deltaMs) => {
-                emitTimerTelemetry("timer_stall_detected", { deltaMs })
-                if (TIMER_V2_ENGINE_ENABLED) {
-                  dispatchEngine({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
-                }
-              }}
-            />
-          )}
-
-          {phase === "stopped" && last && (
-            <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
-              <button
+          <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+            {typing ? (
+              <>
+                <div
+                  className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
+                  onPointerDown={sp}
+                >
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0000"
+                    value={typeVal}
+                    autoFocus
+                    onChange={(eventInput) => setTypeVal(eventInput.target.value)}
+                    onKeyDown={(eventInput) => {
+                      if (eventInput.key !== "Enter") return
+                      if (!parsedTypeTime) return
+                      addSolve(parsedTypeTime, null)
+                      setTypeVal("")
+                    }}
+                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
+                  />
+                </div>
+                <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
+                  {typeVal
+                    ? parsedTypeTime !== null
+                      ? `= ${fmt(parsedTypeTime)}`
+                      : "invalid"
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <TimerReadout
                 className={cn(
-                  "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
-                  last.penalty === "+2"
-                    ? "bg-yellow-500 text-black border-yellow-500"
-                    : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
+                  "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
+                  timeColor
                 )}
-                onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
-              >
-                +2
-              </button>
-              <button
-                className={cn(
-                  "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
-                  last.penalty === "DNF"
-                    ? "bg-red-500 text-white border-red-500"
-                    : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400"
-                )}
-                onClick={() =>
-                  setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")
-                }
-              >
-                DNF
-              </button>
-              <button
-                className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-                onClick={() => {
-                  deleteSolve(last.id)
-                  setIdle()
+                phase={phase}
+                startMs={startRef.current}
+                last={last}
+                inInspHold={inInspHold}
+                inspSecondsLeft={insp.secondsLeft}
+                btReset={engineSnapshot.btReset}
+                onStall={(deltaMs) => {
+                  emitTimerTelemetry("timer_stall_detected", { deltaMs })
+                  if (TIMER_V2_ENGINE_ENABLED) {
+                    dispatchEngine({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
+                  }
                 }}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+              />
+            )}
 
-        <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
-      </div>
+            {phase === "stopped" && last && (
+              <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
+                <button
+                  className={cn(
+                    "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
+                    last.penalty === "+2"
+                      ? "bg-yellow-500 text-black border-yellow-500"
+                      : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
+                  )}
+                  onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
+                >
+                  +2
+                </button>
+                <button
+                  className={cn(
+                    "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
+                    last.penalty === "DNF"
+                      ? "bg-red-500 text-white border-red-500"
+                      : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400"
+                  )}
+                  onClick={() =>
+                    setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")
+                  }
+                >
+                  DNF
+                </button>
+                <button
+                  className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                  onClick={() => {
+                    deleteSolve(last.id)
+                    setIdle()
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
+        </div>
+      )}
 
       <div
         className="fixed bottom-4 right-4 z-40 w-48 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
@@ -1694,15 +1702,6 @@ export function TimerContent() {
           </button>
         )}
       </div>
-
-      {practiceType === "Comp Sim" && (
-        <CompSimOverlay
-          event={event}
-          eventName={EVENTS.find((e) => e.id === event)?.name ?? event}
-          sessionStartMs={sessionStartTime}
-          onExit={() => changePracticeType("Solves")}
-        />
-      )}
 
       {showEndModal && sessionStartTime && (
         <EndSessionModal

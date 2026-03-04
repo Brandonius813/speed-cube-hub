@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useInspection } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
@@ -19,14 +18,13 @@ import {
 
 type Props = {
   event: string
-  eventName: string
   sessionStartMs: number | null
   onExit: () => void
 }
 
 const HOLD_MS = 550
 
-export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Props) {
+export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
   const compSim = useCompSim({ event, sessionStartMs })
   const { snapshot, ao5Result } = compSim
   const { phase } = snapshot
@@ -199,56 +197,36 @@ export function CompSimOverlay({ event, eventName, sessionStartMs, onExit }: Pro
   }, [compSim, onExit])
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-primary">
-            Comp Sim
-          </span>
-          <span className="text-xs text-muted-foreground">{eventName}</span>
-        </div>
-        <button
-          className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
-          onClick={handleExit}
-          aria-label="Exit comp sim"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-8">
+      {phase === "idle" && <IdleScreen compSim={compSim} />}
+      {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
+      {phase === "waiting" && <WaitingScreen solveIndex={snapshot.solveIndex} />}
+      {phase === "solve_cue" && <CueScreen />}
+      {phase === "ready" && (
+        <ReadyScreen onPointerDown={handlePointerDown} />
+      )}
+      {phase === "inspecting" && (
+        <InspectionScreen
+          secondsLeft={insp.secondsLeft}
+          holdReady={holdReady}
+          holding={holdingRef.current}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+        />
+      )}
+      {phase === "solving" && (
+        <SolvingScreen displayRef={displayRef} onPointerDown={handlePointerDown} />
+      )}
+      {phase === "solve_recorded" && (
+        <SolveRecordedScreen solves={snapshot.solves} />
+      )}
+      {phase === "sim_complete" && (
+        <ResultsScreen compSim={compSim} ao5Result={ao5Result} onExit={handleExit} />
+      )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        {phase === "idle" && <IdleScreen compSim={compSim} />}
-        {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
-        {phase === "waiting" && <WaitingScreen solveIndex={snapshot.solveIndex} />}
-        {phase === "solve_cue" && <CueScreen />}
-        {phase === "ready" && (
-          <ReadyScreen onPointerDown={handlePointerDown} />
-        )}
-        {phase === "inspecting" && (
-          <InspectionScreen
-            secondsLeft={insp.secondsLeft}
-            holdReady={holdReady}
-            holding={holdingRef.current}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-          />
-        )}
-        {phase === "solving" && (
-          <SolvingScreen displayRef={displayRef} onPointerDown={handlePointerDown} />
-        )}
-        {phase === "solve_recorded" && (
-          <SolveRecordedScreen solves={snapshot.solves} />
-        )}
-        {phase === "sim_complete" && (
-          <ResultsScreen compSim={compSim} ao5Result={ao5Result} onExit={handleExit} />
-        )}
-      </div>
-
-      {/* Bottom: solve progress dots */}
+      {/* Solve progress dots */}
       {phase !== "idle" && phase !== "sim_complete" && (
-        <div className="flex items-center justify-center gap-3 pb-6">
+        <div className="flex items-center justify-center gap-3 mt-8">
           {Array.from({ length: 5 }, (_, i) => (
             <div
               key={i}
