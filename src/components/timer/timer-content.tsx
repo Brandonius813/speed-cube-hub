@@ -1508,7 +1508,7 @@ export function TimerContent() {
           {typing ? (
             <>
               <div
-                className="flex items-center justify-center w-full max-w-sm pointer-events-auto"
+                className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
                 onPointerDown={sp}
               >
                 <input
@@ -1524,7 +1524,7 @@ export function TimerContent() {
                     addSolve(parsedTypeTime, null)
                     setTypeVal("")
                   }}
-                  className="bg-transparent border-b-2 border-border text-center font-mono text-8xl font-light w-full outline-none placeholder:text-muted-foreground/30"
+                  className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
                 />
               </div>
               <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
@@ -1538,7 +1538,7 @@ export function TimerContent() {
           ) : (
             <TimerReadout
               className={cn(
-                "font-mono text-8xl font-light transition-colors duration-75 cursor-default",
+                "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
                 timeColor
               )}
               phase={phase}
