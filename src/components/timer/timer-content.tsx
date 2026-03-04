@@ -77,6 +77,27 @@ type PendingScrambleRequest = {
   timeoutId: number
 }
 
+type SessionGroupMeta = {
+  id: string
+  title: string
+  savedAt: number
+  solveCount: number
+}
+
+function loadSessionGroups(eventId: string): SessionGroupMeta[] {
+  try {
+    return JSON.parse(localStorage.getItem(`timer-session-groups-${eventId}`) ?? "[]")
+  } catch {
+    return []
+  }
+}
+
+function saveSessionGroups(eventId: string, groups: SessionGroupMeta[]) {
+  try {
+    localStorage.setItem(`timer-session-groups-${eventId}`, JSON.stringify(groups))
+  } catch {}
+}
+
 function fmt(ms: number, dec = 2): string {
   const s = ms / 1000
   if (s < 60) return s.toFixed(dec)
@@ -278,6 +299,24 @@ export function TimerContent() {
   scrambleReadyRef.current = engineSnapshot.scrambleReady
   solvesRef.current = solves
   statColsRef.current = statCols
+
+  // Compute saved vs current session solve counts for display + stats
+  const savedSolveCount = useMemo(() => solves.filter((s) => !!s.group).length, [solves])
+  const currentSolveCount = solves.length - savedSolveCount
+
+  // Compute group boundaries for visual dividers (indices in reversed display order)
+  const groupBoundaries = useMemo(() => {
+    const boundaries = new Set<number>()
+    for (let i = solves.length - 2; i >= 0; i--) {
+      const displayIdx = solves.length - 1 - i
+      const curGroup = solves[i].group ?? null
+      const nextGroup = solves[i + 1].group ?? null
+      if (curGroup !== nextGroup) {
+        boundaries.add(displayIdx)
+      }
+    }
+    return boundaries
+  }, [solves])
 
   const setIdle = useCallback(() => {
     dispatchEngine({ type: "RESET_IDLE" })
@@ -691,7 +730,9 @@ export function TimerContent() {
         end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
         scrollOffset: 0,
       }))
-      initStats(event, loaded)
+      // Stats only computed on current session solves (ungrouped)
+      const currentSolves = loaded.filter((s) => !s.group)
+      initStats(event, currentSolves)
     })()
     return () => {
       cancelled = true
@@ -903,17 +944,6 @@ export function TimerContent() {
   }
 
   function startSession() {
-    if (
-      solves.length > 0 &&
-      !confirm("Starting a new session will clear your current solves. Continue?")
-    ) {
-      return
-    }
-    setSolves([])
-    setSelectedId(null)
-    setIdle()
-    void solveStoreRef.current.clearSession(eventRef.current)
-    initStats(eventRef.current, [])
     setSessionStartTime(Date.now())
     setSessionElapsed(0)
     setSessionPaused(false)
@@ -950,8 +980,24 @@ export function TimerContent() {
     setSessionPaused(false)
   }
 
+  function cancelSession() {
+    setSessionStartTime(null)
+    setSessionElapsed(0)
+    setSessionPaused(false)
+    sessionPausedMsRef.current = 0
+    pausedAtRef.current = null
+    try {
+      localStorage.removeItem("timer-session-start")
+      localStorage.removeItem("timer-session-paused-ms")
+    } catch {}
+  }
+
   function endSession() {
-    if (solves.length === 0) return
+    const currentCount = solves.filter((s) => !s.group).length
+    if (currentCount === 0) {
+      cancelSession()
+      return
+    }
     if (sessionPaused && pausedAtRef.current !== null) {
       sessionPausedMsRef.current += Date.now() - pausedAtRef.current
       pausedAtRef.current = null
@@ -959,12 +1005,24 @@ export function TimerContent() {
     setShowEndModal(true)
   }
 
-  function handleSessionSaved() {
+  function handleSessionSaved(sessionTitle: string) {
     setShowEndModal(false)
-    setSolves([])
+    const groupId = crypto.randomUUID()
+    const currentCount = solves.filter((s) => !s.group).length
+
+    // Tag current solves as belonging to this saved session
+    setSolves((prev) => prev.map((s) => (s.group ? s : { ...s, group: groupId })))
+    void solveStoreRef.current
+      .markGroup(eventRef.current, groupId)
+      .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_mark_group" }))
+
+    // Store group metadata for display
+    const groups = loadSessionGroups(eventRef.current)
+    groups.push({ id: groupId, title: sessionTitle, savedAt: Date.now(), solveCount: currentCount })
+    saveSessionGroups(eventRef.current, groups)
+
     setSelectedId(null)
     setIdle()
-    void solveStoreRef.current.clearSession(eventRef.current)
     initStats(eventRef.current, [])
     setSessionStartTime(null)
     setSessionElapsed(0)
@@ -1053,6 +1111,7 @@ export function TimerContent() {
     }
 
     if (currentPhase === "idle" || currentPhase === "stopped") {
+      if (sessionPaused) return
       if (!scrambleReadyRef.current) return
       inspHoldRef.current = false
       if (inspOnRef.current) {
@@ -1103,28 +1162,14 @@ export function TimerContent() {
   }
 
   function changeEvent(newEvent: string) {
-    if (
-      solves.length > 0 &&
-      !confirm("Switching events will clear your current session. Continue?")
-    ) {
-      return
-    }
+    if (sessionStartTime) cancelSession()
     insp.cancelInspection()
-    setSolves([])
     setSelectedId(null)
-    void solveStoreRef.current.clearSession(eventRef.current)
     setEvent(newEvent)
     setIdle()
-    initStats(newEvent, [])
-    setSessionStartTime(null)
-    setSessionElapsed(0)
-    setSessionPaused(false)
     setShowEndModal(false)
-    sessionPausedMsRef.current = 0
-    pausedAtRef.current = null
     try {
       localStorage.setItem("timer-event", newEvent)
-      localStorage.removeItem("timer-session-paused-ms")
     } catch {}
   }
 
@@ -1449,6 +1494,9 @@ export function TimerContent() {
           statCols={statCols}
           selectedId={selectedId}
           selectedSolve={selectedSolve}
+          savedSolveCount={savedSolveCount}
+          groupBoundaries={groupBoundaries}
+          currentSolveCount={currentSolveCount}
           onSetSelectedId={setSelectedId}
           onSetPenalty={setPenalty}
           onDeleteSolve={deleteSolve}
@@ -1567,9 +1615,14 @@ export function TimerContent() {
                 {fmtSession(sessionElapsed)}
               </span>
               <span className="text-xs text-muted-foreground ml-auto">
-                {solves.length} solve{solves.length !== 1 ? "s" : ""}
+                {currentSolveCount} solve{currentSolveCount !== 1 ? "s" : ""}
               </span>
             </div>
+            {sessionPaused && (
+              <div className="px-3 pb-1">
+                <span className="text-[10px] text-yellow-400">Paused — solving disabled</span>
+              </div>
+            )}
             <div className="flex border-t border-border/50">
               <button
                 className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
@@ -1582,9 +1635,9 @@ export function TimerContent() {
               <button
                 className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
                 onClick={endSession}
-                disabled={timingActive || solves.length === 0}
+                disabled={timingActive}
               >
-                End
+                {currentSolveCount === 0 ? "Cancel" : "End"}
               </button>
             </div>
           </>
@@ -1604,7 +1657,7 @@ export function TimerContent() {
 
       {showEndModal && sessionStartTime && (
         <EndSessionModal
-          solves={solves}
+          solves={solves.filter((s) => !s.group)}
           event={event}
           eventName={EVENTS.find((entry) => entry.id === event)?.name ?? event}
           durationMinutes={

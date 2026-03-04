@@ -28,7 +28,7 @@ interface Props {
   durationMinutes: number
   sessionStartMs: number
   onClose: () => void
-  onSaved: () => void
+  onSaved: (title: string) => void
 }
 
 export function EndSessionModal({
@@ -79,7 +79,7 @@ export function EndSessionModal({
         setError(result.error)
         return
       }
-      onSaved()
+      onSaved(title.trim() || `${eventName} Solves`)
     })
   }
 
