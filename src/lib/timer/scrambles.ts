@@ -116,7 +116,7 @@ function generateFallbackScramble(eventId: string): string {
         row.push(rnd(2) === 0 ? "R++" : "R--")
         row.push(rnd(2) === 0 ? "D++" : "D--")
       }
-      row.push(rnd(2) === 0 ? "U++" : "U--")
+      row.push(rnd(2) === 0 ? "U" : "U'")
       rows.push(row.join(" "))
     }
     return rows.join("\n")
