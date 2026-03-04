@@ -65,6 +65,7 @@ export const PRACTICE_TYPES = [
   "Drill Algs",
   "Slow Solves",
   "Comp Sim",
+  "Untimed Practice",
 ] as const
 
 export type PracticeType = (typeof PRACTICE_TYPES)[number]
@@ -72,7 +73,7 @@ export type PracticeType = (typeof PRACTICE_TYPES)[number]
 /**
  * Common practice types shown for every event.
  */
-const COMMON_PRACTICE_TYPES = ["Solves", "Slow Solves", "Comp Sim"]
+const COMMON_PRACTICE_TYPES = ["Solves", "Slow Solves", "Comp Sim", "Untimed Practice"]
 
 /**
  * Event-specific practice types shown in addition to the common ones.

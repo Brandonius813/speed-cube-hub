@@ -28,6 +28,8 @@ import {
 } from "@/lib/timer/engine"
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
+import { getPracticeTypesForEvent } from "@/lib/constants"
+import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import type {
   StatsSummary,
   StatsWorkerRequest,
@@ -204,6 +206,13 @@ export function TimerContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
+  const [practiceType, setPracticeType] = useState(() => {
+    try {
+      return localStorage.getItem("timer-practice-type") ?? "Solves"
+    } catch {
+      return "Solves"
+    }
+  })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try {
@@ -1161,6 +1170,13 @@ export function TimerContent() {
     setSelectedId(null)
   }
 
+  function changePracticeType(type: string) {
+    setPracticeType(type)
+    try {
+      localStorage.setItem("timer-practice-type", type)
+    } catch {}
+  }
+
   function changeEvent(newEvent: string) {
     if (sessionStartTime) cancelSession()
     insp.cancelInspection()
@@ -1171,6 +1187,11 @@ export function TimerContent() {
     try {
       localStorage.setItem("timer-event", newEvent)
     } catch {}
+    // Reset practice type if current one isn't available for the new event
+    const available = getPracticeTypesForEvent(newEvent)
+    if (!available.includes(practiceType)) {
+      changePracticeType("Solves")
+    }
   }
 
   function updateStatCol(idx: 0 | 1, key: string) {
@@ -1343,6 +1364,12 @@ export function TimerContent() {
             </option>
           ))}
         </select>
+
+        <PracticeModeSelector
+          eventId={event}
+          selectedType={practiceType}
+          onTypeChange={changePracticeType}
+        />
 
         <div className="flex-1 min-w-0 flex items-center justify-center">
           <button
@@ -1660,6 +1687,7 @@ export function TimerContent() {
           solves={solves.filter((s) => !s.group)}
           event={event}
           eventName={EVENTS.find((entry) => entry.id === event)?.name ?? event}
+          practiceType={practiceType}
           durationMinutes={
             (Date.now() - sessionStartTime - sessionPausedMsRef.current) / 1000 / 60
           }
