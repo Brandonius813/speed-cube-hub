@@ -196,7 +196,7 @@ See `.env.local.example` for required variables:
 ## Design System
 
 - **Theme:** Dark-first. See PRD "Style Guide" section for full color reference.
-- **Fonts:** Inter (sans-serif, body/headings) + JetBrains Mono (monospace, numbers/stats/times)
+- **Fonts:** Nunito (sans-serif, body/headings) + JetBrains Mono (monospace, numbers/stats/times)
 - **Design source:** v0 repo at `Brandonius813/speed-cube-hub-visual-design`
 - **Monospace for numbers:** Always use `font-mono` for solve times, stats, and numeric data.
 

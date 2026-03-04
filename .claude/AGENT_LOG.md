@@ -150,3 +150,15 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Integrated Codex's timer hardening (Web Workers, IndexedDB, engine, telemetry) + 9 additional fixes: stats worker session ID bug, IndexedDB fallback warning, 10s timeout, direct DOM mutation for RAF timer, incremental O(1) stats, React error boundary, worker error handlers, deleted dead hook.
 **Files touched:** timer-content.tsx, solve-list-panel.tsx, scramble-worker.ts, timer/page.tsx, timer-error-boundary.tsx (new)
 **Learnings:** ~30 untracked Codex-generated files exist in working directory (dead code, not imported). Clean up if desired.
+
+---
+
+### 2026-03-04 PT — Visual Polish Session (Font + Timer Size)
+
+**Task:** General work — Site-wide font swap + timer display size increase
+**Status:** Switched site-wide font from Inter → Nunito. Made center timer display 2.5-3x larger (large: text-[9rem]→text-[15rem]). Bumped solve list times text-sm→text-base, stats panel text-xs→text-sm. Updated CLAUDE.md font reference.
+**Files touched:** src/app/layout.tsx, src/app/globals.css, src/components/timer/timer-display.tsx, src/components/timer/solve-list.tsx, src/components/timer/stats-panel.tsx, .claude/CLAUDE.md
+**Learnings:** font-mono (JetBrains Mono) left unchanged — all numeric/time values still use it. Nunito variable is --font-nunito.
+**Blockers:** None
+**Warnings:** git pull/push hanging during this session (other agents holding connections). Commit these files when git frees up.
+**Learnings:** ~30 untracked Codex-generated files exist in working directory (dead code, not imported). Clean up if desired.
