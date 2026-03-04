@@ -161,10 +161,10 @@
 
 ## Open / Remaining Items
 
-These items are tracked in the PRD under "Remaining Security Items (Manual)" and incomplete roadmap checkboxes. No full task specs have been written for them yet — create specs here when work begins.
+These items are tracked in the PRD under "Remaining Security Items (Manual)" and incomplete roadmap checkboxes. Current parallel layout is pre-claimed below.
 
-- 🔲 Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart`
-- 🔲 Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar
-- 🔲 Challenges RLS policy — restrict INSERT to admin users at DB level
+- 🏗️ In Progress — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart` (branch: `task/activate-profile-components`, worktree: `../speed-cube-hub-agent-profile`)
+- 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
+- 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
 
 ---

@@ -162,3 +162,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Blockers:** None
 **Warnings:** git pull/push hanging during this session (other agents holding connections). Commit these files when git frees up.
 **Learnings:** ~30 untracked Codex-generated files exist in working directory (dead code, not imported). Clean up if desired.
+
+---
+
+### 2026-03-04 PT — Multi-Agent Layout Setup (VS Code UI)
+
+**Task:** Parallel workflow setup for remaining open items
+**Status:** Created 3 dedicated worktrees/branches and pre-mapped each open task. Added a VS Code multi-root workspace file + visual runbook.
+**Worktrees:** `../speed-cube-hub-agent-profile`, `../speed-cube-hub-agent-ratelimit`, `../speed-cube-hub-agent-rls`
+**Branches:** `task/activate-profile-components`, `task/rate-limit-api-routes`, `task/challenges-rls-admin-insert`
+**Files touched:** `.claude/TASKS.md`, `docs/multi-agent-vscode.md`, `speed-cube-hub-agents.code-workspace`
