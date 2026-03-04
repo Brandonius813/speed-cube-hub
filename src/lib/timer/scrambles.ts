@@ -144,9 +144,14 @@ export function generateScramble(eventId: string): string {
       }
     }
 
-    const result = cstimerGetScramble(cstimerType)
+    let result = cstimerGetScramble(cstimerType)
     // cstimer_module returns "" for some events (5x5, 6x6, 7x7, Megaminx) — use fallback
-    return result || generateFallbackScramble(eventId)
+    if (!result) return generateFallbackScramble(eventId)
+    // Megaminx: insert newlines after each U/U' move so scramble displays one row per line
+    if (eventId === "minx" && !result.includes("\n")) {
+      result = result.replace(/\bU'?\s*/g, (match) => match.trimEnd() + "\n").trimEnd()
+    }
+    return result
   } catch (err) {
     console.error("cstimer_module scramble generation failed:", err)
     return generateFallbackScramble(eventId) || "Error generating scramble — try refreshing"
