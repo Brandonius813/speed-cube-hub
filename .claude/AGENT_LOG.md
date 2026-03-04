@@ -172,3 +172,25 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Worktrees:** `../speed-cube-hub-agent-profile`, `../speed-cube-hub-agent-ratelimit`, `../speed-cube-hub-agent-rls`
 **Branches:** `task/activate-profile-components`, `task/rate-limit-api-routes`, `task/challenges-rls-admin-insert`
 **Files touched:** `.claude/TASKS.md`, `docs/multi-agent-vscode.md`, `speed-cube-hub-agents.code-workspace`
+
+---
+
+### 2026-03-04 08:53 AM PT — Strip Badges & Accomplishments Session
+
+**Task:** General work — Remove badges, accomplishments, and milestone features entirely
+**Status:** Stripped all badge/accomplishment/milestone code from the site. Deleted 7 files (1,460 lines), cleaned 14 files. -1,642 lines net. Build passes cleanly.
+**Files touched:** Deleted: badges.ts, check-milestones.ts, badges-section.tsx, claim-badge-modal.tsx, accomplishments.tsx, badge-queue-content.tsx, admin/badges/page.tsx. Edited: profile pages, profile components, notifications, types.ts, profiles.ts, sessions.ts, save-timer-session.ts, admin/page.tsx, CLAUDE.md, PRD.
+**Learnings:** DB tables (`badges`, `user_badges`) still exist but are no longer referenced. Can be dropped or repurposed for redesign.
+**Blockers:** None
+**Warnings:** T29 (Badges & credentials) is now marked as incomplete in PRD — will be redesigned. If other sessions touch profile tabs or notifications, badge references are fully gone.
+
+---
+
+### 2026-03-04 10:15 AM PT — Comp Sim + Font/Sizing Fix Session
+
+**Task:** Competition Simulator mode + fix font/sizing regression on dev
+**Status:** Built the full Competition Simulator feature (6 new files, 2 modified). Then fixed two styling regressions where main had changes that were lost on dev: (1) `--font-mono` reverted to JetBrains Mono instead of Nunito, (2) timer readout responsive sizing (`sm:text-[10rem] md:text-[12rem]`) was missing.
+**Files touched:** NEW: comp-sim-engine.ts, comp-sim-audio.ts, use-comp-sim.ts, comp-sim-overlay.tsx, comp-sim-screens.tsx, public/audio/crowd-noise.mp3. MODIFIED: timer-content.tsx, save-timer-session.ts, globals.css, check-milestones.ts (stub).
+**Learnings:** Commits made directly on main (cf24596 sizing, a5d1efb font) don't automatically appear on dev — must cherry-pick or merge. The `practice-mode-selector.tsx` already had "Comp Sim" in COMMON_TYPES, so selecting it triggers the overlay via `practiceType === "Comp Sim"` check in timer-content.
+**Blockers:** None
+**Warnings:** timer-content.tsx is now ~1740 lines (well over 400 limit but was already that way). Comp sim overlay uses keyboard capture (`{ capture: true }`) on spacebar — if other features add global keyboard handlers, they may conflict.

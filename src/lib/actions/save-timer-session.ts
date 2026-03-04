@@ -2,11 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
-import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones"
 
 export async function saveTimerSession(data: {
   event: string
-  solves: Array<{ time_ms: number; penalty: "+2" | "DNF" | null; scramble: string }>
+  solves: Array<{ time_ms: number; penalty: "+2" | "DNF" | null; scramble: string; comp_sim_group?: number | null }>
   duration_minutes: number
   practice_type: string
   title: string | null
@@ -56,7 +55,7 @@ export async function saveTimerSession(data: {
     penalty: s.penalty,
     scramble: s.scramble,
     event: data.event,
-    comp_sim_group: null,
+    comp_sim_group: s.comp_sim_group ?? null,
   }))
 
   const { error: solvesError } = await supabase.from("solves").insert(solveRows)
@@ -110,9 +109,6 @@ export async function saveTimerSession(data: {
       .update({ session_id: session.id })
       .eq("id", timerSession.id)
   }
-
-  // Milestone check runs in background — doesn't block the response
-  checkAndAwardMilestones(user.id).catch(() => {})
 
   return {}
 }

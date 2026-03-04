@@ -370,3 +370,55 @@ export async function getOrCreateDefaultSession(
   // Create a new default session
   return createSolveSession("Session 1", event)
 }
+
+/**
+ * Set active_from to a specific timestamp.
+ * Used after bulk import to ensure old imported solves are visible
+ * (solves with solved_at before active_from are normally filtered out).
+ * Only moves active_from earlier, never later.
+ */
+export async function updateSolveSessionActiveFrom(
+  id: string,
+  activeFrom: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Not authenticated" }
+  }
+
+  // Only move active_from earlier, never later
+  const { data: existing } = await supabase
+    .from("solve_sessions")
+    .select("active_from")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single()
+
+  if (!existing) {
+    return { error: "Solve session not found" }
+  }
+
+  if (new Date(activeFrom) >= new Date(existing.active_from)) {
+    return {} // Already covers this range
+  }
+
+  const { error } = await supabase
+    .from("solve_sessions")
+    .update({
+      active_from: activeFrom,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {}
+}

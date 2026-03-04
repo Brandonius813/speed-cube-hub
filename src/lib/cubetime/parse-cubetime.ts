@@ -1,4 +1,5 @@
 import { toDateStringPacific } from "@/lib/utils"
+import type { RawImportSolve } from "@/lib/import/types"
 
 /**
  * Parses a CubeTime (iOS timer app) CSV export and groups individual
@@ -26,11 +27,13 @@ export type CubeTimeParsedSession = {
 
 type ParsedSolve = {
   time: number | null; // null = DNF
+  scramble: string;
   date: string; // YYYY-MM-DD
 };
 
 export function parseCubeTimeCsv(text: string): {
   sessions: CubeTimeParsedSession[];
+  rawSolves: RawImportSolve[];
   totalSolves: number;
   errors: string[];
 } {
@@ -42,7 +45,7 @@ export function parseCubeTimeCsv(text: string): {
   const lines = splitIntoRows(cleaned);
 
   if (lines.length === 0) {
-    return { sessions: [], totalSolves: 0, errors: ["The file is empty."] };
+    return { sessions: [], rawSolves: [], totalSolves: 0, errors: ["The file is empty."] };
   }
 
   // Parse header row
@@ -50,10 +53,12 @@ export function parseCubeTimeCsv(text: string): {
 
   const timeIdx = headers.indexOf("time");
   const dateIdx = headers.indexOf("date");
+  const scrambleIdx = headers.indexOf("scramble");
 
   if (timeIdx === -1 || dateIdx === -1) {
     return {
       sessions: [],
+      rawSolves: [],
       totalSolves: 0,
       errors: [
         'This doesn\'t look like a CubeTime export. Expected "Time" and "Date" columns.',
@@ -101,12 +106,23 @@ export function parseCubeTimeCsv(text: string): {
       dateStr = dateMatch[1];
     }
 
-    solves.push({ time, date: dateStr });
+    // Scramble is between Time and Date columns. CubeTime format: Time,Comment,Scramble,Date
+    // Use scrambleIdx from header for reliability; fall back to middle fields
+    let scramble = "";
+    if (scrambleIdx >= 0 && scrambleIdx < fields.length) {
+      scramble = fields[scrambleIdx].trim();
+    } else if (fields.length >= 4) {
+      // Skip Time (0), Comment (1), take everything between Comment and Date as scramble
+      scramble = fields.slice(2, fields.length - 1).join(",").trim();
+    }
+
+    solves.push({ time, scramble, date: dateStr });
   }
 
   if (solves.length === 0) {
     return {
       sessions: [],
+      rawSolves: [],
       totalSolves: 0,
       errors: errors.length > 0 ? errors : ["No valid solves found in file."],
     };
@@ -157,7 +173,15 @@ export function parseCubeTimeCsv(text: string): {
     });
   }
 
-  return { sessions, totalSolves: solves.length, errors };
+  // Build individual solve records for bulk import
+  const rawSolves: RawImportSolve[] = solves.map((s) => ({
+    time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+    penalty: (s.time == null ? "DNF" : null) as "+2" | "DNF" | null,
+    scramble: s.scramble,
+    date: s.date,
+  }));
+
+  return { sessions, rawSolves, totalSolves: solves.length, errors };
 }
 
 /**

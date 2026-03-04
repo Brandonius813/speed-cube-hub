@@ -4,7 +4,7 @@
  * Unknown formats are handled by the AI route, not here.
  */
 
-import type { ParseResult, NormalizedSolve } from "./types"
+import type { ParseResult, NormalizedSolve, RawImportSolve } from "./types"
 import { parseCsTimerCsv } from "@/lib/cstimer/parse-cstimer"
 import { parseCubeTimeCsv } from "@/lib/cubetime/parse-cubetime"
 import { parseCsv } from "@/lib/csv/parse-csv"
@@ -25,8 +25,9 @@ export type RawSession = {
 export function parseCsTimer(text: string): ParseResult & {
   _rawSessions: RawSession[]
   _totalSolves: number
+  _rawSolves: RawImportSolve[]
 } {
-  const { sessions, totalSolves, errors } = parseCsTimerCsv(text)
+  const { sessions, rawSolves, totalSolves, errors } = parseCsTimerCsv(text)
 
   const rawSessions: RawSession[] = sessions.map((s) => ({
     session_date: s.session_date,
@@ -46,6 +47,7 @@ export function parseCsTimer(text: string): ParseResult & {
     needsEventSelection: true,
     _rawSessions: rawSessions,
     _totalSolves: totalSolves,
+    _rawSolves: rawSolves,
   }
 }
 
@@ -54,8 +56,9 @@ export function parseCsTimer(text: string): ParseResult & {
 export function parseCubeTime(text: string): ParseResult & {
   _rawSessions: RawSession[]
   _totalSolves: number
+  _rawSolves: RawImportSolve[]
 } {
-  const { sessions, totalSolves, errors } = parseCubeTimeCsv(text)
+  const { sessions, rawSolves, totalSolves, errors } = parseCubeTimeCsv(text)
 
   const rawSessions: RawSession[] = sessions.map((s) => ({
     session_date: s.session_date,
@@ -75,6 +78,7 @@ export function parseCubeTime(text: string): ParseResult & {
     needsEventSelection: true,
     _rawSessions: rawSessions,
     _totalSolves: totalSolves,
+    _rawSolves: rawSolves,
   }
 }
 
@@ -104,7 +108,9 @@ const TWISTY_EVENT_MAP: Record<string, string> = {
   oh: "333oh",
 }
 
-export function parseTwistyTimer(text: string): ParseResult {
+export function parseTwistyTimer(text: string): ParseResult & {
+  _rawSolves: RawImportSolve[]
+} {
   const errors: string[] = []
   const cleaned = text.replace(/^\uFEFF/, "")
   const lines = cleaned.split(/\r?\n/).filter((l) => l.trim())
@@ -118,6 +124,7 @@ export function parseTwistyTimer(text: string): ParseResult {
       pbs: [],
       errors: ["File is empty or has no data rows."],
       needsEventSelection: false,
+      _rawSolves: [],
     }
   }
 
@@ -136,6 +143,7 @@ export function parseTwistyTimer(text: string): ParseResult {
       pbs: [],
       errors: ["Missing Time(millis) or Date(millis) columns."],
       needsEventSelection: false,
+      _rawSolves: [],
     }
   }
 
@@ -199,6 +207,14 @@ export function parseTwistyTimer(text: string): ParseResult {
     }
   }
 
+  // Build raw solve records for bulk import
+  const rawSolves: RawImportSolve[] = solves.map((s) => ({
+    time_ms: s.time_seconds != null ? Math.round(s.time_seconds * 1000) : 0,
+    penalty: (s.is_dnf ? "DNF" : s.penalty) as "+2" | "DNF" | null,
+    scramble: s.scramble ?? "",
+    date: s.date,
+  }))
+
   return {
     dataType: "solves",
     source: "Twisty Timer",
@@ -207,6 +223,7 @@ export function parseTwistyTimer(text: string): ParseResult {
     pbs: [],
     errors,
     needsEventSelection: !detectedEvent,
+    _rawSolves: rawSolves,
   }
 }
 

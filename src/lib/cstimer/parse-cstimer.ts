@@ -19,13 +19,8 @@ export type CsTimerParsedSession = {
   best_time: number | null; // null if all DNFs
 };
 
-/** Individual solve ready for bulkImportSolves */
-export type RawImportSolve = {
-  time_ms: number; // base time in ms (before penalty)
-  penalty: "+2" | "DNF" | null;
-  scramble: string; // empty string if none in export
-  date: string; // YYYY-MM-DD
-};
+import type { RawImportSolve } from "@/lib/import/types"
+export type { RawImportSolve };
 
 type ParsedSolve = {
   time: number | null; // null = bare DNF with no recorded time

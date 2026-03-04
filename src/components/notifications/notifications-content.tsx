@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bell, Heart, MessageCircle, UserPlus, Trophy, Award } from "lucide-react"
+import { Bell, Heart, MessageCircle, UserPlus, Trophy } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { formatDistanceToNow } from "date-fns"
@@ -28,8 +28,6 @@ function getNotificationIcon(type: Notification["type"]) {
       return <UserPlus className="h-4 w-4 text-green-400" />
     case "pb":
       return <Trophy className="h-4 w-4 text-yellow-400" />
-    case "badge":
-      return <Award className="h-4 w-4 text-purple-400" />
   }
 }
 
@@ -45,8 +43,6 @@ function getNotificationMessage(notification: Notification): string {
       return `${actorName} started following you`
     case "pb":
       return "You set a new personal best!"
-    case "badge":
-      return "You earned a new badge!"
   }
 }
 
@@ -62,8 +58,6 @@ function getNotificationLink(notification: Notification): string | null {
       return "/feed"
     case "pb":
       return "/practice-stats"
-    case "badge":
-      return "/profile"
     default:
       return null
   }

@@ -28,6 +28,10 @@ import {
 } from "@/lib/timer/engine"
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
+import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
+import { getPracticeTypesForEvent } from "@/lib/constants"
+import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
+import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
 import type {
   StatsSummary,
   StatsWorkerRequest,
@@ -204,6 +208,13 @@ export function TimerContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
+  const [practiceType, setPracticeType] = useState(() => {
+    try {
+      return localStorage.getItem("timer-practice-type") ?? "Solves"
+    } catch {
+      return "Solves"
+    }
+  })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try {
@@ -733,6 +744,17 @@ export function TimerContent() {
       // Stats only computed on current session solves (ungrouped)
       const currentSolves = loaded.filter((s) => !s.group)
       initStats(event, currentSolves)
+
+      // Background cross-device sync: if DB has more solves than local,
+      // pull them in. This is a one-time cost per device per event.
+      syncSolvesFromDb(event, loaded.length, solveStoreRef.current).then(
+        (synced) => {
+          if (cancelled || !synced) return
+          setSolves(synced)
+          const syncedCurrent = synced.filter((s) => !s.group)
+          initStats(event, syncedCurrent)
+        }
+      )
     })()
     return () => {
       cancelled = true
@@ -1161,6 +1183,13 @@ export function TimerContent() {
     setSelectedId(null)
   }
 
+  function changePracticeType(type: string) {
+    setPracticeType(type)
+    try {
+      localStorage.setItem("timer-practice-type", type)
+    } catch {}
+  }
+
   function changeEvent(newEvent: string) {
     if (sessionStartTime) cancelSession()
     insp.cancelInspection()
@@ -1171,6 +1200,11 @@ export function TimerContent() {
     try {
       localStorage.setItem("timer-event", newEvent)
     } catch {}
+    // Reset practice type if current one isn't available for the new event
+    const available = getPracticeTypesForEvent(newEvent)
+    if (!available.includes(practiceType)) {
+      changePracticeType("Solves")
+    }
   }
 
   function updateStatCol(idx: 0 | 1, key: string) {
@@ -1344,49 +1378,63 @@ export function TimerContent() {
           ))}
         </select>
 
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          <button
-            className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
-            onClick={() => {
-              navigator.clipboard.writeText(scramble).then(() => {
-                setScrambleCopied(true)
-                setTimeout(() => setScrambleCopied(false), 1500)
-              })
-            }}
-            title="Click to copy scramble"
-          >
-            {scramble}
-          </button>
-        </div>
+        <PracticeModeSelector
+          eventId={event}
+          selectedType={practiceType}
+          onTypeChange={changePracticeType}
+        />
 
-        <span
-          className={cn(
-            "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
-            scrambleCopied
-              ? "opacity-100 translate-y-0 text-green-400"
-              : "opacity-0 -translate-y-1 text-green-400"
-          )}
-        >
-          {scrambleError ?? "Scramble copied!"}
-        </span>
+        {practiceType !== "Comp Sim" && (
+          <div className="flex-1 min-w-0 flex items-center justify-center">
+            <button
+              className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
+              onClick={() => {
+                navigator.clipboard.writeText(scramble).then(() => {
+                  setScrambleCopied(true)
+                  setTimeout(() => setScrambleCopied(false), 1500)
+                })
+              }}
+              title="Click to copy scramble"
+            >
+              {scramble}
+            </button>
+          </div>
+        )}
+
+        {practiceType !== "Comp Sim" && (
+          <span
+            className={cn(
+              "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
+              scrambleCopied
+                ? "opacity-100 translate-y-0 text-green-400"
+                : "opacity-0 -translate-y-1 text-green-400"
+            )}
+          >
+            {scrambleError ?? "Scramble copied!"}
+          </span>
+        )}
 
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            className={scrambleNavBtn}
-            onClick={prevScramble}
-            disabled={!scrambleCanGoPrev || timingActive}
-            title="Go back to previous scramble"
-          >
-            ← Prev
-          </button>
-          <button
-            className={scrambleNavBtn}
-            onClick={nextScramble}
-            disabled={timingActive}
-            title="Skip to next scramble"
-          >
-            Next →
-          </button>
+          {practiceType !== "Comp Sim" && (
+            <>
+              <button
+                className={scrambleNavBtn}
+                onClick={prevScramble}
+                disabled={!scrambleCanGoPrev || timingActive}
+                title="Go back to previous scramble"
+              >
+                ← Prev
+              </button>
+              <button
+                className={scrambleNavBtn}
+                onClick={nextScramble}
+                disabled={timingActive}
+                title="Skip to next scramble"
+              >
+                Next →
+              </button>
+            </>
+          )}
           <div className="relative" ref={settingsRef}>
             <button
               className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
@@ -1482,121 +1530,129 @@ export function TimerContent() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
-        <SolveListPanel
-          rows={solveRows}
-          totalCount={solves.length}
-          rangeStart={solveRange.start}
-          rangeEnd={solveRange.end}
-          scrollOffset={solveRange.scrollOffset}
-          frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
-          stats={stats}
-          statCols={statCols}
-          selectedId={selectedId}
-          selectedSolve={selectedSolve}
-          savedSolveCount={savedSolveCount}
-          groupBoundaries={groupBoundaries}
-          currentSolveCount={currentSolveCount}
-          onSetSelectedId={setSelectedId}
-          onSetPenalty={setPenalty}
-          onDeleteSolve={deleteSolve}
-          onUpdateStatCol={updateStatCol}
-          onRangeChange={handleRangeChange}
+      {practiceType === "Comp Sim" ? (
+        <CompSimOverlay
+          event={event}
+          sessionStartMs={sessionStartTime}
+          onExit={() => changePracticeType("Solves")}
         />
+      ) : (
+        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+          <SolveListPanel
+            rows={solveRows}
+            totalCount={solves.length}
+            rangeStart={solveRange.start}
+            rangeEnd={solveRange.end}
+            scrollOffset={solveRange.scrollOffset}
+            frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
+            stats={stats}
+            statCols={statCols}
+            selectedId={selectedId}
+            selectedSolve={selectedSolve}
+            savedSolveCount={savedSolveCount}
+            groupBoundaries={groupBoundaries}
+            currentSolveCount={currentSolveCount}
+            onSetSelectedId={setSelectedId}
+            onSetPenalty={setPenalty}
+            onDeleteSolve={deleteSolve}
+            onUpdateStatCol={updateStatCol}
+            onRangeChange={handleRangeChange}
+          />
 
-        <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-          {typing ? (
-            <>
-              <div
-                className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
-                onPointerDown={sp}
-              >
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0000"
-                  value={typeVal}
-                  autoFocus
-                  onChange={(eventInput) => setTypeVal(eventInput.target.value)}
-                  onKeyDown={(eventInput) => {
-                    if (eventInput.key !== "Enter") return
-                    if (!parsedTypeTime) return
-                    addSolve(parsedTypeTime, null)
-                    setTypeVal("")
-                  }}
-                  className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
-                />
-              </div>
-              <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
-                {typeVal
-                  ? parsedTypeTime !== null
-                    ? `= ${fmt(parsedTypeTime)}`
-                    : "invalid"
-                  : ""}
-              </p>
-            </>
-          ) : (
-            <TimerReadout
-              className={cn(
-                "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
-                timeColor
-              )}
-              phase={phase}
-              startMs={startRef.current}
-              last={last}
-              inInspHold={inInspHold}
-              inspSecondsLeft={insp.secondsLeft}
-              btReset={engineSnapshot.btReset}
-              onStall={(deltaMs) => {
-                emitTimerTelemetry("timer_stall_detected", { deltaMs })
-                if (TIMER_V2_ENGINE_ENABLED) {
-                  dispatchEngine({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
-                }
-              }}
-            />
-          )}
-
-          {phase === "stopped" && last && (
-            <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
-              <button
+          <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+            {typing ? (
+              <>
+                <div
+                  className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
+                  onPointerDown={sp}
+                >
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0000"
+                    value={typeVal}
+                    autoFocus
+                    onChange={(eventInput) => setTypeVal(eventInput.target.value)}
+                    onKeyDown={(eventInput) => {
+                      if (eventInput.key !== "Enter") return
+                      if (!parsedTypeTime) return
+                      addSolve(parsedTypeTime, null)
+                      setTypeVal("")
+                    }}
+                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
+                  />
+                </div>
+                <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
+                  {typeVal
+                    ? parsedTypeTime !== null
+                      ? `= ${fmt(parsedTypeTime)}`
+                      : "invalid"
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <TimerReadout
                 className={cn(
-                  "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
-                  last.penalty === "+2"
-                    ? "bg-yellow-500 text-black border-yellow-500"
-                    : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
+                  "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
+                  timeColor
                 )}
-                onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
-              >
-                +2
-              </button>
-              <button
-                className={cn(
-                  "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
-                  last.penalty === "DNF"
-                    ? "bg-red-500 text-white border-red-500"
-                    : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400"
-                )}
-                onClick={() =>
-                  setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")
-                }
-              >
-                DNF
-              </button>
-              <button
-                className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-                onClick={() => {
-                  deleteSolve(last.id)
-                  setIdle()
+                phase={phase}
+                startMs={startRef.current}
+                last={last}
+                inInspHold={inInspHold}
+                inspSecondsLeft={insp.secondsLeft}
+                btReset={engineSnapshot.btReset}
+                onStall={(deltaMs) => {
+                  emitTimerTelemetry("timer_stall_detected", { deltaMs })
+                  if (TIMER_V2_ENGINE_ENABLED) {
+                    dispatchEngine({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
+                  }
                 }}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+              />
+            )}
 
-        <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
-      </div>
+            {phase === "stopped" && last && (
+              <div className="flex gap-3 py-3 pointer-events-auto" onPointerDown={sp}>
+                <button
+                  className={cn(
+                    "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
+                    last.penalty === "+2"
+                      ? "bg-yellow-500 text-black border-yellow-500"
+                      : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
+                  )}
+                  onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
+                >
+                  +2
+                </button>
+                <button
+                  className={cn(
+                    "text-[13px] font-sans font-medium px-3 py-1.5 rounded border transition-colors",
+                    last.penalty === "DNF"
+                      ? "bg-red-500 text-white border-red-500"
+                      : "border-border text-muted-foreground hover:border-red-500 hover:text-red-400"
+                  )}
+                  onClick={() =>
+                    setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")
+                  }
+                >
+                  DNF
+                </button>
+                <button
+                  className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                  onClick={() => {
+                    deleteSolve(last.id)
+                    setIdle()
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
+        </div>
+      )}
 
       <div
         className="fixed bottom-4 right-4 z-40 w-48 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
@@ -1660,6 +1716,7 @@ export function TimerContent() {
           solves={solves.filter((s) => !s.group)}
           event={event}
           eventName={EVENTS.find((entry) => entry.id === event)?.name ?? event}
+          practiceType={practiceType}
           durationMinutes={
             (Date.now() - sessionStartTime - sessionPausedMsRef.current) / 1000 / 60
           }

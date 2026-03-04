@@ -25,6 +25,7 @@ interface Props {
   solves: TimerSolve[]
   event: string
   eventName: string
+  practiceType: string
   durationMinutes: number
   sessionStartMs: number
   onClose: () => void
@@ -35,6 +36,7 @@ export function EndSessionModal({
   solves,
   event,
   eventName,
+  practiceType,
   durationMinutes,
   sessionStartMs,
   onClose,
@@ -52,7 +54,11 @@ export function EndSessionModal({
   const bestMs = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
   const numDnf = solves.length - nonDnf.length
 
-  const [title, setTitle] = useState(`${eventName} Solves`)
+  const [title, setTitle] = useState(
+    practiceType === "Solves"
+      ? `${eventName} Solves`
+      : `${eventName} ${practiceType}`
+  )
   const [notes, setNotes] = useState("")
   const [shareToFeed, setShareToFeed] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +75,7 @@ export function EndSessionModal({
           scramble: s.scramble,
         })),
         duration_minutes: durationMinutes,
-        practice_type: "Solves",
+        practice_type: practiceType,
         title: title.trim() || null,
         notes: notes.trim() || null,
         feed_visible: shareToFeed,
@@ -79,7 +85,7 @@ export function EndSessionModal({
         setError(result.error)
         return
       }
-      onSaved(title.trim() || `${eventName} Solves`)
+      onSaved(title.trim() || (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`))
     })
   }
 

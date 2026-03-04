@@ -11,7 +11,7 @@ import { TabStats } from "@/components/profile/tab-stats"
 import { TabCubes } from "@/components/profile/tab-cubes"
 import { TabOfficial } from "@/components/profile/tab-official"
 import { FollowButton } from "@/components/profile/follow-button"
-import type { Profile, Session, UserBadge, Badge, PBRecord } from "@/lib/types"
+import type { Profile, Session, PBRecord } from "@/lib/types"
 import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
 
 export function PublicProfileContent({
@@ -22,8 +22,6 @@ export function PublicProfileContent({
   isFollowing,
   followerCount,
   followingCount,
-  userBadges = [],
-  allBadges = [],
   isAdmin = false,
   pbs = [],
   sorKinchStats,
@@ -35,8 +33,6 @@ export function PublicProfileContent({
   isFollowing: boolean
   followerCount: number
   followingCount: number
-  userBadges?: UserBadge[]
-  allBadges?: Badge[]
   isAdmin?: boolean
   pbs?: PBRecord[]
   sorKinchStats?: UserSorKinchStats | null
@@ -71,9 +67,6 @@ export function PublicProfileContent({
               profile={profile}
               sessions={sessions}
               isOwner={isOwner}
-              isAdmin={isAdmin}
-              userBadges={userBadges}
-              allBadges={allBadges}
               followerCount={followerCount}
               followingCount={followingCount}
               followButton={followButton}

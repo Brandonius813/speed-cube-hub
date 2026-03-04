@@ -116,10 +116,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [x] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join, progress calculated from real sessions)
-- [x] Badges & Credentials — a dedicated section on every profile showing earned badges. Three categories:
-  - **Competition credentials** (admin-verified): World Record Holder, Continental Record Holder, National Record Holder, World Champion, Continental Champion, National Champion, World Finalist, National Finalist. Each badge is dated by year. Current record holders get a prominent gold/highlighted badge; former holders get a visually distinct muted version.
-  - **Sponsor badge** (self-reported): If a user is sponsored, a visually impressive badge displays their sponsor name prominently. No admin approval needed.
-  - **Practice milestones** (auto-awarded): "First 1,000 Solves", "7-Day Streak", "30-Day Streak", "Practiced All 17 Events", "100 Hours Practiced", etc. Awarded automatically when thresholds are met. Future: badges for algorithm sets mastered, practice hour milestones, and more.
+- [ ] Badges & Credentials — REMOVED (v1 was stripped out; to be redesigned)
 
 ### Social Wave 4 — Community & Discovery
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
@@ -155,9 +152,9 @@ Rework the profile page from a flat vertical stack into a 5-tab layout with a pe
 - [x] 5 tab content components:
   - **PBs** — read-only PB grid for visitors, full CRUD for owner, PB progression chart
   - **Stats** — practice heatmap, streak, charts, session log
-  - **Overview** (default) — profile header (mobile), stat cards, badges, recent activity
+  - **Overview** (default) — profile header (mobile), stat cards, practice streak, recent activity
   - **Cubes** — main cubes grid (existing component)
-  - **Official** — WCA results (lazy-loaded), allrounding, accomplishments, upcoming competitions
+  - **Official** — WCA results (lazy-loaded), allrounding, upcoming competitions
 - [x] Rewrite profile content components with grid + tabs layout
 - [ ] Activate unused components: `UpcomingCompetitions`, `PBProgressChart` (on profile)
 

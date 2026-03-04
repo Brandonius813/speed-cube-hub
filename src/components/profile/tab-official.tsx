@@ -5,9 +5,8 @@ import { WcaResults } from "@/components/profile/wca-results"
 import { WcaResultsSkeleton } from "@/components/profile/wca-results-skeleton"
 import { WcaLink } from "@/components/profile/wca-link"
 import { AllroundingResults } from "@/components/profile/allrounding-results"
-import { Accomplishments } from "@/components/profile/accomplishments"
 import { getWcaResults } from "@/lib/actions/wca"
-import type { Profile, ProfileAccomplishment } from "@/lib/types"
+import type { Profile } from "@/lib/types"
 import type { WcaPersonResult } from "@/lib/actions/wca"
 import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
 
@@ -74,11 +73,6 @@ export function TabOfficial({
       )}
 
       {sorKinchStats && <AllroundingResults stats={sorKinchStats} />}
-
-      <Accomplishments
-        accomplishments={profile.accomplishments ?? []}
-        isOwner={isOwner}
-      />
     </div>
   )
 }

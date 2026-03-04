@@ -4,7 +4,6 @@ import { PublicProfileContent } from "@/components/profile/public-profile-conten
 import { getProfileByHandle } from "@/lib/actions/profiles"
 import { getSessionsByUserId } from "@/lib/actions/sessions"
 import { getFollowCounts, isFollowing } from "@/lib/actions/follows"
-import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
 import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
 import { getPBsByUserId } from "@/lib/actions/personal-bests"
 import { createClient } from "@/lib/supabase/server"
@@ -32,13 +31,11 @@ export default async function PublicProfilePage({
   const isOwner = user?.id === profile.id
 
   // Fetch remaining data in parallel (WCA is now fetched client-side)
-  const [sessionsResult, followCounts, viewerIsFollowing, badgesResult, badgeDefsResult, pbsResult, sorKinchStats] =
+  const [sessionsResult, followCounts, viewerIsFollowing, pbsResult, sorKinchStats] =
     await Promise.all([
       getSessionsByUserId(profile.id),
       getFollowCounts(profile.id),
       user && !isOwner ? isFollowing(profile.id) : Promise.resolve(false),
-      getUserBadges(profile.id),
-      isOwner ? getBadgeDefinitions() : Promise.resolve({ data: [] }),
       getPBsByUserId(profile.id),
       profile.wca_id
         ? getUserSorKinchStats(profile.wca_id)
@@ -56,8 +53,6 @@ export default async function PublicProfilePage({
           isFollowing={viewerIsFollowing}
           followerCount={followCounts.followers}
           followingCount={followCounts.following}
-          userBadges={badgesResult.data}
-          allBadges={badgeDefsResult.data}
           pbs={pbsResult.data}
           isAdmin={user?.id === process.env.ADMIN_USER_ID}
           sorKinchStats={sorKinchStats}

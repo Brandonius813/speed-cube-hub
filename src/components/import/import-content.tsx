@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ImportDropZone } from "@/components/import/import-drop-zone"
@@ -22,6 +22,7 @@ import type {
   ParseResult,
   SessionSummary,
   NormalizedPB,
+  RawImportSolve,
 } from "@/lib/import/types"
 import {
   WCA_EVENTS,
@@ -29,6 +30,9 @@ import {
 } from "@/lib/constants"
 import { createSessionsBulk } from "@/lib/actions/sessions"
 import { bulkImportPBs } from "@/lib/actions/personal-bests"
+import { bulkImportSolves } from "@/lib/actions/timer"
+import { getOrCreateDefaultSession, updateSolveSessionActiveFrom } from "@/lib/actions/solve-sessions"
+import { createSolveStore } from "@/lib/timer/solve-store"
 
 type State =
   | "idle"
@@ -43,11 +47,13 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
   const [state, setState] = useState<State>("idle")
   const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState("")
+  const [importProgress, setImportProgress] = useState("")
 
   // Data in flight
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [rawSessions, setRawSessions] = useState<RawSession[]>([])
   const [rawTotalSolves, setRawTotalSolves] = useState(0)
+  const [rawSolves, setRawSolves] = useState<RawImportSolve[]>([])
 
   // Event selection
   const [selectedEvent, setSelectedEvent] = useState("333")
@@ -61,6 +67,9 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
   // Import result
   const [importedCount, setImportedCount] = useState(0)
 
+  // Solve store for writing to IndexedDB
+  const solveStoreRef = useRef(createSolveStore())
+
   const reset = useCallback(() => {
     setState("idle")
     setError(null)
@@ -68,10 +77,12 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
     setParseResult(null)
     setRawSessions([])
     setRawTotalSolves(0)
+    setRawSolves([])
     setSessions([])
     setPbs([])
     setTotalSolves(0)
     setImportedCount(0)
+    setImportProgress("")
   }, [])
 
   // -- Main entry point --
@@ -94,6 +105,7 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
           setParseResult(result)
           setRawSessions(result._rawSessions)
           setRawTotalSolves(result._totalSolves)
+          setRawSolves(result._rawSolves)
           setSource("csTimer")
           setState("event_select")
           return
@@ -109,6 +121,7 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
           setParseResult(result)
           setRawSessions(result._rawSessions)
           setRawTotalSolves(result._totalSolves)
+          setRawSolves(result._rawSolves)
           setSource("CubeTime")
           setState("event_select")
           return
@@ -122,6 +135,7 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
             return
           }
           setParseResult(result)
+          setRawSolves(result._rawSolves)
           setSource("Twisty Timer")
           if (result.needsEventSelection) {
             setState("event_select")
@@ -138,7 +152,7 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
             setState("idle")
             return
           }
-          // Generic CSV rows already have event/date/duration
+          // Generic CSV rows already have event/date/duration — no raw solves
           const csvSessions = result._csvRows.map((row) => ({
             session_date: row.date ?? "",
             event: row.event ?? "333",
@@ -255,21 +269,79 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
   async function handleImport() {
     setState("importing")
     setError(null)
+    setImportProgress("")
 
     try {
       let count = 0
+      const event = sessions[0]?.event ?? selectedEvent
 
+      // Step 1: Save individual solves to DB + IndexedDB (if we have raw solves)
+      if (rawSolves.length > 0) {
+        setImportProgress("Preparing solve session...")
+
+        // Get or create a solve_session for this event
+        const { data: solveSession, error: ssError } = await getOrCreateDefaultSession(event)
+        if (ssError || !solveSession) {
+          setError(ssError ?? "Failed to create solve session.")
+          setState("previewing")
+          return
+        }
+
+        // Save individual solves to the database
+        setImportProgress(`Saving ${rawSolves.length.toLocaleString()} solves to your account...`)
+        const { imported, error: importError } = await bulkImportSolves(
+          solveSession.id,
+          event,
+          rawSolves,
+          { skipSessionEntry: true }
+        )
+        if (importError) {
+          setError(importError)
+          setState("previewing")
+          return
+        }
+
+        // Update active_from so imported solves are visible
+        const earliestDate = rawSolves.reduce(
+          (min, s) => (s.date < min ? s.date : min),
+          rawSolves[0].date
+        )
+        await updateSolveSessionActiveFrom(
+          solveSession.id,
+          `${earliestDate}T00:00:00.000Z`
+        )
+
+        // Write to IndexedDB for instant timer access
+        setImportProgress("Writing to local storage for instant timer access...")
+        const timerSolves = rawSolves.map((s) => ({
+          id: crypto.randomUUID(),
+          time_ms: s.time_ms,
+          penalty: s.penalty,
+          scramble: s.scramble,
+        }))
+        await solveStoreRef.current.importSolves(event, timerSolves)
+
+        count += imported
+      }
+
+      // Step 2: Save per-day session summaries for feed/stats
       if (sessions.length > 0) {
+        setImportProgress(`Saving ${sessions.length} session summaries...`)
         const result = await createSessionsBulk(sessions)
         if (result.error) {
           setError(result.error)
           setState("previewing")
           return
         }
-        count += result.inserted ?? sessions.length
+        // Only count sessions if we didn't already count raw solves
+        if (rawSolves.length === 0) {
+          count += result.inserted ?? sessions.length
+        }
       }
 
+      // Step 3: Import PBs
       if (pbs.length > 0) {
+        setImportProgress("Importing personal bests...")
         const result = await bulkImportPBs(pbs)
         if (result.error) {
           setError(result.error)
@@ -279,7 +351,7 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
         count += result.imported ?? pbs.length
       }
 
-      setImportedCount(count)
+      setImportedCount(rawSolves.length > 0 ? rawSolves.length : count)
       setState("complete")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
@@ -397,25 +469,40 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
 
           {pbs.length > 0 && <PBPreview pbs={pbs} />}
 
+          {rawSolves.length > 0 && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary">
+              {rawSolves.length.toLocaleString()} individual solves will be
+              saved to your timer history.
+            </div>
+          )}
+
           <div className="flex gap-3">
             <Button variant="outline" onClick={reset}>
               <ArrowLeft className="mr-1 h-4 w-4" />
               Start Over
             </Button>
             <Button onClick={handleImport} className="flex-1">
-              Import {sessions.length > 0 ? `${sessions.length} Session${sessions.length !== 1 ? "s" : ""}` : ""}
-              {sessions.length > 0 && pbs.length > 0 ? " + " : ""}
-              {pbs.length > 0 ? `${pbs.length} PB${pbs.length !== 1 ? "s" : ""}` : ""}
+              Import{" "}
+              {rawSolves.length > 0
+                ? `${rawSolves.length.toLocaleString()} Solves`
+                : sessions.length > 0
+                  ? `${sessions.length} Session${sessions.length !== 1 ? "s" : ""}`
+                  : ""}
+              {pbs.length > 0
+                ? ` + ${pbs.length} PB${pbs.length !== 1 ? "s" : ""}`
+                : ""}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Importing: spinner */}
+      {/* Importing: spinner with progress */}
       {state === "importing" && (
         <div className="flex flex-col items-center gap-3 py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Importing your data...</p>
+          <p className="text-sm text-muted-foreground">
+            {importProgress || "Importing your data..."}
+          </p>
         </div>
       )}
 
@@ -428,7 +515,11 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
               Import Complete!
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Successfully imported {importedCount} record{importedCount !== 1 ? "s" : ""}.
+              Successfully imported{" "}
+              {importedCount.toLocaleString()} solve
+              {importedCount !== 1 ? "s" : ""}.
+              {rawSolves.length > 0 &&
+                " Open the timer to see your full solve history."}
             </p>
           </div>
           <div className="flex gap-3">
@@ -436,7 +527,11 @@ export function ImportContent({ hideHeader }: { hideHeader?: boolean } = {}) {
               Import More
             </Button>
             <Button asChild>
-              <a href="/profile?tab=stats">View Stats</a>
+              <a
+                href={rawSolves.length > 0 ? "/timer" : "/profile?tab=stats"}
+              >
+                {rawSolves.length > 0 ? "Open Timer" : "View Stats"}
+              </a>
             </Button>
           </div>
         </div>

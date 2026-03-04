@@ -274,7 +274,8 @@ export async function deleteSolves(
 export async function getSolvesBySession(
   solveSessionId: string,
   activeFrom: string,
-  limit = 5000
+  limit = 5000,
+  offset = 0
 ): Promise<{ solves: Solve[]; error?: string }> {
   const supabase = await createClient()
 
@@ -293,7 +294,7 @@ export async function getSolvesBySession(
     .eq("solve_session_id", solveSessionId)
     .gte("solved_at", activeFrom)
     .order("solved_at", { ascending: true })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
 
   if (error) {
     return { solves: [], error: error.message }
@@ -334,11 +335,14 @@ export async function getSolvesByEvent(
 /**
  * Bulk import solves into a solve session.
  * Creates a completed timer_session, inserts all solves, and optionally
- * creates a sessions entry for the feed/stats (if the solve session is tracked).
+ * creates a sessions entry for the feed/stats (if the solve session is tracked
+ * and skipSessionEntry is not true).
  *
  * @param solveSessionId - Target solve session to import into
  * @param event - WCA event ID
  * @param solves - Array of { time_ms, penalty, scramble, date }
+ * @param options.skipSessionEntry - If true, skip creating the sessions table entry
+ *   (caller handles session entries separately, e.g., per-day via createSessionsBulk)
  * @returns Count of imported solves or error
  */
 export async function bulkImportSolves(
@@ -349,13 +353,11 @@ export async function bulkImportSolves(
     penalty: "+2" | "DNF" | null
     scramble: string | null
     date: string // YYYY-MM-DD
-  }>
+  }>,
+  options?: { skipSessionEntry?: boolean }
 ): Promise<{ imported: number; error?: string }> {
   if (solves.length === 0) {
     return { imported: 0, error: "No solves to import." }
-  }
-  if (solves.length > 10000) {
-    return { imported: 0, error: "Maximum 10,000 solves per import." }
   }
 
   const supabase = await createClient()
@@ -399,18 +401,28 @@ export async function bulkImportSolves(
     return { imported: 0, error: tsError?.message ?? "Failed to create timer session." }
   }
 
-  // Build solve rows
-  const solveRows = solves.map((s, i) => ({
-    timer_session_id: timerSession.id,
-    user_id: user.id,
-    solve_number: i + 1,
-    time_ms: s.time_ms,
-    penalty: s.penalty,
-    scramble: s.scramble ?? "",
-    event,
-    solve_session_id: solveSessionId,
-    solved_at: `${s.date}T12:00:00.000Z`, // Noon UTC as placeholder timestamp
-  }))
+  // Assign incrementing timestamps within each day to preserve CSV order.
+  // First solve of each day gets T00:00:01, second T00:00:02, etc.
+  const dayCounts = new Map<string, number>()
+  const solveRows = solves.map((s, i) => {
+    const dayCount = (dayCounts.get(s.date) ?? 0) + 1
+    dayCounts.set(s.date, dayCount)
+    const seconds = String(dayCount % 60).padStart(2, "0")
+    const minutes = String(Math.floor(dayCount / 60) % 60).padStart(2, "0")
+    const hours = String(Math.floor(dayCount / 3600) % 24).padStart(2, "0")
+
+    return {
+      timer_session_id: timerSession.id,
+      user_id: user.id,
+      solve_number: i + 1,
+      time_ms: s.time_ms,
+      penalty: s.penalty,
+      scramble: s.scramble ?? "",
+      event,
+      solve_session_id: solveSessionId,
+      solved_at: `${s.date}T${hours}:${minutes}:${seconds}.000Z`,
+    }
+  })
 
   // Insert in batches of 500
   let totalInserted = 0
@@ -429,8 +441,8 @@ export async function bulkImportSolves(
     totalInserted += batch.length
   }
 
-  // Create a sessions entry for feed/stats if the solve session is tracked
-  if (solveSession.is_tracked) {
+  // Create a sessions entry for feed/stats unless caller handles it separately
+  if (!options?.skipSessionEntry && solveSession.is_tracked) {
     const nonDnf = solves.filter((s) => s.penalty !== "DNF")
     const effectiveTimes = nonDnf.map((s) =>
       s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
@@ -456,8 +468,7 @@ export async function bulkImportSolves(
       }
     }
 
-    // Estimate duration: use avg solve time × solve count, in minutes
-    const avgSolveMs = avgMs ?? 30000 // default 30s if all DNF
+    const avgSolveMs = avgMs ?? 30000
     const durationMinutes = Math.max(1, Math.round((avgSolveMs * solves.length) / 60000))
 
     await supabase.from("sessions").insert({
@@ -472,7 +483,7 @@ export async function bulkImportSolves(
       best_time: bestMs ? Math.round(bestMs / 10) / 100 : null,
       timer_session_id: timerSession.id,
       solve_session_id: solveSessionId,
-      feed_visible: false, // Don't spam the feed with imports
+      feed_visible: false,
       title: `Imported ${solves.length} solves`,
     })
   }
@@ -633,4 +644,36 @@ export async function finalizeTimerSession(
     .eq("id", timerSessionId)
 
   return {}
+}
+
+/**
+ * Lightweight count of solves for a solve session.
+ * Used by the timer to check if a cross-device sync is needed.
+ */
+export async function getSolveCountBySession(
+  solveSessionId: string,
+  activeFrom: string
+): Promise<{ count: number; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { count: 0, error: "Not authenticated" }
+  }
+
+  const { count, error } = await supabase
+    .from("solves")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("solve_session_id", solveSessionId)
+    .gte("solved_at", activeFrom)
+
+  if (error) {
+    return { count: 0, error: error.message }
+  }
+
+  return { count: count ?? 0 }
 }

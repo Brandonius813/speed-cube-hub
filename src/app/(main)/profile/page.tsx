@@ -3,7 +3,6 @@ import { ProfileContent } from "@/components/profile/profile-content"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessions } from "@/lib/actions/sessions"
 import { getFollowCounts } from "@/lib/actions/follows"
-import { getUserBadges, getBadgeDefinitions } from "@/lib/actions/badges"
 import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
 
@@ -23,12 +22,10 @@ export default async function ProfilePage() {
     )
   }
 
-  // Fetch follow counts, badges, badge definitions, PBs, and SOR/Kinch in parallel
-  const [followCounts, badgesResult, badgeDefsResult, pbsResult, sorKinchStats] =
+  // Fetch follow counts, PBs, and SOR/Kinch in parallel
+  const [followCounts, pbsResult, sorKinchStats] =
     await Promise.all([
       getFollowCounts(profileResult.profile.id),
-      getUserBadges(profileResult.profile.id),
-      getBadgeDefinitions(),
       getCurrentPBs(),
       profileResult.profile.wca_id
         ? getUserSorKinchStats(profileResult.profile.wca_id)
@@ -43,8 +40,6 @@ export default async function ProfilePage() {
           sessions={sessionsResult.data}
           followerCount={followCounts.followers}
           followingCount={followCounts.following}
-          userBadges={badgesResult.data}
-          allBadges={badgeDefsResult.data}
           pbs={pbsResult.data}
           sorKinchStats={sorKinchStats}
         />

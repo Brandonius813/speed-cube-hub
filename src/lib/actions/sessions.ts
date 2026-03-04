@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { checkAndAwardMilestones } from "@/lib/helpers/check-milestones";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
@@ -88,11 +87,6 @@ export async function createSession(data: {
   if (error) {
     return { error: error.message };
   }
-
-  // Check and auto-award milestone badges (runs in background, doesn't block response)
-  checkAndAwardMilestones(user.id).catch(() => {
-    // Silently ignore errors — milestone check is not critical
-  });
 
   return {};
 }

@@ -11,7 +11,7 @@ import { TabPBs } from "@/components/profile/tab-pbs"
 import { TabStats } from "@/components/profile/tab-stats"
 import { TabCubes } from "@/components/profile/tab-cubes"
 import { TabOfficial } from "@/components/profile/tab-official"
-import type { Profile, Session, UserBadge, Badge, PBRecord } from "@/lib/types"
+import type { Profile, Session, PBRecord } from "@/lib/types"
 import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
 
 const WCA_ERROR_MESSAGES: Record<string, string> = {
@@ -28,8 +28,6 @@ export function ProfileContent({
   sessions,
   followerCount = 0,
   followingCount = 0,
-  userBadges = [],
-  allBadges = [],
   pbs = [],
   sorKinchStats,
 }: {
@@ -37,8 +35,6 @@ export function ProfileContent({
   sessions: Session[]
   followerCount?: number
   followingCount?: number
-  userBadges?: UserBadge[]
-  allBadges?: Badge[]
   pbs?: PBRecord[]
   sorKinchStats?: UserSorKinchStats | null
 }) {
@@ -103,8 +99,6 @@ export function ProfileContent({
                 profile={profile}
                 sessions={sessions}
                 isOwner
-                userBadges={userBadges}
-                allBadges={allBadges}
                 followerCount={followerCount}
                 followingCount={followingCount}
               />
