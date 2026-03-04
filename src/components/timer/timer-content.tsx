@@ -120,6 +120,42 @@ function needsHistoricGroupBackfill(solves: Solve[]): boolean {
   return false
 }
 
+function backfillGroupsFromMetadata(
+  solves: Solve[],
+  groups: SessionGroupMeta[]
+): { solves: Solve[]; changed: boolean } {
+  if (solves.length === 0 || groups.length === 0) {
+    return { solves, changed: false }
+  }
+  if (solves.some((solve) => !!solve.group)) {
+    return { solves, changed: false }
+  }
+
+  const sortedGroups = groups
+    .filter((group) => Number.isFinite(group.solveCount) && group.solveCount > 0)
+    .sort((a, b) => a.savedAt - b.savedAt)
+
+  if (sortedGroups.length === 0) {
+    return { solves, changed: false }
+  }
+
+  const patched = [...solves]
+  let changed = false
+  let cursor = 0
+
+  for (const group of sortedGroups) {
+    const count = Math.max(0, Math.floor(group.solveCount))
+    for (let i = 0; i < count && cursor < patched.length; i++, cursor++) {
+      if (patched[cursor].group === group.id) continue
+      patched[cursor] = { ...patched[cursor], group: group.id }
+      changed = true
+    }
+    if (cursor >= patched.length) break
+  }
+
+  return { solves: patched, changed }
+}
+
 function fmt(ms: number, dec = 2): string {
   const s = ms / 1000
   if (s < 60) return s.toFixed(dec)
@@ -748,10 +784,21 @@ export function TimerContent() {
 
   useEffect(() => {
     let cancelled = false
-    setSessionGroups(loadSessionGroups(event))
+    const groups = loadSessionGroups(event)
+    setSessionGroups(groups)
     ;(async () => {
       await migrateLegacySolves(event)
-      const loaded = await solveStoreRef.current.loadSession(event)
+      const loadedRaw = await solveStoreRef.current.loadSession(event)
+      let loaded = loadedRaw
+
+      const metadataBackfill = backfillGroupsFromMetadata(loadedRaw, groups)
+      if (metadataBackfill.changed) {
+        loaded = metadataBackfill.solves
+        void solveStoreRef.current
+          .replaceSession(event, loaded)
+          .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_backfill" }))
+      }
+
       if (cancelled) return
       setSolves(loaded)
       setSelectedId(null)
