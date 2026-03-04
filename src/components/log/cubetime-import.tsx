@@ -137,8 +137,10 @@ export function CubeTimeImport() {
         {state === "idle" && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Export your solves from CubeTime (Settings &rarr; Export &rarr;
-              Export as CSV) and upload the file here.
+              In CubeTime, go to Sessions &rarr; Export (top-left) &rarr;
+              select one session &rarr; Continue &rarr; CSV &rarr; Confirm
+              Export. Export one session at a time so Speed Cube Hub maps it
+              correctly.
             </p>
 
             {/* Event picker */}

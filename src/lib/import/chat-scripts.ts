@@ -12,7 +12,7 @@ export const TIMER_INSTRUCTIONS: Record<string, { intro: string; steps: string }
   },
   cubetime: {
     intro: "CubeTime is fully supported!",
-    steps: `Here's how to export your data:\n\n1. Open **CubeTime** on your iPhone or iPad\n2. Tap the **gear icon** (Settings)\n3. Scroll down and tap **Export Solves**\n4. Choose **Save to Files** or share it to yourself\n5. The file will be a **.csv**\n\nUpload that file below.`,
+    steps: `Here's how to export your data:\n\n1. Open **CubeTime** on your iPhone or iPad\n2. Go to the **Sessions** menu\n3. Tap the **Export** button in the top-left\n4. Select **one session** to export\n5. CubeTime allows multi-session export, but export **one session at a time** so Speed Cube Hub maps it correctly\n6. Tap **Continue**\n7. Choose **CSV** (not ODF or JSON), then tap **Confirm Export**\n8. Save or share that file\n\nUpload that CSV file below. Repeat for each session you want to import.`,
   },
   twistytimer: {
     intro: "Twisty Timer is fully supported!",
