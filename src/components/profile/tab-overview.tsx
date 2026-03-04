@@ -57,7 +57,7 @@ export function TabOverview({
         isAdmin={isAdmin}
       />
 
-      <RecentActivity sessions={sessions.slice(0, 10)} />
+      <RecentActivity sessions={sessions.slice(0, 10)} isOwner={isOwner} />
     </div>
   )
 }
