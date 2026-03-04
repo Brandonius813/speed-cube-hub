@@ -17,11 +17,6 @@ export type ProfileLink = {
   label: string;
 };
 
-export type ProfileAccomplishment = {
-  title: string;
-  date: string | null;
-};
-
 export type Profile = {
   id: string;
   display_name: string;
@@ -35,7 +30,7 @@ export type Profile = {
   cubes: ProfileCube[];
   cube_history: CubeHistoryEntry[];
   links: ProfileLink[];
-  accomplishments: ProfileAccomplishment[];
+  accomplishments: { title: string; date: string | null }[];
   country_id: string | null;
   main_event: string | null;
   main_events: string[];
@@ -123,34 +118,10 @@ export type WrappedStats = {
   topEvents: { event: string; solves: number; hours: number }[];
 };
 
-export type Badge = {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  category: "competition" | "sponsor" | "milestone";
-  tier: "gold" | "silver" | "bronze" | "standard";
-  criteria_type: string | null;
-  criteria_value: number | null;
-  verification: "auto" | "self" | "admin";
-};
-
-export type UserBadge = {
-  id: string;
-  user_id: string;
-  badge_id: string;
-  year: number | null;
-  detail: string | null;
-  is_current: boolean;
-  verified: boolean;
-  earned_at: string;
-  badge: Badge;
-};
-
 export type Notification = {
   id: string;
   user_id: string;
-  type: "like" | "comment" | "follow" | "pb" | "badge";
+  type: "like" | "comment" | "follow" | "pb";
   actor_id: string | null;
   reference_id: string | null;
   read: boolean;
@@ -196,23 +167,6 @@ export type PBRecord = {
   mbld_solved: number | null
   mbld_attempted: number | null
 }
-
-export type PendingBadgeClaim = {
-  id: string;
-  user_id: string;
-  badge_id: string;
-  year: number | null;
-  detail: string | null;
-  is_current: boolean;
-  verified: boolean;
-  earned_at: string;
-  badge: Badge;
-  profile: {
-    display_name: string;
-    handle: string;
-    avatar_url: string | null;
-  };
-};
 
 export type SolveSession = {
   id: string;

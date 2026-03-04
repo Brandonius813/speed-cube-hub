@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { Profile, ProfileAccomplishment, ProfileCube, ProfileLink, CubeHistoryEntry } from "@/lib/types"
+import type { Profile, ProfileCube, ProfileLink, CubeHistoryEntry } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 
 export async function getProfile(): Promise<{
@@ -507,51 +507,6 @@ export async function updateProfileLinks(
         platform: l.platform,
         url: l.url.trim(),
         label: l.label.trim(),
-      })),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", user.id)
-
-  if (error) {
-    return { success: false, error: error.message }
-  }
-
-  revalidatePath("/profile")
-  return { success: true }
-}
-
-export async function updateProfileAccomplishments(
-  accomplishments: ProfileAccomplishment[]
-): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, error: "Not authenticated" }
-  }
-
-  if (accomplishments.length > 20) {
-    return { success: false, error: "Maximum 20 accomplishments allowed." }
-  }
-
-  for (const a of accomplishments) {
-    if (!a.title.trim()) {
-      return { success: false, error: "Title is required for each accomplishment." }
-    }
-    if (a.title.length > 200) {
-      return { success: false, error: "Title must be under 200 characters." }
-    }
-  }
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      accomplishments: accomplishments.map((a) => ({
-        title: a.title.trim(),
-        date: a.date || null,
       })),
       updated_at: new Date().toISOString(),
     })

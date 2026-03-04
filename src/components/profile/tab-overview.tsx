@@ -2,19 +2,15 @@
 
 import { useMemo } from "react"
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { BadgesSection } from "@/components/profile/badges-section"
 import { PracticeStreak } from "@/components/dashboard/practice-streak"
 import { RecentActivity } from "@/components/profile/recent-activity"
 import { computeSessionStats } from "@/lib/utils"
-import type { Profile, Session, UserBadge, Badge } from "@/lib/types"
+import type { Profile, Session } from "@/lib/types"
 
 export function TabOverview({
   profile,
   sessions,
   isOwner,
-  isAdmin = false,
-  userBadges = [],
-  allBadges = [],
   followerCount = 0,
   followingCount = 0,
   followButton,
@@ -22,9 +18,6 @@ export function TabOverview({
   profile: Profile
   sessions: Session[]
   isOwner: boolean
-  isAdmin?: boolean
-  userBadges?: UserBadge[]
-  allBadges?: Badge[]
   followerCount?: number
   followingCount?: number
   followButton?: React.ReactNode
@@ -48,13 +41,6 @@ export function TabOverview({
         sessions={sessions}
         currentStreak={stats.currentStreak}
         longestStreak={stats.longestStreak}
-      />
-
-      <BadgesSection
-        userBadges={userBadges}
-        allBadges={allBadges}
-        isOwner={isOwner}
-        isAdmin={isAdmin}
       />
 
       <RecentActivity sessions={sessions.slice(0, 10)} isOwner={isOwner} />
