@@ -11,6 +11,7 @@ import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
 import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
+import { CompSimAnalytics } from "@/components/dashboard/comp-sim-analytics"
 import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
@@ -88,6 +89,11 @@ export function TabStats({
     [filteredSessions]
   )
 
+  const compSimSessions = useMemo(
+    () => filteredSessions.filter((s) => s.practice_type === "Comp Sim"),
+    [filteredSessions],
+  )
+
   function handleClearFilters() {
     setSelectedEvents([])
     setSelectedPracticeTypes([])
@@ -128,6 +134,10 @@ export function TabStats({
 
       {/* Solve Analytics (timer solve-level charts) — owner only */}
       {isOwner && <SolveAnalytics practicedEvents={practicedEvents} />}
+
+      {compSimSessions.length > 0 && (
+        <CompSimAnalytics sessions={compSimSessions} />
+      )}
 
       <SessionLog sessions={filteredSessions} readOnly={!isOwner} />
     </div>
