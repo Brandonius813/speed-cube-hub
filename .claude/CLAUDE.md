@@ -46,14 +46,25 @@ Each page uses a two-file pattern:
 
 ### Timer Architecture
 
-The timer is a **single client component** at `src/components/timer/timer-content.tsx` (~350 lines). It is intentionally minimal — in-memory session only (no DB saving yet). Features are added one at a time on request.
+The timer is a full-featured csTimer-parity system spanning 33 component files (`src/components/timer/`) and 24 lib files (`src/lib/timer/`). Key files:
 
-**Do not add complexity to the timer without being explicitly asked.** The anti-bloat rules are:
-- One file until it hits 350 lines organically — only then split
-- No settings modal, no hooks, no panels, no sidebars beyond what exists
-- No DB saving until explicitly requested
+- `src/components/timer/timer-content.tsx` — Main orchestrator (layout, state, event handlers)
+- `src/components/timer/solve-list-panel.tsx` — Left panel: stats table + scrollable solve list
+- `src/components/timer/timer-display.tsx` — Big time display with hold-to-start
+- `src/components/timer/timer-top-bar.tsx` — Event selector, scramble, settings gear
+- `src/components/timer/timer-settings.tsx` — Settings modal (inspection, phases, display options)
+- `src/components/timer/end-session-modal.tsx` — Session save flow (title, notes, feed toggle)
+- `src/lib/timer/engine.ts` — Timer state machine (dispatch/subscribe pattern)
+- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module + custom fallbacks)
+- `src/lib/timer/scramble-worker.ts` — Web Worker for off-thread scramble generation
+- `src/lib/timer/stats-worker.ts` — Web Worker for off-thread stats computation
+- `src/lib/timer/solve-store.ts` — IndexedDB-backed solve storage with memory fallback
+- `src/lib/timer/bluetooth.ts` — GAN Halo timer BLE protocol handler
+- `src/lib/actions/save-timer-session.ts` — Atomic DB save (timer_sessions + solves + sessions row)
 
-The timer server actions (`timer.ts`, `solve-sessions.ts`) and the old 3-tier data model (`solve_sessions` → `timer_sessions` → `solves`) still exist in the DB and server actions — they are not yet connected to the new timer UI.
+**Timer rules:**
+- Do not add complexity without being explicitly asked.
+- Check line counts before editing — extract if a file exceeds 400 lines.
 
 ### Server Actions vs Client-Side Supabase
 
@@ -132,13 +143,12 @@ The timer server actions (`timer.ts`, `solve-sessions.ts`) and the old 3-tier da
 - `src/lib/import/normalize.ts` — Converts solves → session summaries for createSessionsBulk()
 - `src/components/import/` — Import page components (import-content, import-drop-zone, import-preview)
 - `src/app/api/import/parse/route.ts` — AI parsing API route (Claude Haiku for unknown formats)
-- `src/lib/actions/timer.ts` — Timer CRUD server actions (not yet connected to timer UI — for future DB saving)
-- `src/lib/actions/solve-sessions.ts` — Solve session CRUD server actions (not yet connected to timer UI)
-- `src/lib/timer/scrambles.ts` — Scramble generation (cstimer_module — all WCA events + more)
-- `src/lib/timer/averages.ts` — Ao5, Ao12 average computation helpers
-- `src/lib/timer/inspection.ts` — 15s inspection countdown hook (voice warnings at 8s/12s)
+- `src/lib/actions/timer.ts` — Timer CRUD server actions (addSolve, bulkImportSolves, etc.)
+- `src/lib/actions/solve-sessions.ts` — Solve session CRUD server actions
+- `src/lib/actions/save-timer-session.ts` — Atomic session save (timer_sessions + solves + sessions row)
+- `src/lib/timer/` — Timer library (scrambles, averages, inspection, engine, workers, solve-store, bluetooth)
 - `src/lib/bld/letter-scheme.ts` — BLD letter scheme data (Speffz), memo parser, parity detection
-- `src/components/timer/timer-content.tsx` — **The entire timer UI** — single file (~350 lines). Left panel: cstimer-style stats table (cur/best: single/ao5/ao12, count, mean) + scrollable solve list. Right: scramble + timer display + penalty buttons. Spacebar hold-to-start, inspection toggle, typing mode (integer input).
+- `src/components/timer/` — Timer UI components (33 files — see Timer Architecture section above)
 - `src/lib/battle/battle-room.ts` — Battle room system (Supabase Realtime broadcast + presence, ephemeral rooms)
 - `src/lib/battle/use-battle.ts` — React hook for battle state management
 - `src/components/tools/battle-content.tsx` — Battle mode UI (lobby, solving, round results, match results)
@@ -190,40 +200,6 @@ See `.env.local.example` for required variables:
 - **Design source:** v0 repo at `Brandonius813/speed-cube-hub-visual-design`
 - **Monospace for numbers:** Always use `font-mono` for solve times, stats, and numeric data.
 
-## Routes
-
-```
-/                    → Landing page (hero, features, social proof)
-/login               → Login page (email + password + Google OAuth)
-/signup              → Signup page (first/last/middle name + email + password + Google OAuth)
-/practice-stats      → Redirects to /profile?tab=stats [protected]
-/profile             → User's own profile (header, stats, cubes, PBs, links, activity) [protected]
-/profile/[handle]    → Public profile for any user (viewable by anyone) [public]
-/log                 → Log a practice session (form) [protected]
-/import              → Import data from any timer app or spreadsheet (hybrid AI + auto-detect) [protected]
-/timer               → Built-in cubing timer [protected]
-/tools/scrambles     → Batch scramble generator (1-999 scrambles) [public]
-/tools/metronome     → Metronome tool (BPM + seconds mode) [public]
-/tools/bld           → BLD helper (letter scheme, memo practice, parity check) [public]
-/tools/virtual-cube  → 3D interactive virtual cube [public]
-/tools/battle        → Real-time 1v1 battle mode with shared scrambles [protected]
-/feed                → Activity feed (sessions from followed users) [protected]
-/discover            → Search and browse cubers [public]
-/notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
-/leaderboards        → Public leaderboards (fastest avg, most solves, streaks, practice time) [public]
-/challenges          → Community challenges (join, track progress, admin creates) [protected]
-/pbs                 → Redirects to /profile?tab=pbs [protected]
-/clubs               → Browse/search/create clubs, join/leave [protected]
-/clubs/[id]          → Club detail page (activity feed, member list, edit/delete) [public]
-/wrapped             → Year in Review [protected]
-/admin               → Admin dashboard hub (links to all admin subpages) [admin only]
-/admin/badges        → Admin badge approval queue [admin only]
-/privacy             → Privacy Policy [public]
-/terms               → Terms of Service [public]
-```
-
-Routes will be added as features are built. Keep this section updated.
-
 ## PRD Location
 
 The product requirements document is at `.claude/SPEED_CUBE_HUB_PRD.md`. Read it at the start of every session to understand what's been built and what's remaining.
@@ -244,27 +220,10 @@ Always check dependencies before claiming a task — don't start work that depen
 The shared agent log is at `.claude/AGENT_LOG.md`. This is an append-only log where parallel sessions record what they did, what they learned, and any warnings for other sessions.
 
 - **Managed by:** The `/sync` skill — type `/sync` in any session to check in
-- **Format:** Timestamped entries, newest at bottom, auto-trimmed to 50 entries
+- **Format:** Timestamped entries, newest at bottom, hard limit of 20 entries
 - **When to sync:** At session start, after completing a task, before stopping work
 
 ## Feature Status
 
 Features will be tracked in the PRD with checkmarks. Refer to it for current progress.
 
-## Known Security & Performance Issues (Phase 9)
-
-A full audit was completed 2026-02-25. Tasks T41–T51 in `.claude/TASKS.md` track all fixes. Key patterns to be aware of:
-
-### Security
-- **No middleware exists** — route protection and session refresh are missing (T42)
-- **`createAdminClient()` is overused** — many read queries bypass RLS unnecessarily. Use regular `createClient()` wherever possible (T46)
-- **`createNotification` and `checkAndAwardMilestones`** — FIXED (T43): moved to `src/lib/helpers/` as internal helpers, no longer callable from browser
-- **No input validation** on session/PB creation — add Zod schemas (T44)
-- **Open redirect** in Google OAuth callback — validate `next` param (T41)
-
-### Performance
-- **Leaderboards and landing page stats do full-table scans** — must use DB-level aggregation (T47, T48)
-- **Navbar fires 4-8 server calls per page navigation** — consolidate to 1 call (T49)
-- **Dashboard loads all sessions twice with `select("*")`** — deduplicate and add limits (T50)
-- **`select("*")` is used everywhere** — replace with explicit column lists (T51)
-- **N+1 patterns** in challenge progress and goal checking — batch queries (T50)
