@@ -30,6 +30,7 @@ import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
+import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
 import type {
   StatsSummary,
   StatsWorkerRequest,
@@ -1681,6 +1682,15 @@ export function TimerContent() {
           </button>
         )}
       </div>
+
+      {practiceType === "Comp Sim" && (
+        <CompSimOverlay
+          event={event}
+          eventName={EVENTS.find((e) => e.id === event)?.name ?? event}
+          sessionStartMs={sessionStartTime}
+          onExit={() => changePracticeType("Solves")}
+        />
+      )}
 
       {showEndModal && sessionStartTime && (
         <EndSessionModal
