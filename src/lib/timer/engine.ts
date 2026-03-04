@@ -88,7 +88,7 @@ function reduce(snapshot: TimerSnapshot, event: TimerEvent): TimerSnapshot {
         : snapshot
 
     case "START_INSPECTION":
-      if (snapshot.phase === "idle" || snapshot.phase === "stopped") {
+      if (snapshot.phase === "idle" || snapshot.phase === "stopped" || snapshot.phase === "ready") {
         return { ...snapshot, phase: "inspecting", btReset: false }
       }
       return snapshot
