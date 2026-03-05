@@ -16,7 +16,8 @@ import type { Solve } from "@/lib/types"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 import { getSolveCountBySession, getSolvesBySession } from "@/lib/actions/timer"
 
-const PAGE_SIZE = 5000
+// Supabase PostgREST max-rows is typically 1000, so page at that size.
+const PAGE_SIZE = 1000
 
 function dateGroupFromSolvedAt(solvedAt: string): string | null {
   const day = solvedAt.slice(0, 10)
@@ -72,7 +73,7 @@ export async function syncSolvesFromDb(
 
     // Quick count check: does the DB have more solves than local?
     const { count: dbCount, error: countError } =
-      await getSolveCountBySession(session.id, session.active_from)
+      await getSolveCountBySession(session.id, session.active_from, event)
 
     if (countError) {
       return null
@@ -96,7 +97,8 @@ export async function syncSolvesFromDb(
         session.id,
         session.active_from,
         PAGE_SIZE,
-        offset
+        offset,
+        event
       )
 
       if (fetchError || page.length === 0) {

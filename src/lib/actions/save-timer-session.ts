@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
+import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 
 export async function saveTimerSession(data: {
   event: string
@@ -27,6 +28,11 @@ export async function saveTimerSession(data: {
   const sessionDate = getTodayPacific()
   const startedAt = new Date(data.session_start_ms).toISOString()
   const endedAt = new Date().toISOString()
+  const { data: solveSession, error: solveSessionError } =
+    await getOrCreateDefaultSession(data.event)
+  if (solveSessionError || !solveSession) {
+    return { error: solveSessionError ?? "Failed to load solve session." }
+  }
 
   // 1. Create the timer_sessions row
   const { data: timerSession, error: tsError } = await supabase
@@ -38,6 +44,7 @@ export async function saveTimerSession(data: {
       status: "completed",
       started_at: startedAt,
       ended_at: endedAt,
+      solve_session_id: solveSession.id,
     })
     .select("id")
     .single()
@@ -56,6 +63,7 @@ export async function saveTimerSession(data: {
     scramble: s.scramble,
     event: data.event,
     comp_sim_group: s.comp_sim_group ?? null,
+    solve_session_id: solveSession.id,
   }))
 
   const { error: solvesError } = await supabase.from("solves").insert(solveRows)
@@ -94,6 +102,7 @@ export async function saveTimerSession(data: {
       notes: data.notes || null,
       feed_visible: data.feed_visible,
       timer_session_id: timerSession.id,
+      solve_session_id: solveSession.id,
     })
     .select("id")
     .single()

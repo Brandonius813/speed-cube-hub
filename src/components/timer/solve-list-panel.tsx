@@ -50,6 +50,7 @@ interface SolveListPanelProps {
   groupDividerLabels?: Map<number, DividerLabel>
   currentSessionLabel?: DividerLabel | null
   currentSolveCount?: number
+  showAllStats?: boolean
   onSetSelectedId: (id: string | null) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
@@ -76,6 +77,7 @@ export const SolveListPanel = memo(function SolveListPanel({
   groupDividerLabels,
   currentSessionLabel,
   currentSolveCount,
+  showAllStats = false,
   onSetSelectedId,
   onSetPenalty,
   onDeleteSolve,
@@ -249,10 +251,17 @@ export const SolveListPanel = memo(function SolveListPanel({
                 ? groupDividerLabels?.get(displayIdx) ?? null
                 : null
               const isSaved = !!row.solve.group
-              // Map to stats index: only current session solves have rolling stats
-              const statsIdx = !isSaved && savedSolveCount > 0
-                ? row.solveIndex - savedSolveCount
-                : isSaved ? -1 : row.solveIndex
+              // Map to stats index:
+              // - fallback mode: stats run over all solves
+              // - normal mode: stats run on current (ungrouped) solves only
+              let statsIdx = -1
+              if (showAllStats) {
+                statsIdx = row.solveIndex
+              } else if (!isSaved) {
+                statsIdx = savedSolveCount > 0
+                  ? row.solveIndex - savedSolveCount
+                  : row.solveIndex
+              }
 
               return (
                 <tr

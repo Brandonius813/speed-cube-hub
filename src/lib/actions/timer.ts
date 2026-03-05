@@ -274,8 +274,9 @@ export async function deleteSolves(
 export async function getSolvesBySession(
   solveSessionId: string,
   activeFrom: string,
-  limit = 5000,
-  offset = 0
+  limit = 1000,
+  offset = 0,
+  event?: string
 ): Promise<{ solves: Solve[]; error?: string }> {
   const supabase = await createClient()
 
@@ -287,14 +288,20 @@ export async function getSolvesBySession(
     return { solves: [], error: "Not authenticated" }
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("solves")
     .select("*")
     .eq("user_id", user.id)
-    .eq("solve_session_id", solveSessionId)
     .gte("solved_at", activeFrom)
     .order("solved_at", { ascending: true })
     .range(offset, offset + limit - 1)
+    .or(`solve_session_id.eq.${solveSessionId},solve_session_id.is.null`)
+
+  if (event) {
+    query = query.eq("event", event)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     return { solves: [], error: error.message }
@@ -305,7 +312,8 @@ export async function getSolvesBySession(
 
 export async function getSolvesByEvent(
   event: string,
-  limit = 5000
+  limit = 1000,
+  offset = 0
 ): Promise<{ solves: Solve[]; error?: string }> {
   const supabase = await createClient()
 
@@ -323,7 +331,7 @@ export async function getSolvesByEvent(
     .eq("user_id", user.id)
     .eq("event", event)
     .order("solved_at", { ascending: true })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
 
   if (error) {
     return { solves: [], error: error.message }
@@ -652,7 +660,45 @@ export async function finalizeTimerSession(
  */
 export async function getSolveCountBySession(
   solveSessionId: string,
-  activeFrom: string
+  activeFrom: string,
+  event?: string
+): Promise<{ count: number; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { count: 0, error: "Not authenticated" }
+  }
+
+  let query = supabase
+    .from("solves")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("solved_at", activeFrom)
+    .or(`solve_session_id.eq.${solveSessionId},solve_session_id.is.null`)
+
+  if (event) {
+    query = query.eq("event", event)
+  }
+
+  const { count, error } = await query
+
+  if (error) {
+    return { count: 0, error: error.message }
+  }
+
+  return { count: count ?? 0 }
+}
+
+/**
+ * Lightweight count of solves by event.
+ * Used when event-wide timer analytics need a fast count check.
+ */
+export async function getSolveCountByEvent(
+  event: string
 ): Promise<{ count: number; error?: string }> {
   const supabase = await createClient()
 
@@ -668,8 +714,7 @@ export async function getSolveCountBySession(
     .from("solves")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("solve_session_id", solveSessionId)
-    .gte("solved_at", activeFrom)
+    .eq("event", event)
 
   if (error) {
     return { count: 0, error: error.message }

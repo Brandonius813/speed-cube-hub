@@ -311,8 +311,10 @@ export function TimerContent() {
   })
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
     try {
-      const s = localStorage.getItem("timer-session-start")
-      return s ? Number(s) : null
+      const raw = localStorage.getItem("timer-session-start")
+      if (!raw) return null
+      const parsed = Number(raw)
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null
     } catch {
       return null
     }
@@ -401,8 +403,10 @@ export function TimerContent() {
   // Compute saved vs current session solve counts for display + stats
   const savedSolveCount = useMemo(() => solves.filter((s) => !!s.group).length, [solves])
   const currentSolveCount = solves.length - savedSolveCount
+  const hasActiveSession =
+    sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
   const showAllStatsFallback =
-    sessionStartTime === null && currentSolveCount === 0 && solves.length > 0
+    !hasActiveSession && currentSolveCount === 0 && solves.length > 0
   const panelStats = useMemo(
     () => (showAllStatsFallback ? computeStatsSync(solves, statCols) : stats),
     [showAllStatsFallback, solves, statCols, stats]
@@ -417,12 +421,14 @@ export function TimerContent() {
 
   const currentSessionLabel = useMemo(() => {
     if (currentSolveCount <= 0) return null
-    const dateSource = sessionStartTime ? new Date(sessionStartTime) : new Date()
+    const dateSource = hasActiveSession ? new Date(sessionStartTime) : new Date()
     return {
       title: "Current Session",
       date: formatSessionDividerDate(dateSource),
     }
-  }, [currentSolveCount, sessionStartTime])
+  }, [currentSolveCount, hasActiveSession, sessionStartTime])
+
+  const activeSessionStartMs = hasActiveSession ? sessionStartTime : null
 
   const setIdle = useCallback(() => {
     dispatchEngine({ type: "RESET_IDLE" })
@@ -955,16 +961,16 @@ export function TimerContent() {
 
   useEffect(() => {
     try {
-      if (sessionStartTime !== null) {
+      if (hasActiveSession) {
         localStorage.setItem("timer-session-start", String(sessionStartTime))
       } else {
         localStorage.removeItem("timer-session-start")
       }
     } catch {}
-  }, [sessionStartTime])
+  }, [hasActiveSession, sessionStartTime])
 
   useEffect(() => {
-    if (!sessionStartTime || sessionPaused) return
+    if (!hasActiveSession || sessionPaused) return
     const interval = setInterval(() => {
       setSessionElapsed(
         Math.floor(
@@ -973,7 +979,7 @@ export function TimerContent() {
       )
     }, 1000)
     return () => clearInterval(interval)
-  }, [sessionPaused, sessionStartTime])
+  }, [hasActiveSession, sessionPaused, sessionStartTime])
 
   useEffect(() => {
     if (!TIMER_V2_ENGINE_ENABLED) return
@@ -1323,7 +1329,7 @@ export function TimerContent() {
   }
 
   function changeEvent(newEvent: string) {
-    if (sessionStartTime) cancelSession()
+    if (hasActiveSession) cancelSession()
     insp.cancelInspection()
     setSelectedId(null)
     setEvent(newEvent)
@@ -1778,7 +1784,7 @@ export function TimerContent() {
       {practiceType === "Comp Sim" ? (
         <CompSimOverlay
           event={event}
-          sessionStartMs={sessionStartTime}
+          sessionStartMs={activeSessionStartMs}
           onExit={() => changePracticeType("Solves")}
         />
       ) : (
@@ -1799,6 +1805,7 @@ export function TimerContent() {
             groupDividerLabels={groupDividers.labels}
             currentSessionLabel={currentSessionLabel}
             currentSolveCount={panelCurrentSolveCount}
+            showAllStats={showAllStatsFallback}
             onSetSelectedId={setSelectedId}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}
@@ -1905,7 +1912,7 @@ export function TimerContent() {
         className="fixed bottom-4 right-4 z-40 w-48 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
         onPointerDown={sp}
       >
-        {sessionStartTime ? (
+        {hasActiveSession ? (
           <>
             <div className="flex items-center gap-2 px-3 pt-3 pb-2">
               <div
@@ -1958,16 +1965,16 @@ export function TimerContent() {
         )}
       </div>
 
-      {showEndModal && sessionStartTime && (
+      {showEndModal && activeSessionStartMs !== null && (
         <EndSessionModal
           solves={solves.filter((s) => !s.group)}
           event={event}
           eventName={EVENTS.find((entry) => entry.id === event)?.name ?? event}
           practiceType={practiceType}
           durationMinutes={
-            (Date.now() - sessionStartTime - sessionPausedMsRef.current) / 1000 / 60
+            (Date.now() - activeSessionStartMs - sessionPausedMsRef.current) / 1000 / 60
           }
-          sessionStartMs={sessionStartTime}
+          sessionStartMs={activeSessionStartMs}
           onClose={() => setShowEndModal(false)}
           onSaved={handleSessionSaved}
         />
