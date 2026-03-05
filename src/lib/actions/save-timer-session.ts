@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
+import { syncMilestoneBadgesForUser } from "@/lib/actions/badges"
 
 export async function saveTimerSession(data: {
   event: string
@@ -118,6 +119,11 @@ export async function saveTimerSession(data: {
       .update({ session_id: session.id })
       .eq("id", timerSession.id)
   }
+
+  // Fire-and-forget milestone sync so timer save stays responsive.
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] saveTimerSession milestone sync failed:", err)
+  })
 
   return {}
 }

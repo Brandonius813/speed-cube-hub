@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
+import { syncMilestoneBadgesForUser } from "@/lib/actions/badges";
 import type { Session } from "@/lib/types";
 
 // Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
@@ -87,6 +88,11 @@ export async function createSession(data: {
   if (error) {
     return { error: error.message };
   }
+
+  // Fire-and-forget milestone check so session logging remains snappy.
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] createSession milestone sync failed:", err);
+  });
 
   return {};
 }
@@ -220,6 +226,11 @@ export async function createSessionsBulk(
     return { inserted: 0, error: error.message };
   }
 
+  // Fire-and-forget milestone check so bulk imports remain fast.
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] createSessionsBulk milestone sync failed:", err);
+  });
+
   return { inserted: rows.length };
 }
 
@@ -274,6 +285,11 @@ export async function updateSession(
     return { error: error.message };
   }
 
+  // Re-check milestones in case edited values push across a threshold.
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] updateSession milestone sync failed:", err);
+  });
+
   return {};
 }
 
@@ -299,6 +315,10 @@ export async function deleteSession(
   if (error) {
     return { error: error.message };
   }
+
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] deleteSession milestone sync failed:", err);
+  });
 
   return {};
 }
@@ -329,6 +349,10 @@ export async function deleteSessionsBulk(
   if (error) {
     return { deleted: 0, error: error.message };
   }
+
+  syncMilestoneBadgesForUser(user.id).catch((err) => {
+    console.error("[badges] deleteSessionsBulk milestone sync failed:", err);
+  });
 
   return { deleted: sessionIds.length };
 }
