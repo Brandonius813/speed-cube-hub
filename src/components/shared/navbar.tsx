@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Box, ClipboardList, Rss, Search, Timer, Trophy, User } from "lucide-react"
+import { BarChart3, Box, ClipboardList, Rss, Timer, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -160,9 +160,9 @@ export function Navbar() {
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
             </Link>
-            <Link href="/discover" className={navLinkClass("/discover")} aria-label="Discover">
-              <Search className={cn(navIconClass("/discover"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/discover") && "border-b-2 border-primary pb-0.5")}>Discover</span>
+            <Link href="/profile?tab=stats" className={navLinkClass("/profile")} aria-label="Stats">
+              <BarChart3 className={cn(navIconClass("/profile"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/profile") && "border-b-2 border-primary pb-0.5")}>Stats</span>
             </Link>
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
