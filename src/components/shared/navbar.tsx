@@ -152,9 +152,9 @@ export function Navbar() {
                 Timer
               </Button>
             </Link>
-            <Link href="/log" className={navLinkClass("/log")} aria-label="Log Session">
-              <ClipboardList className={cn(navIconClass("/log"), "sm:hidden")} />
-              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/log") && "border-b-2 border-primary pb-0.5")}>Log Session</span>
+            <Link href="/import" className={navLinkClass("/import")} aria-label="import data">
+              <ClipboardList className={cn(navIconClass("/import"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/import") && "border-b-2 border-primary pb-0.5")}>import data</span>
             </Link>
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />

@@ -93,6 +93,7 @@ type PendingScrambleRequest = {
 }
 
 type ChartScope = "session" | "all"
+type TimerBottomPane = "draw" | "cross" | "charts"
 
 function loadSessionGroups(eventId: string): SessionGroupMeta[] {
   try {
@@ -299,9 +300,7 @@ export function TimerContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
-  const [showScrambleDraw, setShowScrambleDraw] = useState(false)
-  const [showCrossTrainer, setShowCrossTrainer] = useState(false)
-  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [activeBottomPane, setActiveBottomPane] = useState<TimerBottomPane | null>(null)
   const [chartScope, setChartScope] = useState<ChartScope>("session")
   const [practiceType, setPracticeType] = useState(() => {
     try {
@@ -1466,6 +1465,9 @@ export function TimerContent() {
   )
 
   const chartSolves = chartScope === "session" ? sessionChartSolves : allChartSolves
+  const showScrambleDraw = activeBottomPane === "draw"
+  const showCrossTrainer = activeBottomPane === "cross"
+  const showAnalytics = activeBottomPane === "charts"
 
   useEffect(() => {
     if (!showAnalytics) return
@@ -1474,6 +1476,18 @@ export function TimerContent() {
     if (allChartSolves.length === 0) return
     setChartScope("all")
   }, [allChartSolves.length, chartScope, sessionChartSolves.length, showAnalytics])
+
+  useEffect(() => {
+    if (practiceType === "Comp Sim" && activeBottomPane) {
+      setActiveBottomPane(null)
+    }
+  }, [activeBottomPane, practiceType])
+
+  useEffect(() => {
+    if (event !== "333" && activeBottomPane === "cross") {
+      setActiveBottomPane(null)
+    }
+  }, [activeBottomPane, event])
 
   const canShowCrossTrainer =
     event === "333" &&
@@ -1509,6 +1523,10 @@ export function TimerContent() {
   const scrambleNavBtn =
     "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
   const sp = (eventPointer: React.PointerEvent) => eventPointer.stopPropagation()
+  const toggleBottomPane = useCallback((pane: TimerBottomPane) => {
+    setActiveBottomPane((current) => (current === pane ? null : pane))
+    setSettingsOpen(false)
+  }, [])
 
   const handleRangeChange = useCallback(
     (next: { start: number; end: number; scrollOffset: number }) => {
@@ -1607,43 +1625,6 @@ export function TimerContent() {
               >
                 Next →
               </button>
-              <button
-                className={cn(
-                  scrambleNavBtn,
-                  showScrambleDraw && "bg-secondary/70 text-foreground"
-                )}
-                onClick={() => setShowScrambleDraw((value) => !value)}
-                title={showScrambleDraw ? "Hide scramble draw" : "Show scramble draw"}
-              >
-                Draw
-              </button>
-              <button
-                className={cn(
-                  scrambleNavBtn,
-                  showCrossTrainer && "bg-secondary/70 text-foreground"
-                )}
-                onClick={() => setShowCrossTrainer((value) => !value)}
-                disabled={event !== "333"}
-                title={
-                  event === "333"
-                    ? showCrossTrainer
-                      ? "Hide cross trainer"
-                      : "Show cross trainer"
-                    : "Cross trainer is available for 3x3 only"
-                }
-              >
-                Cross
-              </button>
-              <button
-                className={cn(
-                  scrambleNavBtn,
-                  showAnalytics && "bg-secondary/70 text-foreground"
-                )}
-                onClick={() => setShowAnalytics((value) => !value)}
-                title={showAnalytics ? "Hide analytics" : "Show analytics"}
-              >
-                Charts
-              </button>
             </>
           )}
           <div className="relative" ref={settingsRef}>
@@ -1655,7 +1636,7 @@ export function TimerContent() {
               <Settings size={14} />
             </button>
             {settingsOpen && (
-              <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+              <div className="absolute right-0 top-full mt-1 w-56 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
                   onClick={() =>
@@ -1703,6 +1684,65 @@ export function TimerContent() {
                     {inspOn ? "On" : "Off"}
                   </span>
                 </button>
+                {practiceType !== "Comp Sim" && (
+                  <>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                      onClick={() => toggleBottomPane("draw")}
+                    >
+                      <span className="text-foreground">Draw</span>
+                      <span
+                        className={cn(
+                          "font-mono text-[12px]",
+                          showScrambleDraw
+                            ? "text-primary font-medium"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {showScrambleDraw ? "Open" : "Closed"}
+                      </span>
+                    </button>
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={() => toggleBottomPane("cross")}
+                      disabled={event !== "333"}
+                      title={
+                        event === "333"
+                          ? showCrossTrainer
+                            ? "Hide cross trainer"
+                            : "Show cross trainer"
+                          : "Cross trainer is available for 3x3 only"
+                      }
+                    >
+                      <span className="text-foreground">Cross</span>
+                      <span
+                        className={cn(
+                          "font-mono text-[12px]",
+                          showCrossTrainer
+                            ? "text-primary font-medium"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {showCrossTrainer ? "Open" : "Closed"}
+                      </span>
+                    </button>
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                      onClick={() => toggleBottomPane("charts")}
+                    >
+                      <span className="text-foreground">Charts</span>
+                      <span
+                        className={cn(
+                          "font-mono text-[12px]",
+                          showAnalytics ? "text-primary font-medium" : "text-muted-foreground"
+                        )}
+                      >
+                        {showAnalytics ? "Open" : "Closed"}
+                      </span>
+                    </button>
+                  </>
+                )}
                 {isBleSupported() && (
                   <>
                     <div className="my-1 border-t border-border" />
@@ -1747,55 +1787,80 @@ export function TimerContent() {
         </div>
       )}
 
-      {practiceType !== "Comp Sim" &&
-        (showScrambleDraw || showCrossTrainer || showAnalytics) && (
-          <div className="border-b border-border px-4 py-3 space-y-3" onPointerDown={sp}>
-            {showScrambleDraw && (
-              <div className="rounded-md border border-border/70 bg-muted/20 p-2">
-                <ScrambleImage scramble={scramble} event={event} />
-              </div>
+      {practiceType !== "Comp Sim" && activeBottomPane && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+          <div
+            className={cn(
+              "pointer-events-auto w-full rounded-xl border border-border/70 bg-background/95 shadow-2xl backdrop-blur",
+              showAnalytics ? "max-w-5xl" : "max-w-3xl"
             )}
+            onPointerDown={sp}
+          >
+            <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+              <p className="text-xs font-sans uppercase tracking-wide text-muted-foreground">
+                {showScrambleDraw
+                  ? "Scramble Draw"
+                  : showCrossTrainer
+                  ? "Cross Trainer"
+                  : "Charts"}
+              </p>
+              <button
+                className="text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setActiveBottomPane(null)}
+              >
+                Close
+              </button>
+            </div>
 
-            {showCrossTrainer && (
-              <div className="rounded-md border border-border/70 bg-muted/20 p-2">
-                {canShowCrossTrainer ? (
-                  <CrossSolverPanel scramble={scramble} />
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Cross trainer is available once a 3x3 scramble is ready.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {showAnalytics && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-1">
-                  <button
-                    className={cn(
-                      scrambleNavBtn,
-                      chartScope === "session" && "bg-secondary/70 text-foreground"
-                    )}
-                    onClick={() => setChartScope("session")}
-                  >
-                    Session
-                  </button>
-                  <button
-                    className={cn(
-                      scrambleNavBtn,
-                      chartScope === "all" && "bg-secondary/70 text-foreground"
-                    )}
-                    onClick={() => setChartScope("all")}
-                  >
-                    All Time
-                  </button>
+            <div className="max-h-[46vh] overflow-y-auto p-3 space-y-3">
+              {showScrambleDraw && (
+                <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+                  <ScrambleImage scramble={scramble} event={event} />
                 </div>
-                <TimeDistributionChart solves={chartSolves} />
-                <TimeTrendChart solves={chartSolves} />
-              </div>
-            )}
+              )}
+
+              {showCrossTrainer && (
+                <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+                  {canShowCrossTrainer ? (
+                    <CrossSolverPanel scramble={scramble} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Cross trainer is available once a 3x3 scramble is ready.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {showAnalytics && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1">
+                    <button
+                      className={cn(
+                        scrambleNavBtn,
+                        chartScope === "session" && "bg-secondary/70 text-foreground"
+                      )}
+                      onClick={() => setChartScope("session")}
+                    >
+                      Session
+                    </button>
+                    <button
+                      className={cn(
+                        scrambleNavBtn,
+                        chartScope === "all" && "bg-secondary/70 text-foreground"
+                      )}
+                      onClick={() => setChartScope("all")}
+                    >
+                      All Time
+                    </button>
+                  </div>
+                  <TimeDistributionChart solves={chartSolves} />
+                  <TimeTrendChart solves={chartSolves} />
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
       {practiceType === "Comp Sim" ? (
         <CompSimOverlay
