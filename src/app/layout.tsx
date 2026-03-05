@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/shared/theme-provider";
@@ -54,12 +53,6 @@ export default function RootLayout({
       <body
         className={`${nunito.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <Script
-          async
-          strategy="beforeInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3027565303141354"
-          crossOrigin="anonymous"
-        />
         <ThemeProvider>
           {children}
         </ThemeProvider>
