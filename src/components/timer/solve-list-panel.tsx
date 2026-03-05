@@ -250,6 +250,7 @@ export const SolveListPanel = memo(function SolveListPanel({
               const dividerLabel = isBoundary
                 ? groupDividerLabels?.get(displayIdx) ?? null
                 : null
+              const isSaved = !!row.solve.group
               // Map to stats index:
               // - fallback mode: stats run over all solves
               // - normal mode: stats run on current (ungrouped) solves only
