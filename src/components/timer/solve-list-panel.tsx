@@ -1,7 +1,7 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef } from "react"
-import { cn } from "@/lib/utils"
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { cn, formatDuration } from "@/lib/utils"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 import type { DividerLabel } from "@/lib/timer/session-dividers"
 
@@ -20,6 +20,16 @@ function fmtSolve(s: Solve): string {
 
 const D = (v: number | null) => (v !== null ? fmt(v) : "—")
 
+function formatFeedTime(seconds: number | null): string {
+  if (seconds === null) return "—"
+  if (seconds >= 60) {
+    const min = Math.floor(seconds / 60)
+    const sec = (seconds % 60).toFixed(2)
+    return `${min}:${sec.padStart(5, "0")}`
+  }
+  return `${seconds.toFixed(2)}s`
+}
+
 export interface SolveStats {
   best: number | null
   mean: number | null
@@ -32,6 +42,11 @@ export type SolveListRow = {
   solve: Solve
   solveIndex: number
   displayNumber: number
+}
+
+type CurrentSessionLabel = {
+  title: string
+  date: string | null
 }
 
 interface SolveListPanelProps {
@@ -48,7 +63,7 @@ interface SolveListPanelProps {
   savedSolveCount?: number
   groupBoundaries?: Set<number>
   groupDividerLabels?: Map<number, DividerLabel>
-  currentSessionLabel?: DividerLabel | null
+  currentSessionLabel?: CurrentSessionLabel | null
   currentSolveCount?: number
   showAllStats?: boolean
   onSetSelectedId: (id: string | null) => void
@@ -59,7 +74,7 @@ interface SolveListPanelProps {
 }
 
 const ROW_HEIGHT = 30
-const DIVIDER_GAP = 22
+const DIVIDER_GAP = 24
 const OVERSCAN = 14
 
 function countBoundariesBefore(boundaries: number[], rowIndex: number): number {
@@ -115,6 +130,7 @@ export const SolveListPanel = memo(function SolveListPanel({
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
   const rangeRef = useRef({ start: -1, end: -1 })
+  const [openSessionStats, setOpenSessionStats] = useState<DividerLabel | null>(null)
   const sortedBoundaries = useMemo(
     () =>
       groupBoundaries
@@ -176,10 +192,18 @@ export const SolveListPanel = memo(function SolveListPanel({
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = totalCount > 0 ? rows[0]?.solve ?? null : null
+  const closeSessionStats = useCallback(() => setOpenSessionStats(null), [])
+  const openStatsForDivider = useCallback(
+    (label: DividerLabel | null) => {
+      if (!label) return
+      setOpenSessionStats(label)
+    },
+    []
+  )
 
   return (
     <div
-      className="w-full lg:w-56 xl:w-64 shrink-0 border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
+      className="w-full lg:w-56 xl:w-64 shrink-0 min-h-0 overflow-hidden border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
       onPointerDown={sp}
     >
       <div className="px-3 pt-3 pb-2 border-b border-border">
@@ -270,7 +294,7 @@ export const SolveListPanel = memo(function SolveListPanel({
         </div>
       )}
 
-      <div ref={listRef} className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-[12px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-foreground border-b border-border">
@@ -317,43 +341,50 @@ export const SolveListPanel = memo(function SolveListPanel({
               }
 
               return (
-                <tr
-                  key={row.solve.id}
-                  className={cn(
-                    "hover:bg-muted/30 transition-colors cursor-pointer",
-                    selectedId === row.solve.id && "bg-muted/40",
-                    isBoundary && "border-t-2 border-t-primary/20"
+                <Fragment key={row.solve.id}>
+                  {isBoundary && (
+                    <tr aria-hidden="true">
+                      <td colSpan={4} className="relative p-0" style={{ height: `${DIVIDER_GAP}px` }}>
+                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-primary/20" />
+                        {dividerLabel && (
+                          <button
+                            type="button"
+                            className="absolute top-1/2 left-1 z-20 inline-block -translate-y-1/2 max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground hover:border-primary/70 hover:bg-primary/10 transition-colors"
+                            title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
+                            onClick={(eventClick) => {
+                              eventClick.stopPropagation()
+                              openStatsForDivider(dividerLabel)
+                            }}
+                          >
+                            {dividerLabel.title}
+                            {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
                   )}
-                  onClick={() => onSetSelectedId(row.solve.id)}
-                  style={{ height: `${ROW_HEIGHT + (isBoundary ? DIVIDER_GAP : 0)}px` }}
-                >
-                  <td
+                  <tr
                     className={cn(
-                      "relative text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]",
-                      isBoundary && "pt-5"
+                      "hover:bg-muted/30 transition-colors cursor-pointer",
+                      selectedId === row.solve.id && "bg-muted/40"
                     )}
+                    onClick={() => onSetSelectedId(row.solve.id)}
+                    style={{ height: `${ROW_HEIGHT}px` }}
                   >
-                    {dividerLabel && (
-                      <span
-                        className="pointer-events-none absolute top-1 left-1 z-20 inline-block max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground"
-                        title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
-                      >
-                        {dividerLabel.title}
-                        {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
-                      </span>
-                    )}
-                    {row.displayNumber}
-                  </td>
-                  <td className={cn("text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground", isBoundary && "pt-5")}>
-                    {fmtSolve(row.solve)}
-                  </td>
-                  <td className={cn("text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-5")}>
-                    {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
-                  </td>
-                  <td className={cn("text-right pr-2 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-5")}>
-                    {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
-                  </td>
-                </tr>
+                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]">
+                      {row.displayNumber}
+                    </td>
+                    <td className="text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                      {fmtSolve(row.solve)}
+                    </td>
+                    <td className="text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]">
+                      {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
+                    </td>
+                    <td className="text-right pr-2 py-0.5 text-foreground font-mono text-[11px]">
+                      {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
+                    </td>
+                  </tr>
+                </Fragment>
               )
             })}
 
@@ -365,6 +396,70 @@ export const SolveListPanel = memo(function SolveListPanel({
           </tbody>
         </table>
       </div>
+
+      {openSessionStats && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={closeSessionStats}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-background p-4 shadow-2xl"
+            onClick={(eventClick) => eventClick.stopPropagation()}
+          >
+            <div className="mb-3">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Session Stats</p>
+              <p className="font-sans text-sm text-foreground">
+                {openSessionStats.title}
+                {openSessionStats.date ? ` · ${openSessionStats.date}` : ""}
+              </p>
+              {openSessionStats.practiceType && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {openSessionStats.practiceType}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/40 bg-muted/20 p-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Solves</p>
+                <p className="font-mono text-base text-foreground">{openSessionStats.stats.solveCount}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Duration</p>
+                <p className="font-mono text-base text-foreground">
+                  {openSessionStats.stats.durationMinutes !== null
+                    ? formatDuration(openSessionStats.stats.durationMinutes)
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Best</p>
+                <p className="font-mono text-base text-foreground">
+                  {formatFeedTime(openSessionStats.stats.bestSeconds)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Avg</p>
+                <p className="font-mono text-base text-foreground">
+                  {formatFeedTime(openSessionStats.stats.avgSeconds)}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">DNF</p>
+                <p className="font-mono text-base text-foreground">{openSessionStats.stats.dnfCount}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={closeSessionStats}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

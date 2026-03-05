@@ -5,11 +5,27 @@ export type SessionGroupMeta = {
   title: string
   savedAt: number
   solveCount: number
+  // Optional feed-style summary stats for divider popups.
+  durationMinutes?: number
+  numDnf?: number
+  avgSeconds?: number | null
+  bestSeconds?: number | null
+  practiceType?: string
 }
 
 export type DividerLabel = {
   title: string
   date: string | null
+  stats: DividerStats
+  practiceType: string | null
+}
+
+export type DividerStats = {
+  solveCount: number
+  dnfCount: number
+  durationMinutes: number | null
+  avgSeconds: number | null
+  bestSeconds: number | null
 }
 
 export type SessionDividers = {
@@ -55,6 +71,53 @@ export function computeSessionDividers(
   const boundaries = new Set<number>()
   const labels = new Map<number, DividerLabel>()
   const groupById = new Map(sessionGroups.map((group) => [group.id, group]))
+  const statsByGroup = new Map<string, DividerStats>()
+  const solvesByGroup = new Map<string, TimerSolve[]>()
+
+  for (const solve of solves) {
+    const groupId = solve.group ?? null
+    if (!groupId) continue
+    const bucket = solvesByGroup.get(groupId)
+    if (bucket) {
+      bucket.push(solve)
+    } else {
+      solvesByGroup.set(groupId, [solve])
+    }
+  }
+
+  for (const [groupId, groupSolves] of solvesByGroup) {
+    const nonDnf = groupSolves.filter((solve) => solve.penalty !== "DNF")
+    const effectiveTimes = nonDnf.map((solve) =>
+      solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
+    )
+    const avgMs =
+      effectiveTimes.length > 0
+        ? Math.round(effectiveTimes.reduce((sum, time) => sum + time, 0) / effectiveTimes.length)
+        : null
+    const bestMs = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
+    const meta = groupById.get(groupId)
+
+    statsByGroup.set(groupId, {
+      solveCount: groupSolves.length,
+      dnfCount: groupSolves.length - nonDnf.length,
+      durationMinutes:
+        typeof meta?.durationMinutes === "number"
+          ? Math.max(1, Math.round(meta.durationMinutes))
+          : null,
+      avgSeconds:
+        typeof meta?.avgSeconds === "number"
+          ? meta.avgSeconds
+          : avgMs !== null
+            ? Math.round(avgMs / 10) / 100
+            : null,
+      bestSeconds:
+        typeof meta?.bestSeconds === "number"
+          ? meta.bestSeconds
+          : bestMs !== null
+            ? Math.round(bestMs / 10) / 100
+            : null,
+    })
+  }
 
   for (let i = solves.length - 2; i >= 0; i--) {
     const displayIdx = solves.length - 1 - i
@@ -74,6 +137,14 @@ export function computeSessionDividers(
         typeof meta?.savedAt === "number"
           ? formatSessionDividerDate(meta.savedAt)
           : dateFromGroup,
+      stats: statsByGroup.get(currentGroup) ?? {
+        solveCount: 0,
+        dnfCount: 0,
+        durationMinutes: null,
+        avgSeconds: null,
+        bestSeconds: null,
+      },
+      practiceType: meta?.practiceType ?? null,
     })
   }
 
