@@ -275,14 +275,21 @@ export const SolveListPanel = memo(function SolveListPanel({
                   onClick={() => onSetSelectedId(row.solve.id)}
                   style={{ height: `${ROW_HEIGHT}px` }}
                 >
-                  <td className="relative overflow-visible text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
-                    {dividerLabel && (
-                      <span className="absolute -top-[10px] left-1 z-10 max-w-[13.5rem] truncate rounded-full border border-primary/30 bg-background px-2 py-[1px] text-[9px] font-sans uppercase tracking-wider text-primary/85">
-                        {dividerLabel.title}
-                        {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
+                  <td className="text-right pr-1.5 py-0.5 text-muted-foreground/50 font-mono text-[11px]">
+                    {dividerLabel ? (
+                      <span className="inline-flex items-center justify-end gap-1.5 max-w-full">
+                        <span
+                          className="inline-block max-w-[9.5rem] truncate rounded-full border border-primary/35 bg-primary/10 px-2 py-[1px] text-[9px] font-sans uppercase tracking-wider text-primary/90"
+                          title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
+                        >
+                          {dividerLabel.title}
+                          {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
+                        </span>
+                        <span>{row.displayNumber}</span>
                       </span>
+                    ) : (
+                      row.displayNumber
                     )}
-                    {row.displayNumber}
                   </td>
                   <td className="text-right pr-1.5 py-0.5 font-mono text-[13px]">
                     {fmtSolve(row.solve)}
