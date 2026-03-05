@@ -1417,13 +1417,17 @@ export function TimerContent() {
     setSelectedId(null)
   }
 
-  function deleteSolve(id: string) {
+  function deleteSolve(id: string): boolean {
+    const confirmed = window.confirm("Are you sure you want to delete this solve?")
+    if (!confirmed) return false
+
     setSolves((previous) => previous.filter((solve) => solve.id !== id))
     void solveStoreRef.current
       .deleteSolve(id)
       .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_delete" }))
     deleteStatsSolve(eventRef.current, id)
     setSelectedId(null)
+    return true
   }
 
   function changePracticeType(type: string) {
@@ -2212,8 +2216,8 @@ export function TimerContent() {
                 <button
                   className="text-[13px] font-sans px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
                   onClick={() => {
-                    deleteSolve(last.id)
-                    setIdle()
+                    const deleted = deleteSolve(last.id)
+                    if (deleted) setIdle()
                   }}
                 >
                   Delete
