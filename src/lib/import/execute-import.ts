@@ -25,6 +25,7 @@ export async function executeImport(
   rawSolves: RawImportSolve[],
   sessions: SessionSummary[],
   pbs: NormalizedPB[],
+  source: string | undefined,
   solveStore: SolveStore,
   onProgress: ImportProgress
 ): Promise<ImportResult> {
@@ -78,7 +79,10 @@ export async function executeImport(
     // Phase 2: Session summaries
     if (sessions.length > 0) {
       onProgress(`Saving ${sessions.length} session summaries...`)
-      const result = await createSessionsBulk(sessions)
+      const result = await createSessionsBulk(
+        sessions,
+        source ? { source } : undefined
+      )
       if (result.error) {
         return { success: false, error: result.error }
       }

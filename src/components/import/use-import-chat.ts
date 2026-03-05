@@ -367,6 +367,7 @@ export function useImportChat() {
       rawSolvesRef.current,
       sessionsRef.current,
       pbsRef.current,
+      sourceRef.current,
       solveStoreRef.current,
       (progress) => updateLastBotAction({ type: "importing", progress })
     )
