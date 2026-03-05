@@ -1518,13 +1518,15 @@ export function TimerContent() {
     onRunning: () => {
       inspRef.current?.cancelInspection()
       btSolveFinalizedRef.current = false
-      if (phaseRef.current !== "running") {
+      if (engineRef.current.getSnapshot().phase !== "running") {
         startRef.current = performance.now()
       }
       dispatchEngine({ type: "BT_RUNNING" })
     },
     onStopped: (time_ms: number | null) => {
-      if (phaseRef.current !== "running" || btSolveFinalizedRef.current) return
+      const phaseNow = engineRef.current.getSnapshot().phase
+      const canFinalize = phaseNow === "running" || phaseNow === "stopped"
+      if (!canFinalize || btSolveFinalizedRef.current) return
       btSolveFinalizedRef.current = true
       dispatchEngine({ type: "BT_STOPPED" })
       const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
@@ -1536,10 +1538,11 @@ export function TimerContent() {
     },
     onIdle: () => {
       inspRef.current?.cancelInspection()
+      const phaseNow = engineRef.current.getSnapshot().phase
       const shouldStartInspection =
         inspOnRef.current &&
-        phaseRef.current !== "stopped" &&
-        phaseRef.current !== "running"
+        phaseNow !== "stopped" &&
+        phaseNow !== "running"
       if (shouldStartInspection) {
         dispatchEngine({ type: "START_INSPECTION" })
         inspRef.current?.startInspection()
