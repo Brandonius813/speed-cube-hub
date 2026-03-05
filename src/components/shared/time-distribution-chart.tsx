@@ -13,9 +13,29 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { Solve } from "@/lib/types"
-import { getEffectiveTime, formatTimeMs } from "@/lib/timer/averages"
+import { getEffectiveTime } from "@/lib/timer/averages"
 
 type DisplayMode = "frequency" | "cumulative"
+type ChartScope = "session" | "all"
+
+function getIntervalDecimals(bucketSize: number): number {
+  if (bucketSize >= 1) return 0
+  if (bucketSize >= 0.1) return 1
+  return 2
+}
+
+function formatIntervalBoundary(seconds: number, decimals: number): string {
+  if (seconds < 60) {
+    return decimals === 0 ? String(Math.round(seconds)) : seconds.toFixed(decimals)
+  }
+
+  const min = Math.floor(seconds / 60)
+  const sec = seconds % 60
+  if (decimals === 0) {
+    return `${min}:${Math.round(sec).toString().padStart(2, "0")}`
+  }
+  return `${min}:${sec.toFixed(decimals).padStart(decimals + 3, "0")}`
+}
 
 function CustomTooltip({
   active,
@@ -39,8 +59,17 @@ function CustomTooltip({
   return null
 }
 
-export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
+export function TimeDistributionChart({
+  solves,
+  scope,
+  onScopeChange,
+}: {
+  solves: Solve[]
+  scope?: ChartScope
+  onScopeChange?: (scope: ChartScope) => void
+}) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("frequency")
+  const activeScope: ChartScope = scope === "all" ? "all" : "session"
 
   const chartData = useMemo(() => {
     // Filter out DNFs and get effective times
@@ -63,6 +92,7 @@ export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
     else if (range <= 180) bucketSize = 5
     else bucketSize = 10
 
+    const intervalDecimals = getIntervalDecimals(bucketSize)
     const bucketStart = Math.floor(min / bucketSize) * bucketSize
     const bucketEnd = Math.ceil(max / bucketSize) * bucketSize
 
@@ -74,9 +104,8 @@ export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
       const count = times.filter((t) => t >= start && t < end).length
       cumulative += count
 
-      // Format label — show seconds nicely
-      const startLabel = formatTimeMs(start * 1000)
-      const endLabel = formatTimeMs(end * 1000)
+      const startLabel = formatIntervalBoundary(start, intervalDecimals)
+      const endLabel = formatIntervalBoundary(end, intervalDecimals)
       buckets.push({
         label: `${startLabel}–${endLabel}`,
         count,
@@ -89,9 +118,29 @@ export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
 
   if (solves.length === 0) {
     return (
-      <Card className="border-border/50 bg-card">
-        <CardHeader>
+      <Card className="h-full border-border/50 bg-card">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-foreground">Time Distribution</CardTitle>
+          {onScopeChange ? (
+            <div className="flex gap-1">
+              <Button
+                variant={activeScope === "session" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onScopeChange("session")}
+              >
+                Session
+              </Button>
+              <Button
+                variant={activeScope === "all" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onScopeChange("all")}
+              >
+                All Time
+              </Button>
+            </div>
+          ) : null}
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
@@ -105,14 +154,34 @@ export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
   const dataKey = displayMode === "frequency" ? "count" : "cumulative"
 
   return (
-    <Card className="border-border/50 bg-card">
+    <Card className="h-full border-border/50 bg-card flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-foreground">Time Distribution</CardTitle>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
+          {onScopeChange ? (
+            <>
+              <Button
+                variant={activeScope === "session" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onScopeChange("session")}
+              >
+                Session
+              </Button>
+              <Button
+                variant={activeScope === "all" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onScopeChange("all")}
+              >
+                All Time
+              </Button>
+            </>
+          ) : null}
           <Button
             variant={displayMode === "frequency" ? "secondary" : "ghost"}
             size="sm"
-            className="h-7 text-xs px-2"
+            className="h-7 px-2 text-xs"
             onClick={() => setDisplayMode("frequency")}
           >
             Count
@@ -120,15 +189,15 @@ export function TimeDistributionChart({ solves }: { solves: Solve[] }) {
           <Button
             variant={displayMode === "cumulative" ? "secondary" : "ghost"}
             size="sm"
-            className="h-7 text-xs px-2"
+            className="h-7 px-2 text-xs"
             onClick={() => setDisplayMode("cumulative")}
           >
             Cumulative
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[220px]">
+      <CardContent className="min-h-0 flex-1">
+        <div className="h-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid

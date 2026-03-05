@@ -98,7 +98,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-1 flex-col justify-between p-6">
+        <div className="relative z-10 flex flex-1 flex-col p-6">
           {/* Header */}
           <CardHeader data={data} />
 
@@ -113,14 +113,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               <SolveBody data={data} showScramble={showScramble} />
             )}
           </div>
-
-          {/* Footer branding */}
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <Box className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs font-medium tracking-wide text-zinc-400">
-              speedcubehub.com
-            </span>
-          </div>
         </div>
       </div>
     )
@@ -131,22 +123,31 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
 
 function CardHeader({ data }: { data: ShareCardData }) {
   return (
-    <div className="flex items-center gap-3 pb-3">
-      {data.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={data.avatarUrl}
-          alt={data.userName}
-          className="h-10 w-10 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-          <User className="h-5 w-5 text-zinc-400" />
+    <div className="flex items-start justify-between gap-3 pb-3">
+      <div className="flex shrink-0 items-center gap-2">
+        <Box className="h-4 w-4 text-indigo-400" />
+        <span className="text-xs font-medium tracking-wide text-zinc-400">
+          speedcubehub.com
+        </span>
+      </div>
+
+      <div className="ml-auto flex min-w-0 items-center gap-2">
+        <div className="min-w-0 text-right">
+          <p className="truncate text-sm font-semibold">{data.userName}</p>
+          <p className="truncate text-xs text-zinc-400">@{data.handle}</p>
         </div>
-      )}
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{data.userName}</p>
-        <p className="truncate text-xs text-zinc-400">@{data.handle}</p>
+        {data.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={data.avatarUrl}
+            alt={data.userName}
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
+            <User className="h-5 w-5 text-zinc-400" />
+          </div>
+        )}
       </div>
     </div>
   )

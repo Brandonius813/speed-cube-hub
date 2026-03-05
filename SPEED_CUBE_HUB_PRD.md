@@ -265,6 +265,13 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Multiple solve deletion (batch select) (T151)
 - [x] Auto-backup / auto-export (T152)
 
+**Phase 24 — Timer Multi-Pane Workspace — T153:**
+- [x] Modular pane workspace (up to 4 tools) with snap-grid drag/resize on desktop
+- [x] Mobile stacked pane drawer with add/remove/reorder and per-pane height presets
+- [x] Tool registry architecture + new Scramble Text pane + split chart tools (Time Distribution, Time Trend)
+- [x] Local-first layout persistence with account sync (`timer_pane_layouts`) and latest-write-wins merge
+- [x] User controls: edit/lock mode, auto-hide panes during solve toggle, reset layout
+
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events

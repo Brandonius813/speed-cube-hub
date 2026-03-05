@@ -156,18 +156,14 @@ function generateSquare1Fallback(): string {
 }
 
 function generateClockFallback(): string {
-  const dials = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"]
-  const oneSide = dials
-    .map((dial) => {
-      const shift = randomInt(12) - 5
-      const sign = shift >= 0 ? "+" : ""
-      return `${dial}${sign}${shift}`
-    })
-    .join(" ")
-  const pinStates = ["UR", "DR", "DL", "UL"]
-    .map((pin) => `${pin}${randomInt(2) === 0 ? "0" : "1"}`)
-    .join(" ")
-  return `${oneSide} ${pinStates} y2 ${oneSide}`
+  const frontDials = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"]
+  const backDials = ["U", "R", "D", "L", "ALL"]
+  const makeDialTurn = (dial: string) => {
+    const amount = randomInt(6) + 1
+    const sign = randomInt(2) === 0 ? "+" : "-"
+    return `${dial}${amount}${sign}`
+  }
+  return `${frontDials.map(makeDialTurn).join(" ")} y2 ${backDials.map(makeDialTurn).join(" ")}`
 }
 
 function normalizeMegaminxRows(scramble: string): string {

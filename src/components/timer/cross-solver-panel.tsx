@@ -23,7 +23,13 @@ export function CrossSolverPanel({ scramble }: CrossSolverPanelProps) {
   >({})
 
   const solutions = useMemo(() => solveCross(scramble), [scramble])
-  const bestCount = solutions.length > 0 ? solutions[0].moveCount : 0
+  const bestCount = useMemo(
+    () =>
+      solutions.length > 0
+        ? solutions.reduce((best, solution) => Math.min(best, solution.moveCount), Infinity)
+        : 0,
+    [solutions]
+  )
 
   if (solutions.length === 0) return null
 
@@ -78,7 +84,7 @@ export function CrossSolverPanel({ scramble }: CrossSolverPanelProps) {
                   className="px-1.5 py-0.5 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Reveal next move"
                 >
-                  Reveal
+                  Next Move
                 </button>
                 <button
                   onClick={() =>

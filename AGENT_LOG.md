@@ -194,3 +194,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Commits made directly on main (cf24596 sizing, a5d1efb font) don't automatically appear on dev — must cherry-pick or merge. The `practice-mode-selector.tsx` already had "Comp Sim" in COMMON_TYPES, so selecting it triggers the overlay via `practiceType === "Comp Sim"` check in timer-content.
 **Blockers:** None
 **Warnings:** timer-content.tsx is now ~1740 lines (well over 400 limit but was already that way). Comp sim overlay uses keyboard capture (`{ capture: true }`) on spacebar — if other features add global keyboard handlers, they may conflict.
+
+---
+
+### 2026-03-04 PT — Timer Multi-Pane Workspace Session
+
+**Task:** Replace single timer bottom pane with modular multi-pane workspace (up to 4 tools)
+**Status:** Completed. Added pane registry + pane layout state engine + desktop snap-grid workspace + mobile stacked drawer. Integrated into timer settings (edit mode, tool toggles, auto-hide while solving, reset layout). Added server persistence (`timer-layout` actions), Zod validation, and DB migration (`timer_pane_layouts`) for local-first + account sync.
+**Files touched:** NEW: `src/components/timer/panes/*`, `src/lib/actions/timer-layout.ts`, `supabase/migrations/024_create_timer_pane_layouts.sql`. MODIFIED: `src/components/timer/timer-content.tsx`, `src/lib/validations.ts`, `src/components/shared/time-distribution-chart.tsx`, `src/components/shared/time-trend-chart.tsx`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`.
+**Learnings:** Best UX came from keeping panes as fixed overlays (`pointer-events-none` shell + interactive pane cards) so timer layout never shifts. Last-write-wins using `updatedAtMs` is simple and reliable for cross-device sync in v1.
+**Checks:** `npx tsc --noEmit` passed; `npm run lint` passed with existing repo-wide warnings.

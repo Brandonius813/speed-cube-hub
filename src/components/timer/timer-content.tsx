@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Settings } from "lucide-react"
+import { Info, Settings } from "lucide-react"
 import { useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
 import {
@@ -13,6 +13,7 @@ import {
 import {
   SolveListPanel,
   type SolveListRow,
+  type SolveSelectionMetric,
   type SolveStats,
 } from "@/components/timer/solve-list-panel"
 import {
@@ -37,15 +38,22 @@ import {
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
-import { ScrambleImage } from "@/components/timer/scramble-image"
-import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
-import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
-import { TimeTrendChart } from "@/components/shared/time-trend-chart"
+import {
+  PANE_REGISTRY,
+  PANE_TOOL_OPTIONS,
+} from "@/components/timer/panes/pane-registry"
+import { useTimerPaneLayout } from "@/components/timer/panes/use-timer-pane-layout"
+import { DesktopPaneWorkspace } from "@/components/timer/panes/desktop-pane-workspace"
+import { MobilePaneDrawer } from "@/components/timer/panes/mobile-pane-drawer"
+import type { PaneToolId } from "@/components/timer/panes/types"
+import { ShareModal } from "@/components/share/share-modal"
 import type {
   StatsSummary,
   StatsWorkerRequest,
   StatsWorkerResponse,
 } from "@/lib/timer/stats-worker-types"
+import { getProfile } from "@/lib/actions/profiles"
+import type { ShareCardData } from "@/components/share/share-card"
 import type { Solve as StoredSolve } from "@/lib/types"
 
 const HOLD_MS = 550
@@ -54,6 +62,17 @@ const SCRAMBLE_TIMEOUT_MS = 1800
 const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
 const TIMER_V2_ENGINE_ENABLED = process.env.NEXT_PUBLIC_TIMER_V2_ENGINE !== "false"
+
+type TimerUpdateMode = "realtime" | "seconds" | "solving"
+
+const TIMER_UPDATE_MODE_OPTIONS: Array<{
+  value: TimerUpdateMode
+  label: string
+}> = [
+  { value: "realtime", label: "Real-time" },
+  { value: "seconds", label: "Seconds" },
+  { value: "solving", label: "None" },
+]
 
 const EVENTS = [
   { id: "333", name: "3x3" },
@@ -91,9 +110,6 @@ type PendingScrambleRequest = {
   attempt: number
   timeoutId: number
 }
-
-type ChartScope = "session" | "all"
-type TimerBottomPane = "draw" | "cross" | "charts"
 
 function loadSessionGroups(eventId: string): SessionGroupMeta[] {
   try {
@@ -181,6 +197,14 @@ function fmt(ms: number, dec = 2): string {
   return `${m}:${(s % 60).toFixed(dec).padStart(dec + 3, "0")}`
 }
 
+function fmtWholeSeconds(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  if (totalSeconds < 60) return String(totalSeconds)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
+}
+
 function parseTime(raw: string): number | null {
   if (raw.includes(":")) {
     const colonMatch = raw.trim().match(/^(\d+):(\d{1,2})(?:[.,](\d{1,2}))?$/)
@@ -202,6 +226,11 @@ function parseTime(raw: string): number | null {
   if (secs >= 60) return null
   const ms = (mins * 60 + secs) * 1000 + cs * 10
   return ms > 0 ? ms : null
+}
+
+function getEffectiveSolveMs(solve: Solve): number | null {
+  if (solve.penalty === "DNF") return null
+  return solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
 }
 
 function computeStatsSync(solves: Solve[], statCols: [string, string]): SolveStats {
@@ -296,12 +325,20 @@ export function TimerContent() {
       return false
     }
   })
+  const [timerUpdateMode, setTimerUpdateMode] = useState<TimerUpdateMode>(() => {
+    try {
+      const raw = localStorage.getItem("timer-update-mode")
+      if (raw === "realtime" || raw === "seconds" || raw === "solving") {
+        return raw
+      }
+    } catch {}
+    return "realtime"
+  })
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedMetric, setSelectedMetric] = useState<SolveSelectionMetric>("single")
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
-  const [activeBottomPane, setActiveBottomPane] = useState<TimerBottomPane | null>(null)
-  const [chartScope, setChartScope] = useState<ChartScope>("session")
   const [practiceType, setPracticeType] = useState(() => {
     try {
       return localStorage.getItem("timer-practice-type") ?? "Solves"
@@ -317,6 +354,22 @@ export function TimerContent() {
     } catch {}
     return ["ao5", "ao12"]
   })
+  const {
+    layout: paneLayout,
+    panes,
+    paneByTool,
+    addPane,
+    togglePaneTool,
+    removePane,
+    updatePaneRect,
+    changePaneTool,
+    updatePaneOptions,
+    setAutoHideDuringSolve,
+    moveMobilePane,
+    setMobilePaneHeight,
+  } = useTimerPaneLayout("main")
+  const timerTopAreaRef = useRef<HTMLDivElement | null>(null)
+  const [desktopPaneTopOffsetPx, setDesktopPaneTopOffsetPx] = useState(112)
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
     try {
       const raw = localStorage.getItem("timer-session-start")
@@ -336,10 +389,77 @@ export function TimerContent() {
   const [solveRange, setSolveRange] = useState({
     start: 0,
     end: INITIAL_SOLVE_WINDOW,
-    scrollOffset: 0,
   })
-  const [solveRows, setSolveRows] = useState<SolveListRow[]>([])
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
+  const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [shareAuthor, setShareAuthor] = useState({
+    userName: "You",
+    handle: "you",
+    avatarUrl: null as string | null,
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    const body = document.body
+    const prevRootOverflowY = root.style.overflowY
+    const prevBodyOverflowY = body.style.overflowY
+
+    const syncTimerViewport = () => {
+      const navbar = document.querySelector("header")
+      const navbarHeight = navbar instanceof HTMLElement ? navbar.offsetHeight : 0
+      root.style.setProperty("--timer-navbar-height", `${navbarHeight}px`)
+    }
+
+    syncTimerViewport()
+    root.style.overflowY = "hidden"
+    body.style.overflowY = "hidden"
+    window.addEventListener("resize", syncTimerViewport)
+
+    return () => {
+      window.removeEventListener("resize", syncTimerViewport)
+      root.style.overflowY = prevRootOverflowY
+      body.style.overflowY = prevBodyOverflowY
+      root.style.removeProperty("--timer-navbar-height")
+    }
+  }, [])
+
+  useEffect(() => {
+    const node = timerTopAreaRef.current
+    if (!node) return
+
+    const measure = () => {
+      const { bottom } = node.getBoundingClientRect()
+      setDesktopPaneTopOffsetPx(bottom + 8)
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    window.addEventListener("resize", measure)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", measure)
+    }
+  }, [practiceType, scrambleError, scramble])
+
+  useEffect(() => {
+    let cancelled = false
+    void getProfile()
+      .then(({ profile }) => {
+        if (cancelled || !profile) return
+        setShareAuthor({
+          userName: profile.display_name || "You",
+          handle: profile.handle || "you",
+          avatarUrl: profile.avatar_url ?? null,
+        })
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const engineRef = useRef(createTimerEngine({ phase: "idle", scrambleReady: false }))
   const [engineSnapshot, setEngineSnapshot] = useState(() => engineRef.current.getSnapshot())
@@ -519,24 +639,23 @@ export function TimerContent() {
     [dispatchEngine]
   )
 
-  const rebuildWindowRows = useCallback(
-    (windowSolves: Solve[]): SolveListRow[] => {
-      const rows: SolveListRow[] = []
-      for (let i = 0; i < windowSolves.length; i++) {
-        const displayIndex = solveRange.start + i
-        const solveIndex = solves.length - 1 - displayIndex
-        if (solveIndex < 0) continue
-        const liveSolve = solves[solveIndex] ?? windowSolves[i]
-        rows.push({
-          solve: liveSolve,
-          solveIndex,
-          displayNumber: solves.length - displayIndex,
-        })
-      }
-      return rows
-    },
-    [solveRange.start, solves]
-  )
+  const solveRows = useMemo((): SolveListRow[] => {
+    const rows: SolveListRow[] = []
+    for (
+      let displayIndex = solveRange.start;
+      displayIndex < solveRange.end && displayIndex < solves.length;
+      displayIndex++
+    ) {
+      const solveIndex = solves.length - 1 - displayIndex
+      if (solveIndex < 0) break
+      rows.push({
+        solve: solves[solveIndex],
+        solveIndex,
+        displayNumber: solves.length - displayIndex,
+      })
+    }
+    return rows
+  }, [solveRange.end, solveRange.start, solves])
 
   const initStats = useCallback(
     (sessionId: string, seedSolves: Solve[]) => {
@@ -875,7 +994,6 @@ export function TimerContent() {
         ...prev,
         start: 0,
         end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
-        scrollOffset: 0,
       }))
       // Stats only computed on current session solves (ungrouped)
       const currentSolves = loaded.filter((s) => !s.group)
@@ -919,52 +1037,20 @@ export function TimerContent() {
   }, [event, recomputeStats, statCols])
 
   useEffect(() => {
-    let cancelled = false
-    const limit = Math.max(0, solveRange.end - solveRange.start)
-    if (limit === 0) {
-      setSolveRows([])
-      return
-    }
-
-    solveStoreRef.current
-      .listWindow(event, solveRange.start, limit)
-      .then((windowSolves) => {
-        if (cancelled) return
-        if (windowSolves.length > 0) {
-          setSolveRows(rebuildWindowRows(windowSolves))
-          return
-        }
-        const fallback: Solve[] = []
-        for (
-          let displayIndex = solveRange.start;
-          displayIndex < solveRange.end && displayIndex < solves.length;
-          displayIndex++
-        ) {
-          const solveIndex = solves.length - 1 - displayIndex
-          if (solveIndex < 0) break
-          fallback.push(solves[solveIndex])
-        }
-        setSolveRows(rebuildWindowRows(fallback))
-      })
-      .catch(() => {
-        if (cancelled) return
-        const fallback: Solve[] = []
-        for (
-          let displayIndex = solveRange.start;
-          displayIndex < solveRange.end && displayIndex < solves.length;
-          displayIndex++
-        ) {
-          const solveIndex = solves.length - 1 - displayIndex
-          if (solveIndex < 0) break
-          fallback.push(solves[solveIndex])
-        }
-        setSolveRows(rebuildWindowRows(fallback))
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [event, rebuildWindowRows, solveRange.end, solveRange.start, solves])
+    setSolveRange((previous) => {
+      if (solves.length === 0) {
+        if (previous.start === 0 && previous.end === 0) return previous
+        return { start: 0, end: 0 }
+      }
+      const maxStart = Math.max(0, solves.length - 1)
+      const nextStart = Math.min(previous.start, maxStart)
+      const nextEnd = Math.max(nextStart + 1, Math.min(previous.end, solves.length))
+      if (nextStart === previous.start && nextEnd === previous.end) {
+        return previous
+      }
+      return { start: nextStart, end: nextEnd }
+    })
+  }, [solves.length])
 
   useEffect(() => {
     try {
@@ -1452,56 +1538,115 @@ export function TimerContent() {
     [selectedId, solves]
   )
 
+  const handleSelectSolveCell = useCallback(
+    (id: string, metric: SolveSelectionMetric) => {
+      setSelectedId(id)
+      setSelectedMetric(metric)
+    },
+    []
+  )
+
+  const handleShareSolve = useCallback((solve: Solve) => {
+    const solveIndex = solves.findIndex((entry) => entry.id === solve.id)
+    const solveNumber = solveIndex >= 0 ? solveIndex + 1 : solves.length
+    const selectedTime = getEffectiveSolveMs(solve)
+    const bestTime = solves.reduce<number | null>((best, entry) => {
+      const current = getEffectiveSolveMs(entry)
+      if (current === null) return best
+      if (best === null || current < best) return current
+      return best
+    }, null)
+    const isPB =
+      selectedTime !== null && bestTime !== null && selectedTime === bestTime
+
+    setShareCardData({
+      variant: "solve",
+      event,
+      timeMs: solve.time_ms,
+      penalty: solve.penalty,
+      scramble: solve.scramble,
+      solveNumber: Math.max(1, solveNumber),
+      solvedAt: new Date().toISOString(),
+      userName: shareAuthor.userName,
+      handle: shareAuthor.handle,
+      avatarUrl: shareAuthor.avatarUrl,
+      isPB,
+    })
+    setShareModalOpen(true)
+  }, [event, shareAuthor.avatarUrl, shareAuthor.handle, shareAuthor.userName, solves])
+
+  const mostRecentSavedSessionSolves = useMemo(() => {
+    const groupedSolves = solves.filter((solve) => !!solve.group)
+    if (groupedSolves.length === 0) return []
+
+    const groupedIds = new Set(
+      groupedSolves
+        .map((solve) => solve.group)
+        .filter((groupId): groupId is string => typeof groupId === "string")
+    )
+
+    const mostRecentMeta = [...sessionGroups]
+      .filter((group) => groupedIds.has(group.id))
+      .sort((a, b) => b.savedAt - a.savedAt)[0]
+
+    let mostRecentGroupId = mostRecentMeta?.id ?? null
+    if (!mostRecentGroupId) {
+      for (let i = solves.length - 1; i >= 0; i--) {
+        const groupId = solves[i].group
+        if (!groupId) continue
+        mostRecentGroupId = groupId
+        break
+      }
+    }
+
+    if (!mostRecentGroupId) return []
+    return solves.filter((solve) => solve.group === mostRecentGroupId)
+  }, [sessionGroups, solves])
+
   const sessionChartSolves = useMemo(() => {
-    let solveNumber = 1
-    return solves
-      .filter((solve) => !solve.group)
-      .map((solve) => toChartSolve(solve, event, solveNumber++))
-  }, [event, solves])
+    const currentSessionSolves = solves.filter((solve) => !solve.group)
+    const source =
+      currentSessionSolves.length > 0 || hasActiveSession
+        ? currentSessionSolves
+        : mostRecentSavedSessionSolves
+    return source.map((solve, index) => toChartSolve(solve, event, index + 1))
+  }, [event, hasActiveSession, mostRecentSavedSessionSolves, solves])
 
   const allChartSolves = useMemo(
     () => solves.map((solve, index) => toChartSolve(solve, event, index + 1)),
     [event, solves]
   )
 
-  const chartSolves = chartScope === "session" ? sessionChartSolves : allChartSolves
-  const showScrambleDraw = activeBottomPane === "draw"
-  const showCrossTrainer = activeBottomPane === "cross"
-  const showAnalytics = activeBottomPane === "charts"
-
-  useEffect(() => {
-    if (!showAnalytics) return
-    if (chartScope !== "session") return
-    if (sessionChartSolves.length > 0) return
-    if (allChartSolves.length === 0) return
-    setChartScope("all")
-  }, [allChartSolves.length, chartScope, sessionChartSolves.length, showAnalytics])
-
-  useEffect(() => {
-    if (practiceType === "Comp Sim" && activeBottomPane) {
-      setActiveBottomPane(null)
-    }
-  }, [activeBottomPane, practiceType])
-
-  useEffect(() => {
-    if (event !== "333" && activeBottomPane === "cross") {
-      setActiveBottomPane(null)
-    }
-  }, [activeBottomPane, event])
-
   const canShowCrossTrainer =
-    event === "333" &&
+    (event === "333" || event === "333oh") &&
     scramble.length > 0 &&
     !scramble.startsWith("Preparing") &&
     !scramble.startsWith("Scramble worker unavailable")
 
   const inInspHold =
     (phase === "holding" || phase === "ready") && inspHoldRef.current
-  const timingActive =
-    phase === "running" ||
-    phase === "holding" ||
-    phase === "ready" ||
-    phase === "inspecting"
+  const timingActive = phase === "running" || phase === "inspecting" || inInspHold
+
+  const paneContext = useMemo(
+    () => ({
+      event,
+      phase,
+      scramble,
+      canShowCrossTrainer,
+      chartSolvesSession: sessionChartSolves,
+      chartSolvesAll: allChartSolves,
+      statCols,
+    }),
+    [
+      allChartSolves,
+      canShowCrossTrainer,
+      event,
+      phase,
+      scramble,
+      sessionChartSolves,
+      statCols,
+    ]
+  )
 
   const timeColor =
     phase === "holding"
@@ -1523,22 +1668,14 @@ export function TimerContent() {
   const scrambleNavBtn =
     "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
   const sp = (eventPointer: React.PointerEvent) => eventPointer.stopPropagation()
-  const toggleBottomPane = useCallback((pane: TimerBottomPane) => {
-    setActiveBottomPane((current) => (current === pane ? null : pane))
-    setSettingsOpen(false)
-  }, [])
 
   const handleRangeChange = useCallback(
-    (next: { start: number; end: number; scrollOffset: number }) => {
+    (next: { start: number; end: number }) => {
       if (phaseRef.current === "running" || engineRef.current.getSnapshot().suppressOptionalUi) {
         return
       }
       setSolveRange((previous) => {
-        if (
-          previous.start === next.start &&
-          previous.end === next.end &&
-          previous.scrollOffset === next.scrollOffset
-        ) {
+        if (previous.start === next.start && previous.end === next.end) {
           return previous
         }
         return next
@@ -1548,16 +1685,17 @@ export function TimerContent() {
   )
 
   return (
-    <div className="flex flex-col min-h-screen bg-background select-none">
+    <div className="flex h-[calc(100dvh-var(--timer-navbar-height,0px))] min-h-0 flex-col overflow-hidden bg-background select-none">
       {storageWarning && (
         <div className="bg-yellow-900/60 border-b border-yellow-700/50 px-4 py-2 text-center text-xs text-yellow-200">
           {storageWarning}
         </div>
       )}
-      <div
-        className="relative flex items-center px-4 py-3 gap-3 border-b border-border"
-        onPointerDown={sp}
-      >
+      <div ref={timerTopAreaRef}>
+        <div
+          className="relative flex items-center px-4 py-3 gap-3 border-b border-border"
+          onPointerDown={sp}
+        >
         <select
           className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
           value={event}
@@ -1637,6 +1775,9 @@ export function TimerContent() {
             </button>
             {settingsOpen && (
               <div className="absolute right-0 top-full mt-1 w-56 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+                <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Timer
+                </div>
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
                   onClick={() =>
@@ -1659,6 +1800,35 @@ export function TimerContent() {
                     {typing ? "On" : "Off"}
                   </span>
                 </button>
+                {isBleSupported() && (
+                  <button
+                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={btStatus === "connected" ? btDisconnect : btConnect}
+                    disabled={btStatus === "connecting"}
+                    onPointerDown={sp}
+                    title={
+                      btStatus === "connected"
+                        ? "Disconnect GAN Smart Timer"
+                        : "Connect GAN Smart Timer via Bluetooth"
+                    }
+                  >
+                    <span className="text-foreground">GAN Smart Timer</span>
+                    <span
+                      className={cn(
+                        "font-mono text-[12px]",
+                        btStatus === "connected"
+                          ? "text-primary font-medium"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {btStatus === "connecting"
+                        ? "Connecting…"
+                        : btStatus === "connected"
+                        ? "Connected"
+                        : "Disconnected"}
+                    </span>
+                  </button>
+                )}
                 <button
                   className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   onClick={() =>
@@ -1684,182 +1854,154 @@ export function TimerContent() {
                     {inspOn ? "On" : "Off"}
                   </span>
                 </button>
+                <div className="px-3 py-2 space-y-1.5">
+                  <span className="block text-[11px] font-medium text-foreground">
+                    Update During Solve
+                  </span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {TIMER_UPDATE_MODE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        className={cn(
+                          "h-7 rounded border text-[11px] font-medium transition-colors",
+                          timerUpdateMode === option.value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                        onClick={() => {
+                          setTimerUpdateMode(option.value)
+                          try {
+                            localStorage.setItem("timer-update-mode", option.value)
+                          } catch {}
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {practiceType !== "Comp Sim" && (
                   <>
                     <div className="my-1 border-t border-border" />
+                    <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Tools
+                    </div>
                     <button
                       className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
-                      onClick={() => toggleBottomPane("draw")}
-                    >
-                      <span className="text-foreground">Draw</span>
-                      <span
-                        className={cn(
-                          "font-mono text-[12px]",
-                          showScrambleDraw
-                            ? "text-primary font-medium"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {showScrambleDraw ? "Open" : "Closed"}
-                      </span>
-                    </button>
-                    <button
-                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      onClick={() => toggleBottomPane("cross")}
-                      disabled={event !== "333"}
-                      title={
-                        event === "333"
-                          ? showCrossTrainer
-                            ? "Hide cross trainer"
-                            : "Show cross trainer"
-                          : "Cross trainer is available for 3x3 only"
+                      onClick={() =>
+                        setAutoHideDuringSolve(!paneLayout.autoHideDuringSolve)
                       }
                     >
-                      <span className="text-foreground">Cross</span>
+                      <span className="text-foreground">Hide Tools During Solve</span>
                       <span
                         className={cn(
                           "font-mono text-[12px]",
-                          showCrossTrainer
+                          paneLayout.autoHideDuringSolve
                             ? "text-primary font-medium"
                             : "text-muted-foreground"
                         )}
                       >
-                        {showCrossTrainer ? "Open" : "Closed"}
+                        {paneLayout.autoHideDuringSolve ? "On" : "Off"}
                       </span>
                     </button>
-                    <button
-                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
-                      onClick={() => toggleBottomPane("charts")}
-                    >
-                      <span className="text-foreground">Charts</span>
-                      <span
-                        className={cn(
-                          "font-mono text-[12px]",
-                          showAnalytics ? "text-primary font-medium" : "text-muted-foreground"
-                        )}
-                      >
-                        {showAnalytics ? "Open" : "Closed"}
-                      </span>
-                    </button>
-                  </>
-                )}
-                {isBleSupported() && (
-                  <>
-                    <div className="my-1 border-t border-border" />
-                    <button
-                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      onClick={btStatus === "connected" ? btDisconnect : btConnect}
-                      disabled={btStatus === "connecting"}
-                      onPointerDown={sp}
-                      title={
-                        btStatus === "connected"
-                          ? "Disconnect GAN Smart Timer"
-                          : "Connect GAN Smart Timer via Bluetooth"
-                      }
-                    >
-                      <span className="text-foreground">GAN Smart Timer</span>
-                      <span
-                        className={cn(
-                          "font-mono text-[12px]",
-                          btStatus === "connected"
-                            ? "text-primary font-medium"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {btStatus === "connecting"
-                          ? "Connecting…"
-                          : btStatus === "connected"
-                          ? "Connected"
-                          : "Disconnected"}
-                      </span>
-                    </button>
+                    {PANE_TOOL_OPTIONS.map((option) => {
+                      const tool = option.tool as PaneToolId
+                      const openPane = paneByTool.get(tool)
+                      const isOpen = !!openPane
+                      const canAddMore = panes.length < 4
+                      const isAvailable = PANE_REGISTRY[tool].isAvailable(paneContext)
+                      const showCrossEventHint =
+                        tool === "cross" && !isOpen && !isAvailable
+                      const paneLimitDisabled = !isOpen && !canAddMore
+                      const disabled = paneLimitDisabled || showCrossEventHint
+                      const disabledReason = showCrossEventHint
+                        ? "Only works on 3x3 and 3x3 one-handed"
+                        : paneLimitDisabled
+                        ? "Max 4 panes open"
+                        : null
+                      return (
+                        <button
+                          key={tool}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors",
+                            disabled && "opacity-40 cursor-not-allowed"
+                          )}
+                          onClick={() => {
+                            if (showCrossEventHint || paneLimitDisabled) return
+                            togglePaneTool(tool)
+                          }}
+                          disabled={paneLimitDisabled}
+                          aria-disabled={disabled}
+                          title={
+                            disabledReason
+                              ? `${option.label}: ${disabledReason}`
+                              : undefined
+                          }
+                        >
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
+                            {option.label}
+                            {showCrossEventHint && (
+                              <span
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/50 text-muted-foreground"
+                                title="Only works on 3x3 and 3x3 one-handed"
+                                aria-label="Only works on 3x3 and 3x3 one-handed"
+                              >
+                                <Info size={10} />
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className={cn(
+                              "font-mono text-[12px]",
+                              isOpen ? "text-primary font-medium" : "text-muted-foreground"
+                            )}
+                          >
+                            {isOpen ? "Open" : "Closed"}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </>
                 )}
               </div>
             )}
           </div>
         </div>
+        </div>
+
+        {practiceType !== "Comp Sim" && scrambleError && (
+          <div className="border-b border-yellow-700/50 bg-yellow-900/35 px-4 py-1.5 text-xs text-yellow-200">
+            {scrambleError}
+          </div>
+        )}
       </div>
 
-      {practiceType !== "Comp Sim" && scrambleError && (
-        <div className="border-b border-yellow-700/50 bg-yellow-900/35 px-4 py-1.5 text-xs text-yellow-200">
-          {scrambleError}
-        </div>
-      )}
-
-      {practiceType !== "Comp Sim" && activeBottomPane && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
-          <div
-            className={cn(
-              "pointer-events-auto w-full rounded-xl border border-border/70 bg-background/95 shadow-2xl backdrop-blur",
-              showAnalytics ? "max-w-5xl" : "max-w-3xl"
-            )}
-            onPointerDown={sp}
-          >
-            <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-              <p className="text-xs font-sans uppercase tracking-wide text-muted-foreground">
-                {showScrambleDraw
-                  ? "Scramble Draw"
-                  : showCrossTrainer
-                  ? "Cross Trainer"
-                  : "Charts"}
-              </p>
-              <button
-                className="text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setActiveBottomPane(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="max-h-[46vh] overflow-y-auto p-3 space-y-3">
-              {showScrambleDraw && (
-                <div className="rounded-md border border-border/70 bg-muted/20 p-2">
-                  <ScrambleImage scramble={scramble} event={event} />
-                </div>
-              )}
-
-              {showCrossTrainer && (
-                <div className="rounded-md border border-border/70 bg-muted/20 p-2">
-                  {canShowCrossTrainer ? (
-                    <CrossSolverPanel scramble={scramble} />
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Cross trainer is available once a 3x3 scramble is ready.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {showAnalytics && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1">
-                    <button
-                      className={cn(
-                        scrambleNavBtn,
-                        chartScope === "session" && "bg-secondary/70 text-foreground"
-                      )}
-                      onClick={() => setChartScope("session")}
-                    >
-                      Session
-                    </button>
-                    <button
-                      className={cn(
-                        scrambleNavBtn,
-                        chartScope === "all" && "bg-secondary/70 text-foreground"
-                      )}
-                      onClick={() => setChartScope("all")}
-                    >
-                      All Time
-                    </button>
-                  </div>
-                  <TimeDistributionChart solves={chartSolves} />
-                  <TimeTrendChart solves={chartSolves} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {practiceType !== "Comp Sim" && (
+        <>
+          <DesktopPaneWorkspace
+            panes={panes}
+            layout={paneLayout}
+            context={paneContext}
+            topOffsetPx={desktopPaneTopOffsetPx}
+            timingActive={timingActive}
+            autoHideDuringSolve={paneLayout.autoHideDuringSolve}
+            onUpdateRect={updatePaneRect}
+            onUpdatePaneOptions={updatePaneOptions}
+          />
+          <MobilePaneDrawer
+            panes={panes}
+            layout={paneLayout}
+            context={paneContext}
+            timingActive={timingActive}
+            autoHideDuringSolve={paneLayout.autoHideDuringSolve}
+            onAddPane={addPane}
+            onRemovePane={removePane}
+            onChangeTool={changePaneTool}
+            onMovePane={moveMobilePane}
+            onSetPaneHeight={setMobilePaneHeight}
+            onUpdatePaneOptions={updatePaneOptions}
+          />
+        </>
       )}
 
       {practiceType === "Comp Sim" ? (
@@ -1869,17 +2011,18 @@ export function TimerContent() {
           onExit={() => changePracticeType("Solves")}
         />
       ) : (
-        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
           <SolveListPanel
             rows={solveRows}
             totalCount={solves.length}
             rangeStart={solveRange.start}
             rangeEnd={solveRange.end}
-            scrollOffset={solveRange.scrollOffset}
+            scrollResetKey={event}
             frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
             stats={panelStats}
             statCols={statCols}
             selectedId={selectedId}
+            selectedMetric={selectedMetric}
             selectedSolve={selectedSolve}
             savedSolveCount={panelSavedSolveCount}
             groupBoundaries={groupDividers.boundaries}
@@ -1888,8 +2031,10 @@ export function TimerContent() {
             currentSolveCount={panelCurrentSolveCount}
             showAllStats={showAllStatsFallback}
             onSetSelectedId={setSelectedId}
+            onSelectSolveCell={handleSelectSolveCell}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}
+            onShareSolve={handleShareSolve}
             onUpdateStatCol={updateStatCol}
             onRangeChange={handleRangeChange}
           />
@@ -1936,6 +2081,7 @@ export function TimerContent() {
                 last={last}
                 inInspHold={inInspHold}
                 inspSecondsLeft={insp.secondsLeft}
+                timerUpdateMode={timerUpdateMode}
                 btReset={engineSnapshot.btReset}
                 onStall={(deltaMs) => {
                   emitTimerTelemetry("timer_stall_detected", { deltaMs })
@@ -1985,66 +2131,69 @@ export function TimerContent() {
             )}
           </div>
 
-          <div className="flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0" />
+          <div className="relative flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0">
+            <div
+              className="absolute left-3 right-3 top-3 z-30 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden sm:right-auto sm:w-56"
+              onPointerDown={sp}
+            >
+              {hasActiveSession ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        sessionPaused ? "bg-yellow-400" : "bg-green-500 animate-pulse"
+                      )}
+                    />
+                    <span className="font-mono text-sm font-medium">
+                      {fmtSession(sessionElapsed)}
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {currentSolveCount} solve{currentSolveCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  {sessionPaused && (
+                    <div className="px-3 pb-1">
+                      <span className="text-[10px] text-yellow-400">Paused - solving disabled</span>
+                    </div>
+                  )}
+                  <div className="flex border-t border-border/50">
+                    <button
+                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+                      onClick={sessionPaused ? resumeSession : pauseSession}
+                      disabled={timingActive}
+                    >
+                      {sessionPaused ? "▶ Resume" : "⏸ Pause"}
+                    </button>
+                    <div className="w-px bg-border/50" />
+                    <button
+                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+                      onClick={endSession}
+                      disabled={timingActive}
+                    >
+                      {currentSolveCount === 0 ? "Cancel" : "End"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
+                  onClick={startSession}
+                >
+                  {sessionSaved ? (
+                    <span className="text-white">Session saved! Start another</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
+                      Start Session
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
-
-      <div
-        className="fixed bottom-4 right-4 z-40 w-48 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
-        onPointerDown={sp}
-      >
-        {hasActiveSession ? (
-          <>
-            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-              <div
-                className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  sessionPaused ? "bg-yellow-400" : "bg-green-500 animate-pulse"
-                )}
-              />
-              <span className="font-mono text-sm font-medium">
-                {fmtSession(sessionElapsed)}
-              </span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {currentSolveCount} solve{currentSolveCount !== 1 ? "s" : ""}
-              </span>
-            </div>
-            {sessionPaused && (
-              <div className="px-3 pb-1">
-                <span className="text-[10px] text-yellow-400">Paused — solving disabled</span>
-              </div>
-            )}
-            <div className="flex border-t border-border/50">
-              <button
-                className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
-                onClick={sessionPaused ? resumeSession : pauseSession}
-                disabled={timingActive}
-              >
-                {sessionPaused ? "▶ Resume" : "⏸ Pause"}
-              </button>
-              <div className="w-px bg-border/50" />
-              <button
-                className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
-                onClick={endSession}
-                disabled={timingActive}
-              >
-                {currentSolveCount === 0 ? "Cancel" : "End"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <button
-            className="w-full px-4 py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors text-left"
-            onClick={startSession}
-          >
-            {sessionSaved ? (
-              <span className="text-green-400">Session saved!</span>
-            ) : (
-              "Start Session"
-            )}
-          </button>
-        )}
-      </div>
 
       {showEndModal && activeSessionStartMs !== null && (
         <EndSessionModal
@@ -2060,6 +2209,14 @@ export function TimerContent() {
           onSaved={handleSessionSaved}
         />
       )}
+      {shareCardData && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          data={shareCardData}
+          defaultAspectRatio="1:1"
+        />
+      )}
     </div>
   )
 }
@@ -2071,6 +2228,7 @@ function TimerReadout({
   last,
   inInspHold,
   inspSecondsLeft,
+  timerUpdateMode,
   btReset,
   onStall,
 }: {
@@ -2080,6 +2238,7 @@ function TimerReadout({
   last: Solve | undefined
   inInspHold: boolean
   inspSecondsLeft: number
+  timerUpdateMode: TimerUpdateMode
   btReset: boolean
   onStall: (deltaMs: number) => void
 }) {
@@ -2092,6 +2251,15 @@ function TimerReadout({
       lastFrameRef.current = null
       return
     }
+
+    if (timerUpdateMode === "solving") {
+      if (displayRef.current) {
+        displayRef.current.textContent = "solving"
+      }
+      lastFrameRef.current = null
+      return
+    }
+
     let raf = 0
     const tick = (ts: number) => {
       if (lastFrameRef.current !== null) {
@@ -2103,16 +2271,22 @@ function TimerReadout({
       }
       lastFrameRef.current = ts
       if (displayRef.current) {
-        displayRef.current.textContent = fmt(ts - startMs)
+        const elapsed = ts - startMs
+        displayRef.current.textContent =
+          timerUpdateMode === "seconds" ? fmtWholeSeconds(elapsed) : fmt(elapsed)
       }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [onStall, phase, startMs])
+  }, [onStall, phase, startMs, timerUpdateMode])
 
   const display = useMemo(() => {
-    if (phase === "running") return "0.00"
+    if (phase === "running") {
+      if (timerUpdateMode === "solving") return "solving"
+      if (timerUpdateMode === "seconds") return "0"
+      return "0.00"
+    }
     if (phase === "inspecting" || inInspHold) {
       return String(Math.max(0, 15 - inspSecondsLeft))
     }
@@ -2121,7 +2295,7 @@ function TimerReadout({
     if (!last) return "0.00"
     if (last.penalty === "DNF") return "DNF"
     return fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
-  }, [btReset, inInspHold, inspSecondsLeft, last, phase])
+  }, [btReset, inInspHold, inspSecondsLeft, last, phase, timerUpdateMode])
 
   return <div ref={displayRef} className={className}>{display}</div>
 }

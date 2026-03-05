@@ -48,14 +48,14 @@ export function PracticeModeSelector({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-1.5 bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border shrink-0 transition-colors",
+          "flex items-center justify-between gap-1.5 w-36 sm:w-40 bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border shrink-0 transition-colors",
           isNonDefault
             ? "text-primary border-primary/40"
             : "text-foreground"
         )}
       >
-        {selectedType}
-        <ChevronDown className="h-3 w-3 opacity-60" />
+        <span className="truncate">{selectedType}</span>
+        <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
       </button>
 
       {isOpen && (

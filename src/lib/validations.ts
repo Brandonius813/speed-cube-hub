@@ -112,6 +112,7 @@ export const updatePBSchema = z.object({
 // --- Timer schemas ---
 
 const validPenalties = ["+2", "DNF"] as const
+const paneTools = ["scramble_text", "draw", "cross", "time_distribution", "time_trend"] as const
 
 export const createTimerSessionSchema = z.object({
   event: eventField,
@@ -130,6 +131,68 @@ export const addSolveSchema = z.object({
 export const updateSolveSchema = z.object({
   penalty: z.enum(validPenalties).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+})
+
+// --- Timer pane layout schemas ---
+
+export const timerPaneToolSchema = z.enum(paneTools)
+
+export const timerPaneRectSchema = z.object({
+  x: z.number().int().min(0).max(23),
+  y: z.number().int().min(0).max(99),
+  w: z.number().int().min(1).max(24),
+  h: z.number().int().min(1).max(99),
+})
+
+export const timerPaneInstanceSchema = z.object({
+  id: z.string().uuid(),
+  tool: timerPaneToolSchema,
+  rect: timerPaneRectSchema,
+  options: z
+    .object({
+      scope: z.enum(["session", "all"]).optional(),
+    })
+    .optional(),
+})
+
+export const timerPaneLayoutSchema = z.object({
+  version: z.literal(1),
+  updatedAtMs: z.number().int().min(0),
+  autoHideDuringSolve: z.boolean(),
+  desktop: z.object({
+    cols: z.union([z.literal(12), z.literal(24)]),
+    rowHeight: z.literal(36),
+    gap: z.literal(8),
+    size: z.enum(["sm", "md", "lg"]).default("md"),
+    panes: z.array(timerPaneInstanceSchema).max(4, "Maximum 4 panes"),
+  }),
+  mobile: z.object({
+    order: z.array(z.string().uuid()),
+    heights: z.record(z.string(), z.enum(["sm", "md", "lg"])),
+  }),
+}).superRefine((layout, ctx) => {
+  const seenTools = new Set<string>()
+  for (const pane of layout.desktop.panes) {
+    if (seenTools.has(pane.tool)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Duplicate pane tool: ${pane.tool}`,
+      })
+    } else {
+      seenTools.add(pane.tool)
+    }
+    if (pane.rect.x + pane.rect.w > layout.desktop.cols) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Pane ${pane.id} exceeds desktop grid width`,
+      })
+    }
+  }
+})
+
+export const upsertTimerPaneLayoutSchema = z.object({
+  layout: timerPaneLayoutSchema,
+  layoutKey: z.string().trim().min(1).max(50).default("main"),
 })
 
 // --- Goal schemas ---

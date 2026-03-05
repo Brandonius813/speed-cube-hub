@@ -24,11 +24,42 @@ type ScrambleImageProps = {
   event: string
 }
 
+function normalizeClockScramble(scramble: string): string {
+  const tokens = scramble.trim().split(/\s+/)
+  const normalized = tokens
+    .map((token) => {
+      if (token === "y2") return token
+
+      // Legacy fallback pin-state tokens (UR0, DR1, etc.) are not valid in cubing.js clock algs.
+      if (/^(UR|DR|DL|UL)[01]$/.test(token)) return ""
+
+      // Legacy format: UR+5, D-3 -> normalize to UR5+, D3-
+      const legacy = token.match(/^(UR|DR|DL|UL|U|R|D|L|ALL)([+-])(\d+)$/)
+      if (legacy) {
+        const amount = Math.min(11, Math.max(1, Number(legacy[3]) || 1))
+        return `${legacy[1]}${amount}${legacy[2]}`
+      }
+
+      // Safety: clamp invalid 0 amounts in otherwise modern tokens (e.g. U0+).
+      const modern = token.match(/^(UR|DR|DL|UL|U|R|D|L|ALL)(\d+)([+-])$/)
+      if (modern) {
+        const amount = Math.min(11, Math.max(1, Number(modern[2]) || 1))
+        return `${modern[1]}${amount}${modern[3]}`
+      }
+
+      return token
+    })
+    .filter(Boolean)
+
+  return normalized.join(" ")
+}
+
 export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [twistyReady, setTwistyReady] = useState<boolean | null>(null)
 
   const puzzle = PUZZLE_MAP[event]
+  const visualScramble = event === "clock" ? normalizeClockScramble(scramble) : scramble
 
   useEffect(() => {
     let cancelled = false
@@ -51,12 +82,12 @@ export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
 
     const player = document.createElement("twisty-player")
     player.setAttribute("puzzle", puzzle)
-    player.setAttribute("alg", scramble)
+    player.setAttribute("alg", visualScramble)
     player.setAttribute("visualization", "2D")
     player.setAttribute("control-panel", "none")
     player.setAttribute("background", "none")
     player.style.width = "100%"
-    player.style.height = "220px"
+    player.style.height = "100%"
 
     host.replaceChildren(player)
 
@@ -65,7 +96,7 @@ export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
         host.removeChild(player)
       }
     }
-  }, [puzzle, scramble, twistyReady])
+  }, [puzzle, twistyReady, visualScramble])
 
   if (!puzzle) {
     return <p className="text-xs text-muted-foreground text-center">Scramble draw unavailable for this event.</p>
@@ -76,8 +107,8 @@ export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
   }
 
   return (
-    <div className="flex justify-center">
-      <div ref={hostRef} className="w-full max-w-xl min-h-[220px]" />
+    <div className="flex h-full w-full items-center justify-center overflow-hidden">
+      <div ref={hostRef} className="aspect-[5/3] h-full w-full max-h-full max-w-full" />
     </div>
   )
 }

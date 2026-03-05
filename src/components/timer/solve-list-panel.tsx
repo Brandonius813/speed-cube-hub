@@ -44,6 +44,8 @@ export type SolveListRow = {
   displayNumber: number
 }
 
+export type SolveSelectionMetric = "single" | "stat1" | "stat2"
+
 type CurrentSessionLabel = {
   title: string
   date: string | null
@@ -54,11 +56,12 @@ interface SolveListPanelProps {
   totalCount: number
   rangeStart: number
   rangeEnd: number
-  scrollOffset: number
+  scrollResetKey: string
   frozen?: boolean
   stats: SolveStats
   statCols: [string, string]
   selectedId: string | null
+  selectedMetric: SolveSelectionMetric
   selectedSolve: Solve | null
   savedSolveCount?: number
   groupBoundaries?: Set<number>
@@ -67,22 +70,24 @@ interface SolveListPanelProps {
   currentSolveCount?: number
   showAllStats?: boolean
   onSetSelectedId: (id: string | null) => void
+  onSelectSolveCell: (id: string, metric: SolveSelectionMetric) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
+  onShareSolve?: (solve: Solve) => void
   onUpdateStatCol: (idx: 0 | 1, key: string) => void
-  onRangeChange: (next: { start: number; end: number; scrollOffset: number }) => void
+  onRangeChange: (next: { start: number; end: number }) => void
 }
 
 const ROW_HEIGHT = 30
 const DIVIDER_GAP = 24
 const OVERSCAN = 14
 
-function countBoundariesBefore(boundaries: number[], rowIndex: number): number {
+function countBoundariesAtOrBefore(boundaries: number[], rowIndex: number): number {
   let low = 0
   let high = boundaries.length
   while (low < high) {
     const mid = Math.floor((low + high) / 2)
-    if (boundaries[mid] < rowIndex) low = mid + 1
+    if (boundaries[mid] <= rowIndex) low = mid + 1
     else high = mid
   }
   return low
@@ -109,11 +114,12 @@ export const SolveListPanel = memo(function SolveListPanel({
   totalCount,
   rangeStart,
   rangeEnd,
-  scrollOffset,
+  scrollResetKey,
   frozen = false,
   stats,
   statCols,
   selectedId,
+  selectedMetric,
   selectedSolve,
   savedSolveCount = 0,
   groupBoundaries,
@@ -122,8 +128,10 @@ export const SolveListPanel = memo(function SolveListPanel({
   currentSolveCount,
   showAllStats = false,
   onSetSelectedId,
+  onSelectSolveCell,
   onSetPenalty,
   onDeleteSolve,
+  onShareSolve,
   onUpdateStatCol,
   onRangeChange,
 }: SolveListPanelProps) {
@@ -141,7 +149,7 @@ export const SolveListPanel = memo(function SolveListPanel({
   const getPrefixHeight = useCallback(
     (rowIndex: number) =>
       rowIndex * ROW_HEIGHT +
-      countBoundariesBefore(sortedBoundaries, rowIndex) * DIVIDER_GAP,
+      countBoundariesAtOrBefore(sortedBoundaries, rowIndex) * DIVIDER_GAP,
     [sortedBoundaries]
   )
   const totalHeight = useMemo(
@@ -167,14 +175,19 @@ export const SolveListPanel = memo(function SolveListPanel({
     const end = Math.min(totalCount, lastVisible + 1 + OVERSCAN)
     if (start === rangeRef.current.start && end === rangeRef.current.end) return
     rangeRef.current = { start, end }
-    onRangeChange({ start, end, scrollOffset: el.scrollTop })
+    onRangeChange({ start, end })
   }, [frozen, getPrefixHeight, onRangeChange, totalCount])
 
   useEffect(() => {
+    rangeRef.current = { start: -1, end: -1 }
     if (!listRef.current) return
-    listRef.current.scrollTop = scrollOffset
+    listRef.current.scrollTop = 0
     emitRange()
-  }, [emitRange, scrollOffset, totalCount, totalHeight])
+  }, [emitRange, scrollResetKey])
+
+  useEffect(() => {
+    emitRange()
+  }, [emitRange, totalCount, totalHeight])
 
   useEffect(() => {
     const el = listRef.current
@@ -271,6 +284,14 @@ export const SolveListPanel = memo(function SolveListPanel({
             >
               Del
             </button>
+            {onShareSolve && (
+              <button
+                className="text-[11px] font-sans px-2 py-1 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors"
+                onClick={() => onShareSolve(selectedSolve)}
+              >
+                Share
+              </button>
+            )}
             <button
               className="text-[11px] font-sans px-2 py-1 rounded border border-border text-foreground hover:text-foreground transition-colors"
               onClick={() => onSetSelectedId(null)}
@@ -294,7 +315,11 @@ export const SolveListPanel = memo(function SolveListPanel({
         </div>
       )}
 
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 overflow-y-auto"
+        style={{ overflowAnchor: "none" }}
+      >
         <table className="w-full text-[12px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-foreground border-b border-border">
@@ -368,19 +393,52 @@ export const SolveListPanel = memo(function SolveListPanel({
                       "hover:bg-muted/30 transition-colors cursor-pointer",
                       selectedId === row.solve.id && "bg-muted/40"
                     )}
-                    onClick={() => onSetSelectedId(row.solve.id)}
+                    onClick={() => onSelectSolveCell(row.solve.id, "single")}
                     style={{ height: `${ROW_HEIGHT}px` }}
                   >
                     <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]">
                       {row.displayNumber}
                     </td>
-                    <td className="text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                    <td
+                      className={cn(
+                        "text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground transition-colors",
+                        selectedId === row.solve.id &&
+                          selectedMetric === "single" &&
+                          "text-indigo-300 bg-indigo-500/15"
+                      )}
+                      onClick={(eventClick) => {
+                        eventClick.stopPropagation()
+                        onSelectSolveCell(row.solve.id, "single")
+                      }}
+                    >
                       {fmtSolve(row.solve)}
                     </td>
-                    <td className="text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]">
+                    <td
+                      className={cn(
+                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px] transition-colors",
+                        selectedId === row.solve.id &&
+                          selectedMetric === "stat1" &&
+                          "text-indigo-300 bg-indigo-500/15"
+                      )}
+                      onClick={(eventClick) => {
+                        eventClick.stopPropagation()
+                        onSelectSolveCell(row.solve.id, "stat1")
+                      }}
+                    >
                       {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
                     </td>
-                    <td className="text-right pr-2 py-0.5 text-foreground font-mono text-[11px]">
+                    <td
+                      className={cn(
+                        "text-right pr-2 py-0.5 text-foreground font-mono text-[11px] transition-colors",
+                        selectedId === row.solve.id &&
+                          selectedMetric === "stat2" &&
+                          "text-indigo-300 bg-indigo-500/15"
+                      )}
+                      onClick={(eventClick) => {
+                        eventClick.stopPropagation()
+                        onSelectSolveCell(row.solve.id, "stat2")
+                      }}
+                    >
                       {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
                     </td>
                   </tr>

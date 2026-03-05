@@ -1,16 +1,19 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Download, Share2 } from "lucide-react"
 import { ShareCard, type ShareCardData, type AspectRatio } from "@/components/share/share-card"
-import { captureCardAsBlob, downloadBlob, shareOrDownload } from "@/components/share/share-utils"
+import { cn } from "@/lib/utils"
+
+const CARD_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
+  "9:16": { width: 360, height: 640 },
+  "1:1": { width: 400, height: 400 },
+}
 
 type ShareModalProps = {
   isOpen: boolean
@@ -26,120 +29,141 @@ export function ShareModal({
   defaultAspectRatio,
 }: ShareModalProps) {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    defaultAspectRatio ?? "9:16"
+    defaultAspectRatio ?? "1:1"
   )
   const [showScramble, setShowScramble] = useState(true)
-  const [isCapturing, setIsCapturing] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(1)
 
   const hasScramble =
     (data.variant === "solve" && !!data.scramble) ||
     data.variant === "pb"
+  const baseSize = useMemo(() => CARD_DIMENSIONS[aspectRatio], [aspectRatio])
 
-  const filenameBase = `speedcubehub-${data.variant}`
+  useEffect(() => {
+    if (!isOpen) return
+    setAspectRatio(defaultAspectRatio ?? "1:1")
+  }, [defaultAspectRatio, isOpen])
 
-  const handleCapture = async (mode: "download" | "share") => {
-    if (!cardRef.current || isCapturing) return
-    setIsCapturing(true)
-    try {
-      const blob = await captureCardAsBlob(cardRef.current)
-      if (!blob) return
-      const filename = `${filenameBase}-${aspectRatio.replace(":", "x")}.png`
-      if (mode === "share") {
-        await shareOrDownload(blob, filename, "SpeedCubeHub")
-      } else {
-        downloadBlob(blob, filename)
-      }
-    } finally {
-      setIsCapturing(false)
+  useEffect(() => {
+    if (!isOpen) return
+
+    let resizeObserver: ResizeObserver | null = null
+    let rafId = 0
+
+    const updateScale = () => {
+      const stage = stageRef.current
+      if (!stage) return false
+      const availableWidth = stage.clientWidth
+      const availableHeight = stage.clientHeight
+      if (availableWidth <= 0 || availableHeight <= 0) return false
+      const nextScale = Math.min(
+        availableWidth / baseSize.width,
+        availableHeight / baseSize.height
+      )
+      setScale(Math.max(0.1, nextScale))
+      return true
     }
-  }
+
+    const attachObserver = () => {
+      const stage = stageRef.current
+      if (!stage) {
+        rafId = window.requestAnimationFrame(attachObserver)
+        return
+      }
+
+      updateScale()
+      resizeObserver = new ResizeObserver(() => {
+        updateScale()
+      })
+      resizeObserver.observe(stage)
+    }
+
+    attachObserver()
+    window.addEventListener("resize", updateScale)
+
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId)
+      }
+      resizeObserver?.disconnect()
+      window.removeEventListener("resize", updateScale)
+    }
+  }, [baseSize.height, baseSize.width, isOpen])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Share</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className="top-0 left-0 h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 rounded-none border-0 bg-black/95 p-0 sm:max-w-none"
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>Share Card</DialogTitle>
         </DialogHeader>
 
-        {/* Aspect ratio toggle */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setAspectRatio("9:16")}
-            className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-              aspectRatio === "9:16"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Story (9:16)
-          </button>
-          <button
-            onClick={() => setAspectRatio("1:1")}
-            className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-              aspectRatio === "1:1"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Post (1:1)
-          </button>
-        </div>
-
-        {/* Scramble toggle */}
-        {hasScramble && (
-          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showScramble}
-              onChange={(e) => setShowScramble(e.target.checked)}
-              className="rounded border-border"
-            />
-            Show scramble
-          </label>
-        )}
-
-        {/* Preview — scaled to fit modal */}
-        <div className="flex justify-center overflow-hidden rounded-lg bg-zinc-950 p-3">
-          <div
-            className="origin-top-left"
-            style={{
-              transform:
-                aspectRatio === "9:16" ? "scale(0.4)" : "scale(0.55)",
-              height:
-                aspectRatio === "9:16" ? 640 * 0.4 : 400 * 0.55,
-              width:
-                aspectRatio === "9:16" ? 360 * 0.4 : 400 * 0.55,
-            }}
-          >
-            <ShareCard
-              ref={cardRef}
-              data={data}
-              aspectRatio={aspectRatio}
-              showScramble={showScramble}
-            />
+        <div className="flex h-full flex-col">
+          <div className="flex items-center gap-2 border-b border-white/10 bg-black/70 px-3 py-2">
+            <button
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-secondary/70 transition-colors"
+              onClick={onClose}
+            >
+              Done
+            </button>
+            <button
+              onClick={() => setAspectRatio("1:1")}
+              className={cn(
+                "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                aspectRatio === "1:1"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary/50"
+              )}
+            >
+              Square
+            </button>
+            <button
+              onClick={() => setAspectRatio("9:16")}
+              className={cn(
+                "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                aspectRatio === "9:16"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary/50"
+              )}
+            >
+              Vertical
+            </button>
+            {hasScramble && (
+              <button
+                onClick={() => setShowScramble((prev) => !prev)}
+                className={cn(
+                  "ml-auto rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                  showScramble
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-secondary/50"
+                )}
+              >
+                Scramble
+              </button>
+            )}
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => handleCapture("download")}
-            disabled={isCapturing}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {isCapturing ? "..." : "Download"}
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => handleCapture("share")}
-            disabled={isCapturing}
-          >
-            <Share2 className="mr-2 h-4 w-4" />
-            {isCapturing ? "..." : "Share"}
-          </Button>
+          <div className="flex-1 overflow-hidden bg-zinc-950 p-2 sm:p-4">
+            <div ref={stageRef} className="flex h-full w-full items-center justify-center">
+              <div
+                style={{
+                  width: baseSize.width,
+                  height: baseSize.height,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "center center",
+                }}
+              >
+                <ShareCard
+                  data={data}
+                  aspectRatio={aspectRatio}
+                  showScramble={showScramble}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

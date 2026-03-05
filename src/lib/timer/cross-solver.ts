@@ -56,7 +56,7 @@ const FACE_COLORS: Record<string, string> = {
   B: "Blue",
 }
 
-const FACE_ORDER = ["D", "U", "F", "B", "R", "L"]
+const FACE_ORDER = ["U", "D", "R", "L", "B", "F"]
 
 // ── State encoding ──────────────────────────────────────────────────
 // Each of 4 cross edges encoded as: slot * 2 + orientation (0-23)
@@ -270,7 +270,6 @@ export function solveCross(scramble: string): CrossSolution[] {
     }
   })
 
-  solutions.sort((a, b) => a.moveCount - b.moveCount)
   return solutions
 }
 
