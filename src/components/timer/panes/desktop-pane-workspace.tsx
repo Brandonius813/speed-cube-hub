@@ -161,8 +161,10 @@ export function DesktopPaneWorkspace({
 }: DesktopPaneWorkspaceProps) {
   const zoneRef = useRef<HTMLDivElement | null>(null)
   const [zoneSize, setZoneSize] = useState({ width: 0, height: 0 })
+  const workspaceVisible = panes.length > 0 && !(autoHideDuringSolve && timingActive)
 
   useEffect(() => {
+    if (!workspaceVisible) return
     const node = zoneRef.current
     if (!node) return
 
@@ -175,7 +177,7 @@ export function DesktopPaneWorkspace({
     observer.observe(node)
 
     return () => observer.disconnect()
-  }, [])
+  }, [workspaceVisible])
 
   const paneBySlot = useMemo(() => {
     const map = new Map<DesktopPaneSlot, TimerPaneInstance>()
@@ -193,8 +195,7 @@ export function DesktopPaneWorkspace({
     [layout.desktop.size, zoneSize.height, zoneSize.width]
   )
 
-  if (panes.length === 0) return null
-  if (autoHideDuringSolve && timingActive) return null
+  if (!workspaceVisible) return null
 
   return (
     <div
