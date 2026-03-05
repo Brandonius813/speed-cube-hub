@@ -36,27 +36,27 @@ type SlotPreset = {
 
 const OUTER_GAP_PX = 12
 const BOTTOM_GAP_PX = 12
-const VERTICAL_GAP_PX = 12
-const MIN_ZONE_WIDTH_PX = 560
+const VERTICAL_GAP_PX = 8
+const MIN_ZONE_WIDTH_PX = 500
 const MIN_ZONE_HEIGHT_PX = 320
 const MIN_CARD_WIDTH_PX = 150
-const MIN_CARD_HEIGHT_PX = 140
+const MIN_CARD_HEIGHT_PX = 170
 
 const SLOT_PRESETS: Record<DesktopPaneSize, SlotPreset> = {
   sm: {
-    widthFill: 0.88,
-    heightAspect: 0.56,
-    centerMin: 210,
+    widthFill: 1,
+    heightAspect: 0.68,
+    centerMin: 150,
   },
   md: {
-    widthFill: 0.95,
-    heightAspect: 0.58,
-    centerMin: 170,
+    widthFill: 1,
+    heightAspect: 0.8,
+    centerMin: 90,
   },
   lg: {
     widthFill: 1,
-    heightAspect: 0.62,
-    centerMin: 130,
+    heightAspect: 0.9,
+    centerMin: 56,
   },
 }
 

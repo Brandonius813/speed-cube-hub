@@ -62,10 +62,12 @@ function CustomTooltip({
 export function TimeDistributionChart({
   solves,
   scope,
+  embedded = false,
   onScopeChange,
 }: {
   solves: Solve[]
   scope?: ChartScope
+  embedded?: boolean
   onScopeChange?: (scope: ChartScope) => void
 }) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("frequency")
@@ -117,6 +119,37 @@ export function TimeDistributionChart({
   }, [solves])
 
   if (solves.length === 0) {
+    if (embedded) {
+      return (
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="mb-1 flex items-center justify-end gap-1">
+            {onScopeChange ? (
+              <>
+                <Button
+                  variant={activeScope === "session" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => onScopeChange("session")}
+                >
+                  Session
+                </Button>
+                <Button
+                  variant={activeScope === "all" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => onScopeChange("all")}
+                >
+                  All Time
+                </Button>
+              </>
+            ) : null}
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/50 bg-card px-3 text-center text-sm text-muted-foreground">
+            No solve data yet.
+          </div>
+        </div>
+      )
+    }
     return (
       <Card className="h-full border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -152,6 +185,86 @@ export function TimeDistributionChart({
   }
 
   const dataKey = displayMode === "frequency" ? "count" : "cumulative"
+
+  if (embedded) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="mb-1 flex items-center justify-end gap-1">
+          {onScopeChange ? (
+            <>
+              <Button
+                variant={activeScope === "session" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => onScopeChange("session")}
+              >
+                Session
+              </Button>
+              <Button
+                variant={activeScope === "all" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => onScopeChange("all")}
+              >
+                All Time
+              </Button>
+            </>
+          ) : null}
+          <Button
+            variant={displayMode === "frequency" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => setDisplayMode("frequency")}
+          >
+            Count
+          </Button>
+          <Button
+            variant={displayMode === "cumulative" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => setDisplayMode("cumulative")}
+          >
+            Cumulative
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 rounded-md border border-border/50 bg-card px-1 pb-1 pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#2A2A3C"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "#8B8BA3", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                angle={-20}
+                textAnchor="end"
+                height={34}
+              />
+              <YAxis
+                tick={{ fill: "#8B8BA3", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+                width={34}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar
+                dataKey={dataKey}
+                fill="#22D3EE"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={36}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Card className="h-full border-border/50 bg-card flex flex-col">

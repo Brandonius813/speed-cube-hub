@@ -13,6 +13,7 @@ export function PaneTimeTrend({ pane, context, updatePaneOptions }: PaneContentP
         solves={solves}
         statCols={context.statCols}
         scope={scope}
+        embedded
         onScopeChange={(nextScope) =>
           updatePaneOptions(pane.id, { ...pane.options, scope: nextScope })
         }

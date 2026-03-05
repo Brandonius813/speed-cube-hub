@@ -126,11 +126,13 @@ export function TimeTrendChart({
   solves,
   statCols = ["ao5", "ao200"],
   scope,
+  embedded = false,
   onScopeChange,
 }: {
   solves: Solve[]
   statCols?: [string, string]
   scope?: ChartScope
+  embedded?: boolean
   onScopeChange?: (scope: ChartScope) => void
 }) {
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set())
@@ -160,6 +162,37 @@ export function TimeTrendChart({
   }, [line1Stat, line2Stat, solves])
 
   if (solves.length === 0) {
+    if (embedded) {
+      return (
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="mb-1 flex items-center justify-end gap-1">
+            {onScopeChange ? (
+              <>
+                <Button
+                  variant={activeScope === "session" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => onScopeChange("session")}
+                >
+                  Session
+                </Button>
+                <Button
+                  variant={activeScope === "all" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => onScopeChange("all")}
+                >
+                  All Time
+                </Button>
+              </>
+            ) : null}
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/50 bg-card px-3 text-center text-sm text-muted-foreground">
+            No solve data yet.
+          </div>
+        </div>
+      )
+    }
     return (
       <Card className="h-full border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -208,6 +241,143 @@ export function TimeTrendChart({
 
   // Determine a reasonable tick interval for the X axis
   const tickInterval = Math.max(1, Math.floor(chartData.length / 10)) - 1
+
+  if (embedded) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="mb-1 flex items-center justify-end gap-1">
+          {onScopeChange ? (
+            <>
+              <Button
+                variant={activeScope === "session" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => onScopeChange("session")}
+              >
+                Session
+              </Button>
+              <Button
+                variant={activeScope === "all" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => onScopeChange("all")}
+              >
+                All Time
+              </Button>
+            </>
+          ) : null}
+        </div>
+        <div className="min-h-0 flex-1 rounded-md border border-border/50 bg-card px-1 pb-1 pt-2">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 2, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#2A2A3C"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="index"
+                    tick={{ fill: "#8B8BA3", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={tickInterval}
+                    tickMargin={6}
+                    minTickGap={16}
+                    height={26}
+                  />
+                  <YAxis
+                    tick={{ fill: "#8B8BA3", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => formatTimeMs2(Number(v))}
+                    domain={["auto", "auto"]}
+                    width={42}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  {!hiddenLines.has("time") && (
+                    <Bar
+                      dataKey="time"
+                      name="Time"
+                      fill="#6B7280"
+                      opacity={0.45}
+                      maxBarSize={4}
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {!hiddenLines.has("line1") && (
+                    <Line
+                      type="monotone"
+                      dataKey="line1"
+                      name={line1Label}
+                      stroke="#EF4444"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  )}
+                  {!hiddenLines.has("line2") && (
+                    <Line
+                      type="monotone"
+                      dataKey="line2"
+                      name={line2Label}
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-[11px]">
+              <button
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => toggleLine("time")}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: hiddenLines.has("time") ? "#4B5563" : "#6B7280" }}
+                />
+                <span className={hiddenLines.has("time") ? "line-through opacity-60" : ""}>
+                  Time
+                </span>
+              </button>
+              <button
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => toggleLine("line1")}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: hiddenLines.has("line1") ? "#7F1D1D" : "#EF4444" }}
+                />
+                <span className={hiddenLines.has("line1") ? "line-through opacity-60" : ""}>
+                  {line1Label}
+                </span>
+              </button>
+              <button
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => toggleLine("line2")}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: hiddenLines.has("line2") ? "#1E3A8A" : "#3B82F6" }}
+                />
+                <span className={hiddenLines.has("line2") ? "line-through opacity-60" : ""}>
+                  {line2Label}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Card className="h-full border-border/50 bg-card flex flex-col">

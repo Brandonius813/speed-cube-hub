@@ -12,6 +12,7 @@ export function PaneTimeDistribution({ pane, context, updatePaneOptions }: PaneC
       <TimeDistributionChart
         solves={solves}
         scope={scope}
+        embedded
         onScopeChange={(nextScope) =>
           updatePaneOptions(pane.id, { ...pane.options, scope: nextScope })
         }
