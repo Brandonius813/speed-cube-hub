@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getTimerPaneLayout, upsertTimerPaneLayout } from "@/lib/actions/timer-layout"
 import { timerPaneLayoutSchema } from "@/lib/validations"
 import {
+  DESKTOP_PANE_SLOTS,
   DEFAULT_TIMER_PANE_LAYOUT,
   TIMER_PANE_MAX,
   type DesktopPaneSize,
+  type DesktopPaneSlot,
   type PaneToolId,
   type TimerPaneInstance,
   type TimerPaneLayoutV1,
@@ -14,7 +16,6 @@ import {
 } from "@/components/timer/panes/types"
 import { PANE_REGISTRY } from "@/components/timer/panes/pane-registry"
 import {
-  findNearestFreeRect,
   hasPaneCollision,
   normalizePaneRect,
 } from "@/components/timer/panes/desktop-pane-geometry"
@@ -22,6 +23,17 @@ import {
 const LOCAL_STORAGE_KEY = "timer-pane-layout-v1"
 const SAVE_DEBOUNCE_MS = 800
 const TARGET_DESKTOP_COLS = DEFAULT_TIMER_PANE_LAYOUT.desktop.cols
+
+function isDesktopPaneSlot(value: string | undefined): value is DesktopPaneSlot {
+  return value === "top" || value === "left" || value === "right" || value === "bottom"
+}
+
+function firstFreeSlot(usedSlots: Set<DesktopPaneSlot>): DesktopPaneSlot | null {
+  for (const slot of DESKTOP_PANE_SLOTS) {
+    if (!usedSlots.has(slot)) return slot
+  }
+  return null
+}
 
 function getDesktopMaxRows(): number {
   if (typeof window === "undefined") return 18
@@ -60,23 +72,55 @@ function withFixedToolSize(tool: PaneToolId, rect: TimerPaneRect): TimerPaneRect
   })
 }
 
-function bottomAnchoredY(heightUnits: number): number {
-  const visibleRows = getDesktopMaxRows()
-  return Math.max(0, visibleRows - Math.max(1, Math.round(heightUnits)))
+function inferSlotFromRect(rect: TimerPaneRect): DesktopPaneSlot {
+  const maxRows = getDesktopMaxRows()
+  const centerX = rect.x + rect.w / 2
+  const centerY = rect.y + rect.h / 2
+  const xRatio = centerX / Math.max(1, TARGET_DESKTOP_COLS)
+  const yRatio = centerY / Math.max(1, maxRows)
+
+  if (yRatio <= 0.28) return "top"
+  if (yRatio >= 0.72) return "bottom"
+  return xRatio < 0.5 ? "left" : "right"
 }
 
-function defaultToolRect(tool: PaneToolId): TimerPaneRect {
-  const base = PANE_REGISTRY[tool].defaultRect
-  return normalizeRect({
-    ...base,
-    y: bottomAnchoredY(base.h),
-  })
+function rectForSlot(tool: PaneToolId, slot: DesktopPaneSlot): TimerPaneRect {
+  const base = withFixedToolSize(tool, PANE_REGISTRY[tool].defaultRect)
+  const maxRows = getDesktopMaxRows()
+  const centeredX = Math.max(0, Math.round((TARGET_DESKTOP_COLS - base.w) / 2))
+  const middleY = Math.max(0, Math.round((maxRows - base.h) / 2))
+  const bottomY = Math.max(0, maxRows - base.h)
+  const rightX = Math.max(0, TARGET_DESKTOP_COLS - base.w)
+
+  if (slot === "top") return normalizeRect({ ...base, x: centeredX, y: 0 })
+  if (slot === "bottom") return normalizeRect({ ...base, x: centeredX, y: bottomY })
+  if (slot === "left") return normalizeRect({ ...base, x: 0, y: middleY })
+  return normalizeRect({ ...base, x: rightX, y: middleY })
+}
+
+function resolveSlot(
+  pane: TimerPaneInstance,
+  usedSlots: Set<DesktopPaneSlot>
+): DesktopPaneSlot {
+  const requested = isDesktopPaneSlot(pane.slot) ? pane.slot : inferSlotFromRect(pane.rect)
+  if (!usedSlots.has(requested)) return requested
+  return firstFreeSlot(usedSlots) ?? requested
+}
+
+function getUsedSlots(panes: TimerPaneInstance[]): Set<DesktopPaneSlot> {
+  const used = new Set<DesktopPaneSlot>()
+  for (const pane of panes) {
+    if (isDesktopPaneSlot(pane.slot)) {
+      used.add(pane.slot)
+    }
+  }
+  return used
 }
 
 function normalizeLayout(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
   const sourceCols = layout.desktop.cols
   const colScale = sourceCols > 0 ? TARGET_DESKTOP_COLS / sourceCols : 1
-  let normalizedPanes = layout.desktop.panes
+  const normalizedPanesBase = layout.desktop.panes
     .filter((pane) => pane.tool !== "scramble_text")
     .slice(0, TIMER_PANE_MAX)
     .map((pane) => {
@@ -91,19 +135,16 @@ function normalizeLayout(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
         rect: withFixedToolSize(pane.tool, scaledRect),
       }
     })
-
-  // Legacy migration: early pane builds defaulted every pane to y=0, which is not usable.
-  // If all panes are still parked at the top row, remap them to the new bottom defaults.
-  if (normalizedPanes.length > 0 && normalizedPanes.every((pane) => pane.rect.y === 0)) {
-    const migrated: TimerPaneInstance[] = []
-    for (const pane of normalizedPanes) {
-      migrated.push({
-        ...pane,
-        rect: findFreeRect(defaultToolRect(pane.tool), migrated),
-      })
+  const usedSlots = new Set<DesktopPaneSlot>()
+  const normalizedPanes = normalizedPanesBase.map((pane) => {
+    const slot = resolveSlot(pane, usedSlots)
+    usedSlots.add(slot)
+    return {
+      ...pane,
+      slot,
+      rect: rectForSlot(pane.tool, slot),
     }
-    normalizedPanes = migrated
-  }
+  })
 
   const paneIds = new Set(normalizedPanes.map((pane) => pane.id))
   const order = layout.mobile.order.filter((id) => paneIds.has(id))
@@ -156,19 +197,6 @@ function hasCollision(
   ignorePaneId?: string
 ): boolean {
   return hasPaneCollision(panes, rect, ignorePaneId)
-}
-
-function findFreeRect(baseRect: TimerPaneRect, panes: TimerPaneInstance[]): TimerPaneRect {
-  const maxRows = getDesktopMaxRows()
-  const resolved = findNearestFreeRect(panes, normalizeRect(baseRect), {
-    cols: TARGET_DESKTOP_COLS,
-    maxRows,
-  })
-  if (resolved) return resolved
-  return normalizeRect({
-    ...baseRect,
-    y: Math.max(...panes.map((pane) => pane.rect.y + pane.rect.h), 0),
-  })
 }
 
 function withUpdatedAt(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
@@ -239,10 +267,17 @@ export function useTimerPaneLayout(layoutKey = "main") {
       if (previous.desktop.panes.length >= TIMER_PANE_MAX) return previous
       if (previous.desktop.panes.some((pane) => pane.tool === tool)) return previous
 
+      const usedSlots = getUsedSlots(previous.desktop.panes)
+      const preferredSlot = PANE_REGISTRY[tool].defaultSlot
+      const slot = usedSlots.has(preferredSlot)
+        ? firstFreeSlot(usedSlots) ?? preferredSlot
+        : preferredSlot
+
       const pane: TimerPaneInstance = {
         id: crypto.randomUUID(),
         tool,
-        rect: findFreeRect(defaultToolRect(tool), previous.desktop.panes),
+        slot,
+        rect: rectForSlot(tool, slot),
         options:
           tool === "time_distribution" || tool === "time_trend"
             ? { scope: "session" }
@@ -301,6 +336,48 @@ export function useTimerPaneLayout(layoutKey = "main") {
     [addPane, panes, removePane]
   )
 
+  const setPaneSlot = useCallback((paneId: string, slot: DesktopPaneSlot) => {
+    setLayout((previous) => {
+      const currentPane = previous.desktop.panes.find((pane) => pane.id === paneId)
+      if (!currentPane) return previous
+
+      const currentSlot = isDesktopPaneSlot(currentPane.slot)
+        ? currentPane.slot
+        : inferSlotFromRect(currentPane.rect)
+      if (currentSlot === slot) return previous
+
+      const occupant = previous.desktop.panes.find(
+        (pane) => pane.id !== paneId && pane.slot === slot
+      )
+
+      const nextPanes = previous.desktop.panes.map((pane) => {
+        if (pane.id === paneId) {
+          return {
+            ...pane,
+            slot,
+            rect: rectForSlot(pane.tool, slot),
+          }
+        }
+        if (occupant && pane.id === occupant.id) {
+          return {
+            ...pane,
+            slot: currentSlot,
+            rect: rectForSlot(pane.tool, currentSlot),
+          }
+        }
+        return pane
+      })
+
+      return withUpdatedAt({
+        ...previous,
+        desktop: {
+          ...previous.desktop,
+          panes: nextPanes,
+        },
+      })
+    })
+  }, [])
+
   const updatePaneRect = useCallback((paneId: string, rect: TimerPaneRect): boolean => {
     let updated = false
     setLayout((previous) => {
@@ -332,12 +409,20 @@ export function useTimerPaneLayout(layoutKey = "main") {
       const existing = previous.desktop.panes.find((pane) => pane.tool === tool)
       if (existing && existing.id !== paneId) return previous
 
+      const usedSlots = getUsedSlots(previous.desktop.panes.filter((pane) => pane.id !== paneId))
       const nextPanes = previous.desktop.panes.map((pane) => {
         if (pane.id !== paneId) return pane
+        const preferredSlot = isDesktopPaneSlot(pane.slot)
+          ? pane.slot
+          : PANE_REGISTRY[tool].defaultSlot
+        const nextSlot = usedSlots.has(preferredSlot)
+          ? firstFreeSlot(usedSlots) ?? preferredSlot
+          : preferredSlot
         return {
           ...pane,
           tool,
-          rect: withFixedToolSize(tool, pane.rect),
+          slot: nextSlot,
+          rect: rectForSlot(tool, nextSlot),
           options:
             tool === "time_distribution" || tool === "time_trend"
               ? { scope: pane.options?.scope ?? "session" }
@@ -450,6 +535,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
     addPane,
     removePane,
     togglePaneTool,
+    setPaneSlot,
     updatePaneRect,
     changePaneTool,
     updatePaneOptions,

@@ -10,6 +10,7 @@ export type PaneToolId =
 
 export type TimerPaneScope = "session" | "all"
 export type DesktopPaneSize = "sm" | "md" | "lg"
+export type DesktopPaneSlot = "top" | "left" | "right" | "bottom"
 
 export type TimerPaneRect = {
   x: number
@@ -65,6 +66,7 @@ export type TimerPaneInstance = {
   id: string
   tool: PaneToolId
   rect: TimerPaneRect
+  slot?: DesktopPaneSlot
   options?: {
     scope?: TimerPaneScope
   }
@@ -104,6 +106,7 @@ export type PaneContentProps = {
 }
 
 export const TIMER_PANE_MAX = 4
+export const DESKTOP_PANE_SLOTS: DesktopPaneSlot[] = ["top", "left", "right", "bottom"]
 
 export const TIMER_PANE_TOOLS: PaneToolId[] = [
   "scramble_text",

@@ -113,6 +113,7 @@ export const updatePBSchema = z.object({
 
 const validPenalties = ["+2", "DNF"] as const
 const paneTools = ["scramble_text", "draw", "cross", "time_distribution", "time_trend"] as const
+const paneSlots = ["top", "left", "right", "bottom"] as const
 
 export const createTimerSessionSchema = z.object({
   event: eventField,
@@ -136,6 +137,7 @@ export const updateSolveSchema = z.object({
 // --- Timer pane layout schemas ---
 
 export const timerPaneToolSchema = z.enum(paneTools)
+export const timerPaneSlotSchema = z.enum(paneSlots)
 
 export const timerPaneRectSchema = z.object({
   x: z.number().int().min(0).max(23),
@@ -148,6 +150,7 @@ export const timerPaneInstanceSchema = z.object({
   id: z.string().uuid(),
   tool: timerPaneToolSchema,
   rect: timerPaneRectSchema,
+  slot: timerPaneSlotSchema.optional(),
   options: z
     .object({
       scope: z.enum(["session", "all"]).optional(),
@@ -172,6 +175,7 @@ export const timerPaneLayoutSchema = z.object({
   }),
 }).superRefine((layout, ctx) => {
   const seenTools = new Set<string>()
+  const seenSlots = new Set<string>()
   for (const pane of layout.desktop.panes) {
     if (seenTools.has(pane.tool)) {
       ctx.addIssue({
@@ -180,6 +184,16 @@ export const timerPaneLayoutSchema = z.object({
       })
     } else {
       seenTools.add(pane.tool)
+    }
+    if (pane.slot) {
+      if (seenSlots.has(pane.slot)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate pane slot: ${pane.slot}`,
+        })
+      } else {
+        seenSlots.add(pane.slot)
+      }
     }
     if (pane.rect.x + pane.rect.w > layout.desktop.cols) {
       ctx.addIssue({

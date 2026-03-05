@@ -45,7 +45,11 @@ import {
 import { useTimerPaneLayout } from "@/components/timer/panes/use-timer-pane-layout"
 import { DesktopPaneWorkspace } from "@/components/timer/panes/desktop-pane-workspace"
 import { MobilePaneDrawer } from "@/components/timer/panes/mobile-pane-drawer"
-import type { PaneToolId } from "@/components/timer/panes/types"
+import {
+  DESKTOP_PANE_SLOTS,
+  type DesktopPaneSlot,
+  type PaneToolId,
+} from "@/components/timer/panes/types"
 import { ShareModal } from "@/components/share/share-modal"
 import type {
   StatsSummary,
@@ -73,6 +77,13 @@ const TIMER_UPDATE_MODE_OPTIONS: Array<{
   { value: "seconds", label: "Seconds" },
   { value: "solving", label: "None" },
 ]
+
+const DESKTOP_SLOT_LABELS: Record<DesktopPaneSlot, string> = {
+  top: "Top",
+  left: "Left",
+  right: "Right",
+  bottom: "Bottom",
+}
 
 const EVENTS = [
   { id: "333", name: "3x3" },
@@ -361,10 +372,11 @@ export function TimerContent() {
     addPane,
     togglePaneTool,
     removePane,
-    updatePaneRect,
+    setPaneSlot,
     changePaneTool,
     updatePaneOptions,
     setAutoHideDuringSolve,
+    setDesktopPaneSize,
     moveMobilePane,
     setMobilePaneHeight,
   } = useTimerPaneLayout("main")
@@ -1774,7 +1786,7 @@ export function TimerContent() {
               <Settings size={14} />
             </button>
             {settingsOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+              <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
                 <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Timer
                 </div>
@@ -1904,6 +1916,27 @@ export function TimerContent() {
                         {paneLayout.autoHideDuringSolve ? "On" : "Off"}
                       </span>
                     </button>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Pane Size
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(["sm", "md", "lg"] as const).map((size) => (
+                          <button
+                            key={size}
+                            className={cn(
+                              "h-7 rounded border text-[11px] font-medium transition-colors",
+                              paneLayout.desktop.size === size
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => setDesktopPaneSize(size)}
+                          >
+                            {size.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     {PANE_TOOL_OPTIONS.map((option) => {
                       const tool = option.tool as PaneToolId
                       const openPane = paneByTool.get(tool)
@@ -1961,6 +1994,36 @@ export function TimerContent() {
                         </button>
                       )
                     })}
+                    {panes.length > 0 && (
+                      <div className="px-3 pb-2 pt-1 space-y-2">
+                        <span className="block text-[11px] font-medium text-foreground">
+                          Pane Positions
+                        </span>
+                        {panes.map((pane) => (
+                          <div key={`slot-${pane.id}`} className="space-y-1">
+                            <span className="block text-[11px] text-muted-foreground">
+                              {PANE_REGISTRY[pane.tool].label}
+                            </span>
+                            <div className="grid grid-cols-4 gap-1">
+                              {DESKTOP_PANE_SLOTS.map((slot) => (
+                                <button
+                                  key={`${pane.id}-${slot}`}
+                                  className={cn(
+                                    "h-7 rounded border text-[11px] font-medium transition-colors",
+                                    pane.slot === slot
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  )}
+                                  onClick={() => setPaneSlot(pane.id, slot)}
+                                >
+                                  {DESKTOP_SLOT_LABELS[slot]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1985,7 +2048,6 @@ export function TimerContent() {
             topOffsetPx={desktopPaneTopOffsetPx}
             timingActive={timingActive}
             autoHideDuringSolve={paneLayout.autoHideDuringSolve}
-            onUpdateRect={updatePaneRect}
             onUpdatePaneOptions={updatePaneOptions}
           />
           <MobilePaneDrawer

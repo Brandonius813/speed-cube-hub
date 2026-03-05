@@ -8,32 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-03-02 PT — Typing Mode Input Fix Session
-
-**Task:** General work — Fix typing mode input on timer page
-**Status:** Fixed two issues with the typing mode input:
-1. **Input not working at all:** Replaced hidden input + fake div approach with a single real visible `<input>` element.
-2. **UX polish:** Removed placeholder text, instruction text, bumped font size.
-**Files touched:** src/components/timer/time-input.tsx
-
----
-
-### 2026-03-02 PT — Timer Scramble UI Simplification Session
-
-**Task:** General work — Timer scramble toolbar simplification (user-driven)
-**Status:** Removed custom scramble editing, animator button, copy button (replaced with click-to-copy on text), scramble settings gear. Scramble Size moved to main TimerSettings.
-**Files touched:** scramble-display.tsx, timer-top-bar.tsx, timer-content.tsx, timer-settings.tsx, use-timer-scramble.ts
-
----
-
-### 2026-03-02 PT — FloatingPanel + Session Manager Simplification
-
-**Task:** T153 (FloatingPanel component) + T159 (Simplify Manage Sessions)
-**Status:** Created floating-panel.tsx. Simplified session-manager.tsx from 7 buttons to 3 (Edit, Archive, X-delete). Added collapsible archived section.
-**Files touched:** floating-panel.tsx (new), session-manager.tsx, solve-sessions.ts, timer-content.tsx
-
----
-
 ### 2026-03-02 PT — T154 Timer Core Changes Session
 
 **Task:** T154 (Timer Core Changes — timer-content.tsx owner)
@@ -204,3 +178,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** NEW: `src/components/timer/panes/*`, `src/lib/actions/timer-layout.ts`, `supabase/migrations/024_create_timer_pane_layouts.sql`. MODIFIED: `src/components/timer/timer-content.tsx`, `src/lib/validations.ts`, `src/components/shared/time-distribution-chart.tsx`, `src/components/shared/time-trend-chart.tsx`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`.
 **Learnings:** Best UX came from keeping panes as fixed overlays (`pointer-events-none` shell + interactive pane cards) so timer layout never shifts. Last-write-wins using `updatedAtMs` is simple and reliable for cross-device sync in v1.
 **Checks:** `npx tsc --noEmit` passed; `npm run lint` passed with existing repo-wide warnings.
+
+---
+
+### 2026-03-05 PT — Timer Fixed Ring-Slot Pane Layout Session
+
+**Task:** Replace free-form desktop pane drag/resize with fixed ring slots (top/left/right/bottom)
+**Status:** Completed. Desktop pane workspace now renders fixed slots only with deterministic `sm/md/lg` sizing. Added slot-aware layout migration for existing saved pane rects, swap-on-conflict slot assignment, per-tool default slots, and timer settings controls for Pane Size + Pane Positions. Mobile drawer behavior unchanged.
+**Files touched:** `src/components/timer/panes/types.ts`, `src/components/timer/panes/pane-registry.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/panes/desktop-pane-workspace.tsx`, `src/components/timer/timer-content.tsx`, `src/lib/validations.ts`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `npx tsc --noEmit` failed due pre-existing missing module (`cstimer_module` import resolution). `npm run lint` failed with existing repo-wide lint errors; targeted lint on changed files passed.
