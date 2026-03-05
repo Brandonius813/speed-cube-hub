@@ -90,12 +90,17 @@ export function computeSessionDividers(
     const effectiveTimes = nonDnf.map((solve) =>
       solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
     )
+    const effectiveTotalMs = effectiveTimes.reduce((sum, time) => sum + time, 0)
     const avgMs =
       effectiveTimes.length > 0
-        ? Math.round(effectiveTimes.reduce((sum, time) => sum + time, 0) / effectiveTimes.length)
+        ? Math.round(effectiveTotalMs / effectiveTimes.length)
         : null
     const bestMs = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
     const meta = groupById.get(groupId)
+    const derivedDurationMinutes =
+      effectiveTimes.length > 0
+        ? Math.max(1, Math.round(effectiveTotalMs / 1000 / 60))
+        : null
 
     statsByGroup.set(groupId, {
       solveCount: groupSolves.length,
@@ -103,7 +108,7 @@ export function computeSessionDividers(
       durationMinutes:
         typeof meta?.durationMinutes === "number"
           ? Math.max(1, Math.round(meta.durationMinutes))
-          : null,
+          : derivedDurationMinutes,
       avgSeconds:
         typeof meta?.avgSeconds === "number"
           ? meta.avgSeconds
