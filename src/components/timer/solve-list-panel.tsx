@@ -277,7 +277,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                   <td className="relative text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]">
                     {dividerLabel && (
                       <span
-                        className="pointer-events-none absolute -top-[13px] left-1 z-20 inline-block max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground"
+                        className="pointer-events-none absolute top-0 left-1 z-20 inline-block -translate-y-1/2 max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground"
                         title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
                       >
                         {dividerLabel.title}
