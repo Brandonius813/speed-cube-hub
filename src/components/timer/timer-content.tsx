@@ -79,10 +79,10 @@ const TIMER_UPDATE_MODE_OPTIONS: Array<{
 ]
 
 const DESKTOP_SLOT_LABELS: Record<DesktopPaneSlot, string> = {
-  top: "Top",
-  left: "Left",
-  right: "Right",
-  bottom: "Bottom",
+  top_right: "Top Right",
+  bottom_right: "Bottom Right",
+  bottom_middle: "Bottom Middle",
+  bottom_left: "Bottom Left",
 }
 
 const EVENTS = [

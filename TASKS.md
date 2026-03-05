@@ -158,7 +158,7 @@
 - ✅ T149–T152: Hide elements during timing, scramble display options, batch delete, auto-backup
 
 ### Phase 24: Timer Multi-Pane Workspace (T153)
-- ✅ T153: Replace single bottom pane with modular 4-pane workspace (desktop fixed ring slots + mobile drawer + local/account layout sync)
+- ✅ T153: Replace single bottom pane with modular 4-pane workspace (desktop fixed slots: top-right/bottom-right/bottom-middle/bottom-left + mobile drawer + local/account layout sync)
 
 ---
 

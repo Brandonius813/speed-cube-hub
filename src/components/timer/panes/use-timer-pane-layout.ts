@@ -7,6 +7,7 @@ import {
   DESKTOP_PANE_SLOTS,
   DEFAULT_TIMER_PANE_LAYOUT,
   TIMER_PANE_MAX,
+  type LegacyDesktopPaneSlot,
   type DesktopPaneSize,
   type DesktopPaneSlot,
   type PaneToolId,
@@ -25,7 +26,25 @@ const SAVE_DEBOUNCE_MS = 800
 const TARGET_DESKTOP_COLS = DEFAULT_TIMER_PANE_LAYOUT.desktop.cols
 
 function isDesktopPaneSlot(value: string | undefined): value is DesktopPaneSlot {
+  return (
+    value === "top_right" ||
+    value === "bottom_right" ||
+    value === "bottom_middle" ||
+    value === "bottom_left"
+  )
+}
+
+function isLegacyDesktopPaneSlot(
+  value: string | undefined
+): value is LegacyDesktopPaneSlot {
   return value === "top" || value === "left" || value === "right" || value === "bottom"
+}
+
+function mapLegacySlot(slot: LegacyDesktopPaneSlot): DesktopPaneSlot {
+  if (slot === "top") return "top_right"
+  if (slot === "left") return "bottom_left"
+  if (slot === "right") return "bottom_right"
+  return "bottom_middle"
 }
 
 function firstFreeSlot(usedSlots: Set<DesktopPaneSlot>): DesktopPaneSlot | null {
@@ -79,30 +98,37 @@ function inferSlotFromRect(rect: TimerPaneRect): DesktopPaneSlot {
   const xRatio = centerX / Math.max(1, TARGET_DESKTOP_COLS)
   const yRatio = centerY / Math.max(1, maxRows)
 
-  if (yRatio <= 0.28) return "top"
-  if (yRatio >= 0.72) return "bottom"
-  return xRatio < 0.5 ? "left" : "right"
+  if (yRatio <= 0.44) return "top_right"
+  if (xRatio < 0.33) return "bottom_left"
+  if (xRatio > 0.67) return "bottom_right"
+  return "bottom_middle"
 }
 
 function rectForSlot(tool: PaneToolId, slot: DesktopPaneSlot): TimerPaneRect {
   const base = withFixedToolSize(tool, PANE_REGISTRY[tool].defaultRect)
   const maxRows = getDesktopMaxRows()
-  const centeredX = Math.max(0, Math.round((TARGET_DESKTOP_COLS - base.w) / 2))
-  const middleY = Math.max(0, Math.round((maxRows - base.h) / 2))
+  const middleX = Math.max(0, Math.round((TARGET_DESKTOP_COLS - base.w) / 2))
   const bottomY = Math.max(0, maxRows - base.h)
   const rightX = Math.max(0, TARGET_DESKTOP_COLS - base.w)
 
-  if (slot === "top") return normalizeRect({ ...base, x: centeredX, y: 0 })
-  if (slot === "bottom") return normalizeRect({ ...base, x: centeredX, y: bottomY })
-  if (slot === "left") return normalizeRect({ ...base, x: 0, y: middleY })
-  return normalizeRect({ ...base, x: rightX, y: middleY })
+  if (slot === "top_right") return normalizeRect({ ...base, x: rightX, y: 0 })
+  if (slot === "bottom_right") return normalizeRect({ ...base, x: rightX, y: bottomY })
+  if (slot === "bottom_middle") return normalizeRect({ ...base, x: middleX, y: bottomY })
+  return normalizeRect({ ...base, x: 0, y: bottomY })
 }
 
 function resolveSlot(
   pane: TimerPaneInstance,
   usedSlots: Set<DesktopPaneSlot>
 ): DesktopPaneSlot {
-  const requested = isDesktopPaneSlot(pane.slot) ? pane.slot : inferSlotFromRect(pane.rect)
+  let requested: DesktopPaneSlot
+  if (isDesktopPaneSlot(pane.slot)) {
+    requested = pane.slot
+  } else if (isLegacyDesktopPaneSlot(pane.slot)) {
+    requested = mapLegacySlot(pane.slot)
+  } else {
+    requested = inferSlotFromRect(pane.rect)
+  }
   if (!usedSlots.has(requested)) return requested
   return firstFreeSlot(usedSlots) ?? requested
 }

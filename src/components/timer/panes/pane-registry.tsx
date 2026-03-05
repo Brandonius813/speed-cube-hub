@@ -30,7 +30,7 @@ export const PANE_REGISTRY: Record<PaneToolId, PaneRegistryEntry> = {
   scramble_text: {
     tool: "scramble_text",
     label: "Scramble",
-    defaultSlot: "top",
+    defaultSlot: "top_right",
     defaultRect: { x: 2, y: 7, w: 8, h: 3 },
     minW: 3,
     minH: 3,
@@ -41,7 +41,7 @@ export const PANE_REGISTRY: Record<PaneToolId, PaneRegistryEntry> = {
   draw: {
     tool: "draw",
     label: "Draw Scramble",
-    defaultSlot: "left",
+    defaultSlot: "bottom_left",
     defaultRect: { x: 2, y: 2, w: 8, h: 8 },
     minW: 8,
     minH: 8,
@@ -52,7 +52,7 @@ export const PANE_REGISTRY: Record<PaneToolId, PaneRegistryEntry> = {
   cross: {
     tool: "cross",
     label: "Cross Trainer",
-    defaultSlot: "right",
+    defaultSlot: "bottom_right",
     defaultRect: { x: 14, y: 2, w: 8, h: 8 },
     minW: 8,
     minH: 8,
@@ -63,7 +63,7 @@ export const PANE_REGISTRY: Record<PaneToolId, PaneRegistryEntry> = {
   time_distribution: {
     tool: "time_distribution",
     label: "Time Distribution",
-    defaultSlot: "bottom",
+    defaultSlot: "bottom_middle",
     defaultRect: { x: 2, y: 2, w: 8, h: 8 },
     minW: 8,
     minH: 8,
@@ -74,7 +74,7 @@ export const PANE_REGISTRY: Record<PaneToolId, PaneRegistryEntry> = {
   time_trend: {
     tool: "time_trend",
     label: "Time Trend",
-    defaultSlot: "top",
+    defaultSlot: "top_right",
     defaultRect: { x: 14, y: 2, w: 8, h: 8 },
     minW: 8,
     minH: 8,

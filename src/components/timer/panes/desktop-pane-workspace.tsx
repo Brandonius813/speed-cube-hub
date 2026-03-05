@@ -28,34 +28,42 @@ type PixelRect = {
   h: number
 }
 
-type RingPreset = {
-  sideRatio: number
-  bandRatio: number
+type SlotPreset = {
+  widthRatio: number
+  heightRatio: number
   centerMin: number
 }
 
 const OUTER_GAP_PX = 12
-const INNER_GAP_PX = 12
+const BOTTOM_GAP_PX = 12
 const MIN_ZONE_WIDTH_PX = 560
-const MIN_ZONE_HEIGHT_PX = 360
-const MIN_MIDDLE_HEIGHT_PX = 160
+const MIN_ZONE_HEIGHT_PX = 320
+const MIN_CARD_WIDTH_PX = 150
+const MIN_CARD_HEIGHT_PX = 110
 
-const RING_PRESETS: Record<DesktopPaneSize, RingPreset> = {
+const SLOT_PRESETS: Record<DesktopPaneSize, SlotPreset> = {
   sm: {
-    sideRatio: 0.2,
-    bandRatio: 0.16,
-    centerMin: 280,
+    widthRatio: 0.23,
+    heightRatio: 0.24,
+    centerMin: 150,
   },
   md: {
-    sideRatio: 0.24,
-    bandRatio: 0.2,
-    centerMin: 340,
+    widthRatio: 0.26,
+    heightRatio: 0.28,
+    centerMin: 180,
   },
   lg: {
-    sideRatio: 0.28,
-    bandRatio: 0.24,
-    centerMin: 400,
+    widthRatio: 0.29,
+    heightRatio: 0.32,
+    centerMin: 220,
   },
+}
+
+const SLOT_LABELS: Record<DesktopPaneSlot, string> = {
+  top_right: "Top Right",
+  bottom_right: "Bottom Right",
+  bottom_middle: "Bottom Middle",
+  bottom_left: "Bottom Left",
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -63,7 +71,12 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function isDesktopPaneSlot(value: string | undefined): value is DesktopPaneSlot {
-  return value === "top" || value === "left" || value === "right" || value === "bottom"
+  return (
+    value === "top_right" ||
+    value === "bottom_right" ||
+    value === "bottom_middle" ||
+    value === "bottom_left"
+  )
 }
 
 function rectStyle(rect: PixelRect): CSSProperties {
@@ -74,77 +87,68 @@ function rectStyle(rect: PixelRect): CSSProperties {
   }
 }
 
-function computeRingRects(
+function computeSlotRects(
   zoneWidth: number,
   zoneHeight: number,
   size: DesktopPaneSize
 ): Record<DesktopPaneSlot, PixelRect> | null {
   if (zoneWidth < MIN_ZONE_WIDTH_PX || zoneHeight < MIN_ZONE_HEIGHT_PX) return null
 
-  const preset = RING_PRESETS[size]
+  const preset = SLOT_PRESETS[size]
   const innerWidth = zoneWidth - OUTER_GAP_PX * 2
   const innerHeight = zoneHeight - OUTER_GAP_PX * 2
 
-  const maxSideWidth = Math.max(
-    120,
-    Math.floor((innerWidth - preset.centerMin - INNER_GAP_PX * 2) / 2)
+  if (innerWidth <= 0 || innerHeight <= 0) return null
+
+  const maxCardWidth = Math.floor((innerWidth - BOTTOM_GAP_PX * 2) / 3)
+  const maxCardHeight = Math.floor((innerHeight - preset.centerMin) / 2)
+
+  if (maxCardWidth < MIN_CARD_WIDTH_PX || maxCardHeight < MIN_CARD_HEIGHT_PX) return null
+
+  const cardWidth = clamp(
+    Math.round(innerWidth * preset.widthRatio),
+    MIN_CARD_WIDTH_PX,
+    maxCardWidth
+  )
+  const cardHeight = clamp(
+    Math.round(innerHeight * preset.heightRatio),
+    MIN_CARD_HEIGHT_PX,
+    maxCardHeight
   )
 
-  let sideWidth = clamp(Math.round(innerWidth * preset.sideRatio), 120, maxSideWidth)
-  let centerWidth = innerWidth - sideWidth * 2 - INNER_GAP_PX * 2
-
-  if (centerWidth < preset.centerMin) {
-    sideWidth = Math.max(120, Math.floor((innerWidth - preset.centerMin - INNER_GAP_PX * 2) / 2))
-    centerWidth = innerWidth - sideWidth * 2 - INNER_GAP_PX * 2
-  }
-
-  if (centerWidth < 180) return null
-
-  let topHeight = clamp(Math.round(innerHeight * preset.bandRatio), 70, 220)
-  let bottomHeight = topHeight
-  let middleHeight = innerHeight - topHeight - bottomHeight - INNER_GAP_PX * 2
-
-  if (middleHeight < MIN_MIDDLE_HEIGHT_PX) {
-    const shrinkEach = Math.ceil((MIN_MIDDLE_HEIGHT_PX - middleHeight) / 2)
-    topHeight = Math.max(56, topHeight - shrinkEach)
-    bottomHeight = Math.max(56, bottomHeight - shrinkEach)
-    middleHeight = innerHeight - topHeight - bottomHeight - INNER_GAP_PX * 2
-  }
-
-  if (middleHeight < 120) return null
-
   const leftX = OUTER_GAP_PX
-  const centerX = leftX + sideWidth + INNER_GAP_PX
-  const rightX = centerX + centerWidth + INNER_GAP_PX
+  const middleX = OUTER_GAP_PX + Math.round((innerWidth - cardWidth) / 2)
+  const rightX = OUTER_GAP_PX + innerWidth - cardWidth
 
   const topY = OUTER_GAP_PX
-  const middleY = topY + topHeight + INNER_GAP_PX
-  const bottomY = middleY + middleHeight + INNER_GAP_PX
+  const bottomY = OUTER_GAP_PX + innerHeight - cardHeight
+
+  if (bottomY - (topY + cardHeight) < preset.centerMin) return null
 
   return {
-    top: {
-      x: centerX,
-      y: topY,
-      w: centerWidth,
-      h: topHeight,
-    },
-    left: {
-      x: leftX,
-      y: middleY,
-      w: sideWidth,
-      h: middleHeight,
-    },
-    right: {
+    top_right: {
       x: rightX,
-      y: middleY,
-      w: sideWidth,
-      h: middleHeight,
+      y: topY,
+      w: cardWidth,
+      h: cardHeight,
     },
-    bottom: {
-      x: centerX,
+    bottom_right: {
+      x: rightX,
       y: bottomY,
-      w: centerWidth,
-      h: bottomHeight,
+      w: cardWidth,
+      h: cardHeight,
+    },
+    bottom_middle: {
+      x: middleX,
+      y: bottomY,
+      w: cardWidth,
+      h: cardHeight,
+    },
+    bottom_left: {
+      x: leftX,
+      y: bottomY,
+      w: cardWidth,
+      h: cardHeight,
     },
   }
 }
@@ -188,7 +192,7 @@ export function DesktopPaneWorkspace({
   }, [panes])
 
   const slotRects = useMemo(
-    () => computeRingRects(zoneSize.width, zoneSize.height, layout.desktop.size),
+    () => computeSlotRects(zoneSize.width, zoneSize.height, layout.desktop.size),
     [layout.desktop.size, zoneSize.height, zoneSize.width]
   )
 
@@ -201,41 +205,42 @@ export function DesktopPaneWorkspace({
       style={{ top: `${Math.max(92, Math.round(topOffsetPx))}px` }}
     >
       <div ref={zoneRef} className="relative h-full w-full overflow-hidden">
-        {slotRects && DESKTOP_PANE_SLOTS.map((slot) => {
-          const pane = paneBySlot.get(slot)
-          if (!pane) return null
+        {slotRects &&
+          DESKTOP_PANE_SLOTS.map((slot) => {
+            const pane = paneBySlot.get(slot)
+            if (!pane) return null
 
-          const entry = PANE_REGISTRY[pane.tool]
-          const rect = slotRects[slot]
+            const entry = PANE_REGISTRY[pane.tool]
+            const rect = slotRects[slot]
 
-          return (
-            <div
-              key={pane.id}
-              className="pointer-events-auto absolute flex flex-col overflow-hidden rounded-lg border border-border/70 bg-background/95 shadow-2xl backdrop-blur"
-              style={{
-                ...rectStyle(rect),
-                zIndex: 40,
-              }}
-            >
-              <div className="flex items-center justify-between gap-2 border-b border-border/70 px-2 py-1">
-                <span className="text-xs font-sans uppercase tracking-wide text-muted-foreground">
-                  {entry.label}
-                </span>
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  {slot.toUpperCase()}
-                </span>
+            return (
+              <div
+                key={pane.id}
+                className="pointer-events-auto absolute flex flex-col overflow-hidden rounded-lg border border-border/70 bg-background/95 shadow-2xl backdrop-blur"
+                style={{
+                  ...rectStyle(rect),
+                  zIndex: 40,
+                }}
+              >
+                <div className="flex items-center justify-between gap-2 border-b border-border/70 px-2 py-1">
+                  <span className="text-xs font-sans uppercase tracking-wide text-muted-foreground">
+                    {entry.label}
+                  </span>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {SLOT_LABELS[slot]}
+                  </span>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-hidden p-2">
+                  <entry.Render
+                    pane={pane}
+                    context={context}
+                    updatePaneOptions={onUpdatePaneOptions}
+                  />
+                </div>
               </div>
-
-              <div className="min-h-0 flex-1 overflow-hidden p-2">
-                <entry.Render
-                  pane={pane}
-                  context={context}
-                  updatePaneOptions={onUpdatePaneOptions}
-                />
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
       </div>
     </div>
   )

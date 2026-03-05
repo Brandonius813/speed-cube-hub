@@ -113,7 +113,17 @@ export const updatePBSchema = z.object({
 
 const validPenalties = ["+2", "DNF"] as const
 const paneTools = ["scramble_text", "draw", "cross", "time_distribution", "time_trend"] as const
-const paneSlots = ["top", "left", "right", "bottom"] as const
+const paneSlots = [
+  "top_right",
+  "bottom_right",
+  "bottom_middle",
+  "bottom_left",
+  // Legacy slots kept for migration compatibility.
+  "top",
+  "left",
+  "right",
+  "bottom",
+] as const
 
 export const createTimerSessionSchema = z.object({
   event: eventField,
