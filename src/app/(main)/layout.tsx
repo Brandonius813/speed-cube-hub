@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Navbar } from "@/components/shared/navbar"
 import { Footer } from "@/components/shared/footer"
 
@@ -8,7 +9,9 @@ export default function MainLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Suspense fallback={null}>
+        <Navbar />
+      </Suspense>
       {children}
       <Footer />
     </div>
