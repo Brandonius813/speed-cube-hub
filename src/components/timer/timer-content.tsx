@@ -1707,7 +1707,7 @@ export function TimerContent() {
           className="relative flex items-center gap-3 px-4 py-3 border-b border-border lg:gap-0 lg:px-0 lg:py-0"
           onPointerDown={sp}
         >
-          <div className="flex shrink-0 items-center gap-3 lg:w-64 xl:w-72 lg:border-r border-border lg:px-4 lg:py-3">
+          <div className="flex shrink-0 items-center gap-3 lg:w-72 xl:w-80 lg:border-r border-border lg:pl-4 lg:pr-6 xl:pr-7 lg:py-3">
             <select
               className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
               value={event}
@@ -2110,7 +2110,7 @@ export function TimerContent() {
             onRangeChange={handleRangeChange}
           />
 
-          <div className="fixed inset-y-0 left-0 right-0 lg:left-64 xl:left-72 flex flex-col items-center justify-center pointer-events-none z-10">
+          <div className="fixed inset-y-0 left-0 right-0 lg:left-72 xl:left-80 flex flex-col items-center justify-center pointer-events-none z-10">
             {typing ? (
               <>
                 <div

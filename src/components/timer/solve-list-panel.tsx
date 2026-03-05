@@ -78,7 +78,7 @@ interface SolveListPanelProps {
   onRangeChange: (next: { start: number; end: number }) => void
 }
 
-const ROW_HEIGHT = 30
+const ROW_HEIGHT = 34
 const DIVIDER_GAP = 24
 const OVERSCAN = 14
 
@@ -216,49 +216,49 @@ export const SolveListPanel = memo(function SolveListPanel({
 
   return (
     <div
-      className="w-full lg:w-64 xl:w-72 shrink-0 min-h-0 overflow-hidden border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
+      className="w-full lg:w-72 xl:w-80 shrink-0 min-h-0 overflow-hidden border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
       onPointerDown={sp}
     >
-      <div className="px-3 pt-3 pb-2 border-b border-border">
+      <div className="px-4 pt-3.5 pb-2.5 border-b border-border">
         <table className="w-full">
           <thead>
             <tr className="text-foreground">
-              <th className="text-left font-normal pb-1.5"></th>
-              <th className="text-right font-sans text-[10px] 2xl:text-[11px] uppercase tracking-widest font-normal pb-1.5 pr-2">cur</th>
-              <th className="text-right font-sans text-[10px] 2xl:text-[11px] uppercase tracking-widest font-normal pb-1.5">best</th>
+              <th className="text-left font-normal pb-2"></th>
+              <th className="text-right font-sans text-[11px] 2xl:text-[12px] uppercase tracking-widest font-normal pb-2 pr-2">cur</th>
+              <th className="text-right font-sans text-[11px] 2xl:text-[12px] uppercase tracking-widest font-normal pb-2">best</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="font-sans text-[11px] 2xl:text-[12px] text-foreground py-0.5 pr-2">single</td>
-              <td className="text-right pr-2 font-mono text-[13px] 2xl:text-[14px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
-              <td className="text-right font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(stats.best)}</td>
+              <td className="font-sans text-[12px] 2xl:text-[13px] text-foreground py-1 pr-2">single</td>
+              <td className="text-right pr-2 font-mono text-[14px] 2xl:text-[15px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
+              <td className="text-right font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(stats.best)}</td>
             </tr>
             {stats.milestoneRows.map((row) => (
               <tr key={row.key}>
-                <td className="font-sans text-[11px] 2xl:text-[12px] text-foreground py-0.5 pr-2">{row.key}</td>
-                <td className="text-right pr-2 font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(row.cur)}</td>
-                <td className="text-right font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(row.best)}</td>
+                <td className="font-sans text-[12px] 2xl:text-[13px] text-foreground py-1 pr-2">{row.key}</td>
+                <td className="text-right pr-2 font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(row.cur)}</td>
+                <td className="text-right font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(row.best)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="flex justify-between border-t border-border mt-2 pt-1.5">
-          <span className="font-sans text-[10px] 2xl:text-[11px] uppercase tracking-wider text-foreground">
-            Count <span className="font-mono normal-case tracking-normal text-[12px] 2xl:text-[13px] text-foreground">{currentSolveCount ?? totalCount}</span>
+        <div className="flex justify-between border-t border-border mt-2.5 pt-2">
+          <span className="font-sans text-[11px] 2xl:text-[12px] uppercase tracking-wider text-foreground">
+            Count <span className="font-mono normal-case tracking-normal text-[13px] 2xl:text-[14px] text-foreground">{currentSolveCount ?? totalCount}</span>
             {savedSolveCount > 0 && (
-              <span className="font-mono normal-case tracking-normal text-[10px] 2xl:text-[11px] text-foreground/80 ml-1">/{totalCount}</span>
+              <span className="font-mono normal-case tracking-normal text-[11px] 2xl:text-[12px] text-foreground/80 ml-1">/{totalCount}</span>
             )}
           </span>
-          <span className="font-sans text-[10px] 2xl:text-[11px] uppercase tracking-wider text-foreground">
-            Mean <span className="font-mono normal-case tracking-normal text-[12px] 2xl:text-[13px] text-foreground">{D(stats.mean)}</span>
+          <span className="font-sans text-[11px] 2xl:text-[12px] uppercase tracking-wider text-foreground">
+            Mean <span className="font-mono normal-case tracking-normal text-[13px] 2xl:text-[14px] text-foreground">{D(stats.mean)}</span>
           </span>
         </div>
         {selectedSolve && (
-          <div className="mt-2 flex gap-1.5">
+          <div className="mt-2.5 flex gap-2">
             <button
               className={cn(
-                "text-[11px] font-sans px-2 py-1 rounded border transition-colors",
+                "text-[12px] font-sans px-2.5 py-1.5 rounded border transition-colors",
                 selectedSolve.penalty === "+2"
                   ? "bg-yellow-500 text-black border-yellow-500"
                   : "border-border text-foreground hover:border-yellow-500 hover:text-yellow-400"
@@ -269,7 +269,7 @@ export const SolveListPanel = memo(function SolveListPanel({
             </button>
             <button
               className={cn(
-                "text-[11px] font-sans px-2 py-1 rounded border transition-colors",
+                "text-[12px] font-sans px-2.5 py-1.5 rounded border transition-colors",
                 selectedSolve.penalty === "DNF"
                   ? "bg-red-500 text-white border-red-500"
                   : "border-border text-foreground hover:border-red-500 hover:text-red-400"
@@ -279,21 +279,21 @@ export const SolveListPanel = memo(function SolveListPanel({
               DNF
             </button>
             <button
-              className="text-[11px] font-sans px-2 py-1 rounded border border-border text-foreground hover:border-destructive hover:text-destructive transition-colors"
+              className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-destructive hover:text-destructive transition-colors"
               onClick={() => onDeleteSolve(selectedSolve.id)}
             >
               Del
             </button>
             {onShareSolve && (
               <button
-                className="text-[11px] font-sans px-2 py-1 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors"
+                className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors"
                 onClick={() => onShareSolve(selectedSolve)}
               >
                 Share
               </button>
             )}
             <button
-              className="text-[11px] font-sans px-2 py-1 rounded border border-border text-foreground hover:text-foreground transition-colors"
+              className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:text-foreground transition-colors"
               onClick={() => onSetSelectedId(null)}
             >
               Clear
@@ -306,7 +306,7 @@ export const SolveListPanel = memo(function SolveListPanel({
         <div className="px-2 py-1 border-b border-border bg-background">
           <div className="flex items-center gap-1.5">
             <div className="h-px flex-1 bg-primary/25" />
-            <span className="max-w-[13.5rem] truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-[2px] text-[9px] font-sans uppercase tracking-wider text-primary/90">
+            <span className="max-w-[14.5rem] truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-[2px] text-[10px] font-sans uppercase tracking-wider text-primary/90">
               {currentSessionLabel.title}
               {currentSessionLabel.date ? ` · ${currentSessionLabel.date}` : ""}
             </span>
@@ -320,15 +320,15 @@ export const SolveListPanel = memo(function SolveListPanel({
         className="min-h-0 flex-1 overflow-y-auto"
         style={{ overflowAnchor: "none" }}
       >
-        <table className="w-full text-[12px] font-mono border-collapse">
+        <table className="w-full text-[13px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-foreground border-b border-border">
-              <th className="pr-1.5 py-1.5 w-[4.25rem] font-normal"></th>
-              <th className="text-right pr-1.5 py-1.5 font-sans text-[10px] font-normal uppercase tracking-wider text-foreground">single</th>
+              <th className="pr-1.5 py-2 w-[4.25rem] font-normal"></th>
+              <th className="text-right pr-1.5 py-2 font-sans text-[11px] font-normal uppercase tracking-wider text-foreground">single</th>
               {([0, 1] as const).map((idx) => (
                 <th key={idx} className={cn("py-1 font-normal text-right", idx === 0 ? "pr-1.5" : "pr-2")}>
                   <select
-                    className="bg-transparent text-[10px] font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
+                    className="bg-transparent text-[11px] font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
                     value={statCols[idx]}
                     onChange={(e) => onUpdateStatCol(idx, e.target.value)}
                     title="Click to change"
@@ -374,7 +374,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                         {dividerLabel && (
                           <button
                             type="button"
-                            className="absolute top-1/2 left-1 z-20 inline-block -translate-y-1/2 max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground hover:border-primary/70 hover:bg-primary/10 transition-colors"
+                            className="absolute top-1/2 left-1 z-20 inline-block -translate-y-1/2 max-w-[11rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[11px] font-sans uppercase tracking-wider text-foreground hover:border-primary/70 hover:bg-primary/10 transition-colors"
                             title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
                             onClick={(eventClick) => {
                               eventClick.stopPropagation()
@@ -396,12 +396,12 @@ export const SolveListPanel = memo(function SolveListPanel({
                     onClick={() => onSelectSolveCell(row.solve.id, "single")}
                     style={{ height: `${ROW_HEIGHT}px` }}
                   >
-                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px] 2xl:text-[12px]">
+                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[12px] 2xl:text-[13px]">
                       {row.displayNumber}
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 font-mono text-[13px] 2xl:text-[14px] text-foreground transition-colors",
+                        "text-right pr-1.5 py-0.5 font-mono text-[14px] 2xl:text-[15px] text-foreground transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "single" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -415,7 +415,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px] 2xl:text-[12px] transition-colors",
+                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[12px] 2xl:text-[13px] transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat1" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -429,7 +429,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-2 py-0.5 text-foreground font-mono text-[11px] 2xl:text-[12px] transition-colors",
+                        "text-right pr-2 py-0.5 text-foreground font-mono text-[12px] 2xl:text-[13px] transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat2" &&
                           "text-indigo-300 bg-indigo-500/15"
