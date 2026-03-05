@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { Shield } from "lucide-react"
+import { Shield, ShieldCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -20,9 +22,15 @@ export default async function AdminPage() {
       </div>
 
       <div className="rounded-lg border border-border/50 bg-card p-8 text-center">
-        <p className="text-muted-foreground">
-          No admin tools configured yet.
-        </p>
+        <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+          <ShieldCheck className="h-8 w-8 text-yellow-400" />
+          <p className="text-muted-foreground">
+            Review pending competitive achievement claims.
+          </p>
+          <Button asChild className="min-h-11">
+            <Link href="/admin/achievements">Open Achievement Queue</Link>
+          </Button>
+        </div>
       </div>
     </main>
   )
