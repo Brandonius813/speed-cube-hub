@@ -118,10 +118,55 @@ export type WrappedStats = {
   topEvents: { event: string; solves: number; hours: number }[];
 };
 
+export type BadgeCategory = "competition" | "sponsor" | "milestone";
+export type BadgeTier = "gold" | "silver" | "bronze" | "standard";
+export type BadgeVerification = "auto" | "self" | "admin";
+export type UserBadgeStatus = "approved" | "pending" | "rejected";
+export type UserBadgeSource = "auto" | "claim" | "admin";
+
+export type Badge = {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  category: BadgeCategory;
+  tier: BadgeTier;
+  criteria_type: "solves" | "streak" | "events" | "hours" | null;
+  criteria_value: number | null;
+  verification: BadgeVerification;
+  created_at?: string | null;
+};
+
+export type UserBadge = {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  year: number | null;
+  detail: string | null;
+  evidence_url: string | null;
+  is_current: boolean;
+  verified: boolean;
+  status: UserBadgeStatus;
+  source: UserBadgeSource;
+  review_note: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  earned_at: string;
+  badge: Badge;
+};
+
+export type PendingBadgeClaim = UserBadge & {
+  profile: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
+};
+
 export type Notification = {
   id: string;
   user_id: string;
-  type: "like" | "comment" | "follow" | "pb";
+  type: "like" | "comment" | "follow" | "pb" | "badge";
   actor_id: string | null;
   reference_id: string | null;
   read: boolean;
