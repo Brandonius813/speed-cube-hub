@@ -188,16 +188,20 @@ export function MobilePaneDrawer({
                   <div className="mb-2 flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">Height</span>
                     <div className="flex gap-1">
-                      {(["sm", "md", "lg"] as const).map((optionSize) => (
+                      {([
+                        { value: "sm", label: "Small" },
+                        { value: "md", label: "Medium" },
+                        { value: "lg", label: "Large" },
+                      ] as const).map((optionSize) => (
                         <button
-                          key={optionSize}
+                          key={optionSize.value}
                           className={cn(
                             "rounded border border-border px-2 py-1 text-[11px] text-muted-foreground",
-                            optionSize === size && "bg-secondary/70 text-foreground"
+                            optionSize.value === size && "bg-secondary/70 text-foreground"
                           )}
-                          onClick={() => onSetPaneHeight(pane.id, optionSize)}
+                          onClick={() => onSetPaneHeight(pane.id, optionSize.value)}
                         >
-                          {optionSize.toUpperCase()}
+                          {optionSize.label}
                         </button>
                       ))}
                     </div>

@@ -46,7 +46,6 @@ import { useTimerPaneLayout } from "@/components/timer/panes/use-timer-pane-layo
 import { DesktopPaneWorkspace } from "@/components/timer/panes/desktop-pane-workspace"
 import { MobilePaneDrawer } from "@/components/timer/panes/mobile-pane-drawer"
 import {
-  DESKTOP_PANE_SLOTS,
   type DesktopPaneSlot,
   type PaneToolId,
 } from "@/components/timer/panes/types"
@@ -78,12 +77,12 @@ const TIMER_UPDATE_MODE_OPTIONS: Array<{
   { value: "solving", label: "None" },
 ]
 
-const DESKTOP_SLOT_LABELS: Record<DesktopPaneSlot, string> = {
-  top_right: "Top Right",
-  bottom_right: "Bottom Right",
-  bottom_middle: "Bottom Middle",
-  bottom_left: "Bottom Left",
-}
+const INLINE_SLOT_OPTIONS: Array<{ slot: DesktopPaneSlot; label: string }> = [
+  { slot: "bottom_left", label: "Left" },
+  { slot: "bottom_middle", label: "Middle" },
+  { slot: "bottom_right", label: "Right" },
+  { slot: "top_right", label: "Top" },
+]
 
 const EVENTS = [
   { id: "333", name: "3x3" },
@@ -1921,18 +1920,22 @@ export function TimerContent() {
                         Pane Size
                       </span>
                       <div className="grid grid-cols-3 gap-1">
-                        {(["sm", "md", "lg"] as const).map((size) => (
+                        {([
+                          { value: "sm", label: "Small" },
+                          { value: "md", label: "Medium" },
+                          { value: "lg", label: "Large" },
+                        ] as const).map((optionSize) => (
                           <button
-                            key={size}
+                            key={optionSize.value}
                             className={cn(
                               "h-7 rounded border text-[11px] font-medium transition-colors",
-                              paneLayout.desktop.size === size
+                              paneLayout.desktop.size === optionSize.value
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
-                            onClick={() => setDesktopPaneSize(size)}
+                            onClick={() => setDesktopPaneSize(optionSize.value)}
                           >
-                            {size.toUpperCase()}
+                            {optionSize.label}
                           </button>
                         ))}
                       </div>
@@ -1953,77 +1956,68 @@ export function TimerContent() {
                         ? "Max 4 panes open"
                         : null
                       return (
-                        <button
-                          key={tool}
-                          className={cn(
-                            "w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors",
-                            disabled && "opacity-40 cursor-not-allowed"
-                          )}
-                          onClick={() => {
-                            if (showCrossEventHint || paneLimitDisabled) return
-                            togglePaneTool(tool)
-                          }}
-                          disabled={paneLimitDisabled}
-                          aria-disabled={disabled}
-                          title={
-                            disabledReason
-                              ? `${option.label}: ${disabledReason}`
-                              : undefined
-                          }
-                        >
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
-                            {option.label}
-                            {showCrossEventHint && (
-                              <span
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/50 text-muted-foreground"
-                                title="Only works on 3x3 and 3x3 one-handed"
-                                aria-label="Only works on 3x3 and 3x3 one-handed"
-                              >
-                                <Info size={10} />
-                              </span>
-                            )}
-                          </span>
-                          <span
+                        <div key={tool}>
+                          <button
                             className={cn(
-                              "font-mono text-[12px]",
-                              isOpen ? "text-primary font-medium" : "text-muted-foreground"
+                              "w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors",
+                              disabled && "opacity-40 cursor-not-allowed"
                             )}
+                            onClick={() => {
+                              if (showCrossEventHint || paneLimitDisabled) return
+                              togglePaneTool(tool)
+                            }}
+                            disabled={paneLimitDisabled}
+                            aria-disabled={disabled}
+                            title={
+                              disabledReason
+                                ? `${option.label}: ${disabledReason}`
+                                : undefined
+                            }
                           >
-                            {isOpen ? "Open" : "Closed"}
-                          </span>
-                        </button>
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
+                              {option.label}
+                              {showCrossEventHint && (
+                                <span
+                                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/50 text-muted-foreground"
+                                  title="Only works on 3x3 and 3x3 one-handed"
+                                  aria-label="Only works on 3x3 and 3x3 one-handed"
+                                >
+                                  <Info size={10} />
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                "font-mono text-[12px]",
+                                isOpen ? "text-primary font-medium" : "text-muted-foreground"
+                              )}
+                            >
+                              {isOpen ? "Open" : "Closed"}
+                            </span>
+                          </button>
+                          {isOpen && openPane && (
+                            <div className="px-3 pb-2">
+                              <div className="grid grid-cols-4 gap-1">
+                                {INLINE_SLOT_OPTIONS.map((slotOption) => (
+                                  <button
+                                    key={`${openPane.id}-${slotOption.slot}`}
+                                    className={cn(
+                                      "h-7 rounded border text-[11px] font-medium transition-colors",
+                                      openPane.slot === slotOption.slot
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    )}
+                                    onClick={() => setPaneSlot(openPane.id, slotOption.slot)}
+                                  >
+                                    {slotOption.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )
                     })}
-                    {panes.length > 0 && (
-                      <div className="px-3 pb-2 pt-1 space-y-2">
-                        <span className="block text-[11px] font-medium text-foreground">
-                          Pane Positions
-                        </span>
-                        {panes.map((pane) => (
-                          <div key={`slot-${pane.id}`} className="space-y-1">
-                            <span className="block text-[11px] text-muted-foreground">
-                              {PANE_REGISTRY[pane.tool].label}
-                            </span>
-                            <div className="grid grid-cols-4 gap-1">
-                              {DESKTOP_PANE_SLOTS.map((slot) => (
-                                <button
-                                  key={`${pane.id}-${slot}`}
-                                  className={cn(
-                                    "h-7 rounded border text-[11px] font-medium transition-colors",
-                                    pane.slot === slot
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                                  )}
-                                  onClick={() => setPaneSlot(pane.id, slot)}
-                                >
-                                  {DESKTOP_SLOT_LABELS[slot]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </>
                 )}
               </div>
