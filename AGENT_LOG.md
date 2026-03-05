@@ -8,15 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-
-### 2026-03-02 PT — T162 Session (csTimer Import Bulk Solve Insert)
-
-**Task:** T162 (CSTimer Import → Bulk Solve Insert)
-**Status:** Parser now retains individual solve data (scramble, isPlus2). Import uses `bulkImportSolves` with solve session picker.
-**Files touched:** parse-cstimer.ts, cstimer-import.tsx
-
----
-
 ### 2026-03-02 11:54 AM PT — Timer Rebuild Session (timer-rebuild branch)
 
 **Task:** Timer Rebuild — initiated by user, separate feature branch
@@ -194,3 +185,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** A direct import in `scramble-animator.tsx` required `cstimer_module` in dependencies. Detached/background dev-server launch in this environment can die silently after startup; persistent session launch is stable.
 **Blockers:** None
 **Warnings:** This worktree has pre-existing unstaged timer pane edits (`desktop-pane-workspace.tsx`, `solve-list-panel.tsx`, `timer-content.tsx`) unrelated to this sync/build fix; avoid including them in unrelated commits.
+
+---
+
+### 2026-03-05 09:01 AM PT - Timer Pane Open Reliability + Sync Check-In
+
+**Task:** General work — timer pane open/show button reliability
+**Status:** Implemented two targeted fixes for pane-open actions: (1) hardened initial layout merge to keep newest state and preserve in-flight local clicks, (2) switched settings tool rows from generic toggle to explicit add/remove flow. Verified `npx eslint` and `npx tsc --noEmit` pass locally on changed files. User reports localhost/dev still showing the same symptom and that the dev server is down again.
+**Files touched:** `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/panes/desktop-pane-workspace.tsx`, `AGENT_LOG.md`
+**Learnings:** Timer pane state is sensitive to startup hydration/sync races; explicit add/remove intent is safer than abstract toggle calls for settings-driven UI actions.
+**Blockers:** Dev server reported down again by user; runtime verification in browser is blocked until server is stable.
+**Warnings:** Timer pane files are active merge hot spots (`timer-content.tsx`, `use-timer-pane-layout.ts`, `desktop-pane-workspace.tsx`, `solve-list-panel.tsx`); rebase carefully before touching adjacent logic.
