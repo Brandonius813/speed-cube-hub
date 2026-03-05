@@ -8,15 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-03-02 11:54 AM PT — Timer Rebuild Session (timer-rebuild branch)
-
-**Task:** Timer Rebuild — initiated by user, separate feature branch
-**Status:** Deleted all 32 old timer components + 14 unused lib files. Replaced with single 298-line timer-content.tsx. Added cstimer-style left sidebar with stats table + scrollable solve list.
-**Files touched:** timer-content.tsx (only file), lib/timer/ (kept scrambles.ts, averages.ts, inspection.ts)
-**Learnings:** `phaseRef` + `heldRef` pattern prevents stale closures in event handlers.
-
----
-
 ### 2026-03-02 PT — Timer Scramble Top Bar Session
 
 **Task:** Move scramble into top bar of timer
@@ -196,3 +187,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Timer pane state is sensitive to startup hydration/sync races; explicit add/remove intent is safer than abstract toggle calls for settings-driven UI actions.
 **Blockers:** Dev server reported down again by user; runtime verification in browser is blocked until server is stable.
 **Warnings:** Timer pane files are active merge hot spots (`timer-content.tsx`, `use-timer-pane-layout.ts`, `desktop-pane-workspace.tsx`, `solve-list-panel.tsx`); rebase carefully before touching adjacent logic.
+
+---
+
+### 2026-03-05 09:34 AM PT - Localhost Stability Hardening Session
+
+**Task:** Root-cause and fix repeated localhost dev shutdowns
+**Status:** Identified two causes: (1) `npm run dev` launched as a background job was not reliably persistent, and (2) dev responses sent HSTS headers, creating HTTPS confusion on localhost. Implemented a PID-tracked detached starter (`dev:up/dev:status/dev:down/dev:logs`), made HSTS production-only, and updated docs/tracking files.
+**Files touched:** `scripts/dev-server.mjs`, `package.json`, `.gitignore`, `next.config.ts`, `README.md`, `AGENTS.md`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `npx tsc --noEmit` passed. Verified `npm run dev:up` → `dev:status` → HTTP 200 on `http://127.0.0.1:3000` → `dev:down`.

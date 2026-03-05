@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
+    "dev:up": "node scripts/dev-server.mjs up",
+    "dev:down": "node scripts/dev-server.mjs down",
+    "dev:status": "node scripts/dev-server.mjs status",
+    "dev:logs": "node scripts/dev-server.mjs logs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

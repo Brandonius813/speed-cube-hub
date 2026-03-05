@@ -71,9 +71,17 @@ Run from project root:
 
 ```bash
 npm run dev
+npm run dev:up
+npm run dev:status
+npm run dev:down
 npm run build
 npm run lint
 ```
+
+Localhost stability rule:
+
+- If you need the dev server to keep running after a terminal closes, use `npm run dev:up` and stop it with `npm run dev:down`.
+- Use `http://127.0.0.1:3000` for local access (HTTP, not HTTPS).
 
 No formal automated test suite is configured.
 

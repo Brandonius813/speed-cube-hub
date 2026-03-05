@@ -1,24 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server (interactive terminal):
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or start it as a persistent background process (recommended when you want it to stay up until you stop it):
+
+```bash
+npm run dev:up
+npm run dev:status
+npm run dev:logs
+```
+
+Stop the background server:
+
+```bash
+npm run dev:down
+```
+
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) in your browser.
+
+Use `http://` for local development, not `https://`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) with Nunito and JetBrains Mono.
 
 ## Learn More
 

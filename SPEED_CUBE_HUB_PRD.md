@@ -51,6 +51,7 @@ Tools for coaches to assign homework, review student practice data, and store co
 - **Server + Client component pattern:** `page.tsx` (server) fetches data, `*-content.tsx` (client) handles interactivity.
 - **Server actions** for mutations and data fetching. Client Supabase for auth checks only.
 - **React Compiler** enabled for automatic memoization.
+- **Local dev reliability:** Use `npm run dev:up` / `npm run dev:down` for persistent localhost sessions. HSTS is production-only (not sent in local dev).
 
 ---
 
