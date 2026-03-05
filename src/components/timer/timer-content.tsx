@@ -2333,7 +2333,7 @@ function TimerReadout({
   btReset: boolean
   onStall: (deltaMs: number) => void
 }) {
-  const displayRef = useRef<HTMLDivElement>(null)
+  const [runningDisplay, setRunningDisplay] = useState("0.00")
   const lastFrameRef = useRef<number | null>(null)
   const lastStallRef = useRef(0)
 
@@ -2344,9 +2344,6 @@ function TimerReadout({
     }
 
     if (timerUpdateMode === "solving") {
-      if (displayRef.current) {
-        displayRef.current.textContent = "solving"
-      }
       lastFrameRef.current = null
       return
     }
@@ -2363,11 +2360,10 @@ function TimerReadout({
         }
       }
       lastFrameRef.current = ts
-      if (displayRef.current) {
-        const elapsed = ts - startMs
-        displayRef.current.textContent =
-          timerUpdateMode === "seconds" ? fmtWholeSeconds(elapsed) : fmt(elapsed)
-      }
+      const elapsed = ts - startMs
+      setRunningDisplay(
+        timerUpdateMode === "seconds" ? fmtWholeSeconds(elapsed) : fmt(elapsed)
+      )
       if (!active) return
       raf = requestAnimationFrame(tick)
     }
@@ -2381,8 +2377,10 @@ function TimerReadout({
   const display = useMemo(() => {
     if (phase === "running") {
       if (timerUpdateMode === "solving") return "solving"
-      if (timerUpdateMode === "seconds") return "0"
-      return "0.00"
+      if (lastFrameRef.current === null) {
+        return timerUpdateMode === "seconds" ? "0" : "0.00"
+      }
+      return runningDisplay
     }
     if (phase === "inspecting" || inInspHold) {
       return String(Math.max(0, 15 - inspSecondsLeft))
@@ -2392,14 +2390,7 @@ function TimerReadout({
     if (!last) return "0.00"
     if (last.penalty === "DNF") return "DNF"
     return fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
-  }, [btReset, inInspHold, inspSecondsLeft, last, phase, timerUpdateMode])
+  }, [btReset, inInspHold, inspSecondsLeft, last, phase, runningDisplay, timerUpdateMode])
 
-  useEffect(() => {
-    if (phase === "running") return
-    if (displayRef.current) {
-      displayRef.current.textContent = display
-    }
-  }, [display, phase])
-
-  return <div ref={displayRef} className={className}>{display}</div>
+  return <div className={className}>{display}</div>
 }
