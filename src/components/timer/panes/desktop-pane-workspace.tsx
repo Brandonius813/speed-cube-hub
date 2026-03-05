@@ -111,11 +111,11 @@ function computeSlotRects(
     maxCardHeight
   )
 
-  const totalBottomWidth = cardWidth * 3 + BOTTOM_GAP_PX * 2
-  const bottomStartX = OUTER_GAP_PX + Math.round((innerWidth - totalBottomWidth) / 2)
-  const leftX = bottomStartX
-  const middleX = leftX + cardWidth + BOTTOM_GAP_PX
-  const rightX = middleX + cardWidth + BOTTOM_GAP_PX
+  // Keep cards equal-sized, but push outer cards toward edges on wide displays.
+  // On tighter widths this resolves to near-identical spacing to the centered layout.
+  const leftX = OUTER_GAP_PX
+  const middleX = OUTER_GAP_PX + Math.round((innerWidth - cardWidth) / 2)
+  const rightX = OUTER_GAP_PX + innerWidth - cardWidth
 
   const topY = OUTER_GAP_PX
   const bottomY = OUTER_GAP_PX + innerHeight - cardHeight

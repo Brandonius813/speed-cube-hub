@@ -224,34 +224,34 @@ export const SolveListPanel = memo(function SolveListPanel({
           <thead>
             <tr className="text-foreground">
               <th className="text-left font-normal pb-1.5"></th>
-              <th className="text-right font-sans text-[10px] uppercase tracking-widest font-normal pb-1.5 pr-2">cur</th>
-              <th className="text-right font-sans text-[10px] uppercase tracking-widest font-normal pb-1.5">best</th>
+              <th className="text-right font-sans text-[10px] 2xl:text-[11px] uppercase tracking-widest font-normal pb-1.5 pr-2">cur</th>
+              <th className="text-right font-sans text-[10px] 2xl:text-[11px] uppercase tracking-widest font-normal pb-1.5">best</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="font-sans text-[11px] text-foreground py-0.5 pr-2">single</td>
-              <td className="text-right pr-2 font-mono text-[13px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
-              <td className="text-right font-mono text-[13px] text-foreground">{D(stats.best)}</td>
+              <td className="font-sans text-[11px] 2xl:text-[12px] text-foreground py-0.5 pr-2">single</td>
+              <td className="text-right pr-2 font-mono text-[13px] 2xl:text-[14px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
+              <td className="text-right font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(stats.best)}</td>
             </tr>
             {stats.milestoneRows.map((row) => (
               <tr key={row.key}>
-                <td className="font-sans text-[11px] text-foreground py-0.5 pr-2">{row.key}</td>
-                <td className="text-right pr-2 font-mono text-[13px] text-foreground">{D(row.cur)}</td>
-                <td className="text-right font-mono text-[13px] text-foreground">{D(row.best)}</td>
+                <td className="font-sans text-[11px] 2xl:text-[12px] text-foreground py-0.5 pr-2">{row.key}</td>
+                <td className="text-right pr-2 font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(row.cur)}</td>
+                <td className="text-right font-mono text-[13px] 2xl:text-[14px] text-foreground">{D(row.best)}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="flex justify-between border-t border-border mt-2 pt-1.5">
-          <span className="font-sans text-[10px] uppercase tracking-wider text-foreground">
-            Count <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{currentSolveCount ?? totalCount}</span>
+          <span className="font-sans text-[10px] 2xl:text-[11px] uppercase tracking-wider text-foreground">
+            Count <span className="font-mono normal-case tracking-normal text-[12px] 2xl:text-[13px] text-foreground">{currentSolveCount ?? totalCount}</span>
             {savedSolveCount > 0 && (
-              <span className="font-mono normal-case tracking-normal text-[10px] text-foreground/80 ml-1">/{totalCount}</span>
+              <span className="font-mono normal-case tracking-normal text-[10px] 2xl:text-[11px] text-foreground/80 ml-1">/{totalCount}</span>
             )}
           </span>
-          <span className="font-sans text-[10px] uppercase tracking-wider text-foreground">
-            Mean <span className="font-mono normal-case tracking-normal text-[12px] text-foreground">{D(stats.mean)}</span>
+          <span className="font-sans text-[10px] 2xl:text-[11px] uppercase tracking-wider text-foreground">
+            Mean <span className="font-mono normal-case tracking-normal text-[12px] 2xl:text-[13px] text-foreground">{D(stats.mean)}</span>
           </span>
         </div>
         {selectedSolve && (
@@ -396,12 +396,12 @@ export const SolveListPanel = memo(function SolveListPanel({
                     onClick={() => onSelectSolveCell(row.solve.id, "single")}
                     style={{ height: `${ROW_HEIGHT}px` }}
                   >
-                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]">
+                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px] 2xl:text-[12px]">
                       {row.displayNumber}
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground transition-colors",
+                        "text-right pr-1.5 py-0.5 font-mono text-[13px] 2xl:text-[14px] text-foreground transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "single" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -415,7 +415,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px] transition-colors",
+                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px] 2xl:text-[12px] transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat1" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -429,7 +429,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-2 py-0.5 text-foreground font-mono text-[11px] transition-colors",
+                        "text-right pr-2 py-0.5 text-foreground font-mono text-[11px] 2xl:text-[12px] transition-colors",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat2" &&
                           "text-indigo-300 bg-indigo-500/15"

@@ -1729,7 +1729,7 @@ export function TimerContent() {
         {practiceType !== "Comp Sim" && (
           <div className="flex-1 min-w-0 flex items-center justify-center">
             <button
-              className="text-center text-lg sm:text-xl font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
+              className="text-center text-lg sm:text-xl 2xl:text-[1.45rem] font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
               onClick={() => {
                 navigator.clipboard.writeText(scramble).then(() => {
                   setScrambleCopied(true)
