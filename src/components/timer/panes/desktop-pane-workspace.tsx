@@ -32,6 +32,7 @@ type SlotPreset = {
   widthFill: number
   heightAspect: number
   centerMin: number
+  maxCardWidth: number
 }
 
 const OUTER_GAP_PX = 12
@@ -47,24 +48,20 @@ const SLOT_PRESETS: Record<DesktopPaneSize, SlotPreset> = {
     widthFill: 1,
     heightAspect: 0.68,
     centerMin: 150,
+    maxCardWidth: 440,
   },
   md: {
     widthFill: 1,
     heightAspect: 0.8,
     centerMin: 90,
+    maxCardWidth: 540,
   },
   lg: {
     widthFill: 1,
     heightAspect: 0.9,
     centerMin: 56,
+    maxCardWidth: 620,
   },
-}
-
-const SLOT_LABELS: Record<DesktopPaneSlot, string> = {
-  top_right: "Top Right",
-  bottom_right: "Bottom Right",
-  bottom_middle: "Bottom Middle",
-  bottom_left: "Bottom Left",
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -106,7 +103,8 @@ function computeSlotRects(
 
   if (rowCardMaxWidth < MIN_CARD_WIDTH_PX || maxCardHeight < MIN_CARD_HEIGHT_PX) return null
 
-  const cardWidth = clamp(Math.round(rowCardMaxWidth * preset.widthFill), MIN_CARD_WIDTH_PX, rowCardMaxWidth)
+  const widthCap = Math.min(rowCardMaxWidth, preset.maxCardWidth)
+  const cardWidth = clamp(Math.round(rowCardMaxWidth * preset.widthFill), MIN_CARD_WIDTH_PX, widthCap)
   const cardHeight = clamp(
     Math.round(cardWidth * preset.heightAspect),
     MIN_CARD_HEIGHT_PX,
@@ -221,16 +219,7 @@ export function DesktopPaneWorkspace({
                   zIndex: 40,
                 }}
               >
-                <div className="flex items-center justify-between gap-2 border-b border-border/70 px-2 py-1">
-                  <span className="text-xs font-sans uppercase tracking-wide text-muted-foreground">
-                    {entry.label}
-                  </span>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    {SLOT_LABELS[slot]}
-                  </span>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-hidden p-2">
+                <div className="min-h-0 flex-1 overflow-hidden p-1">
                   <entry.Render
                     pane={pane}
                     context={context}
