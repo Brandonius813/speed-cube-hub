@@ -34,13 +34,15 @@ import {
   formatSessionDividerDate,
   type SessionGroupMeta,
 } from "@/lib/timer/session-dividers"
-import { getPracticeTypesForEvent } from "@/lib/constants"
+import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
 import { ScrambleImage } from "@/components/timer/scramble-image"
 import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
+import { PbPhotoModeOverlay } from "@/components/timer/pb-photo-mode-overlay"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
+import { getLastSinglePbCandidate } from "@/lib/timer/pb-share"
 import type {
   StatsSummary,
   StatsWorkerRequest,
@@ -270,7 +272,16 @@ function toChartSolve(solve: Solve, eventId: string, solveNumber: number): Store
   }
 }
 
-export function TimerContent() {
+type TimerViewer = {
+  displayName: string
+  handle: string | null
+}
+
+type TimerContentProps = {
+  viewer?: TimerViewer
+}
+
+export function TimerContent({ viewer }: TimerContentProps) {
   const [event, setEvent] = useState(() => {
     try {
       return localStorage.getItem("timer-event") ?? "333"
@@ -332,6 +343,7 @@ export function TimerContent() {
   const [sessionPaused, setSessionPaused] = useState(false)
   const [showEndModal, setShowEndModal] = useState(false)
   const [sessionSaved, setSessionSaved] = useState(false)
+  const [pbPhotoOpen, setPbPhotoOpen] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
   const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
   const [solveRange, setSolveRange] = useState({
@@ -1506,9 +1518,22 @@ export function TimerContent() {
 
   const parsedTypeTime = useMemo(() => parseTime(typeVal), [typeVal])
   const last = solves[solves.length - 1]
+  const lastSinglePb = useMemo(() => getLastSinglePbCandidate(solves), [solves])
   const scrambleNavBtn =
     "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
   const sp = (eventPointer: React.PointerEvent) => eventPointer.stopPropagation()
+  const canSharePb =
+    phase === "stopped" &&
+    !!last &&
+    !!lastSinglePb &&
+    lastSinglePb.solveId === last.id
+
+  useEffect(() => {
+    if (!pbPhotoOpen) return
+    if (!canSharePb) {
+      setPbPhotoOpen(false)
+    }
+  }, [canSharePb, pbPhotoOpen])
 
   const handleRangeChange = useCallback(
     (next: { start: number; end: number; scrollOffset: number }) => {
@@ -1916,6 +1941,14 @@ export function TimerContent() {
                 >
                   Delete
                 </button>
+                {canSharePb && (
+                  <button
+                    className="text-[13px] font-sans font-semibold px-3 py-1.5 rounded border border-cyan-400/60 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25 transition-colors"
+                    onClick={() => setPbPhotoOpen(true)}
+                  >
+                    Share PB
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1993,6 +2026,17 @@ export function TimerContent() {
           sessionStartMs={activeSessionStartMs}
           onClose={() => setShowEndModal(false)}
           onSaved={handleSessionSaved}
+        />
+      )}
+
+      {pbPhotoOpen && (
+        <PbPhotoModeOverlay
+          eventLabel={getEventLabel(event)}
+          timeText={lastSinglePb?.formattedTime ?? "0.00"}
+          scramble={lastSinglePb?.scramble ?? ""}
+          displayName={viewer?.displayName ?? "Cuber"}
+          handle={viewer?.handle ?? null}
+          onClose={() => setPbPhotoOpen(false)}
         />
       )}
     </div>
