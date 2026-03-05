@@ -2388,5 +2388,12 @@ function TimerReadout({
     return fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
   }, [btReset, inInspHold, inspSecondsLeft, last, phase, timerUpdateMode])
 
+  useEffect(() => {
+    if (phase === "running") return
+    if (displayRef.current) {
+      displayRef.current.textContent = display
+    }
+  }, [display, phase])
+
   return <div ref={displayRef} className={className}>{display}</div>
 }
