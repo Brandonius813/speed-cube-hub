@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ type MobilePaneDrawerProps = {
   context: TimerPaneRenderContext
   timingActive: boolean
   autoHideDuringSolve: boolean
+  openRequestKey?: number
   onAddPane: (tool: PaneToolId) => void
   onRemovePane: (paneId: string) => void
   onChangeTool: (paneId: string, tool: PaneToolId) => void
@@ -43,6 +44,7 @@ export function MobilePaneDrawer({
   context,
   timingActive,
   autoHideDuringSolve,
+  openRequestKey = 0,
   onAddPane,
   onRemovePane,
   onChangeTool,
@@ -70,6 +72,12 @@ export function MobilePaneDrawer({
 
   const usedTools = useMemo(() => new Set(panes.map((pane) => pane.tool)), [panes])
   const canRenderPaneContent = !(autoHideDuringSolve && timingActive)
+
+  useEffect(() => {
+    if (openRequestKey <= 0) return
+    const timerId = window.setTimeout(() => setOpen(true), 0)
+    return () => window.clearTimeout(timerId)
+  }, [openRequestKey])
 
   return (
     <div className="lg:hidden">

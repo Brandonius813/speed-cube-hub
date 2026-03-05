@@ -198,7 +198,7 @@ export function DesktopPaneWorkspace({
 
   return (
     <div
-      className="pointer-events-none fixed right-2 bottom-0 z-30 hidden lg:block lg:left-[calc(14rem+0.5rem)] xl:left-[calc(16rem+0.5rem)]"
+      className="pointer-events-none fixed right-2 bottom-0 z-30 hidden lg:block lg:left-[calc(16rem+0.5rem)] xl:left-[calc(18rem+0.5rem)]"
       style={{ top: `${Math.max(92, Math.round(topOffsetPx))}px` }}
     >
       <div ref={zoneRef} className="relative h-full w-full overflow-hidden">

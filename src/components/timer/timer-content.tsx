@@ -369,7 +369,6 @@ export function TimerContent() {
     panes,
     paneByTool,
     addPane,
-    togglePaneTool,
     removePane,
     setPaneSlot,
     changePaneTool,
@@ -397,6 +396,7 @@ export function TimerContent() {
   const [sessionSaved, setSessionSaved] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
   const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
+  const [mobilePaneOpenRequestKey, setMobilePaneOpenRequestKey] = useState(0)
   const [solveRange, setSolveRange] = useState({
     start: 0,
     end: INITIAL_SOLVE_WINDOW,
@@ -1704,326 +1704,340 @@ export function TimerContent() {
       )}
       <div ref={timerTopAreaRef}>
         <div
-          className="relative flex items-center px-4 py-3 gap-3 border-b border-border"
+          className="relative flex items-center gap-3 px-4 py-3 border-b border-border lg:gap-0 lg:px-0 lg:py-0"
           onPointerDown={sp}
         >
-        <select
-          className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
-          value={event}
-          onChange={(eventSelect) => changeEvent(eventSelect.target.value)}
-        >
-          {EVENTS.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.name}
-            </option>
-          ))}
-        </select>
-
-        <PracticeModeSelector
-          eventId={event}
-          selectedType={practiceType}
-          onTypeChange={changePracticeType}
-        />
-
-        {practiceType !== "Comp Sim" && (
-          <div className="flex-1 min-w-0 flex items-center justify-center">
-            <button
-              className="text-center text-lg sm:text-xl 2xl:text-[1.45rem] font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
-              onClick={() => {
-                navigator.clipboard.writeText(scramble).then(() => {
-                  setScrambleCopied(true)
-                  setTimeout(() => setScrambleCopied(false), 1500)
-                })
-              }}
-              title="Click to copy scramble"
+          <div className="flex shrink-0 items-center gap-3 lg:w-64 xl:w-72 lg:border-r border-border lg:px-4 lg:py-3">
+            <select
+              className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
+              value={event}
+              onChange={(eventSelect) => changeEvent(eventSelect.target.value)}
             >
-              {scramble}
-            </button>
+              {EVENTS.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.name}
+                </option>
+              ))}
+            </select>
+
+            <PracticeModeSelector
+              eventId={event}
+              selectedType={practiceType}
+              onTypeChange={changePracticeType}
+            />
           </div>
-        )}
 
-        {practiceType !== "Comp Sim" && (
-          <span
-            className={cn(
-              "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
-              scrambleCopied
-                ? "opacity-100 translate-y-0 text-green-400"
-                : "opacity-0 -translate-y-1 text-green-400"
+          <div className="flex min-w-0 flex-1 items-center gap-3 lg:px-4 lg:py-3">
+            {practiceType !== "Comp Sim" && (
+              <div className="flex-1 min-w-0 flex items-center justify-center">
+                <button
+                  className="text-center text-lg sm:text-xl 2xl:text-[1.45rem] font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => {
+                    navigator.clipboard.writeText(scramble).then(() => {
+                      setScrambleCopied(true)
+                      setTimeout(() => setScrambleCopied(false), 1500)
+                    })
+                  }}
+                  title="Click to copy scramble"
+                >
+                  {scramble}
+                </button>
+              </div>
             )}
-          >
-            Scramble copied!
-          </span>
-        )}
 
-        <div className="flex items-center gap-1 shrink-0">
-          {practiceType !== "Comp Sim" && (
-            <>
-              <button
-                className={scrambleNavBtn}
-                onClick={prevScramble}
-                disabled={!scrambleCanGoPrev || timingActive}
-                title="Go back to previous scramble"
-              >
-                ← Prev
-              </button>
-              <button
-                className={scrambleNavBtn}
-                onClick={nextScramble}
-                disabled={timingActive}
-                title="Skip to next scramble"
-              >
-                Next →
-              </button>
-            </>
-          )}
-          <div className="relative" ref={settingsRef}>
-            <button
-              className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
-              onClick={() => setSettingsOpen((value) => !value)}
-              title="Timer settings"
-            >
-              <Settings size={14} />
-            </button>
-            {settingsOpen && (
-              <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
-                <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Timer
-                </div>
-                <button
-                  className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
-                  onClick={() =>
-                    setTyping((value) => {
-                      const next = !value
-                      try {
-                        localStorage.setItem("timer-typing", String(next))
-                      } catch {}
-                      return next
-                    })
-                  }
-                >
-                  <span className="text-foreground">⌨ Typing Mode</span>
-                  <span
-                    className={cn(
-                      "font-mono text-[12px]",
-                      typing ? "text-primary font-medium" : "text-muted-foreground"
-                    )}
-                  >
-                    {typing ? "On" : "Off"}
-                  </span>
-                </button>
-                {isBleSupported() && (
+            <div className="flex items-center gap-1 shrink-0">
+              {practiceType !== "Comp Sim" && (
+                <>
                   <button
-                    className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    onClick={btStatus === "connected" ? btDisconnect : btConnect}
-                    disabled={btStatus === "connecting"}
-                    onPointerDown={sp}
-                    title={
-                      btStatus === "connected"
-                        ? "Disconnect GAN Smart Timer"
-                        : "Connect GAN Smart Timer via Bluetooth"
-                    }
+                    className={scrambleNavBtn}
+                    onClick={prevScramble}
+                    disabled={!scrambleCanGoPrev || timingActive}
+                    title="Go back to previous scramble"
                   >
-                    <span className="text-foreground">GAN Smart Timer</span>
-                    <span
-                      className={cn(
-                        "font-mono text-[12px]",
-                        btStatus === "connected"
-                          ? "text-primary font-medium"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {btStatus === "connecting"
-                        ? "Connecting…"
-                        : btStatus === "connected"
-                        ? "Connected"
-                        : "Disconnected"}
-                    </span>
+                    ← Prev
                   </button>
-                )}
-                <button
-                  className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  onClick={() =>
-                    setInspOn((value) => {
-                      const next = !value
-                      try {
-                        localStorage.setItem("timer-insp-on", String(next))
-                      } catch {}
-                      return next
-                    })
-                  }
-                  disabled={typing}
-                >
-                  <span className="text-foreground">⏱ Inspection</span>
-                  <span
-                    className={cn(
-                      "font-mono text-[12px]",
-                      inspOn && !typing
-                        ? "text-primary font-medium"
-                        : "text-muted-foreground"
-                    )}
+                  <button
+                    className={scrambleNavBtn}
+                    onClick={nextScramble}
+                    disabled={timingActive}
+                    title="Skip to next scramble"
                   >
-                    {inspOn ? "On" : "Off"}
-                  </span>
+                    Next →
+                  </button>
+                </>
+              )}
+              <div className="relative" ref={settingsRef}>
+                <button
+                  className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
+                  onClick={() => setSettingsOpen((value) => !value)}
+                  title="Timer settings"
+                >
+                  <Settings size={14} />
                 </button>
-                <div className="px-3 py-2 space-y-1.5">
-                  <span className="block text-[11px] font-medium text-foreground">
-                    Update During Solve
-                  </span>
-                  <div className="grid grid-cols-3 gap-1">
-                    {TIMER_UPDATE_MODE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        className={cn(
-                          "h-7 rounded border text-[11px] font-medium transition-colors",
-                          timerUpdateMode === option.value
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                        onClick={() => {
-                          setTimerUpdateMode(option.value)
-                          try {
-                            localStorage.setItem("timer-update-mode", option.value)
-                          } catch {}
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {practiceType !== "Comp Sim" && (
-                  <>
-                    <div className="my-1 border-t border-border" />
-                    <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Tools
+                {settingsOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+                    <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Timer
                     </div>
                     <button
                       className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
                       onClick={() =>
-                        setAutoHideDuringSolve(!paneLayout.autoHideDuringSolve)
+                        setTyping((value) => {
+                          const next = !value
+                          try {
+                            localStorage.setItem("timer-typing", String(next))
+                          } catch {}
+                          return next
+                        })
                       }
                     >
-                      <span className="text-foreground">Hide Tools During Solve</span>
+                      <span className="text-foreground">⌨ Typing Mode</span>
                       <span
                         className={cn(
                           "font-mono text-[12px]",
-                          paneLayout.autoHideDuringSolve
+                          typing ? "text-primary font-medium" : "text-muted-foreground"
+                        )}
+                      >
+                        {typing ? "On" : "Off"}
+                      </span>
+                    </button>
+                    {isBleSupported() && (
+                      <button
+                        className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={btStatus === "connected" ? btDisconnect : btConnect}
+                        disabled={btStatus === "connecting"}
+                        onPointerDown={sp}
+                        title={
+                          btStatus === "connected"
+                            ? "Disconnect GAN Smart Timer"
+                            : "Connect GAN Smart Timer via Bluetooth"
+                        }
+                      >
+                        <span className="text-foreground">GAN Smart Timer</span>
+                        <span
+                          className={cn(
+                            "font-mono text-[12px]",
+                            btStatus === "connected"
+                              ? "text-primary font-medium"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {btStatus === "connecting"
+                            ? "Connecting…"
+                            : btStatus === "connected"
+                            ? "Connected"
+                            : "Disconnected"}
+                        </span>
+                      </button>
+                    )}
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={() =>
+                        setInspOn((value) => {
+                          const next = !value
+                          try {
+                            localStorage.setItem("timer-insp-on", String(next))
+                          } catch {}
+                          return next
+                        })
+                      }
+                      disabled={typing}
+                    >
+                      <span className="text-foreground">⏱ Inspection</span>
+                      <span
+                        className={cn(
+                          "font-mono text-[12px]",
+                          inspOn && !typing
                             ? "text-primary font-medium"
                             : "text-muted-foreground"
                         )}
                       >
-                        {paneLayout.autoHideDuringSolve ? "On" : "Off"}
+                        {inspOn ? "On" : "Off"}
                       </span>
                     </button>
                     <div className="px-3 py-2 space-y-1.5">
                       <span className="block text-[11px] font-medium text-foreground">
-                        Pane Size
+                        Update During Solve
                       </span>
                       <div className="grid grid-cols-3 gap-1">
-                        {([
-                          { value: "sm", label: "Small" },
-                          { value: "md", label: "Medium" },
-                          { value: "lg", label: "Large" },
-                        ] as const).map((optionSize) => (
+                        {TIMER_UPDATE_MODE_OPTIONS.map((option) => (
                           <button
-                            key={optionSize.value}
+                            key={option.value}
                             className={cn(
                               "h-7 rounded border text-[11px] font-medium transition-colors",
-                              paneLayout.desktop.size === optionSize.value
+                              timerUpdateMode === option.value
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
-                            onClick={() => setDesktopPaneSize(optionSize.value)}
+                            onClick={() => {
+                              setTimerUpdateMode(option.value)
+                              try {
+                                localStorage.setItem("timer-update-mode", option.value)
+                              } catch {}
+                            }}
                           >
-                            {optionSize.label}
+                            {option.label}
                           </button>
                         ))}
                       </div>
                     </div>
-                    {PANE_TOOL_OPTIONS.map((option) => {
-                      const tool = option.tool as PaneToolId
-                      const openPane = paneByTool.get(tool)
-                      const isOpen = !!openPane
-                      const canAddMore = panes.length < 4
-                      const isAvailable = PANE_REGISTRY[tool].isAvailable(paneContext)
-                      const showCrossEventHint =
-                        tool === "cross" && !isOpen && !isAvailable
-                      const paneLimitDisabled = !isOpen && !canAddMore
-                      const disabled = paneLimitDisabled || showCrossEventHint
-                      const disabledReason = showCrossEventHint
-                        ? "Only works on 3x3 and 3x3 one-handed"
-                        : paneLimitDisabled
-                        ? "Max 4 panes open"
-                        : null
-                      return (
-                        <div key={tool}>
-                          <button
-                            className={cn(
-                              "w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors",
-                              disabled && "opacity-40 cursor-not-allowed"
-                            )}
-                            onClick={() => {
-                              if (showCrossEventHint || paneLimitDisabled) return
-                              togglePaneTool(tool)
-                            }}
-                            disabled={paneLimitDisabled}
-                            aria-disabled={disabled}
-                            title={
-                              disabledReason
-                                ? `${option.label}: ${disabledReason}`
-                                : undefined
-                            }
-                          >
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
-                              {option.label}
-                              {showCrossEventHint && (
-                                <span
-                                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/50 text-muted-foreground"
-                                  title="Only works on 3x3 and 3x3 one-handed"
-                                  aria-label="Only works on 3x3 and 3x3 one-handed"
-                                >
-                                  <Info size={10} />
-                                </span>
-                              )}
-                            </span>
-                            <span
-                              className={cn(
-                                "font-mono text-[12px]",
-                                isOpen ? "text-primary font-medium" : "text-muted-foreground"
-                              )}
-                            >
-                              {isOpen ? "Open" : "Closed"}
-                            </span>
-                          </button>
-                          {isOpen && openPane && (
-                            <div className="px-3 pb-2">
-                              <div className="grid grid-cols-4 gap-1">
-                                {INLINE_SLOT_OPTIONS.map((slotOption) => (
-                                  <button
-                                    key={`${openPane.id}-${slotOption.slot}`}
-                                    className={cn(
-                                      "h-7 rounded border text-[11px] font-medium transition-colors",
-                                      openPane.slot === slotOption.slot
-                                        ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    )}
-                                    onClick={() => setPaneSlot(openPane.id, slotOption.slot)}
-                                  >
-                                    {slotOption.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                    {practiceType !== "Comp Sim" && (
+                      <>
+                        <div className="my-1 border-t border-border" />
+                        <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          Tools
                         </div>
-                      )
-                    })}
-                  </>
+                        <button
+                          className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                          onClick={() =>
+                            setAutoHideDuringSolve(!paneLayout.autoHideDuringSolve)
+                          }
+                        >
+                          <span className="text-foreground">Hide Tools During Solve</span>
+                          <span
+                            className={cn(
+                              "font-mono text-[12px]",
+                              paneLayout.autoHideDuringSolve
+                                ? "text-primary font-medium"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {paneLayout.autoHideDuringSolve ? "On" : "Off"}
+                          </span>
+                        </button>
+                        <div className="px-3 py-2 space-y-1.5">
+                          <span className="block text-[11px] font-medium text-foreground">
+                            Pane Size
+                          </span>
+                          <div className="grid grid-cols-3 gap-1">
+                            {([
+                              { value: "sm", label: "Small" },
+                              { value: "md", label: "Medium" },
+                              { value: "lg", label: "Large" },
+                            ] as const).map((optionSize) => (
+                              <button
+                                key={optionSize.value}
+                                className={cn(
+                                  "h-7 rounded border text-[11px] font-medium transition-colors",
+                                  paneLayout.desktop.size === optionSize.value
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                                )}
+                                onClick={() => setDesktopPaneSize(optionSize.value)}
+                              >
+                                {optionSize.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {PANE_TOOL_OPTIONS.map((option) => {
+                          const tool = option.tool as PaneToolId
+                          const openPane = paneByTool.get(tool)
+                          const isOpen = !!openPane
+                          const canAddMore = panes.length < 4
+                          const isAvailable = PANE_REGISTRY[tool].isAvailable(paneContext)
+                          const showCrossEventHint =
+                            tool === "cross" && !isOpen && !isAvailable
+                          const paneLimitDisabled = !isOpen && !canAddMore
+                          const disabled = paneLimitDisabled || showCrossEventHint
+                          const disabledReason = showCrossEventHint
+                            ? "Only works on 3x3 and 3x3 one-handed"
+                            : paneLimitDisabled
+                            ? "Max 4 panes open"
+                            : null
+                          return (
+                            <div key={tool}>
+                              <button
+                                className={cn(
+                                  "w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors",
+                                  disabled && "opacity-40 cursor-not-allowed"
+                                )}
+                                onClick={() => {
+                                  if (showCrossEventHint || paneLimitDisabled) return
+                                  if (isOpen && openPane) {
+                                    removePane(openPane.id)
+                                  } else {
+                                    addPane(tool)
+                                    if (
+                                      typeof window !== "undefined" &&
+                                      !window.matchMedia("(min-width: 1024px)").matches
+                                    ) {
+                                      setMobilePaneOpenRequestKey((value) => value + 1)
+                                    }
+                                  }
+                                }}
+                                disabled={paneLimitDisabled}
+                                aria-disabled={disabled}
+                                title={
+                                  disabledReason
+                                    ? `${option.label}: ${disabledReason}`
+                                    : undefined
+                                }
+                              >
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
+                                  {option.label}
+                                  {showCrossEventHint && (
+                                    <span
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/50 text-muted-foreground"
+                                      title="Only works on 3x3 and 3x3 one-handed"
+                                      aria-label="Only works on 3x3 and 3x3 one-handed"
+                                    >
+                                      <Info size={10} />
+                                    </span>
+                                  )}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "font-mono text-[12px]",
+                                    isOpen ? "text-primary font-medium" : "text-muted-foreground"
+                                  )}
+                                >
+                                  {isOpen ? "Open" : "Closed"}
+                                </span>
+                              </button>
+                              {isOpen && openPane && (
+                                <div className="px-3 pb-2">
+                                  <div className="grid grid-cols-4 gap-1">
+                                    {INLINE_SLOT_OPTIONS.map((slotOption) => (
+                                      <button
+                                        key={`${openPane.id}-${slotOption.slot}`}
+                                        className={cn(
+                                          "h-7 rounded border text-[11px] font-medium transition-colors",
+                                          openPane.slot === slotOption.slot
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        )}
+                                        onClick={() => setPaneSlot(openPane.id, slotOption.slot)}
+                                      >
+                                        {slotOption.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+
+          {practiceType !== "Comp Sim" && (
+            <span
+              className={cn(
+                "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
+                scrambleCopied
+                  ? "opacity-100 translate-y-0 text-green-400"
+                  : "opacity-0 -translate-y-1 text-green-400"
+              )}
+            >
+              Scramble copied!
+            </span>
+          )}
         </div>
 
         {practiceType !== "Comp Sim" && scrambleError && (
@@ -2050,6 +2064,7 @@ export function TimerContent() {
             context={paneContext}
             timingActive={timingActive}
             autoHideDuringSolve={paneLayout.autoHideDuringSolve}
+            openRequestKey={mobilePaneOpenRequestKey}
             onAddPane={addPane}
             onRemovePane={removePane}
             onChangeTool={changePaneTool}
@@ -2095,7 +2110,7 @@ export function TimerContent() {
             onRangeChange={handleRangeChange}
           />
 
-          <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+          <div className="fixed inset-y-0 left-0 right-0 lg:left-64 xl:left-72 flex flex-col items-center justify-center pointer-events-none z-10">
             {typing ? (
               <>
                 <div

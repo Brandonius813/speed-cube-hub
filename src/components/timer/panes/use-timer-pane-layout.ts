@@ -232,6 +232,19 @@ function withUpdatedAt(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
   }
 }
 
+function pickNewestLayout(
+  layouts: Array<TimerPaneLayoutV1 | null | undefined>
+): TimerPaneLayoutV1 | null {
+  let newest: TimerPaneLayoutV1 | null = null
+  for (const layout of layouts) {
+    if (!layout) continue
+    if (!newest || layout.updatedAtMs > newest.updatedAtMs) {
+      newest = layout
+    }
+  }
+  return newest
+}
+
 export function useTimerPaneLayout(layoutKey = "main") {
   const [layout, setLayout] = useState<TimerPaneLayoutV1>(() => {
     if (typeof window === "undefined") return cloneDefaultLayout()
@@ -239,22 +252,22 @@ export function useTimerPaneLayout(layoutKey = "main") {
   })
   const [syncReady, setSyncReady] = useState(false)
   const saveTimeoutRef = useRef<number | null>(null)
+  const localMutatedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
-    const local = readLocalLayout()
 
     getTimerPaneLayout(layoutKey)
       .then((result) => {
         if (cancelled || !result.data) return
         const serverLayout = normalizeLayout(result.data)
-        const localLayout = local ?? readLocalLayout()
-        const chosen =
-          localLayout && localLayout.updatedAtMs > serverLayout.updatedAtMs
-            ? localLayout
-            : serverLayout
-        setLayout(chosen)
-        writeLocalLayout(chosen)
+        setLayout((previous) => {
+          const localLayout = readLocalLayout()
+          if (localMutatedRef.current) {
+            return pickNewestLayout([previous, localLayout]) ?? previous
+          }
+          return pickNewestLayout([previous, localLayout, serverLayout]) ?? serverLayout
+        })
       })
       .finally(() => {
         if (!cancelled) setSyncReady(true)
@@ -289,6 +302,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
   const panes = layout.desktop.panes
 
   const addPane = useCallback((tool: PaneToolId) => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       if (previous.desktop.panes.length >= TIMER_PANE_MAX) return previous
       if (previous.desktop.panes.some((pane) => pane.tool === tool)) return previous
@@ -331,6 +345,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const removePane = useCallback((paneId: string) => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       const next = withUpdatedAt({
         ...previous,
@@ -351,6 +366,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const togglePaneTool = useCallback((tool: PaneToolId) => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       const existing = previous.desktop.panes.find((pane) => pane.tool === tool)
       if (existing) {

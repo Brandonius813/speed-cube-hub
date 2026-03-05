@@ -216,7 +216,7 @@ export const SolveListPanel = memo(function SolveListPanel({
 
   return (
     <div
-      className="w-full lg:w-56 xl:w-64 shrink-0 min-h-0 overflow-hidden border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
+      className="w-full lg:w-64 xl:w-72 shrink-0 min-h-0 overflow-hidden border-t lg:border-t-0 lg:border-r border-border flex flex-col order-last lg:order-first"
       onPointerDown={sp}
     >
       <div className="px-3 pt-3 pb-2 border-b border-border">
