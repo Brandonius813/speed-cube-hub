@@ -29,33 +29,34 @@ type PixelRect = {
 }
 
 type SlotPreset = {
-  widthRatio: number
-  heightRatio: number
+  widthFill: number
+  heightAspect: number
   centerMin: number
 }
 
 const OUTER_GAP_PX = 12
 const BOTTOM_GAP_PX = 12
+const VERTICAL_GAP_PX = 12
 const MIN_ZONE_WIDTH_PX = 560
 const MIN_ZONE_HEIGHT_PX = 320
 const MIN_CARD_WIDTH_PX = 150
-const MIN_CARD_HEIGHT_PX = 110
+const MIN_CARD_HEIGHT_PX = 140
 
 const SLOT_PRESETS: Record<DesktopPaneSize, SlotPreset> = {
   sm: {
-    widthRatio: 0.23,
-    heightRatio: 0.24,
-    centerMin: 150,
+    widthFill: 0.88,
+    heightAspect: 0.56,
+    centerMin: 210,
   },
   md: {
-    widthRatio: 0.26,
-    heightRatio: 0.28,
-    centerMin: 180,
+    widthFill: 0.95,
+    heightAspect: 0.58,
+    centerMin: 170,
   },
   lg: {
-    widthRatio: 0.29,
-    heightRatio: 0.32,
-    centerMin: 220,
+    widthFill: 1,
+    heightAspect: 0.62,
+    centerMin: 130,
   },
 }
 
@@ -100,30 +101,28 @@ function computeSlotRects(
 
   if (innerWidth <= 0 || innerHeight <= 0) return null
 
-  const maxCardWidth = Math.floor((innerWidth - BOTTOM_GAP_PX * 2) / 3)
-  const maxCardHeight = Math.floor((innerHeight - preset.centerMin) / 2)
+  const rowCardMaxWidth = Math.floor((innerWidth - BOTTOM_GAP_PX * 2) / 3)
+  const maxCardHeight = Math.floor((innerHeight - preset.centerMin - VERTICAL_GAP_PX) / 2)
 
-  if (maxCardWidth < MIN_CARD_WIDTH_PX || maxCardHeight < MIN_CARD_HEIGHT_PX) return null
+  if (rowCardMaxWidth < MIN_CARD_WIDTH_PX || maxCardHeight < MIN_CARD_HEIGHT_PX) return null
 
-  const cardWidth = clamp(
-    Math.round(innerWidth * preset.widthRatio),
-    MIN_CARD_WIDTH_PX,
-    maxCardWidth
-  )
+  const cardWidth = clamp(Math.round(rowCardMaxWidth * preset.widthFill), MIN_CARD_WIDTH_PX, rowCardMaxWidth)
   const cardHeight = clamp(
-    Math.round(innerHeight * preset.heightRatio),
+    Math.round(cardWidth * preset.heightAspect),
     MIN_CARD_HEIGHT_PX,
     maxCardHeight
   )
 
-  const leftX = OUTER_GAP_PX
-  const middleX = OUTER_GAP_PX + Math.round((innerWidth - cardWidth) / 2)
-  const rightX = OUTER_GAP_PX + innerWidth - cardWidth
+  const totalBottomWidth = cardWidth * 3 + BOTTOM_GAP_PX * 2
+  const bottomStartX = OUTER_GAP_PX + Math.round((innerWidth - totalBottomWidth) / 2)
+  const leftX = bottomStartX
+  const middleX = leftX + cardWidth + BOTTOM_GAP_PX
+  const rightX = middleX + cardWidth + BOTTOM_GAP_PX
 
   const topY = OUTER_GAP_PX
   const bottomY = OUTER_GAP_PX + innerHeight - cardHeight
 
-  if (bottomY - (topY + cardHeight) < preset.centerMin) return null
+  if (bottomY - (topY + cardHeight) - VERTICAL_GAP_PX < preset.centerMin) return null
 
   return {
     top_right: {
