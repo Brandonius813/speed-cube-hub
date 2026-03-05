@@ -91,7 +91,9 @@ export function useBluetoothTimer(callbacks: BtTimerCallbacks): UseBluetoothTime
         break
 
       case "FINISHED":
-        // Auto-transition after stop — no action needed.
+        // Some firmware variants emit FINISHED without a STOPPED payload.
+        // Finalize via fallback timing path when that happens.
+        cb.onStopped(null)
         break
 
       case "DISCONNECT":

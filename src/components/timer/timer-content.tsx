@@ -523,6 +523,7 @@ export function TimerContent() {
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
+  const btSolveFinalizedRef = useRef(false)
 
   const insp = useInspection({ voice: true })
 
@@ -1516,12 +1517,15 @@ export function TimerContent() {
     },
     onRunning: () => {
       inspRef.current?.cancelInspection()
+      btSolveFinalizedRef.current = false
       if (phaseRef.current !== "running") {
         startRef.current = performance.now()
       }
       dispatchEngine({ type: "BT_RUNNING" })
     },
     onStopped: (time_ms: number | null) => {
+      if (phaseRef.current !== "running" || btSolveFinalizedRef.current) return
+      btSolveFinalizedRef.current = true
       dispatchEngine({ type: "BT_STOPPED" })
       const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
       const solveMs =
