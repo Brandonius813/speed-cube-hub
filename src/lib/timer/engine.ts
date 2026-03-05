@@ -142,18 +142,14 @@ function reduce(snapshot: TimerSnapshot, event: TimerEvent): TimerSnapshot {
     case "BT_STOPPED":
       return { ...snapshot, phase: "stopped", btHandsOnMat: false, btArmed: false }
 
-    case "BT_IDLE": {
-      // GAN often emits IDLE immediately after STOPPED.
-      // Keep the final solve visible unless this was an actual reset event.
-      const shouldResetDisplay = snapshot.phase !== "stopped"
+    case "BT_IDLE":
       return {
         ...snapshot,
         phase: "idle",
-        btReset: shouldResetDisplay,
+        btReset: true,
         btHandsOnMat: false,
         btArmed: false,
       }
-    }
 
     case "BT_DISCONNECT":
       return {

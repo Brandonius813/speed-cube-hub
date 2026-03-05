@@ -24,8 +24,8 @@ export interface BtTimerCallbacks {
   onHandsOff: () => void
   /** Hardware timer started counting (0x03 RUNNING) — begin display RAF loop */
   onRunning: () => void
-  /** Hardware timer stopped (0x04 STOPPED) — record time from hardware */
-  onStopped: (time_ms: number) => void
+  /** Hardware timer stopped (0x04 STOPPED) — record time from hardware if present */
+  onStopped: (time_ms: number | null) => void
   /** Hardware reset button pressed (0x05 IDLE) — clear display to 0.00 */
   onIdle: () => void
   /** BLE disconnected mid-session — abort any in-progress solve */
@@ -82,9 +82,7 @@ export function useBluetoothTimer(callbacks: BtTimerCallbacks): UseBluetoothTime
         break
 
       case "STOPPED":
-        if (evt.time_ms !== undefined) {
-          cb.onStopped(evt.time_ms)
-        }
+        cb.onStopped(evt.time_ms ?? null)
         break
 
       case "IDLE":

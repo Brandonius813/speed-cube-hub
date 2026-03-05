@@ -1521,9 +1521,14 @@ export function TimerContent() {
       }
       dispatchEngine({ type: "BT_RUNNING" })
     },
-    onStopped: (time_ms: number) => {
+    onStopped: (time_ms: number | null) => {
       dispatchEngine({ type: "BT_STOPPED" })
-      addSolve(time_ms, null)
+      const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
+      const solveMs =
+        typeof time_ms === "number" && Number.isFinite(time_ms) && time_ms > 0
+          ? time_ms
+          : Math.max(0, fallbackMs)
+      addSolve(solveMs, null)
     },
     onIdle: () => {
       inspRef.current?.cancelInspection()
