@@ -9,14 +9,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 ---
 
 
-### 2026-03-02 PT — T156 + T157 Session (Analyzer Panels + PB Toast)
-
-**Task:** T156 (Scramble Type & Analyzer Tool Placement) + T157 (PB Popup → Subtle Toast)
-**Status:** Analyzer tools moved to FloatingPanel. PB celebration rewritten as compact toast.
-**Files touched:** scramble-display.tsx, timer-top-bar.tsx, timer-content.tsx, pb-celebration.tsx
-
----
-
 ### 2026-03-02 PT — T162 Session (csTimer Import Bulk Solve Insert)
 
 **Task:** T162 (CSTimer Import → Bulk Solve Insert)
@@ -191,3 +183,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** Fixed-slot panes need separate controls for max-size and slot spacing; capping width without edge-spreading can look centered/clustered on large displays.
 **Blockers:** `npx tsc --noEmit` still fails on pre-existing missing module `cstimer_module` in `src/components/timer/scramble-animator.tsx`.
 **Warnings:** `timer-content.tsx` and pane UI files are active hot spots across recent sessions; rebase carefully before making adjacent settings/pane edits.
+
+---
+
+### 2026-03-05 08:56 AM PT - Build Fix + Localhost Stability Session
+
+**Task:** General work — Vercel build failure + localhost/dev server recovery
+**Status:** Reproduced production build failure (`Cannot find module 'cstimer_module'`), added the missing dependency, verified `npm run build` passes, pushed to `main`, and confirmed production deployment is `Ready`. Investigated localhost instability and confirmed detached background launches were dropping; relaunched dev server in a persistent session and verified sustained HTTP 200 on `http://localhost:3000`.
+**Files touched:** `package.json`, `package-lock.json`, `AGENT_LOG.md`
+**Learnings:** A direct import in `scramble-animator.tsx` required `cstimer_module` in dependencies. Detached/background dev-server launch in this environment can die silently after startup; persistent session launch is stable.
+**Blockers:** None
+**Warnings:** This worktree has pre-existing unstaged timer pane edits (`desktop-pane-workspace.tsx`, `solve-list-panel.tsx`, `timer-content.tsx`) unrelated to this sync/build fix; avoid including them in unrelated commits.
