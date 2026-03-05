@@ -8,13 +8,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
-### 2026-03-02 PT — T154 Timer Core Changes Session
-
-**Task:** T154 (Timer Core Changes — timer-content.tsx owner)
-**Status:** Hold duration options changed to [100, 200, 550]. Inspection voice toggle. Settings cleanup. Top bar: Normal/Comp Sim pill, session clock, Pause/Play. PB toast queue. Active tool state. Various migrations and cleanup.
-**Files touched:** timer-display.tsx, inspection.ts, timer-settings.tsx, timer-top-bar.tsx, timer-content.tsx
-
----
 
 ### 2026-03-02 PT — T156 + T157 Session (Analyzer Panels + PB Toast)
 
@@ -187,3 +180,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Completed. Reworked desktop pane slot model + migration to the new 4-slot layout and updated workspace geometry so all four positions render at the same card size. Existing legacy slot values (`top/left/right/bottom`) are migrated into the new positions on load. Timer settings position controls now target the new slot names. Mobile drawer behavior unchanged.
 **Files touched:** `src/components/timer/panes/types.ts`, `src/components/timer/panes/pane-registry.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/panes/desktop-pane-workspace.tsx`, `src/components/timer/timer-content.tsx`, `src/lib/validations.ts`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `npx tsc --noEmit` failed due pre-existing missing module (`cstimer_module` import resolution). `npm run lint` failed with existing repo-wide lint errors; targeted lint on changed files passed.
+
+---
+
+### 2026-03-05 08:39 AM PT - Timer Pane Desktop Polish + Toggle Reliability
+
+**Task:** General work (post-T153 desktop pane usability polish)
+**Status:** Completed multiple desktop pane refinements: removed pane header strips, capped max pane growth on large monitors, spread fixed slots outward on ultrawide layouts, and added slight 2xl scaling for scramble text + left stats readout. Also fixed pane tool toggle to be state-atomic so close/open flows read latest layout state.
+**Files touched:** `src/components/timer/panes/desktop-pane-workspace.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/timer-content.tsx`
+**Learnings:** Fixed-slot panes need separate controls for max-size and slot spacing; capping width without edge-spreading can look centered/clustered on large displays.
+**Blockers:** `npx tsc --noEmit` still fails on pre-existing missing module `cstimer_module` in `src/components/timer/scramble-animator.tsx`.
+**Warnings:** `timer-content.tsx` and pane UI files are active hot spots across recent sessions; rebase carefully before making adjacent settings/pane edits.
