@@ -155,9 +155,9 @@ export async function syncSolvesFromDb(
     )
     let changed = false
     const patched = localSolves.map((solve) => {
-      if (solve.group) return solve
       const mappedGroup = groupBySolveId.get(solve.id)
-      if (!mappedGroup) return solve
+      if (mappedGroup === undefined) return solve
+      if ((solve.group ?? null) === mappedGroup) return solve
       changed = true
       return { ...solve, group: mappedGroup }
     })
@@ -167,9 +167,15 @@ export async function syncSolvesFromDb(
       // can fail even when DB rows are the same solves. If counts match and the
       // local cache is fully ungrouped, trust DB order and replace.
       const allLocalUngrouped = localSolves.every((solve) => !solve.group)
+      const uniqueLocalGroups = new Set(
+        localSolves
+          .map((solve) => solve.group ?? null)
+          .filter((group): group is string => typeof group === "string" && group.length > 0)
+      )
+      const hasSingleCollapsedGroup = uniqueLocalGroups.size <= 1
       if (
         shouldBackfillGroups &&
-        allLocalUngrouped &&
+        (allLocalUngrouped || hasSingleCollapsedGroup) &&
         localSolves.length === allSolves.length
       ) {
         await store.replaceSession(event, allSolves)

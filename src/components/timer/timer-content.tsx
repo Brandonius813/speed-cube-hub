@@ -110,6 +110,15 @@ function saveSessionGroups(eventId: string, groups: SessionGroupMeta[]) {
 
 function needsHistoricGroupBackfill(solves: Solve[]): boolean {
   if (solves.length === 0) return false
+
+  // If everything is grouped into a single bucket, it's likely legacy-collapsed
+  // history from import/sync and we should audit against DB grouping.
+  const grouped = solves.filter((solve) => !!solve.group)
+  if (grouped.length === solves.length && solves.length >= 200) {
+    const uniqueGroups = new Set(grouped.map((solve) => solve.group))
+    if (uniqueGroups.size <= 1) return true
+  }
+
   // Find the start of the trailing ungrouped suffix (expected current unsaved block).
   let suffixStart = solves.length
   for (let i = solves.length - 1; i >= 0; i--) {
