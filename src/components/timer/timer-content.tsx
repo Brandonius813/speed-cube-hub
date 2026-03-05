@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Info, Settings } from "lucide-react"
-import { useInspection } from "@/lib/timer/inspection"
+import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
 import {
   type Penalty,
@@ -334,6 +334,23 @@ export function TimerContent() {
       return false
     }
   })
+  const [inspVoiceOn, setInspVoiceOn] = useState(() => {
+    try {
+      const raw = localStorage.getItem("timer-insp-voice-on")
+      if (raw === null) return true
+      return raw === "true"
+    } catch {
+      return true
+    }
+  })
+  const [inspVoiceGender, setInspVoiceGender] = useState<InspectionVoiceGender>(() => {
+    try {
+      const raw = localStorage.getItem("timer-insp-voice-gender")
+      return raw === "male" || raw === "female" ? raw : "female"
+    } catch {
+      return "female"
+    }
+  })
   const [typing, setTyping] = useState(() => {
     try {
       return localStorage.getItem("timer-typing") === "true"
@@ -531,7 +548,10 @@ export function TimerContent() {
   const statColsRef = useRef<[string, string]>(statCols)
   const btSolveFinalizedRef = useRef(false)
 
-  const insp = useInspection({ voice: true })
+  const insp = useInspection({
+    voice: inspVoiceOn,
+    voiceGender: inspVoiceGender,
+  })
 
   const dispatchEngine = useCallback((eventMessage: TimerEvent) => {
     engineRef.current.dispatch(eventMessage)
@@ -551,13 +571,14 @@ export function TimerContent() {
   const currentSolveCount = solves.length - savedSolveCount
   const hasActiveSession =
     sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
-  const showAllStatsFallback = currentSolveCount === 0 && solves.length > 0
+  // Keep time-list stats aligned to every visible solve row when saved solves exist.
+  const showAllStatsInList = savedSolveCount > 0
   const panelStats = useMemo(
-    () => (showAllStatsFallback ? computeStatsSync(solves, statCols) : stats),
-    [showAllStatsFallback, solves, statCols, stats]
+    () => (showAllStatsInList ? computeStatsSync(solves, statCols) : stats),
+    [showAllStatsInList, solves, statCols, stats]
   )
-  const panelCurrentSolveCount = showAllStatsFallback ? solves.length : currentSolveCount
-  const panelSavedSolveCount = showAllStatsFallback ? 0 : savedSolveCount
+  const panelCurrentSolveCount = showAllStatsInList ? solves.length : currentSolveCount
+  const panelSavedSolveCount = showAllStatsInList ? 0 : savedSolveCount
 
   const groupDividers = useMemo(
     () => computeSessionDividers(solves, sessionGroups),
@@ -1885,6 +1906,69 @@ export function TimerContent() {
                         {inspOn ? "On" : "Off"}
                       </span>
                     </button>
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={() =>
+                        setInspVoiceOn((value) => {
+                          const next = !value
+                          try {
+                            localStorage.setItem("timer-insp-voice-on", String(next))
+                          } catch {}
+                          return next
+                        })
+                      }
+                      disabled={typing || !inspOn}
+                    >
+                      <span className="text-foreground">🔊 Inspection Voice Alerts</span>
+                      <span
+                        className={cn(
+                          "font-mono text-[12px]",
+                          inspVoiceOn && inspOn && !typing
+                            ? "text-primary font-medium"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {inspVoiceOn ? "On" : "Off"}
+                      </span>
+                    </button>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Inspection Voice
+                      </span>
+                      <div className="grid grid-cols-2 gap-1">
+                        {([
+                          { value: "female", label: "Female" },
+                          { value: "male", label: "Male" },
+                        ] as const).map((voiceOption) => {
+                          const disabled = typing || !inspOn || !inspVoiceOn
+                          return (
+                            <button
+                              key={voiceOption.value}
+                              className={cn(
+                                "h-7 rounded border text-[11px] font-medium transition-colors",
+                                inspVoiceGender === voiceOption.value
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                                disabled && "opacity-40 cursor-not-allowed"
+                              )}
+                              onClick={() => {
+                                if (disabled) return
+                                setInspVoiceGender(voiceOption.value)
+                                try {
+                                  localStorage.setItem(
+                                    "timer-insp-voice-gender",
+                                    voiceOption.value
+                                  )
+                                } catch {}
+                              }}
+                              disabled={disabled}
+                            >
+                              {voiceOption.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                     <div className="px-3 py-2 space-y-1.5">
                       <span className="block text-[11px] font-medium text-foreground">
                         Update During Solve
@@ -2109,6 +2193,8 @@ export function TimerContent() {
         <CompSimOverlay
           event={event}
           sessionStartMs={activeSessionStartMs}
+          inspectionVoiceEnabled={inspVoiceOn}
+          inspectionVoiceGender={inspVoiceGender}
           onExit={() => changePracticeType("Solves")}
         />
       ) : (
@@ -2130,7 +2216,7 @@ export function TimerContent() {
             groupDividerLabels={groupDividers.labels}
             currentSessionLabel={currentSessionLabel}
             currentSolveCount={panelCurrentSolveCount}
-            showAllStats={showAllStatsFallback}
+            showAllStats={showAllStatsInList}
             onSetSelectedId={setSelectedId}
             onSelectSolveCell={handleSelectSolveCell}
             onSetPenalty={setPenalty}

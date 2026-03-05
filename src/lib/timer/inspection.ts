@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 type InspectionState = "idle" | "inspecting" | "overtime" | "done"
+export type InspectionVoiceGender = "female" | "male"
+
+type InspectionOptions = {
+  voice?: boolean
+  voiceGender?: InspectionVoiceGender
+}
 
 type InspectionResult = {
   /** Seconds remaining (15 → 0, then negative for overtime) */
@@ -30,11 +36,11 @@ type InspectionResult = {
  * - Starting after 17s = DNF
  *
  * @param options.voice - Whether to play WCA voice warnings (default: true)
+ * @param options.voiceGender - Preferred voice profile for alerts (default: "female")
  */
-export function useInspection(options?: { voice?: boolean }): InspectionResult {
-  // Ref so the interval always reads the latest voice setting without recreating startInspection
-  const voiceEnabledRef = useRef(options?.voice !== false)
-  voiceEnabledRef.current = options?.voice !== false
+export function useInspection(options?: InspectionOptions): InspectionResult {
+  const voiceEnabled = options?.voice !== false
+  const voiceGender = options?.voiceGender ?? "female"
 
   const [state, setState] = useState<InspectionState>("idle")
   const [secondsLeft, setSecondsLeft] = useState(15)
@@ -47,14 +53,19 @@ export function useInspection(options?: { voice?: boolean }): InspectionResult {
     if (typeof window === "undefined") return
     if (!("speechSynthesis" in window)) return
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel()
-
     const utterance = new SpeechSynthesisUtterance(text)
+    const voices = window.speechSynthesis.getVoices()
+    const voice = pickPreferredVoice(voices, voiceGender)
+    if (voice) {
+      utterance.voice = voice
+    } else {
+      // Fallback when browser voice metadata is sparse.
+      utterance.pitch = voiceGender === "male" ? 0.85 : 1.15
+    }
     utterance.rate = 1.2
     utterance.volume = 1.0
     window.speechSynthesis.speak(utterance)
-  }, [])
+  }, [voiceGender])
 
   const cleanup = useCallback(() => {
     if (intervalRef.current) {
@@ -65,6 +76,12 @@ export function useInspection(options?: { voice?: boolean }): InspectionResult {
 
   const startInspection = useCallback(() => {
     cleanup()
+    // Clear any stale queued speech from a previous inspection run.
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel()
+      // Prime voice loading on browsers that lazily initialize voice lists.
+      window.speechSynthesis.getVoices()
+    }
     setState("inspecting")
     setSecondsLeft(15)
     startTimeRef.current = Date.now()
@@ -80,11 +97,11 @@ export function useInspection(options?: { voice?: boolean }): InspectionResult {
       // Voice warnings
       if (remaining <= 7 && !has8sWarned.current) {
         has8sWarned.current = true
-        if (voiceEnabledRef.current) speak("8 seconds")
+        if (voiceEnabled) speak("8 seconds")
       }
       if (remaining <= 3 && !has12sWarned.current) {
         has12sWarned.current = true
-        if (voiceEnabledRef.current) speak("12 seconds")
+        if (voiceEnabled) speak("12 seconds")
       }
 
       // Overtime (past 15s)
@@ -98,7 +115,7 @@ export function useInspection(options?: { voice?: boolean }): InspectionResult {
         setState("done")
       }
     }, 100)
-  }, [cleanup, speak])
+  }, [cleanup, speak, voiceEnabled])
 
   const cancelInspection = useCallback(() => {
     cleanup()
@@ -136,4 +153,56 @@ export function useInspection(options?: { voice?: boolean }): InspectionResult {
     cancelInspection,
     finishInspection,
   }
+}
+
+const FEMALE_VOICE_HINTS = [
+  "female",
+  "woman",
+  "samantha",
+  "victoria",
+  "zira",
+  "hazel",
+  "aria",
+  "jenny",
+  "allison",
+  "ava",
+  "emma",
+  "karen",
+  "susan",
+  "zoe",
+]
+
+const MALE_VOICE_HINTS = [
+  "male",
+  "man",
+  "david",
+  "mark",
+  "george",
+  "james",
+  "john",
+  "alex",
+  "fred",
+  "daniel",
+  "matthew",
+  "thomas",
+  "arthur",
+  "richard",
+]
+
+function pickPreferredVoice(
+  voices: SpeechSynthesisVoice[],
+  voiceGender: InspectionVoiceGender
+): SpeechSynthesisVoice | null {
+  if (voices.length === 0) return null
+
+  const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"))
+  const pool = englishVoices.length > 0 ? englishVoices : voices
+  const hints = voiceGender === "male" ? MALE_VOICE_HINTS : FEMALE_VOICE_HINTS
+
+  for (const hint of hints) {
+    const match = pool.find((voice) => voice.name.toLowerCase().includes(hint))
+    if (match) return match
+  }
+
+  return null
 }

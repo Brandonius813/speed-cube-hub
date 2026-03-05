@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { useInspection } from "@/lib/timer/inspection"
+import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
 import {
   IdleScreen,
@@ -19,17 +19,28 @@ import {
 type Props = {
   event: string
   sessionStartMs: number | null
+  inspectionVoiceEnabled: boolean
+  inspectionVoiceGender: InspectionVoiceGender
   onExit: () => void
 }
 
 const HOLD_MS = 550
 
-export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
+export function CompSimOverlay({
+  event,
+  sessionStartMs,
+  inspectionVoiceEnabled,
+  inspectionVoiceGender,
+  onExit,
+}: Props) {
   const compSim = useCompSim({ event, sessionStartMs })
   const { snapshot, ao5Result } = compSim
   const { phase } = snapshot
 
-  const insp = useInspection({ voice: true })
+  const insp = useInspection({
+    voice: inspectionVoiceEnabled,
+    voiceGender: inspectionVoiceGender,
+  })
   const displayRef = useRef<HTMLDivElement>(null)
   const timerStartRef = useRef(0)
   const rafRef = useRef(0)
@@ -37,6 +48,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
   const holdingRef = useRef(false)
   const holdStartRef = useRef(0)
   const [holdReady, setHoldReady] = useState(false)
+  const [isHolding, setIsHolding] = useState(false)
 
   // --- Timer RAF loop for solving phase ---
   useEffect(() => {
@@ -77,7 +89,6 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
   useEffect(() => {
     if (phase !== "ready" && phase !== "inspecting" && phase !== "solving") {
       holdingRef.current = false
-      setHoldReady(false)
       return
     }
 
@@ -102,6 +113,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
 
       if (phase === "inspecting") {
         holdingRef.current = true
+        setIsHolding(true)
         holdStartRef.current = Date.now()
         setHoldReady(false)
       }
@@ -115,6 +127,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
       if (phase === "inspecting" && holdingRef.current) {
         const held = Date.now() - holdStartRef.current
         holdingRef.current = false
+        setIsHolding(false)
         setHoldReady(false)
 
         if (held >= HOLD_MS) {
@@ -156,6 +169,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
       compSim.beginInspection()
     } else if (phase === "inspecting") {
       holdingRef.current = true
+      setIsHolding(true)
       holdStartRef.current = Date.now()
       setHoldReady(false)
     }
@@ -165,6 +179,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
     if (phase === "inspecting" && holdingRef.current) {
       const held = Date.now() - holdStartRef.current
       holdingRef.current = false
+      setIsHolding(false)
       setHoldReady(false)
       if (held >= HOLD_MS) {
         const penalty = insp.finishInspection()
@@ -209,7 +224,7 @@ export function CompSimOverlay({ event, sessionStartMs, onExit }: Props) {
         <InspectionScreen
           secondsLeft={insp.secondsLeft}
           holdReady={holdReady}
-          holding={holdingRef.current}
+          holding={isHolding}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
         />
