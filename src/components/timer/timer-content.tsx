@@ -1539,6 +1539,14 @@ export function TimerContent() {
     onIdle: () => {
       inspRef.current?.cancelInspection()
       const phaseNow = engineRef.current.getSnapshot().phase
+      if (phaseNow === "running" && !btSolveFinalizedRef.current) {
+        // Fallback for firmware variants that jump straight to IDLE on stop.
+        btSolveFinalizedRef.current = true
+        dispatchEngine({ type: "BT_STOPPED" })
+        const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
+        addSolve(Math.max(0, fallbackMs), null)
+        return
+      }
       const shouldStartInspection =
         inspOnRef.current &&
         phaseNow !== "stopped" &&
