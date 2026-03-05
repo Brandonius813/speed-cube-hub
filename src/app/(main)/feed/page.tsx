@@ -1,5 +1,6 @@
 import { FeedContent } from "@/components/feed/feed-content"
 import { FollowingSidebar } from "@/components/feed/following-sidebar"
+import { ScrollToTopOnMount } from "@/components/shared/scroll-to-top-on-mount"
 import { getFeed } from "@/lib/actions/feed"
 import { getFollowing } from "@/lib/actions/follows"
 
@@ -11,6 +12,7 @@ export default async function FeedPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <ScrollToTopOnMount />
       <h1 className="mb-6 text-2xl font-bold text-foreground">Feed</h1>
       <div className="flex gap-8">
         {/* Feed column — stays centered and constrained */}
