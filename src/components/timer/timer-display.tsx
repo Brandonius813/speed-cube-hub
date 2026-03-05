@@ -176,7 +176,15 @@ export function TimerDisplay({
         }, holdDuration)
       }
     }
-  }, [disabled, inspectionActive, onStartInspection, stopTimer, holdDuration])
+  }, [
+    disabled,
+    holdDuration,
+    inspectionActive,
+    onStartInspection,
+    phaseCount,
+    recordSplit,
+    stopTimer,
+  ])
 
   const handleHoldEnd = useCallback(() => {
     // Clear hold timer

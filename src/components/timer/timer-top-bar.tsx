@@ -3,8 +3,6 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { SessionSelector } from "@/components/timer/session-selector"
-import { ScrambleTypeSelector } from "@/components/timer/scramble-type-selector"
-import { CaseFilterPanel } from "@/components/timer/case-filter-panel"
 import { TimerSettings } from "@/components/timer/timer-settings"
 import { ScrambleDisplay } from "@/components/timer/scramble-display"
 import type { InputMode, SidebarPosition, PhaseCount } from "@/components/timer/timer-settings"
@@ -42,11 +40,6 @@ export function TimerTopBar({
   onExport,
   saveError,
   onDismissError,
-  scrambleTypeId,
-  onScrambleTypeChange,
-  caseFilter,
-  onCaseFilterChange,
-  trainingCstimerType,
   phaseCount,
   onPhaseCountChange,
   phaseLabels,
@@ -92,11 +85,6 @@ export function TimerTopBar({
   onExport?: (format: "csv" | "json" | "txt" | "clipboard") => void
   saveError: string | null
   onDismissError: () => void
-  scrambleTypeId?: string
-  onScrambleTypeChange?: (typeId: string) => void
-  caseFilter?: number[] | null
-  onCaseFilterChange?: (cases: number[] | null) => void
-  trainingCstimerType?: string
   phaseCount?: PhaseCount
   onPhaseCountChange?: (count: PhaseCount) => void
   phaseLabels?: string[]
@@ -138,20 +126,6 @@ export function TimerTopBar({
             onCreate={onCreateSession}
             onManage={onManageSessions}
           />
-          {scrambleTypeId && onScrambleTypeChange && currentSession && (
-            <ScrambleTypeSelector
-              eventId={currentSession.event}
-              selectedTypeId={scrambleTypeId}
-              onTypeChange={onScrambleTypeChange}
-            />
-          )}
-          {trainingCstimerType && onCaseFilterChange && (
-            <CaseFilterPanel
-              cstimerType={trainingCstimerType}
-              selectedCases={caseFilter ?? null}
-              onSelectedCasesChange={onCaseFilterChange}
-            />
-          )}
           {mode === "comp_sim" && (
             <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
               Comp Sim

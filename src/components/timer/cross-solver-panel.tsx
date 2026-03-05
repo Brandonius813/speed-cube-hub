@@ -1,8 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Copy, Check } from "lucide-react"
-import { solveCross, type CrossSolution } from "@/lib/timer/cross-solver"
+import { solveCross } from "@/lib/timer/cross-solver"
 import { cn } from "@/lib/utils"
 
 type CrossSolverPanelProps = {
@@ -19,57 +18,86 @@ const FACE_DOTS: Record<string, string> = {
 }
 
 export function CrossSolverPanel({ scramble }: CrossSolverPanelProps) {
-  const [copied, setCopied] = useState<string | null>(null)
+  const [revealedByFace, setRevealedByFace] = useState<
+    Record<string, { scramble: string; count: number }>
+  >({})
 
   const solutions = useMemo(() => solveCross(scramble), [scramble])
-
   const bestCount = solutions.length > 0 ? solutions[0].moveCount : 0
-
-  const handleCopy = async (sol: CrossSolution) => {
-    const text = `${sol.color} cross (${sol.moveCount} moves): ${sol.moves.join(" ")}`
-    await navigator.clipboard.writeText(text)
-    setCopied(sol.face)
-    setTimeout(() => setCopied(null), 2000)
-  }
 
   if (solutions.length === 0) return null
 
   return (
-    <div className="space-y-0.5">
-      {solutions.map((sol) => (
-        <div
-          key={sol.face}
-          className={cn(
-            "flex items-center gap-2 px-2 py-1 rounded text-xs font-mono",
-            sol.moveCount === bestCount && "bg-secondary/40"
-          )}
-        >
-          <span
+    <div className="space-y-1.5">
+      <p className="text-[11px] text-muted-foreground/70 px-1">
+        Cross trainer: reveal one move at a time.
+      </p>
+      {solutions.map((sol) => {
+        const faceState = revealedByFace[sol.face]
+        const baseCount = faceState?.scramble === scramble ? faceState.count : 0
+        const revealed = Math.min(baseCount, sol.moves.length)
+        const hidden = Math.max(0, sol.moves.length - revealed)
+        const shownMoves = sol.moves.slice(0, revealed)
+        const maskedMoves = Array.from({ length: hidden }, () => "•")
+        const display = sol.moveCount === 0
+          ? "solved"
+          : [...shownMoves, ...maskedMoves].join(" ")
+
+        return (
+          <div
+            key={sol.face}
             className={cn(
-              "w-2.5 h-2.5 rounded-full shrink-0",
-              FACE_DOTS[sol.face]
+              "flex items-center gap-2 px-2 py-1 rounded text-xs font-mono",
+              sol.moveCount === bestCount && "bg-secondary/40"
             )}
-            title={sol.color}
-          />
-          <span className="text-muted-foreground/70 w-4 text-right shrink-0">
-            {sol.moveCount}
-          </span>
-          <span className="flex-1 min-w-0 truncate">
-            {sol.moveCount === 0 ? "solved" : sol.moves.join(" ")}
-          </span>
-          <button
-            onClick={() => handleCopy(sol)}
-            className="p-0.5 rounded hover:bg-secondary/80 transition-colors shrink-0"
-            title="Copy"
           >
-            {copied === sol.face ? (
-              <Check className="h-3 w-3 text-green-400" />
-            ) : (
-              <Copy className="h-3 w-3 text-muted-foreground/50" />
+            <span
+              className={cn("w-2.5 h-2.5 rounded-full shrink-0", FACE_DOTS[sol.face])}
+              title={sol.color}
+            />
+            <span className="text-muted-foreground/70 w-4 text-right shrink-0">
+              {sol.moveCount}
+            </span>
+            <span className="flex-1 min-w-0 truncate">{display}</span>
+            {sol.moveCount > 0 && (
+              <>
+                <button
+                  onClick={() =>
+                    setRevealedByFace((prev) => ({
+                      ...prev,
+                      [sol.face]: {
+                        scramble,
+                        count: Math.min(
+                          sol.moves.length,
+                          (prev[sol.face]?.scramble === scramble ? prev[sol.face].count : 0) + 1
+                        ),
+                      },
+                    }))
+                  }
+                  disabled={revealed >= sol.moves.length}
+                  className="px-1.5 py-0.5 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Reveal next move"
+                >
+                  Reveal
+                </button>
+                <button
+                  onClick={() =>
+                    setRevealedByFace((prev) => ({
+                      ...prev,
+                      [sol.face]: { scramble, count: 0 },
+                    }))
+                  }
+                  disabled={revealed === 0}
+                  className="px-1.5 py-0.5 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Hide all moves"
+                >
+                  Reset
+                </button>
+              </>
             )}
-          </button>
-        </div>
-      ))}
+          </div>
+        )
+      })}
     </div>
   )
 }

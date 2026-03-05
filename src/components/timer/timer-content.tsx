@@ -37,11 +37,16 @@ import {
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
+import { ScrambleImage } from "@/components/timer/scramble-image"
+import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
+import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
+import { TimeTrendChart } from "@/components/shared/time-trend-chart"
 import type {
   StatsSummary,
   StatsWorkerRequest,
   StatsWorkerResponse,
 } from "@/lib/timer/stats-worker-types"
+import type { Solve as StoredSolve } from "@/lib/types"
 
 const HOLD_MS = 550
 const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
@@ -76,6 +81,7 @@ type ScrambleWorkerResponse = {
   eventId: string
   scramble: string | null
   error?: string
+  warning?: string
 }
 
 type PendingScrambleRequest = {
@@ -85,6 +91,8 @@ type PendingScrambleRequest = {
   attempt: number
   timeoutId: number
 }
+
+type ChartScope = "session" | "all"
 
 function loadSessionGroups(eventId: string): SessionGroupMeta[] {
   try {
@@ -233,6 +241,26 @@ function summaryToStats(summary: StatsSummary): SolveStats {
   }
 }
 
+function toChartSolve(solve: Solve, eventId: string, solveNumber: number): StoredSolve {
+  const timestamp = new Date(1704067200000 + solveNumber * 1000).toISOString()
+  return {
+    id: solve.id,
+    timer_session_id: "local-session",
+    user_id: "local-user",
+    solve_number: solveNumber,
+    time_ms: solve.time_ms,
+    penalty: solve.penalty,
+    scramble: solve.scramble,
+    event: eventId,
+    comp_sim_group: null,
+    notes: null,
+    phases: null,
+    solve_session_id: null,
+    solved_at: timestamp,
+    created_at: timestamp,
+  }
+}
+
 export function TimerContent() {
   const [event, setEvent] = useState(() => {
     try {
@@ -262,6 +290,10 @@ export function TimerContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
+  const [showScrambleDraw, setShowScrambleDraw] = useState(false)
+  const [showCrossTrainer, setShowCrossTrainer] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [chartScope, setChartScope] = useState<ChartScope>("session")
   const [practiceType, setPracticeType] = useState(() => {
     try {
       return localStorage.getItem("timer-practice-type") ?? "Solves"
@@ -369,6 +401,14 @@ export function TimerContent() {
   // Compute saved vs current session solve counts for display + stats
   const savedSolveCount = useMemo(() => solves.filter((s) => !!s.group).length, [solves])
   const currentSolveCount = solves.length - savedSolveCount
+  const showAllStatsFallback =
+    sessionStartTime === null && currentSolveCount === 0 && solves.length > 0
+  const panelStats = useMemo(
+    () => (showAllStatsFallback ? computeStatsSync(solves, statCols) : stats),
+    [showAllStatsFallback, solves, statCols, stats]
+  )
+  const panelCurrentSolveCount = showAllStatsFallback ? solves.length : currentSolveCount
+  const panelSavedSolveCount = showAllStatsFallback ? 0 : savedSolveCount
 
   const groupDividers = useMemo(
     () => computeSessionDividers(solves, sessionGroups),
@@ -708,7 +748,7 @@ export function TimerContent() {
         if (pending.eventId !== eventRef.current) return
         if (message.eventId !== pending.eventId) return
 
-        if (message.error || !message.scramble) {
+        if (!message.scramble) {
           if (pending.attempt < SCRAMBLE_MAX_RETRIES) {
             requestScramble(pending.kind, pending.eventId, pending.attempt + 1)
             return
@@ -727,7 +767,15 @@ export function TimerContent() {
         }
 
         if (pending.kind === "current") {
-          setScrambleError(null)
+          setScrambleError(message.warning ?? null)
+          if (message.warning) {
+            emitTimerTelemetry("timer_error", {
+              scope: "scramble_worker_fallback",
+              eventId: pending.eventId,
+              kind: pending.kind,
+              message: message.warning,
+            })
+          }
           resetScrambleHistory(message.scramble)
           dispatchEngine({ type: "SET_SCRAMBLE_READY", ready: true })
           if (!hasPendingScrambleKind("prefetch", pending.eventId)) {
@@ -736,6 +784,14 @@ export function TimerContent() {
           return
         }
 
+        if (message.warning) {
+          emitTimerTelemetry("timer_error", {
+            scope: "scramble_worker_fallback",
+            eventId: pending.eventId,
+            kind: pending.kind,
+            message: message.warning,
+          })
+        }
         nextScrambleRef.current = message.scramble
       }
       worker.onerror = (errorEvent) => {
@@ -1383,6 +1439,26 @@ export function TimerContent() {
     [selectedId, solves]
   )
 
+  const sessionChartSolves = useMemo(() => {
+    let solveNumber = 1
+    return solves
+      .filter((solve) => !solve.group)
+      .map((solve) => toChartSolve(solve, event, solveNumber++))
+  }, [event, solves])
+
+  const allChartSolves = useMemo(
+    () => solves.map((solve, index) => toChartSolve(solve, event, index + 1)),
+    [event, solves]
+  )
+
+  const chartSolves = chartScope === "session" ? sessionChartSolves : allChartSolves
+
+  const canShowCrossTrainer =
+    event === "333" &&
+    scramble.length > 0 &&
+    !scramble.startsWith("Preparing") &&
+    !scramble.startsWith("Scramble worker unavailable")
+
   const inInspHold =
     (phase === "holding" || phase === "ready") && inspHoldRef.current
   const timingActive =
@@ -1486,7 +1562,7 @@ export function TimerContent() {
                 : "opacity-0 -translate-y-1 text-green-400"
             )}
           >
-            {scrambleError ?? "Scramble copied!"}
+            Scramble copied!
           </span>
         )}
 
@@ -1508,6 +1584,43 @@ export function TimerContent() {
                 title="Skip to next scramble"
               >
                 Next →
+              </button>
+              <button
+                className={cn(
+                  scrambleNavBtn,
+                  showScrambleDraw && "bg-secondary/70 text-foreground"
+                )}
+                onClick={() => setShowScrambleDraw((value) => !value)}
+                title={showScrambleDraw ? "Hide scramble draw" : "Show scramble draw"}
+              >
+                Draw
+              </button>
+              <button
+                className={cn(
+                  scrambleNavBtn,
+                  showCrossTrainer && "bg-secondary/70 text-foreground"
+                )}
+                onClick={() => setShowCrossTrainer((value) => !value)}
+                disabled={event !== "333"}
+                title={
+                  event === "333"
+                    ? showCrossTrainer
+                      ? "Hide cross trainer"
+                      : "Show cross trainer"
+                    : "Cross trainer is available for 3x3 only"
+                }
+              >
+                Cross
+              </button>
+              <button
+                className={cn(
+                  scrambleNavBtn,
+                  showAnalytics && "bg-secondary/70 text-foreground"
+                )}
+                onClick={() => setShowAnalytics((value) => !value)}
+                title={showAnalytics ? "Hide analytics" : "Show analytics"}
+              >
+                Charts
               </button>
             </>
           )}
@@ -1606,6 +1719,62 @@ export function TimerContent() {
         </div>
       </div>
 
+      {practiceType !== "Comp Sim" && scrambleError && (
+        <div className="border-b border-yellow-700/50 bg-yellow-900/35 px-4 py-1.5 text-xs text-yellow-200">
+          {scrambleError}
+        </div>
+      )}
+
+      {practiceType !== "Comp Sim" &&
+        (showScrambleDraw || showCrossTrainer || showAnalytics) && (
+          <div className="border-b border-border px-4 py-3 space-y-3" onPointerDown={sp}>
+            {showScrambleDraw && (
+              <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+                <ScrambleImage scramble={scramble} event={event} />
+              </div>
+            )}
+
+            {showCrossTrainer && (
+              <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+                {canShowCrossTrainer ? (
+                  <CrossSolverPanel scramble={scramble} />
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Cross trainer is available once a 3x3 scramble is ready.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {showAnalytics && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1">
+                  <button
+                    className={cn(
+                      scrambleNavBtn,
+                      chartScope === "session" && "bg-secondary/70 text-foreground"
+                    )}
+                    onClick={() => setChartScope("session")}
+                  >
+                    Session
+                  </button>
+                  <button
+                    className={cn(
+                      scrambleNavBtn,
+                      chartScope === "all" && "bg-secondary/70 text-foreground"
+                    )}
+                    onClick={() => setChartScope("all")}
+                  >
+                    All Time
+                  </button>
+                </div>
+                <TimeDistributionChart solves={chartSolves} />
+                <TimeTrendChart solves={chartSolves} />
+              </div>
+            )}
+          </div>
+        )}
+
       {practiceType === "Comp Sim" ? (
         <CompSimOverlay
           event={event}
@@ -1621,15 +1790,15 @@ export function TimerContent() {
             rangeEnd={solveRange.end}
             scrollOffset={solveRange.scrollOffset}
             frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
-            stats={stats}
+            stats={panelStats}
             statCols={statCols}
             selectedId={selectedId}
             selectedSolve={selectedSolve}
-            savedSolveCount={savedSolveCount}
+            savedSolveCount={panelSavedSolveCount}
             groupBoundaries={groupDividers.boundaries}
             groupDividerLabels={groupDividers.labels}
             currentSessionLabel={currentSessionLabel}
-            currentSolveCount={currentSolveCount}
+            currentSolveCount={panelCurrentSolveCount}
             onSetSelectedId={setSelectedId}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}

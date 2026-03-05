@@ -1,26 +1,22 @@
 "use client"
 
-import { useMemo } from "react"
-import { getImage } from "cstimer_module"
+import { useEffect, useRef, useState } from "react"
 
-const CSTIMER_TYPE_MAP: Record<string, string> = {
-  "333": "333",
-  "222": "222so",
-  "444": "444wca",
-  "555": "555wca",
-  "666": "666wca",
-  "777": "777wca",
-  "333bf": "333ni",
-  "444bf": "444bld",
-  "555bf": "555bld",
-  "333mbf": "333ni",
-  "333oh": "333oh",
-  "333fm": "333fm",
-  pyram: "pyrso",
-  skewb: "skbso",
-  clock: "clkwca",
-  sq1: "sqrs",
-  minx: "mgmp",
+const PUZZLE_MAP: Record<string, string> = {
+  "333": "3x3x3",
+  "222": "2x2x2",
+  "444": "4x4x4",
+  "555": "5x5x5",
+  "666": "6x6x6",
+  "777": "7x7x7",
+  "333bf": "3x3x3",
+  "333mbf": "3x3x3",
+  "333oh": "3x3x3",
+  pyram: "pyraminx",
+  skewb: "skewb",
+  clock: "clock",
+  sq1: "square1",
+  minx: "megaminx",
 }
 
 type ScrambleImageProps = {
@@ -29,22 +25,59 @@ type ScrambleImageProps = {
 }
 
 export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
-  const svgString = useMemo(() => {
-    const csType = CSTIMER_TYPE_MAP[event]
-    if (!csType) return null
-    try {
-      return getImage(scramble, csType)
-    } catch {
-      return null
-    }
-  }, [scramble, event])
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const [twistyReady, setTwistyReady] = useState<boolean | null>(null)
 
-  if (!svgString) return null
+  const puzzle = PUZZLE_MAP[event]
+
+  useEffect(() => {
+    let cancelled = false
+    import("cubing/twisty")
+      .then(() => {
+        if (!cancelled) setTwistyReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) setTwistyReady(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host || !twistyReady || !puzzle) return
+
+    const player = document.createElement("twisty-player")
+    player.setAttribute("puzzle", puzzle)
+    player.setAttribute("alg", scramble)
+    player.setAttribute("visualization", "2D")
+    player.setAttribute("control-panel", "none")
+    player.setAttribute("background", "none")
+    player.style.width = "100%"
+    player.style.height = "220px"
+
+    host.replaceChildren(player)
+
+    return () => {
+      if (host.contains(player)) {
+        host.removeChild(player)
+      }
+    }
+  }, [puzzle, scramble, twistyReady])
+
+  if (!puzzle) {
+    return <p className="text-xs text-muted-foreground text-center">Scramble draw unavailable for this event.</p>
+  }
+
+  if (twistyReady === false) {
+    return <p className="text-xs text-muted-foreground text-center">Scramble draw unavailable in this browser.</p>
+  }
 
   return (
-    <div
-      className="flex justify-center [&_svg]:max-w-full [&_svg]:h-auto"
-      dangerouslySetInnerHTML={{ __html: svgString }}
-    />
+    <div className="flex justify-center">
+      <div ref={hostRef} className="w-full max-w-xl min-h-[220px]" />
+    </div>
   )
 }

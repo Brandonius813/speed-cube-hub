@@ -1,7 +1,5 @@
 // Web Worker for off-main-thread scramble generation.
-// cstimer_module natively supports Worker context (isInWorker detection
-// skips all window/document/DOM code via execMain guards).
-import { generateScramble } from "./scrambles"
+import { fetchOfficialScramble, generateScramble } from "./scrambles"
 
 type ScrambleWorkerRequest = {
   requestId: number
@@ -13,20 +11,39 @@ type ScrambleWorkerResponse = {
   eventId: string
   scramble: string | null
   error?: string
+  warning?: string
 }
 
-self.onmessage = (e: MessageEvent<ScrambleWorkerRequest>) => {
+self.onmessage = async (e: MessageEvent<ScrambleWorkerRequest>) => {
   const { requestId, eventId } = e.data
+
   try {
-    const scramble = generateScramble(eventId)
-    const response: ScrambleWorkerResponse = { requestId, eventId, scramble }
-    self.postMessage(response)
-  } catch (err) {
+    const apiResult = await fetchOfficialScramble(eventId)
+    if (apiResult.scramble) {
+      const response: ScrambleWorkerResponse = {
+        requestId,
+        eventId,
+        scramble: apiResult.scramble,
+      }
+      self.postMessage(response)
+      return
+    }
+
+    const fallback = generateScramble(eventId)
     const response: ScrambleWorkerResponse = {
       requestId,
       eventId,
-      scramble: null,
-      error: err instanceof Error ? err.message : "unknown",
+      scramble: fallback || null,
+      warning: apiResult.error ?? "Using local fallback scramble generator",
+    }
+    self.postMessage(response)
+  } catch (err) {
+    const fallback = generateScramble(eventId)
+    const response: ScrambleWorkerResponse = {
+      requestId,
+      eventId,
+      scramble: fallback || null,
+      warning: err instanceof Error ? err.message : "Scramble API failed, using fallback",
     }
     self.postMessage(response)
   }
