@@ -350,17 +350,65 @@ export function useTimerPaneLayout(layoutKey = "main") {
     })
   }, [])
 
-  const togglePaneTool = useCallback(
-    (tool: PaneToolId) => {
-      const existing = panes.find((pane) => pane.tool === tool)
+  const togglePaneTool = useCallback((tool: PaneToolId) => {
+    setLayout((previous) => {
+      const existing = previous.desktop.panes.find((pane) => pane.tool === tool)
       if (existing) {
-        removePane(existing.id)
-        return
+        const next = withUpdatedAt({
+          ...previous,
+          desktop: {
+            ...previous.desktop,
+            panes: previous.desktop.panes.filter((pane) => pane.id !== existing.id),
+          },
+          mobile: {
+            order: previous.mobile.order.filter((id) => id !== existing.id),
+            heights: Object.fromEntries(
+              Object.entries(previous.mobile.heights).filter(([id]) => id !== existing.id)
+            ),
+          },
+        })
+
+        return normalizeLayout(next)
       }
-      addPane(tool)
-    },
-    [addPane, panes, removePane]
-  )
+
+      if (previous.desktop.panes.length >= TIMER_PANE_MAX) return previous
+
+      const usedSlots = getUsedSlots(previous.desktop.panes)
+      const preferredSlot = PANE_REGISTRY[tool].defaultSlot
+      const slot = usedSlots.has(preferredSlot)
+        ? firstFreeSlot(usedSlots) ?? preferredSlot
+        : preferredSlot
+
+      const pane: TimerPaneInstance = {
+        id: crypto.randomUUID(),
+        tool,
+        slot,
+        rect: rectForSlot(tool, slot),
+        options:
+          tool === "time_distribution" || tool === "time_trend"
+            ? { scope: "session" }
+            : undefined,
+      }
+
+      const next = withUpdatedAt({
+        ...previous,
+        desktop: {
+          ...previous.desktop,
+          panes: [...previous.desktop.panes, pane],
+        },
+        mobile: {
+          ...previous.mobile,
+          order: [...previous.mobile.order, pane.id],
+          heights: {
+            ...previous.mobile.heights,
+            [pane.id]: previous.mobile.heights[pane.id] ?? "md",
+          },
+        },
+      })
+
+      return normalizeLayout(next)
+    })
+  }, [])
 
   const setPaneSlot = useCallback((paneId: string, slot: DesktopPaneSlot) => {
     setLayout((previous) => {
