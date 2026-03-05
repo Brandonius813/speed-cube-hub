@@ -59,7 +59,7 @@ interface SolveListPanelProps {
 }
 
 const ROW_HEIGHT = 30
-const DIVIDER_GAP = 14
+const DIVIDER_GAP = 22
 const OVERSCAN = 14
 
 function countBoundariesBefore(boundaries: number[], rowIndex: number): number {
@@ -330,7 +330,7 @@ export const SolveListPanel = memo(function SolveListPanel({
                   <td
                     className={cn(
                       "relative text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]",
-                      isBoundary && "pt-3"
+                      isBoundary && "pt-5"
                     )}
                   >
                     {dividerLabel && (
@@ -344,13 +344,13 @@ export const SolveListPanel = memo(function SolveListPanel({
                     )}
                     {row.displayNumber}
                   </td>
-                  <td className={cn("text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground", isBoundary && "pt-3")}>
+                  <td className={cn("text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground", isBoundary && "pt-5")}>
                     {fmtSolve(row.solve)}
                   </td>
-                  <td className={cn("text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-3")}>
+                  <td className={cn("text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-5")}>
                     {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
                   </td>
-                  <td className={cn("text-right pr-2 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-3")}>
+                  <td className={cn("text-right pr-2 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-5")}>
                     {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
                   </td>
                 </tr>
