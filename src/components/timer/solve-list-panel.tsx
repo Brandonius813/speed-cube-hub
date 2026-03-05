@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useRef } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 import type { DividerLabel } from "@/lib/timer/session-dividers"
@@ -59,7 +59,35 @@ interface SolveListPanelProps {
 }
 
 const ROW_HEIGHT = 30
+const DIVIDER_GAP = 14
 const OVERSCAN = 14
+
+function countBoundariesBefore(boundaries: number[], rowIndex: number): number {
+  let low = 0
+  let high = boundaries.length
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (boundaries[mid] < rowIndex) low = mid + 1
+    else high = mid
+  }
+  return low
+}
+
+function findRowForOffset(
+  offset: number,
+  totalRows: number,
+  getPrefixHeight: (rowIndex: number) => number
+): number {
+  if (totalRows <= 0) return 0
+  let low = 0
+  let high = totalRows
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (getPrefixHeight(mid) <= offset) low = mid + 1
+    else high = mid
+  }
+  return Math.max(0, Math.min(totalRows - 1, low - 1))
+}
 
 export const SolveListPanel = memo(function SolveListPanel({
   rows,
@@ -87,25 +115,50 @@ export const SolveListPanel = memo(function SolveListPanel({
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
   const rangeRef = useRef({ start: -1, end: -1 })
+  const sortedBoundaries = useMemo(
+    () =>
+      groupBoundaries
+        ? [...groupBoundaries].sort((a, b) => a - b)
+        : [],
+    [groupBoundaries]
+  )
+  const getPrefixHeight = useCallback(
+    (rowIndex: number) =>
+      rowIndex * ROW_HEIGHT +
+      countBoundariesBefore(sortedBoundaries, rowIndex) * DIVIDER_GAP,
+    [sortedBoundaries]
+  )
+  const totalHeight = useMemo(
+    () => getPrefixHeight(totalCount),
+    [getPrefixHeight, totalCount]
+  )
 
   const emitRange = useCallback(() => {
     if (!listRef.current || frozen) return
     const el = listRef.current
     const viewHeight = el.clientHeight
-    const firstVisible = Math.floor(el.scrollTop / ROW_HEIGHT)
-    const visibleCount = Math.max(1, Math.ceil(viewHeight / ROW_HEIGHT))
+    const firstVisible = findRowForOffset(
+      el.scrollTop,
+      totalCount,
+      getPrefixHeight
+    )
+    const lastVisible = findRowForOffset(
+      el.scrollTop + viewHeight,
+      totalCount,
+      getPrefixHeight
+    )
     const start = Math.max(0, firstVisible - OVERSCAN)
-    const end = Math.min(totalCount, firstVisible + visibleCount + OVERSCAN)
+    const end = Math.min(totalCount, lastVisible + 1 + OVERSCAN)
     if (start === rangeRef.current.start && end === rangeRef.current.end) return
     rangeRef.current = { start, end }
     onRangeChange({ start, end, scrollOffset: el.scrollTop })
-  }, [frozen, onRangeChange, totalCount])
+  }, [frozen, getPrefixHeight, onRangeChange, totalCount])
 
   useEffect(() => {
     if (!listRef.current) return
     listRef.current.scrollTop = scrollOffset
     emitRange()
-  }, [emitRange, scrollOffset, totalCount])
+  }, [emitRange, scrollOffset, totalCount, totalHeight])
 
   useEffect(() => {
     const el = listRef.current
@@ -120,8 +173,8 @@ export const SolveListPanel = memo(function SolveListPanel({
     }
   }, [emitRange])
 
-  const topSpacer = rangeStart * ROW_HEIGHT
-  const bottomSpacer = Math.max(0, totalCount - rangeEnd) * ROW_HEIGHT
+  const topSpacer = getPrefixHeight(rangeStart)
+  const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = totalCount > 0 ? rows[0]?.solve ?? null : null
 
   return (
@@ -272,12 +325,17 @@ export const SolveListPanel = memo(function SolveListPanel({
                     isBoundary && "border-t-2 border-t-primary/20"
                   )}
                   onClick={() => onSetSelectedId(row.solve.id)}
-                  style={{ height: `${ROW_HEIGHT}px` }}
+                  style={{ height: `${ROW_HEIGHT + (isBoundary ? DIVIDER_GAP : 0)}px` }}
                 >
-                  <td className="relative text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]">
+                  <td
+                    className={cn(
+                      "relative text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[11px]",
+                      isBoundary && "pt-3"
+                    )}
+                  >
                     {dividerLabel && (
                       <span
-                        className="pointer-events-none absolute top-0 left-1 z-20 inline-block -translate-y-1/2 max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground"
+                        className="pointer-events-none absolute top-1 left-1 z-20 inline-block max-w-[10.5rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[10px] font-sans uppercase tracking-wider text-foreground"
                         title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
                       >
                         {dividerLabel.title}
@@ -286,13 +344,13 @@ export const SolveListPanel = memo(function SolveListPanel({
                     )}
                     {row.displayNumber}
                   </td>
-                  <td className="text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                  <td className={cn("text-right pr-1.5 py-0.5 font-mono text-[13px] text-foreground", isBoundary && "pt-3")}>
                     {fmtSolve(row.solve)}
                   </td>
-                  <td className="text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]">
+                  <td className={cn("text-right pr-1.5 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-3")}>
                     {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
                   </td>
-                  <td className="text-right pr-2 py-0.5 text-foreground font-mono text-[11px]">
+                  <td className={cn("text-right pr-2 py-0.5 text-foreground font-mono text-[11px]", isBoundary && "pt-3")}>
                     {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
                   </td>
                 </tr>
