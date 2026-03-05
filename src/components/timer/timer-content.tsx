@@ -2352,7 +2352,9 @@ function TimerReadout({
     }
 
     let raf = 0
+    let active = true
     const tick = (ts: number) => {
+      if (!active) return
       if (lastFrameRef.current !== null) {
         const delta = ts - lastFrameRef.current
         if (delta > 250 && ts - lastStallRef.current > 1000) {
@@ -2366,10 +2368,14 @@ function TimerReadout({
         displayRef.current.textContent =
           timerUpdateMode === "seconds" ? fmtWholeSeconds(elapsed) : fmt(elapsed)
       }
+      if (!active) return
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      active = false
+      cancelAnimationFrame(raf)
+    }
   }, [onStall, phase, startMs, timerUpdateMode])
 
   const display = useMemo(() => {
