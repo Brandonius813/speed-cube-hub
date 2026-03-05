@@ -176,7 +176,10 @@ export async function syncSolvesFromDb(
       if (
         shouldBackfillGroups &&
         (allLocalUngrouped || hasSingleCollapsedGroup) &&
-        localSolves.length === allSolves.length
+        (
+          localSolves.length === allSolves.length ||
+          localSolves.length >= 200
+        )
       ) {
         await store.replaceSession(event, allSolves)
         return allSolves
