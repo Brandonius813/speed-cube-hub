@@ -405,8 +405,7 @@ export function TimerContent() {
   const currentSolveCount = solves.length - savedSolveCount
   const hasActiveSession =
     sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
-  const showAllStatsFallback =
-    !hasActiveSession && currentSolveCount === 0 && solves.length > 0
+  const showAllStatsFallback = currentSolveCount === 0 && solves.length > 0
   const panelStats = useMemo(
     () => (showAllStatsFallback ? computeStatsSync(solves, statCols) : stats),
     [showAllStatsFallback, solves, statCols, stats]

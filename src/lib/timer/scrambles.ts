@@ -18,6 +18,25 @@ const WCA_EVENTS_WITH_API = new Set([
   "minx", "pyram", "clock", "skewb", "sq1",
 ])
 
+function resolveApiUrl(path: string): string | null {
+  try {
+    const origin = globalThis.location?.origin
+    if (origin && origin !== "null") {
+      return new URL(path, origin).toString()
+    }
+  } catch {}
+  try {
+    const href = globalThis.location?.href
+    if (href) {
+      const parsed = new URL(href)
+      if (parsed.origin && parsed.origin !== "null") {
+        return new URL(path, parsed.origin).toString()
+      }
+    }
+  } catch {}
+  return null
+}
+
 const EVENT_RANDOM_MOVE_CONFIG: Record<string, RandomMoveConfig> = {
   "222": { faces: ["U", "D", "L", "R", "F", "B"], count: 11 },
   "333": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
@@ -195,7 +214,13 @@ export async function fetchOfficialScramble(
   }
 
   try {
-    const response = await fetch(`/api/scramble?event=${encodeURIComponent(eventId)}`, {
+    const path = `/api/scramble?event=${encodeURIComponent(eventId)}`
+    const apiUrl = resolveApiUrl(path)
+    if (!apiUrl) {
+      return { scramble: null, error: "Unable to resolve scramble API URL in this context" }
+    }
+
+    const response = await fetch(apiUrl, {
       method: "GET",
       cache: "no-store",
       signal,

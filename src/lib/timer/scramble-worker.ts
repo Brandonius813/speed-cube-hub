@@ -34,7 +34,7 @@ self.onmessage = async (e: MessageEvent<ScrambleWorkerRequest>) => {
       requestId,
       eventId,
       scramble: fallback || null,
-      warning: apiResult.error ?? "Using local fallback scramble generator",
+      warning: fallback ? undefined : (apiResult.error ?? "Failed to generate scramble"),
     }
     self.postMessage(response)
   } catch (err) {
@@ -43,7 +43,9 @@ self.onmessage = async (e: MessageEvent<ScrambleWorkerRequest>) => {
       requestId,
       eventId,
       scramble: fallback || null,
-      warning: err instanceof Error ? err.message : "Scramble API failed, using fallback",
+      warning: fallback
+        ? undefined
+        : (err instanceof Error ? err.message : "Scramble API failed"),
     }
     self.postMessage(response)
   }

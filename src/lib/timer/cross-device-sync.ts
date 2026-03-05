@@ -141,7 +141,21 @@ export async function syncSolvesFromDb(
       return { ...solve, group: mappedGroup }
     })
 
-    if (!changed) return null
+    if (!changed) {
+      // Legacy imports used client-generated IDs in local storage, so ID mapping
+      // can fail even when DB rows are the same solves. If counts match and the
+      // local cache is fully ungrouped, trust DB order and replace.
+      const allLocalUngrouped = localSolves.every((solve) => !solve.group)
+      if (
+        shouldBackfillGroups &&
+        allLocalUngrouped &&
+        localSolves.length === allSolves.length
+      ) {
+        await store.replaceSession(event, allSolves)
+        return allSolves
+      }
+      return null
+    }
     await store.replaceSession(event, patched)
     return patched
   } catch {
