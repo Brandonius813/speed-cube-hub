@@ -1458,6 +1458,14 @@ export function TimerContent() {
 
   const chartSolves = chartScope === "session" ? sessionChartSolves : allChartSolves
 
+  useEffect(() => {
+    if (!showAnalytics) return
+    if (chartScope !== "session") return
+    if (sessionChartSolves.length > 0) return
+    if (allChartSolves.length === 0) return
+    setChartScope("all")
+  }, [allChartSolves.length, chartScope, sessionChartSolves.length, showAnalytics])
+
   const canShowCrossTrainer =
     event === "333" &&
     scramble.length > 0 &&

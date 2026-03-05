@@ -13,8 +13,7 @@
 import type { TimerSolve } from "@/lib/timer/stats"
 import type { SolveStore } from "@/lib/timer/solve-store"
 import type { Solve } from "@/lib/types"
-import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
-import { getSolveCountBySession, getSolvesBySession } from "@/lib/actions/timer"
+import { getSolveCountByEvent, getSolvesByEvent } from "@/lib/actions/timer"
 
 // Supabase PostgREST max-rows is typically 1000, so page at that size.
 const PAGE_SIZE = 1000
@@ -25,9 +24,22 @@ function dateGroupFromSolvedAt(solvedAt: string): string | null {
   return `date:${day}`
 }
 
+function toDayKey(solvedAt: string): string | null {
+  const day = solvedAt.slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+}
+
 /** Convert a database Solve row to the local TimerSolve format. */
-function dbSolveToTimer(s: Solve): TimerSolve {
-  const group = s.timer_session_id ?? dateGroupFromSolvedAt(s.solved_at)
+function dbSolveToTimer(
+  s: Solve,
+  timerSessionGroupsByDay: Set<string>
+): TimerSolve {
+  const dateGroup = dateGroupFromSolvedAt(s.solved_at)
+  const timerSessionGroupId = s.timer_session_id ?? null
+  const group =
+    timerSessionGroupId && !timerSessionGroupsByDay.has(timerSessionGroupId)
+      ? timerSessionGroupId
+      : dateGroup ?? timerSessionGroupId
   return {
     id: s.id,
     time_ms: s.time_ms,
@@ -62,18 +74,10 @@ export async function syncSolvesFromDb(
   options?: SyncOptions
 ): Promise<TimerSolve[] | null> {
   try {
-    // Get (or create) the default solve session for this event
-    const { data: session, error: sessionError } =
-      await getOrCreateDefaultSession(event)
-
-    if (sessionError || !session) {
-      // Not logged in or no session — nothing to sync
-      return null
-    }
-
-    // Quick count check: does the DB have more solves than local?
+    // Event-wide sync: timer view is event-scoped and should include all solves
+    // regardless of solve_session_id linkage.
     const { count: dbCount, error: countError } =
-      await getSolveCountBySession(session.id, session.active_from, event)
+      await getSolveCountByEvent(event)
 
     if (countError) {
       return null
@@ -88,17 +92,15 @@ export async function syncSolvesFromDb(
     }
 
     // Fetch DB solves in paginated chunks.
-    const allSolves: TimerSolve[] = []
+    const allDbSolves: Solve[] = []
     let offset = 0
     let hasMore = true
 
     while (hasMore) {
-      const { solves: page, error: fetchError } = await getSolvesBySession(
-        session.id,
-        session.active_from,
+      const { solves: page, error: fetchError } = await getSolvesByEvent(
+        event,
         PAGE_SIZE,
-        offset,
-        event
+        offset
       )
 
       if (fetchError || page.length === 0) {
@@ -106,8 +108,7 @@ export async function syncSolvesFromDb(
         break
       }
 
-      const converted = page.map(dbSolveToTimer)
-      allSolves.push(...converted)
+      allDbSolves.push(...page)
       offset += page.length
 
       if (page.length < PAGE_SIZE) {
@@ -115,7 +116,27 @@ export async function syncSolvesFromDb(
       }
     }
 
-    if (allSolves.length === 0) return null
+    if (allDbSolves.length === 0) return null
+
+    // Imported datasets can contain one timer_session_id spanning many days.
+    // For those sessions, split groups by date so divider labels still render.
+    const daysByTimerSessionId = new Map<string, Set<string>>()
+    for (const solve of allDbSolves) {
+      if (!solve.timer_session_id) continue
+      const dayKey = toDayKey(solve.solved_at)
+      if (!dayKey) continue
+      const set = daysByTimerSessionId.get(solve.timer_session_id) ?? new Set<string>()
+      set.add(dayKey)
+      daysByTimerSessionId.set(solve.timer_session_id, set)
+    }
+    const timerSessionGroupsByDay = new Set(
+      Array.from(daysByTimerSessionId.entries())
+        .filter(([, days]) => days.size > 1)
+        .map(([timerSessionId]) => timerSessionId)
+    )
+    const allSolves = allDbSolves.map((solve) =>
+      dbSolveToTimer(solve, timerSessionGroupsByDay)
+    )
 
     if (shouldSyncAll) {
       // DB has newer data: replace local cache with authoritative DB list.

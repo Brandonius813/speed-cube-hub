@@ -17,6 +17,7 @@ const WCA_EVENTS_WITH_API = new Set([
   "333bf", "444bf", "555bf", "333mbf", "333oh", "333fm",
   "minx", "pyram", "clock", "skewb", "sq1",
 ])
+const SCRAMBLE_API_TIMEOUT_MS = 1200
 
 function resolveApiUrl(path: string): string | null {
   try {
@@ -220,11 +221,30 @@ export async function fetchOfficialScramble(
       return { scramble: null, error: "Unable to resolve scramble API URL in this context" }
     }
 
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      cache: "no-store",
-      signal,
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), SCRAMBLE_API_TIMEOUT_MS)
+    const onAbort = () => controller.abort()
+    if (signal) {
+      if (signal.aborted) {
+        clearTimeout(timeout)
+        return { scramble: null, error: "Scramble request aborted" }
+      }
+      signal.addEventListener("abort", onAbort, { once: true })
+    }
+
+    let response: Response
+    try {
+      response = await fetch(apiUrl, {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+      if (signal) {
+        signal.removeEventListener("abort", onAbort)
+      }
+    }
 
     if (!response.ok) {
       return { scramble: null, error: `API status ${response.status}` }
@@ -239,6 +259,12 @@ export async function fetchOfficialScramble(
     const normalized = eventId === "minx" ? normalizeMegaminxRows(raw) : raw
     return { scramble: normalized }
   } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return {
+        scramble: null,
+        error: "Scramble API timed out",
+      }
+    }
     return {
       scramble: null,
       error: err instanceof Error ? err.message : "Failed to fetch scramble",
