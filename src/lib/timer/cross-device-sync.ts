@@ -29,6 +29,18 @@ function toDayKey(solvedAt: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
 }
 
+function hasLargeTrailingUngroupedBlock(
+  solves: TimerSolve[],
+  minSize = 50
+): boolean {
+  let trailingUngrouped = 0
+  for (let i = solves.length - 1; i >= 0; i--) {
+    if (solves[i].group) break
+    trailingUngrouped += 1
+  }
+  return trailingUngrouped >= minSize
+}
+
 /** Convert a database Solve row to the local TimerSolve format. */
 function dbSolveToTimer(
   s: Solve,
@@ -173,13 +185,11 @@ export async function syncSolvesFromDb(
           .filter((group): group is string => typeof group === "string" && group.length > 0)
       )
       const hasSingleCollapsedGroup = uniqueLocalGroups.size <= 1
+      const hasLargeUngroupedSuffix = hasLargeTrailingUngroupedBlock(localSolves)
       if (
         shouldBackfillGroups &&
-        (allLocalUngrouped || hasSingleCollapsedGroup) &&
-        (
-          localSolves.length === allSolves.length ||
-          localSolves.length >= 200
-        )
+        (allLocalUngrouped || hasSingleCollapsedGroup || hasLargeUngroupedSuffix) &&
+        localSolves.length === allSolves.length
       ) {
         await store.replaceSession(event, allSolves)
         return allSolves

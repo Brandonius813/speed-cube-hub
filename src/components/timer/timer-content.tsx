@@ -161,6 +161,12 @@ function needsHistoricGroupBackfill(solves: Solve[]): boolean {
   for (let i = 0; i < suffixStart; i++) {
     if (!solves[i].group) return true
   }
+
+  // Large trailing ungrouped blocks are usually imported history, not an
+  // in-progress unsaved session. Trigger one-time DB backfill for those.
+  const trailingUngroupedCount = solves.length - suffixStart
+  if (grouped.length > 0 && trailingUngroupedCount >= 50) return true
+
   return false
 }
 

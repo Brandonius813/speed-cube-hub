@@ -68,6 +68,8 @@ export async function executeImport(
         time_ms: s.time_ms,
         penalty: s.penalty,
         scramble: s.scramble,
+        // Preserve day boundaries for timer session dividers.
+        group: `date:${s.date}`,
       }))
       await solveStore.importSolves(event, timerSolves)
       count += imported
