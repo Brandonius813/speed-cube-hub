@@ -69,6 +69,7 @@ const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
 const TIMER_V2_ENGINE_ENABLED = process.env.NEXT_PUBLIC_TIMER_V2_ENGINE !== "false"
 const SESSION_START_KEY = "timer-session-start"
+const SESSION_START_SOLVE_INDEX_KEY = "timer-session-start-solve-index"
 const SESSION_PAUSED_MS_KEY = "timer-session-paused-ms"
 const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
@@ -142,6 +143,10 @@ function saveSessionGroups(eventId: string, groups: SessionGroupMeta[]) {
   try {
     localStorage.setItem(`timer-session-groups-${eventId}`, JSON.stringify(groups))
   } catch {}
+}
+
+function getUnsavedSolves(solves: Solve[]): Solve[] {
+  return solves.filter((solve) => !solve.group)
 }
 
 function needsHistoricGroupBackfill(solves: Solve[]): boolean {
@@ -425,6 +430,14 @@ export function TimerContent() {
   } = useTimerPaneLayout("main")
   const timerTopAreaRef = useRef<HTMLDivElement | null>(null)
   const solveListPanelRef = useRef<SolveListPanelHandle | null>(null)
+  const sessionSolveStartIndexRef = useRef<number>((() => {
+    try {
+      const raw = Number(localStorage.getItem(SESSION_START_SOLVE_INDEX_KEY) ?? 0)
+      return Number.isFinite(raw) && raw >= 0 ? raw : 0
+    } catch {
+      return 0
+    }
+  })())
   const [desktopPaneTopOffsetPx, setDesktopPaneTopOffsetPx] = useState(112)
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
     try {
@@ -697,10 +710,21 @@ export function TimerContent() {
   statColsRef.current = statCols
 
   // Compute saved vs current session solve counts for display + stats
-  const savedSolveCount = useMemo(() => solves.filter((s) => !!s.group).length, [solves])
-  const currentSolveCount = solves.length - savedSolveCount
+  const unsavedSolves = useMemo(() => getUnsavedSolves(solves), [solves])
+  const savedSolveCount = solves.length - unsavedSolves.length
   const hasActiveSession =
     sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
+  const getCurrentSessionSolves = useCallback((allSolves: Solve[]) => {
+    const unsaved = getUnsavedSolves(allSolves)
+    if (!hasActiveSession) return unsaved
+    const startIndex = Math.min(sessionSolveStartIndexRef.current, unsaved.length)
+    return unsaved.slice(startIndex)
+  }, [hasActiveSession])
+  const currentSessionSolves = useMemo(
+    () => getCurrentSessionSolves(solves),
+    [getCurrentSessionSolves, solves]
+  )
+  const currentSolveCount = currentSessionSolves.length
   // Keep time-list stats aligned to every visible solve row when saved solves exist.
   const showAllStatsInList = savedSolveCount > 0
   const panelStats = useMemo(
@@ -1164,8 +1188,8 @@ export function TimerContent() {
         start: 0,
         end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
       }))
-      // Stats only computed on current session solves (ungrouped)
-      const currentSolves = loaded.filter((s) => !s.group)
+      // Stats only computed on the active session block.
+      const currentSolves = getCurrentSessionSolves(loaded)
       initStats(event, currentSolves)
       void hydrateDividerMetadata(event, loaded).then((mergedGroups) => {
         if (cancelled || !mergedGroups || eventRef.current !== event) return
@@ -1183,7 +1207,7 @@ export function TimerContent() {
         (synced) => {
           if (cancelled || !synced) return
           setSolves(synced)
-          const syncedCurrent = synced.filter((s) => !s.group)
+          const syncedCurrent = getCurrentSessionSolves(synced)
           initStats(event, syncedCurrent)
           void hydrateDividerMetadata(event, synced).then((mergedGroups) => {
             if (cancelled || !mergedGroups || eventRef.current !== event) return
@@ -1195,7 +1219,7 @@ export function TimerContent() {
     return () => {
       cancelled = true
     }
-  }, [event, hydrateDividerMetadata, initStats, migrateLegacySolves])
+  }, [event, getCurrentSessionSolves, hydrateDividerMetadata, initStats, migrateLegacySolves])
 
   useEffect(() => {
     clearPendingScrambleRequests()
@@ -1233,8 +1257,13 @@ export function TimerContent() {
     try {
       if (hasActiveSession) {
         localStorage.setItem(SESSION_START_KEY, String(sessionStartTime))
+        localStorage.setItem(
+          SESSION_START_SOLVE_INDEX_KEY,
+          String(sessionSolveStartIndexRef.current)
+        )
       } else {
         localStorage.removeItem(SESSION_START_KEY)
+        localStorage.removeItem(SESSION_START_SOLVE_INDEX_KEY)
         localStorage.removeItem(SESSION_PAUSED_MS_KEY)
         localStorage.removeItem(SESSION_PAUSED_KEY)
         localStorage.removeItem(SESSION_PAUSED_AT_KEY)
@@ -1396,6 +1425,8 @@ export function TimerContent() {
   }
 
   function startSession() {
+    const unsavedSolveCount = getUnsavedSolves(solvesRef.current).length
+    sessionSolveStartIndexRef.current = unsavedSolveCount
     setSessionStartTime(Date.now())
     setSessionElapsed(0)
     setSessionPaused(false)
@@ -1403,6 +1434,7 @@ export function TimerContent() {
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
     try {
+      localStorage.setItem(SESSION_START_SOLVE_INDEX_KEY, String(unsavedSolveCount))
       localStorage.removeItem(SESSION_PAUSED_MS_KEY)
       localStorage.removeItem(SESSION_PAUSED_KEY)
       localStorage.removeItem(SESSION_PAUSED_AT_KEY)
@@ -1436,6 +1468,7 @@ export function TimerContent() {
   }
 
   function cancelSession() {
+    sessionSolveStartIndexRef.current = 0
     setSessionStartTime(null)
     setSessionElapsed(0)
     setSessionPaused(false)
@@ -1443,6 +1476,7 @@ export function TimerContent() {
     pausedAtRef.current = null
     try {
       localStorage.removeItem(SESSION_START_KEY)
+      localStorage.removeItem(SESSION_START_SOLVE_INDEX_KEY)
       localStorage.removeItem(SESSION_PAUSED_MS_KEY)
       localStorage.removeItem(SESSION_PAUSED_KEY)
       localStorage.removeItem(SESSION_PAUSED_AT_KEY)
@@ -1450,7 +1484,7 @@ export function TimerContent() {
   }
 
   function endSession() {
-    const currentCount = solves.filter((s) => !s.group).length
+    const currentCount = getCurrentSessionSolves(solvesRef.current).length
     if (currentCount === 0) {
       cancelSession()
       return
@@ -1469,19 +1503,23 @@ export function TimerContent() {
   function discardSessionSolves() {
     const sessionEventId = eventRef.current
     const queuedEventSwitch = pendingEventSwitch
-    const currentSolves = solvesRef.current
-    const savedSolves = currentSolves.filter((solve) => !!solve.group)
+    const allSolves = solvesRef.current
+    const sessionSolves = getCurrentSessionSolves(allSolves)
+    const sessionSolveIds = new Set(sessionSolves.map((solve) => solve.id))
+    const retainedSolves = allSolves.filter(
+      (solve) => solve.group || !sessionSolveIds.has(solve.id)
+    )
 
     setShowEndModal(false)
-    setSolves(savedSolves)
+    setSolves(retainedSolves)
     setSelectedId(null)
     setIdle()
     initStats(sessionEventId, [])
     cancelSession()
 
-    if (savedSolves.length !== currentSolves.length) {
+    if (retainedSolves.length !== allSolves.length) {
       void solveStoreRef.current
-        .replaceSession(sessionEventId, savedSolves)
+        .replaceSession(sessionEventId, retainedSolves)
         .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_discard" }))
     }
 
@@ -1494,13 +1532,19 @@ export function TimerContent() {
   function handleSessionSaved(sessionTitle: string) {
     setShowEndModal(false)
     const groupId = crypto.randomUUID()
-    const currentCount = solves.filter((s) => !s.group).length
+    const allSolves = solvesRef.current
+    const sessionSolves = getCurrentSessionSolves(allSolves)
+    const currentCount = sessionSolves.length
+    const sessionSolveIds = new Set(sessionSolves.map((solve) => solve.id))
+    const nextSolves = allSolves.map((solve) =>
+      sessionSolveIds.has(solve.id) ? { ...solve, group: groupId } : solve
+    )
 
-    // Tag current solves as belonging to this saved session
-    setSolves((prev) => prev.map((s) => (s.group ? s : { ...s, group: groupId })))
+    // Tag only the solves added during the active session.
+    setSolves(nextSolves)
     void solveStoreRef.current
-      .markGroup(eventRef.current, groupId)
-      .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_mark_group" }))
+      .replaceSession(eventRef.current, nextSolves)
+      .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_save" }))
 
     // Store group metadata for display
     const groups = loadSessionGroups(eventRef.current)
@@ -1531,6 +1575,7 @@ export function TimerContent() {
       applyEventChange(pendingEventSwitch)
     }
     setPendingEventSwitch(null)
+    sessionSolveStartIndexRef.current = 0
   }
 
   function startTimer() {
@@ -1727,7 +1772,7 @@ export function TimerContent() {
     }
 
     if (hasActiveSession) {
-      const unsavedSolveCount = solvesRef.current.filter((solve) => !solve.group).length
+      const unsavedSolveCount = getCurrentSessionSolves(solvesRef.current).length
       if (unsavedSolveCount > 0) {
         const currentEventName =
           EVENTS.find((entry) => entry.id === eventRef.current)?.name ?? eventRef.current
@@ -1952,13 +1997,12 @@ export function TimerContent() {
   }, [sessionGroups, solves])
 
   const sessionChartSolves = useMemo(() => {
-    const currentSessionSolves = solves.filter((solve) => !solve.group)
     const source =
       currentSessionSolves.length > 0 || hasActiveSession
         ? currentSessionSolves
         : mostRecentSavedSessionSolves
     return source.map((solve, index) => toChartSolve(solve, event, index + 1))
-  }, [event, hasActiveSession, mostRecentSavedSessionSolves, solves])
+  }, [currentSessionSolves, event, hasActiveSession, mostRecentSavedSessionSolves])
 
   const allChartSolves = useMemo(
     () => solves.map((solve, index) => toChartSolve(solve, event, index + 1)),
@@ -2691,7 +2735,7 @@ export function TimerContent() {
 
       {showEndModal && activeSessionStartMs !== null && (
         <EndSessionModal
-          solves={solves.filter((s) => !s.group)}
+          solves={currentSessionSolves}
           event={event}
           eventName={EVENTS.find((entry) => entry.id === event)?.name ?? event}
           practiceType={practiceType}

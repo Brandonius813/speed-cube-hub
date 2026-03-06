@@ -204,3 +204,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Confirmed the root cause of returning solves: timer deletes were only removing rows from IndexedDB, so DB-backed sync could restore them later. Built on the latest server-delete fix by updating cross-device sync to reconcile when DB saved-history counts differ in either direction while preserving unsaved local solves. Added a solve-list imperative scroll-preservation hook so deleting a time no longer jumps the list back to the top. Backed up and hard-deleted 16 suspicious 3x3 outlier/DNF rows for the admin account from Supabase (`/tmp/speed-cube-hub-brandon-outlier-solves-20260306.json`).
 **Files touched:** `src/lib/timer/cross-device-sync.ts`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/cross-device-sync.ts src/components/timer/solve-list-panel.tsx src/components/timer/timer-content.tsx` passed. Verified no remaining `333` solves for admin user matched `time_ms < 5000` or `penalty = 'DNF'`.
+
+---
+
+### 2026-03-06 11:42 AM PT — Timer Session Boundary Guard + Duplicate 3x3 Cleanup
+
+**Task:** Stop end-session flows from scooping up stale ungrouped history; remove the duplicate 3x3 block still polluting all-time charts
+**Status:** Added a session-start solve-index boundary in `timer-content.tsx` so active session save/discard/end-switch logic only touches solves added after the session began, even if older ungrouped solves exist in local cache. This prevents a repeat of the March 5 duplication bug where a save bundled nearly the full 3x3 history into one new session. Cleaned the existing duplicate data in Supabase by backing up and trimming timer session `371a27bf-e9b6-486b-bc72-030b6c40b2db` from 1495 solves down to the 10 real new solves, updating its linked `sessions` row stats, and deleting the last late 6.16 outlier. Backups saved to `/tmp/speed-cube-hub-brandon-duplicate-session-371a-20260306.json` and `/tmp/speed-cube-hub-brandon-outlier-solve-76142ec7-20260306.json`.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. Verified admin `333` total is now 1517 and there are no late (`overallIndex >= 1450`) solves with `time_ms < 8000` or `penalty = 'DNF'`.
