@@ -65,6 +65,10 @@ const SCRAMBLE_TIMEOUT_MS = 1800
 const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
 const TIMER_V2_ENGINE_ENABLED = process.env.NEXT_PUBLIC_TIMER_V2_ENGINE !== "false"
+const SESSION_START_KEY = "timer-session-start"
+const SESSION_PAUSED_MS_KEY = "timer-session-paused-ms"
+const SESSION_PAUSED_KEY = "timer-session-paused"
+const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
 
@@ -405,7 +409,7 @@ export function TimerContent() {
   const [desktopPaneTopOffsetPx, setDesktopPaneTopOffsetPx] = useState(112)
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
     try {
-      const raw = localStorage.getItem("timer-session-start")
+      const raw = localStorage.getItem(SESSION_START_KEY)
       if (!raw) return null
       const parsed = Number(raw)
       return Number.isFinite(parsed) && parsed > 0 ? parsed : null
@@ -413,8 +417,32 @@ export function TimerContent() {
       return null
     }
   })
-  const [sessionElapsed, setSessionElapsed] = useState(0)
-  const [sessionPaused, setSessionPaused] = useState(false)
+  const [sessionPaused, setSessionPaused] = useState(() => {
+    if (sessionStartTime === null) return false
+    try {
+      return localStorage.getItem(SESSION_PAUSED_KEY) === "true"
+    } catch {
+      return false
+    }
+  })
+  const [sessionElapsed, setSessionElapsed] = useState(() => {
+    if (sessionStartTime === null) return 0
+    try {
+      const pausedMsRaw = Number(localStorage.getItem(SESSION_PAUSED_MS_KEY) ?? 0)
+      const pausedMs = Number.isFinite(pausedMsRaw) && pausedMsRaw >= 0 ? pausedMsRaw : 0
+      const paused = localStorage.getItem(SESSION_PAUSED_KEY) === "true"
+      const pausedAtRaw = Number(localStorage.getItem(SESSION_PAUSED_AT_KEY) ?? 0)
+      const pausedAt =
+        paused && Number.isFinite(pausedAtRaw) && pausedAtRaw > 0 ? pausedAtRaw : null
+      const inFlightPauseMs = pausedAt ? Date.now() - pausedAt : 0
+      return Math.max(
+        0,
+        Math.floor((Date.now() - sessionStartTime - pausedMs - inFlightPauseMs) / 1000)
+      )
+    } catch {
+      return 0
+    }
+  })
   const [showEndModal, setShowEndModal] = useState(false)
   const [sessionSaved, setSessionSaved] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
@@ -550,13 +578,26 @@ export function TimerContent() {
   const sessionPausedMsRef = useRef<number>(
     (() => {
       try {
-        return Number(localStorage.getItem("timer-session-paused-ms") ?? 0)
+        const parsed = Number(localStorage.getItem(SESSION_PAUSED_MS_KEY) ?? 0)
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
       } catch {
         return 0
       }
     })()
   )
-  const pausedAtRef = useRef<number | null>(null)
+  const pausedAtRef = useRef<number | null>(
+    (() => {
+      if (!sessionPaused) return null
+      try {
+        const raw = localStorage.getItem(SESSION_PAUSED_AT_KEY)
+        if (!raw) return null
+        const parsed = Number(raw)
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+      } catch {
+        return null
+      }
+    })()
+  )
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
@@ -1108,12 +1149,24 @@ export function TimerContent() {
   useEffect(() => {
     try {
       if (hasActiveSession) {
-        localStorage.setItem("timer-session-start", String(sessionStartTime))
+        localStorage.setItem(SESSION_START_KEY, String(sessionStartTime))
       } else {
-        localStorage.removeItem("timer-session-start")
+        localStorage.removeItem(SESSION_START_KEY)
+        localStorage.removeItem(SESSION_PAUSED_MS_KEY)
+        localStorage.removeItem(SESSION_PAUSED_KEY)
+        localStorage.removeItem(SESSION_PAUSED_AT_KEY)
       }
     } catch {}
   }, [hasActiveSession, sessionStartTime])
+
+  useEffect(() => {
+    if (!hasActiveSession || !sessionPaused || pausedAtRef.current !== null) return
+    const pausedAt = Date.now()
+    pausedAtRef.current = pausedAt
+    try {
+      localStorage.setItem(SESSION_PAUSED_AT_KEY, String(pausedAt))
+    } catch {}
+  }, [hasActiveSession, sessionPaused])
 
   useEffect(() => {
     if (!hasActiveSession || sessionPaused) return
@@ -1253,18 +1306,20 @@ export function TimerContent() {
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
     try {
-      localStorage.removeItem("timer-session-paused-ms")
+      localStorage.removeItem(SESSION_PAUSED_MS_KEY)
+      localStorage.removeItem(SESSION_PAUSED_KEY)
+      localStorage.removeItem(SESSION_PAUSED_AT_KEY)
     } catch {}
   }
 
   function pauseSession() {
-    pausedAtRef.current = Date.now()
+    const pausedAt = Date.now()
+    pausedAtRef.current = pausedAt
     setSessionPaused(true)
     try {
-      localStorage.setItem(
-        "timer-session-paused-ms",
-        String(sessionPausedMsRef.current)
-      )
+      localStorage.setItem(SESSION_PAUSED_MS_KEY, String(sessionPausedMsRef.current))
+      localStorage.setItem(SESSION_PAUSED_KEY, "true")
+      localStorage.setItem(SESSION_PAUSED_AT_KEY, String(pausedAt))
     } catch {}
   }
 
@@ -1273,13 +1328,14 @@ export function TimerContent() {
       sessionPausedMsRef.current += Date.now() - pausedAtRef.current
       pausedAtRef.current = null
       try {
-        localStorage.setItem(
-          "timer-session-paused-ms",
-          String(sessionPausedMsRef.current)
-        )
+        localStorage.setItem(SESSION_PAUSED_MS_KEY, String(sessionPausedMsRef.current))
       } catch {}
     }
     setSessionPaused(false)
+    try {
+      localStorage.removeItem(SESSION_PAUSED_KEY)
+      localStorage.removeItem(SESSION_PAUSED_AT_KEY)
+    } catch {}
   }
 
   function cancelSession() {
@@ -1289,8 +1345,10 @@ export function TimerContent() {
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
     try {
-      localStorage.removeItem("timer-session-start")
-      localStorage.removeItem("timer-session-paused-ms")
+      localStorage.removeItem(SESSION_START_KEY)
+      localStorage.removeItem(SESSION_PAUSED_MS_KEY)
+      localStorage.removeItem(SESSION_PAUSED_KEY)
+      localStorage.removeItem(SESSION_PAUSED_AT_KEY)
     } catch {}
   }
 
@@ -1303,6 +1361,10 @@ export function TimerContent() {
     if (sessionPaused && pausedAtRef.current !== null) {
       sessionPausedMsRef.current += Date.now() - pausedAtRef.current
       pausedAtRef.current = null
+      try {
+        localStorage.setItem(SESSION_PAUSED_MS_KEY, String(sessionPausedMsRef.current))
+        localStorage.removeItem(SESSION_PAUSED_AT_KEY)
+      } catch {}
     }
     setShowEndModal(true)
   }
@@ -1338,7 +1400,9 @@ export function TimerContent() {
     pausedAtRef.current = null
     setTimeout(() => setSessionSaved(false), 3000)
     try {
-      localStorage.removeItem("timer-session-paused-ms")
+      localStorage.removeItem(SESSION_PAUSED_MS_KEY)
+      localStorage.removeItem(SESSION_PAUSED_KEY)
+      localStorage.removeItem(SESSION_PAUSED_AT_KEY)
     } catch {}
   }
 
