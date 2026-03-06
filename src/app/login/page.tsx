@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Box } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,29 @@ import { Label } from "@/components/ui/label"
 import { login } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
 
+function getSafeNextPath(rawNext: string | null) {
+  if (!rawNext) {
+    return "/feed"
+  }
+
+  if (!rawNext.startsWith("/") || rawNext.startsWith("//") || rawNext.startsWith("/\\")) {
+    return "/feed"
+  }
+
+  if (rawNext === "/login" || rawNext === "/signup") {
+    return "/feed"
+  }
+
+  return rawNext
+}
+
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const nextPath = getSafeNextPath(searchParams.get("next"))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,7 +50,7 @@ export default function LoginPage() {
     }
 
     // Navigate client-side so the browser processes auth cookies first
-    router.push("/feed")
+    router.push(nextPath)
   }
 
   return (
@@ -58,7 +76,7 @@ export default function LoginPage() {
               const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                  redirectTo: `${window.location.origin}/api/auth/callback`,
+                  redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`,
                 },
               })
               if (error) {
@@ -138,7 +156,10 @@ export default function LoginPage() {
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
+            <Link
+              href={nextPath === "/feed" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`}
+              className="text-primary hover:underline"
+            >
               Sign up
             </Link>
           </p>

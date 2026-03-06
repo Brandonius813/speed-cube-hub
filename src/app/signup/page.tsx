@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Box, CheckCircle2, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,11 +11,29 @@ import { Label } from "@/components/ui/label"
 import { signup } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
 
+function getSafeNextPath(rawNext: string | null) {
+  if (!rawNext) {
+    return "/feed"
+  }
+
+  if (!rawNext.startsWith("/") || rawNext.startsWith("//") || rawNext.startsWith("/\\")) {
+    return "/feed"
+  }
+
+  if (rawNext === "/login" || rawNext === "/signup") {
+    return "/feed"
+  }
+
+  return rawNext
+}
+
 export default function SignupPage() {
+  const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const nextPath = getSafeNextPath(searchParams.get("next"))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -50,7 +69,9 @@ export default function SignupPage() {
               Once confirmed, you can log in and start tracking your solves.
             </p>
             <Button asChild className="mt-2 min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href="/login">Go to Login</Link>
+              <Link href={nextPath === "/feed" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`}>
+                Go to Login
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -81,7 +102,7 @@ export default function SignupPage() {
               const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                  redirectTo: `${window.location.origin}/api/auth/callback`,
+                  redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`,
                 },
               })
               if (error) {
@@ -198,7 +219,10 @@ export default function SignupPage() {
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link
+              href={nextPath === "/feed" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`}
+              className="text-primary hover:underline"
+            >
               Log in
             </Link>
           </p>
