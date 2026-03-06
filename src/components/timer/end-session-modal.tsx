@@ -29,6 +29,7 @@ interface Props {
   durationMinutes: number
   sessionStartMs: number
   onClose: () => void
+  onDiscard: () => void
   onSaved: (title: string) => void
 }
 
@@ -40,6 +41,7 @@ export function EndSessionModal({
   durationMinutes,
   sessionStartMs,
   onClose,
+  onDiscard,
   onSaved,
 }: Props) {
   // Compute stats from the solve list
@@ -87,6 +89,17 @@ export function EndSessionModal({
       }
       onSaved(title.trim() || (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`))
     })
+  }
+
+  function handleDiscard() {
+    const solveCount = solves.length
+    const confirmed = window.confirm(
+      `Discard this session and permanently delete ${solveCount} solve${
+        solveCount === 1 ? "" : "s"
+      }? This cannot be undone.`
+    )
+    if (!confirmed) return
+    onDiscard()
   }
 
   return (
@@ -199,7 +212,7 @@ export function EndSessionModal({
           </button>
           <button
             className="px-4 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={onClose}
+            onClick={handleDiscard}
             disabled={isPending}
           >
             Discard

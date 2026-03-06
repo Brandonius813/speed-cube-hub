@@ -1445,6 +1445,31 @@ export function TimerContent() {
     setShowEndModal(true)
   }
 
+  function discardSessionSolves() {
+    const sessionEventId = eventRef.current
+    const queuedEventSwitch = pendingEventSwitch
+    const currentSolves = solvesRef.current
+    const savedSolves = currentSolves.filter((solve) => !!solve.group)
+
+    setShowEndModal(false)
+    setSolves(savedSolves)
+    setSelectedId(null)
+    setIdle()
+    initStats(sessionEventId, [])
+    cancelSession()
+
+    if (savedSolves.length !== currentSolves.length) {
+      void solveStoreRef.current
+        .replaceSession(sessionEventId, savedSolves)
+        .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_discard" }))
+    }
+
+    if (queuedEventSwitch && queuedEventSwitch !== sessionEventId) {
+      applyEventChange(queuedEventSwitch)
+    }
+    setPendingEventSwitch(null)
+  }
+
   function handleSessionSaved(sessionTitle: string) {
     setShowEndModal(false)
     const groupId = crypto.randomUUID()
@@ -2608,6 +2633,7 @@ export function TimerContent() {
             setShowEndModal(false)
             setPendingEventSwitch(null)
           }}
+          onDiscard={discardSessionSolves}
           onSaved={handleSessionSaved}
         />
       )}
