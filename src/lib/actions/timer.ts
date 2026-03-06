@@ -1,5 +1,6 @@
 "use server"
 
+import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstError } from "@/lib/validations"
@@ -625,8 +626,8 @@ export async function bulkImportSolves(
       num_solves: solves.length,
       num_dnf: solves.length - nonDnf.length,
       duration_minutes: durationMinutes,
-      avg_time: avgMs ? Math.round(avgMs / 10) / 100 : null,
-      best_time: bestMs ? Math.round(bestMs / 10) / 100 : null,
+      avg_time: avgMs ? msToTruncatedSeconds(avgMs) : null,
+      best_time: bestMs ? msToTruncatedSeconds(bestMs) : null,
       timer_session_id: timerSession.id,
       solve_session_id: solveSessionId,
       feed_visible: false,
@@ -718,10 +719,10 @@ export async function finalizeTimerSession(
 
   // Convert ms to decimal seconds for the sessions table
   const avgTimeSeconds = avgTimeMs
-    ? Math.round(avgTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    ? msToTruncatedSeconds(avgTimeMs)
     : null
   const bestTimeSeconds = bestTimeMs
-    ? Math.round(bestTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    ? msToTruncatedSeconds(bestTimeMs)
     : null
 
   // Today's date in YYYY-MM-DD format (Pacific Time, not UTC)

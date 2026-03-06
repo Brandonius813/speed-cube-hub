@@ -230,6 +230,30 @@ export function computeSessionStats(solves: Solve[]): SessionStats {
   }
 }
 
+export function truncateMsToCentiseconds(ms: number): number {
+  if (ms === Infinity) return Infinity
+  return Math.max(0, Math.trunc(ms / 10)) * 10
+}
+
+export function msToTruncatedSeconds(ms: number): number {
+  return Math.max(0, Math.trunc(ms / 10)) / 100
+}
+
+export function formatTimeMsCentiseconds(ms: number): string {
+  if (ms === Infinity) return "DNF"
+
+  const totalCentiseconds = Math.max(0, Math.trunc(ms / 10))
+  const minutes = Math.floor(totalCentiseconds / 6000)
+  const seconds = Math.floor((totalCentiseconds % 6000) / 100)
+  const centiseconds = totalCentiseconds % 100
+
+  if (minutes === 0) {
+    return `${seconds}.${String(centiseconds).padStart(2, "0")}`
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`
+}
+
 /**
  * Format milliseconds to cubing display format.
  * - Under 60s: "12.326"

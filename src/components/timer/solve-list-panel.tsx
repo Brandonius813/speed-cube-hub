@@ -13,32 +13,22 @@ import {
   useState,
 } from "react"
 import { cn, formatDuration } from "@/lib/utils"
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 import type { DividerLabel } from "@/lib/timer/session-dividers"
-
-function fmt(ms: number, dec = 2): string {
-  const s = ms / 1000
-  if (s < 60) return s.toFixed(dec)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toFixed(dec).padStart(dec + 3, "0")}`
-}
 
 function fmtSolve(s: Solve): string {
   if (s.penalty === "DNF") return "DNF"
   const ms = s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
-  return fmt(ms) + (s.penalty === "+2" ? "+" : "")
+  return formatTimeMsCentiseconds(ms) + (s.penalty === "+2" ? "+" : "")
 }
 
-const D = (v: number | null) => (v !== null ? fmt(v) : "—")
+const D = (v: number | null) => (v !== null ? formatTimeMsCentiseconds(v) : "—")
 
 function formatFeedTime(seconds: number | null): string {
   if (seconds === null) return "—"
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
+  const formatted = formatTimeMsCentiseconds(seconds * 1000)
+  return seconds >= 60 ? formatted : `${formatted}s`
 }
 
 export interface SolveStats {

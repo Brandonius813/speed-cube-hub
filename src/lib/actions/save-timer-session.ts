@@ -1,5 +1,6 @@
 "use server"
 
+import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
@@ -92,9 +93,9 @@ export async function saveTimerSession(data: {
     : null
   const bestMs = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
 
-  // Convert ms → decimal seconds (round to centiseconds)
-  const avgSeconds = avgMs ? Math.round(avgMs / 10) / 100 : null
-  const bestSeconds = bestMs ? Math.round(bestMs / 10) / 100 : null
+  // Convert ms → decimal seconds by truncating to centiseconds.
+  const avgSeconds = avgMs ? msToTruncatedSeconds(avgMs) : null
+  const bestSeconds = bestMs ? msToTruncatedSeconds(bestMs) : null
 
   // 4. Create the sessions row (the log entry that appears in feed + stats)
   const { data: session, error: sessionError } = await supabase

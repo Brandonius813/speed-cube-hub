@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
@@ -59,9 +60,9 @@ export function CompSimOverlay({
     timerStartRef.current = Date.now()
     const tick = () => {
       if (displayRef.current) {
-        const s = (Date.now() - timerStartRef.current) / 1000
-        displayRef.current.textContent =
-          s < 60 ? s.toFixed(2) : `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, "0")}`
+        displayRef.current.textContent = formatTimeMsCentiseconds(
+          Date.now() - timerStartRef.current
+        )
       }
       rafRef.current = requestAnimationFrame(tick)
     }

@@ -5,6 +5,10 @@ import { Info, Settings } from "lucide-react"
 import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
 import {
+  formatTimeMsCentiseconds,
+  truncateMsToCentiseconds,
+} from "@/lib/timer/averages"
+import {
   type Penalty,
   type TimerSolve as Solve,
   bestStat,
@@ -265,13 +269,6 @@ function backfillGroupsFromMetadata(
   }
 
   return { solves: patched, changed }
-}
-
-function fmt(ms: number, dec = 2): string {
-  const s = ms / 1000
-  if (s < 60) return s.toFixed(dec)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toFixed(dec).padStart(dec + 3, "0")}`
 }
 
 function fmtWholeSeconds(ms: number): string {
@@ -1680,7 +1677,7 @@ export function TimerContent() {
   }
 
   function stopTimer() {
-    const ms = Math.round((performance.now() - startRef.current) / 10) * 10
+    const ms = truncateMsToCentiseconds(performance.now() - startRef.current)
     dispatchEngine({ type: "STOP_SOLVE" })
     addSolve(ms, null)
   }
@@ -2002,7 +1999,9 @@ export function TimerContent() {
       if (!canFinalize || btSolveFinalizedRef.current) return
       btSolveFinalizedRef.current = true
       dispatchEngine({ type: "BT_STOPPED" })
-      const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
+      const fallbackMs = truncateMsToCentiseconds(
+        performance.now() - startRef.current
+      )
       const solveMs =
         typeof time_ms === "number" && Number.isFinite(time_ms) && time_ms > 0
           ? time_ms
@@ -2017,7 +2016,9 @@ export function TimerContent() {
         // Fallback for firmware variants that jump straight to IDLE on stop.
         btSolveFinalizedRef.current = true
         dispatchEngine({ type: "BT_STOPPED" })
-        const fallbackMs = Math.round((performance.now() - startRef.current) / 10) * 10
+        const fallbackMs = truncateMsToCentiseconds(
+          performance.now() - startRef.current
+        )
         addSolve(Math.max(0, fallbackMs), null)
         return
       }
@@ -2828,7 +2829,7 @@ export function TimerContent() {
                     ? "Session paused"
                     : typeVal
                     ? parsedTypeTime !== null
-                      ? `= ${fmt(parsedTypeTime)}`
+                      ? `= ${formatTimeMsCentiseconds(parsedTypeTime)}`
                       : "invalid"
                     : ""}
                 </p>
@@ -3061,7 +3062,9 @@ function TimerReadout({
       lastFrameRef.current = ts
       const elapsed = ts - startMs
       setRunningDisplay(
-        timerUpdateMode === "seconds" ? fmtWholeSeconds(elapsed) : fmt(elapsed)
+        timerUpdateMode === "seconds"
+          ? fmtWholeSeconds(elapsed)
+          : formatTimeMsCentiseconds(elapsed)
       )
       if (!active) return
       raf = requestAnimationFrame(tick)
@@ -3088,7 +3091,9 @@ function TimerReadout({
     if (phase === "idle" && btReset) return "0.00"
     if (!last) return "0.00"
     if (last.penalty === "DNF") return "DNF"
-    return fmt(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
+    return formatTimeMsCentiseconds(
+      last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms
+    )
   }, [btReset, inInspHold, inspSecondsLeft, last, phase, runningDisplay, timerUpdateMode])
 
   return <div className={className}>{display}</div>

@@ -1,16 +1,13 @@
 "use client"
 
 import { Volume2, VolumeX } from "lucide-react"
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import type { CompSimApi } from "@/components/timer/use-comp-sim"
 import type { BackgroundNoise, Ao5Result, CompSimSolve } from "@/lib/timer/comp-sim-engine"
 
 function fmtTime(ms: number): string {
-  if (!isFinite(ms)) return "DNF"
-  const s = ms / 1000
-  if (s < 60) return s.toFixed(2)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toFixed(2).padStart(5, "0")}`
+  return formatTimeMsCentiseconds(ms)
 }
 
 const NOISE_OPTIONS: { value: BackgroundNoise; label: string }[] = [
