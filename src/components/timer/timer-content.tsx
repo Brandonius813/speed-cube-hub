@@ -438,6 +438,13 @@ export function TimerContent() {
     const body = document.body
     const prevRootOverflowY = root.style.overflowY
     const prevBodyOverflowY = body.style.overflowY
+    const prevScrollRestoration = window.history.scrollRestoration
+
+    const resetPageScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+      root.scrollTop = 0
+      body.scrollTop = 0
+    }
 
     const syncTimerViewport = () => {
       const navbar = document.querySelector("header")
@@ -445,6 +452,10 @@ export function TimerContent() {
       root.style.setProperty("--timer-navbar-height", `${navbarHeight}px`)
     }
 
+    window.history.scrollRestoration = "manual"
+    resetPageScroll()
+    const rafId = window.requestAnimationFrame(resetPageScroll)
+    const timeoutId = window.setTimeout(resetPageScroll, 0)
     syncTimerViewport()
     root.style.overflowY = "hidden"
     body.style.overflowY = "hidden"
@@ -452,8 +463,11 @@ export function TimerContent() {
 
     return () => {
       window.removeEventListener("resize", syncTimerViewport)
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timeoutId)
       root.style.overflowY = prevRootOverflowY
       body.style.overflowY = prevBodyOverflowY
+      window.history.scrollRestoration = prevScrollRestoration
       root.style.removeProperty("--timer-navbar-height")
     }
   }, [])
