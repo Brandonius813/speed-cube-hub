@@ -125,20 +125,46 @@ export function CueScreen() {
   )
 }
 
-export function ReadyScreen({ onPointerDown }: { onPointerDown: () => void }) {
+export function ReadyScreen({
+  holdReady,
+  holding,
+  onPointerDown,
+  onPointerUp,
+}: {
+  holdReady: boolean
+  holding: boolean
+  onPointerDown: () => void
+  onPointerUp: () => void
+}) {
   return (
     <div
       className="flex flex-col items-center gap-6 w-full cursor-pointer select-none"
       onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
-      <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full bg-green-500" />
+      <div
+        className={cn(
+          "w-20 h-20 rounded-full flex items-center justify-center transition-colors",
+          holdReady ? "bg-green-500/30" : holding ? "bg-red-500/20" : "bg-green-500/20"
+        )}
+      >
+        <div
+          className={cn(
+            "w-12 h-12 rounded-full transition-colors",
+            holdReady ? "bg-green-400" : holding ? "bg-red-400" : "bg-green-500"
+          )}
+        />
       </div>
-      <p className="text-3xl font-bold text-green-400">
+      <p className={cn("text-3xl font-bold", holdReady ? "text-green-400" : holding ? "text-red-400" : "text-green-400")}>
         Ready
       </p>
       <p className="text-sm text-muted-foreground">
-        Press spacebar or tap to start inspection
+        {holdReady
+          ? "Release to begin inspection"
+          : holding
+            ? "Hold..."
+            : "Hold spacebar or touch to begin inspection"}
       </p>
     </div>
   )

@@ -106,16 +106,12 @@ export function CompSimOverlay({
         return
       }
 
-      if (phase === "ready") {
-        compSim.beginInspection()
-        return
-      }
-
-      if (phase === "inspecting") {
+      if (phase === "ready" || phase === "inspecting") {
         holdingRef.current = true
         setIsHolding(true)
         holdStartRef.current = Date.now()
         setHoldReady(false)
+        return
       }
     }
 
@@ -124,16 +120,20 @@ export function CompSimOverlay({
       e.preventDefault()
       e.stopPropagation()
 
-      if (phase === "inspecting" && holdingRef.current) {
+      if ((phase === "ready" || phase === "inspecting") && holdingRef.current) {
         const held = Date.now() - holdStartRef.current
         holdingRef.current = false
         setIsHolding(false)
         setHoldReady(false)
 
         if (held >= HOLD_MS) {
-          const penalty = insp.finishInspection()
-          inspPenaltyRef.current = penalty
-          compSim.startSolve()
+          if (phase === "ready") {
+            compSim.beginInspection()
+          } else {
+            const penalty = insp.finishInspection()
+            inspPenaltyRef.current = penalty
+            compSim.startSolve()
+          }
         }
       }
     }
@@ -148,7 +148,7 @@ export function CompSimOverlay({
 
   // --- Hold timer check (show green state) ---
   useEffect(() => {
-    if (phase !== "inspecting") return
+    if (phase !== "ready" && phase !== "inspecting") return
     const check = setInterval(() => {
       if (holdingRef.current && Date.now() - holdStartRef.current >= HOLD_MS) {
         setHoldReady(true)
@@ -165,9 +165,7 @@ export function CompSimOverlay({
       const penalty = inspPenaltyRef.current
       inspPenaltyRef.current = null
       compSim.handleSolveComplete(elapsed, penalty)
-    } else if (phase === "ready") {
-      compSim.beginInspection()
-    } else if (phase === "inspecting") {
+    } else if (phase === "ready" || phase === "inspecting") {
       holdingRef.current = true
       setIsHolding(true)
       holdStartRef.current = Date.now()
@@ -176,15 +174,19 @@ export function CompSimOverlay({
   }, [phase, compSim])
 
   const handlePointerUp = useCallback(() => {
-    if (phase === "inspecting" && holdingRef.current) {
+    if ((phase === "ready" || phase === "inspecting") && holdingRef.current) {
       const held = Date.now() - holdStartRef.current
       holdingRef.current = false
       setIsHolding(false)
       setHoldReady(false)
       if (held >= HOLD_MS) {
-        const penalty = insp.finishInspection()
-        inspPenaltyRef.current = penalty
-        compSim.startSolve()
+        if (phase === "ready") {
+          compSim.beginInspection()
+        } else {
+          const penalty = insp.finishInspection()
+          inspPenaltyRef.current = penalty
+          compSim.startSolve()
+        }
       }
     }
   }, [phase, insp, compSim])
@@ -218,7 +220,12 @@ export function CompSimOverlay({
       {phase === "waiting" && <WaitingScreen solveIndex={snapshot.solveIndex} />}
       {phase === "solve_cue" && <CueScreen />}
       {phase === "ready" && (
-        <ReadyScreen onPointerDown={handlePointerDown} />
+        <ReadyScreen
+          holdReady={holdReady}
+          holding={isHolding}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+        />
       )}
       {phase === "inspecting" && (
         <InspectionScreen

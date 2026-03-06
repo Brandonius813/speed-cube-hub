@@ -195,3 +195,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added guarded event-switch flow in `timer-content.tsx`. If an active session has unsaved solves, switching events now prompts the user to end/save the session first (opens End Session flow), then switches automatically after save. If an active session is empty, user gets a cancel-and-switch confirmation instead of silent reset. Also blocks event switching mid-solve/inspection.
 **Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/components/timer/timer-content.tsx` passed. `npx tsc --noEmit` passed after removing duplicate generated `.next/types/* 2.ts` artifacts from local workspace.
+
+---
+
+### 2026-03-06 09:39 AM PT — Comp Sim Accidental-Start Guard
+
+**Task:** Reduce accidental DNF risk in Competition Simulator when solver is called
+**Status:** Updated Comp Sim `ready` phase so inspection no longer starts on a single tap/keypress. Users must now hold and release (550ms threshold) to begin inspection, matching the intentional hold-to-start behavior used elsewhere in the timer. Added matching visual/text feedback on the Ready screen.
+**Files touched:** `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `AGENT_LOG.md`
+**Checks:** `npx eslint src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx` passed. `npx tsc --noEmit` passed.
