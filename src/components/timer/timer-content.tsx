@@ -70,6 +70,8 @@ const SESSION_START_KEY = "timer-session-start"
 const SESSION_PAUSED_MS_KEY = "timer-session-paused-ms"
 const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
+const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
+const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
 
@@ -467,6 +469,7 @@ export function TimerContent() {
     start: 0,
     end: INITIAL_SOLVE_WINDOW,
   })
+  const [pausedAttemptMessage, setPausedAttemptMessage] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
@@ -614,6 +617,7 @@ export function TimerContent() {
     })()
   )
   const sessionPausedRef = useRef(false)
+  const pausedAttemptTimeoutRef = useRef<number | null>(null)
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
@@ -1364,6 +1368,9 @@ export function TimerContent() {
       if (holdTimeoutRef.current) {
         clearTimeout(holdTimeoutRef.current)
       }
+      if (pausedAttemptTimeoutRef.current !== null) {
+        clearTimeout(pausedAttemptTimeoutRef.current)
+      }
       clearPendingScrambleRequests()
     }
   }, [clearPendingScrambleRequests])
@@ -1372,6 +1379,17 @@ export function TimerContent() {
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
     return `${m}:${s.toString().padStart(2, "0")}`
+  }
+
+  function showPausedAttemptPopup(message: string) {
+    setPausedAttemptMessage(message)
+    if (pausedAttemptTimeoutRef.current !== null) {
+      clearTimeout(pausedAttemptTimeoutRef.current)
+    }
+    pausedAttemptTimeoutRef.current = window.setTimeout(() => {
+      setPausedAttemptMessage(null)
+      pausedAttemptTimeoutRef.current = null
+    }, 1300)
   }
 
   function startSession() {
@@ -1574,7 +1592,10 @@ export function TimerContent() {
 
   function handlePress() {
     const currentPhase = phaseRef.current
-    if (sessionPausedRef.current && currentPhase !== "running") return
+    if (sessionPausedRef.current && currentPhase !== "running") {
+      showPausedAttemptPopup(SESSION_PAUSED_SOLVE_MSG)
+      return
+    }
     if (currentPhase === "running") {
       stopTimer()
       return
@@ -1602,7 +1623,10 @@ export function TimerContent() {
   }
 
   function addSolve(time_ms: number, penalty: Penalty) {
-    if (sessionPausedRef.current) return
+    if (sessionPausedRef.current) {
+      showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
+      return
+    }
     const solve: Solve = {
       id: crypto.randomUUID(),
       time_ms,
@@ -1776,7 +1800,10 @@ export function TimerContent() {
       dispatchEngine({ type: "BT_HANDS_OFF" })
     },
     onRunning: () => {
-      if (sessionPausedRef.current) return
+      if (sessionPausedRef.current) {
+        showPausedAttemptPopup(SESSION_PAUSED_SOLVE_MSG)
+        return
+      }
       inspRef.current?.cancelInspection()
       btSolveFinalizedRef.current = false
       if (engineRef.current.getSnapshot().phase !== "running") {
@@ -1785,7 +1812,10 @@ export function TimerContent() {
       dispatchEngine({ type: "BT_RUNNING" })
     },
     onStopped: (time_ms: number | null) => {
-      if (sessionPausedRef.current) return
+      if (sessionPausedRef.current) {
+        showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
+        return
+      }
       const phaseNow = engineRef.current.getSnapshot().phase
       const canFinalize = phaseNow === "running" || phaseNow === "stopped"
       if (!canFinalize || btSolveFinalizedRef.current) return
@@ -2472,16 +2502,23 @@ export function TimerContent() {
                     placeholder="0000"
                     value={typeVal}
                     autoFocus
-                    disabled={sessionPaused}
+                    readOnly={sessionPaused}
+                    onFocus={() => {
+                      if (sessionPaused) showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
+                    }}
                     onChange={(eventInput) => setTypeVal(eventInput.target.value)}
                     onKeyDown={(eventInput) => {
+                      if (sessionPaused) {
+                        if (eventInput.key !== "Tab") eventInput.preventDefault()
+                        showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
+                        return
+                      }
                       if (eventInput.key !== "Enter") return
-                      if (sessionPaused) return
                       if (!parsedTypeTime) return
                       addSolve(parsedTypeTime, null)
                       setTypeVal("")
                     }}
-                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30 read-only:opacity-40 read-only:cursor-not-allowed"
                   />
                 </div>
                 <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
@@ -2615,6 +2652,14 @@ export function TimerContent() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {pausedAttemptMessage && (
+        <div className="pointer-events-none fixed left-1/2 top-16 z-[70] -translate-x-1/2 px-4">
+          <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/15 px-3 py-2 text-xs font-semibold text-yellow-300 shadow-lg backdrop-blur-sm">
+            {pausedAttemptMessage}
           </div>
         </div>
       )}
