@@ -195,3 +195,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added guarded event-switch flow in `timer-content.tsx`. If an active session has unsaved solves, switching events now prompts the user to end/save the session first (opens End Session flow), then switches automatically after save. If an active session is empty, user gets a cancel-and-switch confirmation instead of silent reset. Also blocks event switching mid-solve/inspection.
 **Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/components/timer/timer-content.tsx` passed. `npx tsc --noEmit` passed after removing duplicate generated `.next/types/* 2.ts` artifacts from local workspace.
+
+---
+
+### 2026-03-06 11:05 AM PT — Timer History Delete + Scroll Retention
+
+**Task:** Fix timer-history outlier deletion persistence and keep list scroll position after delete
+**Status:** Confirmed the root cause of returning solves: timer deletes were only removing rows from IndexedDB, so DB-backed sync could restore them later. Built on the latest server-delete fix by updating cross-device sync to reconcile when DB saved-history counts differ in either direction while preserving unsaved local solves. Added a solve-list imperative scroll-preservation hook so deleting a time no longer jumps the list back to the top. Backed up and hard-deleted 16 suspicious 3x3 outlier/DNF rows for the admin account from Supabase (`/tmp/speed-cube-hub-brandon-outlier-solves-20260306.json`).
+**Files touched:** `src/lib/timer/cross-device-sync.ts`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/cross-device-sync.ts src/components/timer/solve-list-panel.tsx src/components/timer/timer-content.tsx` passed. Verified no remaining `333` solves for admin user matched `time_ms < 5000` or `penalty = 'DNF'`.

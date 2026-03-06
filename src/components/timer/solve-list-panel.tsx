@@ -1,6 +1,17 @@
 "use client"
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Fragment,
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { cn, formatDuration } from "@/lib/utils"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 import type { DividerLabel } from "@/lib/timer/session-dividers"
@@ -45,6 +56,10 @@ export type SolveListRow = {
 }
 
 export type SolveSelectionMetric = "single" | "stat1" | "stat2"
+
+export type SolveListPanelHandle = {
+  preserveScrollPosition: () => void
+}
 
 type CurrentSessionLabel = {
   title: string
@@ -110,7 +125,7 @@ function findRowForOffset(
   return Math.max(0, Math.min(totalRows - 1, low - 1))
 }
 
-export const SolveListPanel = memo(function SolveListPanel({
+const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps>(function SolveListPanel({
   rows,
   totalCount,
   rangeStart,
@@ -136,10 +151,11 @@ export const SolveListPanel = memo(function SolveListPanel({
   onShareSolve,
   onUpdateStatCol,
   onRangeChange,
-}: SolveListPanelProps) {
+}, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
   const rangeRef = useRef({ start: -1, end: -1 })
+  const pendingScrollTopRef = useRef<number | null>(null)
   const [openSessionStats, setOpenSessionStats] = useState<DividerLabel | null>(null)
   const sortedBoundaries = useMemo(
     () =>
@@ -180,6 +196,12 @@ export const SolveListPanel = memo(function SolveListPanel({
     onRangeChange({ start, end })
   }, [frozen, getPrefixHeight, onRangeChange, totalCount])
 
+  useImperativeHandle(ref, () => ({
+    preserveScrollPosition() {
+      pendingScrollTopRef.current = listRef.current?.scrollTop ?? 0
+    },
+  }), [])
+
   useEffect(() => {
     rangeRef.current = { start: -1, end: -1 }
     if (!listRef.current) return
@@ -190,6 +212,14 @@ export const SolveListPanel = memo(function SolveListPanel({
   useEffect(() => {
     emitRange()
   }, [emitRange, totalCount, totalHeight])
+
+  useLayoutEffect(() => {
+    const el = listRef.current
+    if (!el || pendingScrollTopRef.current === null) return
+    el.scrollTop = pendingScrollTopRef.current
+    pendingScrollTopRef.current = null
+    emitRange()
+  }, [emitRange, rows, totalCount])
 
   useEffect(() => {
     const el = listRef.current
@@ -523,3 +553,9 @@ export const SolveListPanel = memo(function SolveListPanel({
     </div>
   )
 })
+
+SolveListPanelInner.displayName = "SolveListPanel"
+
+export const SolveListPanel = memo(SolveListPanelInner)
+
+SolveListPanel.displayName = "SolveListPanel"

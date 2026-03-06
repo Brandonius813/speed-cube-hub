@@ -12,6 +12,7 @@ import {
 } from "@/lib/timer/stats"
 import {
   SolveListPanel,
+  type SolveListPanelHandle,
   type SolveListRow,
   type SolveSelectionMetric,
   type SolveStats,
@@ -423,6 +424,7 @@ export function TimerContent() {
     setMobilePaneHeight,
   } = useTimerPaneLayout("main")
   const timerTopAreaRef = useRef<HTMLDivElement | null>(null)
+  const solveListPanelRef = useRef<SolveListPanelHandle | null>(null)
   const [desktopPaneTopOffsetPx, setDesktopPaneTopOffsetPx] = useState(112)
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(() => {
     try {
@@ -1174,7 +1176,7 @@ export function TimerContent() {
       // pull them in. This is a one-time cost per device per event.
       const shouldBackfillGroups = needsHistoricGroupBackfill(loaded)
 
-      syncSolvesFromDb(event, loaded.length, solveStoreRef.current, {
+      syncSolvesFromDb(event, solveStoreRef.current, {
         forceGroupBackfill: shouldBackfillGroups,
         localSolves: loaded,
       }).then(
@@ -1660,6 +1662,7 @@ export function TimerContent() {
 
     const solveSnapshot = solvesRef.current.find((solve) => solve.id === id) ?? null
 
+    solveListPanelRef.current?.preserveScrollPosition()
     setSolves((previous) => previous.filter((solve) => solve.id !== id))
     void solveStoreRef.current
       .deleteSolve(id)
@@ -2483,6 +2486,7 @@ export function TimerContent() {
       ) : (
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
           <SolveListPanel
+            ref={solveListPanelRef}
             rows={solveRows}
             totalCount={solves.length}
             rangeStart={solveRange.start}
