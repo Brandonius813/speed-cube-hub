@@ -267,7 +267,7 @@ export function TimeDistributionChart({
   }
 
   return (
-    <Card className="h-full border-border/50 bg-card flex flex-col">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-foreground">Time Distribution</CardTitle>
         <div className="flex items-center gap-1">
@@ -309,8 +309,8 @@ export function TimeDistributionChart({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1">
-        <div className="h-full">
+      <CardContent>
+        <div className="h-[260px] sm:h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid

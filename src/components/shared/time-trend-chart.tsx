@@ -380,7 +380,7 @@ export function TimeTrendChart({
   }
 
   return (
-    <Card className="h-full border-border/50 bg-card flex flex-col">
+    <Card className="border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5">
         <CardTitle className="text-foreground">Time Trend</CardTitle>
         {onScopeChange ? (
@@ -404,9 +404,9 @@ export function TimeTrendChart({
           </div>
         ) : null}
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 px-2 pb-2 pt-1">
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="min-h-0 flex-1">
+      <CardContent className="px-2 pb-2 pt-1">
+        <div className="flex flex-col">
+          <div className="h-[260px] sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
