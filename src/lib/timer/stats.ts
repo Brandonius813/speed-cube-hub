@@ -1,5 +1,16 @@
 export type Penalty = "+2" | "DNF" | null
-export type TimerSolve = { id: string; time_ms: number; penalty: Penalty; scramble: string; group?: string | null }
+export type TimerSolve = {
+  id: string
+  time_ms: number
+  penalty: Penalty
+  scramble: string
+  group?: string | null
+  notes?: string | null
+  phases?: number[] | null
+  solve_number?: number
+  solved_at?: string
+  created_at?: string
+}
 
 export const STAT_OPTIONS = ["mo3", "ao5", "ao10", "ao12", "ao25", "ao50", "ao100", "ao200", "ao500", "ao1000"]
 

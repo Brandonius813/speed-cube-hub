@@ -31,7 +31,10 @@ import {
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
-import { deleteSolve as deleteSolveAction } from "@/lib/actions/timer"
+import {
+  deleteSolve as deleteSolveAction,
+  updateSolve as updateSolveAction,
+} from "@/lib/actions/timer"
 import {
   computeSessionDividers,
   formatSessionDividerDate,
@@ -40,6 +43,7 @@ import {
 import { getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
+import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import {
   PANE_REGISTRY,
   PANE_TOOL_OPTIONS,
@@ -75,8 +79,10 @@ const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
 const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
+const TIMER_TEXT_SIZE_KEY = "timer-text-size"
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
+type TimerTextSize = "md" | "lg" | "xl"
 
 const TIMER_UPDATE_MODE_OPTIONS: Array<{
   value: TimerUpdateMode
@@ -85,6 +91,36 @@ const TIMER_UPDATE_MODE_OPTIONS: Array<{
   { value: "realtime", label: "Real-time" },
   { value: "seconds", label: "Seconds" },
   { value: "solving", label: "None" },
+]
+
+const TIMER_TEXT_SIZE_OPTIONS: Array<{ value: TimerTextSize; label: string }> = [
+  { value: "md", label: "Default" },
+  { value: "lg", label: "Large" },
+  { value: "xl", label: "XL" },
+]
+
+const TIMER_READOUT_SIZE_CLASSES: Record<TimerTextSize, string> = {
+  md: "text-[clamp(4.5rem,18vw,12rem)] leading-none",
+  lg: "text-[clamp(5.25rem,21vw,14rem)] leading-none",
+  xl: "text-[clamp(6rem,24vw,16rem)] leading-none",
+}
+
+const TYPING_INPUT_SIZE_CLASSES: Record<TimerTextSize, string> = {
+  md: "text-[clamp(4.5rem,18vw,12rem)]",
+  lg: "text-[clamp(5rem,20vw,13rem)]",
+  xl: "text-[clamp(5.5rem,22vw,14rem)]",
+}
+
+const SCRAMBLE_TEXT_SIZE_CLASSES: Record<TimerTextSize, string> = {
+  md: "text-lg sm:text-xl 2xl:text-[1.45rem]",
+  lg: "text-xl sm:text-2xl 2xl:text-[1.65rem]",
+  xl: "text-[1.4rem] sm:text-[1.75rem] 2xl:text-[1.9rem]",
+}
+
+const TIMER_SHORTCUT_LABELS = [
+  { key: "+", action: "+2 on selected or last solve" },
+  { key: "D", action: "DNF on selected or last solve" },
+  { key: "N", action: "Next scramble" },
 ]
 
 const INLINE_SLOT_OPTIONS: Array<{ slot: DesktopPaneSlot; label: string }> = [
@@ -129,6 +165,17 @@ type PendingScrambleRequest = {
   kind: "current" | "prefetch"
   attempt: number
   timeoutId: number
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target instanceof HTMLButtonElement ||
+    target.isContentEditable
+  )
 }
 
 function loadSessionGroups(eventId: string): SessionGroupMeta[] {
@@ -324,22 +371,22 @@ function summaryToStats(summary: StatsSummary): SolveStats {
 }
 
 function toChartSolve(solve: Solve, eventId: string, solveNumber: number): StoredSolve {
-  const timestamp = new Date(1704067200000 + solveNumber * 1000).toISOString()
+  const timestamp = solve.solved_at ?? new Date(1704067200000 + solveNumber * 1000).toISOString()
   return {
     id: solve.id,
     timer_session_id: "local-session",
     user_id: "local-user",
-    solve_number: solveNumber,
+    solve_number: solve.solve_number ?? solveNumber,
     time_ms: solve.time_ms,
     penalty: solve.penalty,
     scramble: solve.scramble,
     event: eventId,
     comp_sim_group: null,
-    notes: null,
-    phases: null,
+    notes: solve.notes ?? null,
+    phases: solve.phases ?? null,
     solve_session_id: null,
     solved_at: timestamp,
-    created_at: timestamp,
+    created_at: solve.created_at ?? timestamp,
   }
 }
 
@@ -394,9 +441,18 @@ export function TimerContent() {
     } catch {}
     return "realtime"
   })
+  const [timerTextSize, setTimerTextSize] = useState<TimerTextSize>(() => {
+    try {
+      const raw = localStorage.getItem(TIMER_TEXT_SIZE_KEY)
+      return raw === "md" || raw === "lg" || raw === "xl" ? raw : "lg"
+    } catch {
+      return "lg"
+    }
+  })
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<SolveSelectionMetric>("single")
+  const [detailSolveId, setDetailSolveId] = useState<string | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
   const [practiceType, setPracticeType] = useState(() => {
@@ -603,6 +659,8 @@ export function TimerContent() {
   const tapToInspectRef = useRef(false)
   const btConnectedRef = useRef(false)
   const settingsRef = useRef<HTMLDivElement>(null)
+  const settingsOpenRef = useRef(false)
+  const shareModalOpenRef = useRef(false)
   const scrambleHistoryRef = useRef<string[]>([])
   const scrambleIdxRef = useRef(0)
   const nextScrambleRef = useRef<string | null>(null)
@@ -638,6 +696,7 @@ export function TimerContent() {
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
   const btSolveFinalizedRef = useRef(false)
+  const shortcutSolveRef = useRef<Solve | null>(null)
 
   const hydrateDividerMetadata = useCallback(async (
     eventId: string,
@@ -708,6 +767,8 @@ export function TimerContent() {
   scrambleReadyRef.current = engineSnapshot.scrambleReady
   solvesRef.current = solves
   statColsRef.current = statCols
+  settingsOpenRef.current = settingsOpen
+  shareModalOpenRef.current = shareModalOpen
 
   // Compute saved vs current session solve counts for display + stats
   const unsavedSolves = useMemo(() => getUnsavedSolves(solves), [solves])
@@ -731,7 +792,6 @@ export function TimerContent() {
     () => (showAllStatsInList ? computeStatsSync(solves, statCols) : stats),
     [showAllStatsInList, solves, statCols, stats]
   )
-  const panelCurrentSolveCount = showAllStatsInList ? solves.length : currentSolveCount
   const panelSavedSolveCount = showAllStatsInList ? 0 : savedSolveCount
 
   const groupDividers = useMemo(
@@ -1183,6 +1243,7 @@ export function TimerContent() {
       if (cancelled) return
       setSolves(loaded)
       setSelectedId(null)
+      setDetailSolveId(null)
       setSolveRange((prev) => ({
         ...prev,
         start: 0,
@@ -1365,12 +1426,45 @@ export function TimerContent() {
   useEffect(() => {
     const dn = (eventKey: KeyboardEvent) => {
       if (btConnectedRef.current) return
+      if (isInteractiveTarget(eventKey.target)) return
+      if (settingsOpenRef.current || shareModalOpenRef.current) return
       if (eventKey.code === "Space") {
         eventKey.preventDefault()
         if (eventKey.repeat || typing) return
         handlePress()
         return
       }
+      if (typing) return
+
+      const idleLikePhase = phaseRef.current === "idle" || phaseRef.current === "stopped"
+      const hasModifier = eventKey.metaKey || eventKey.ctrlKey || eventKey.altKey
+      const shortcutSolve = shortcutSolveRef.current
+      const lowerKey = eventKey.key.toLowerCase()
+
+      if (idleLikePhase && !hasModifier) {
+        if (eventKey.key === "+" && shortcutSolve) {
+          eventKey.preventDefault()
+          setPenalty(
+            shortcutSolve.id,
+            shortcutSolve.penalty === "+2" ? null : "+2"
+          )
+          return
+        }
+        if (lowerKey === "d" && shortcutSolve) {
+          eventKey.preventDefault()
+          setPenalty(
+            shortcutSolve.id,
+            shortcutSolve.penalty === "DNF" ? null : "DNF"
+          )
+          return
+        }
+        if (lowerKey === "n") {
+          eventKey.preventDefault()
+          nextScramble()
+          return
+        }
+      }
+
       if (!typing && phaseRef.current === "running") stopTimer()
     }
 
@@ -1513,6 +1607,7 @@ export function TimerContent() {
     setShowEndModal(false)
     setSolves(retainedSolves)
     setSelectedId(null)
+    setDetailSolveId(null)
     setIdle()
     initStats(sessionEventId, [])
     cancelSession()
@@ -1556,6 +1651,7 @@ export function TimerContent() {
     setSessionGroups(nextGroups)
 
     setSelectedId(null)
+    setDetailSolveId(null)
     setIdle()
     initStats(eventRef.current, [])
     setSessionStartTime(null)
@@ -1675,11 +1771,15 @@ export function TimerContent() {
       showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
       return
     }
+    const solvedAt = new Date().toISOString()
     const solve: Solve = {
       id: crypto.randomUUID(),
       time_ms,
       penalty,
       scramble: scrambleRef.current,
+      notes: null,
+      solved_at: solvedAt,
+      created_at: solvedAt,
     }
     setSolves((previous) => [...previous, solve])
     void solveStoreRef.current
@@ -1691,14 +1791,24 @@ export function TimerContent() {
   }
 
   function setPenalty(id: string, penalty: Penalty) {
+    const targetSolve = solvesRef.current.find((solve) => solve.id === id) ?? null
     setSolves((previous) =>
       previous.map((solve) => (solve.id === id ? { ...solve, penalty } : solve))
     )
     void solveStoreRef.current
-      .updatePenalty(id, penalty)
+      .updateSolve(id, { penalty })
       .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_update" }))
     updateStatsForPenalty(eventRef.current, id, penalty)
-    setSelectedId(null)
+    if (targetSolve?.group) {
+      void updateSolveAction(id, { penalty }).then((result) => {
+        if (result.error) {
+          emitTimerTelemetry("timer_error", {
+            scope: "solve_update_server_penalty",
+            message: result.error,
+          })
+        }
+      })
+    }
   }
 
   function deleteSolve(id: string): boolean {
@@ -1732,6 +1842,7 @@ export function TimerContent() {
     })
     deleteStatsSolve(eventRef.current, id)
     setSelectedId(null)
+    setDetailSolveId(null)
     return true
   }
 
@@ -1745,6 +1856,7 @@ export function TimerContent() {
   function applyEventChange(newEvent: string) {
     insp.cancelInspection()
     setSelectedId(null)
+    setDetailSolveId(null)
     setEvent(newEvent)
     setIdle()
     setShowEndModal(false)
@@ -1930,6 +2042,15 @@ export function TimerContent() {
     () => solves.find((solve) => solve.id === selectedId) ?? null,
     [selectedId, solves]
   )
+  const detailSolve = useMemo(
+    () => solves.find((solve) => solve.id === detailSolveId) ?? null,
+    [detailSolveId, solves]
+  )
+  const detailSolveNumber = useMemo(() => {
+    if (!detailSolve) return null
+    const index = solves.findIndex((solve) => solve.id === detailSolve.id)
+    return index >= 0 ? index + 1 : null
+  }, [detailSolve, solves])
 
   const handleSelectSolveCell = useCallback(
     (id: string, metric: SolveSelectionMetric) => {
@@ -1938,19 +2059,33 @@ export function TimerContent() {
     },
     []
   )
+  const handleOpenSolveDetail = useCallback((id: string) => {
+    setSelectedId(id)
+    setSelectedMetric("single")
+    setDetailSolveId(id)
+  }, [])
 
-  const handleShareSolve = useCallback((solve: Solve) => {
-    const solveIndex = solves.findIndex((entry) => entry.id === solve.id)
-    const solveNumber = solveIndex >= 0 ? solveIndex + 1 : solves.length
+  useEffect(() => {
+    if (detailSolveId && !detailSolve) {
+      setDetailSolveId(null)
+    }
+  }, [detailSolve, detailSolveId])
+  const isSolvePersonalBest = useCallback((solve: Solve | null) => {
+    if (!solve) return false
     const selectedTime = getEffectiveSolveMs(solve)
+    if (selectedTime === null) return false
     const bestTime = solves.reduce<number | null>((best, entry) => {
       const current = getEffectiveSolveMs(entry)
       if (current === null) return best
       if (best === null || current < best) return current
       return best
     }, null)
-    const isPB =
-      selectedTime !== null && bestTime !== null && selectedTime === bestTime
+    return bestTime !== null && selectedTime === bestTime
+  }, [solves])
+
+  const handleShareSolve = useCallback((solve: Solve) => {
+    const solveIndex = solves.findIndex((entry) => entry.id === solve.id)
+    const solveNumber = solveIndex >= 0 ? solveIndex + 1 : solves.length
 
     setShareCardData({
       variant: "solve",
@@ -1959,14 +2094,39 @@ export function TimerContent() {
       penalty: solve.penalty,
       scramble: solve.scramble,
       solveNumber: Math.max(1, solveNumber),
-      solvedAt: new Date().toISOString(),
+      solvedAt: solve.solved_at ?? solve.created_at ?? new Date().toISOString(),
       userName: shareAuthor.userName,
       handle: shareAuthor.handle,
       avatarUrl: shareAuthor.avatarUrl,
-      isPB,
+      isPB: isSolvePersonalBest(solve),
     })
     setShareModalOpen(true)
-  }, [event, shareAuthor.avatarUrl, shareAuthor.handle, shareAuthor.userName, solves])
+  }, [event, isSolvePersonalBest, shareAuthor.avatarUrl, shareAuthor.handle, shareAuthor.userName, solves])
+  const handleSolveNotesChange = useCallback(async (solveId: string, notes: string) => {
+    const nextNotes = notes.trim() || null
+    const targetSolve = solvesRef.current.find((solve) => solve.id === solveId) ?? null
+
+    setSolves((previous) =>
+      previous.map((solve) =>
+        solve.id === solveId ? { ...solve, notes: nextNotes } : solve
+      )
+    )
+
+    await solveStoreRef.current
+      .updateSolve(solveId, { notes: nextNotes })
+      .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_update_notes" }))
+
+    if (targetSolve?.group) {
+      void updateSolveAction(solveId, { notes: nextNotes }).then((result) => {
+        if (result.error) {
+          emitTimerTelemetry("timer_error", {
+            scope: "solve_update_server_notes",
+            message: result.error,
+          })
+        }
+      })
+    }
+  }, [])
 
   const mostRecentSavedSessionSolves = useMemo(() => {
     const groupedSolves = solves.filter((solve) => !!solve.group)
@@ -1995,6 +2155,23 @@ export function TimerContent() {
     if (!mostRecentGroupId) return []
     return solves.filter((solve) => solve.group === mostRecentGroupId)
   }, [sessionGroups, solves])
+  const sessionStatsForPanel = useMemo(
+    () =>
+      hasActiveSession || currentSessionSolves.length > 0
+        ? stats
+        : computeStatsSync(mostRecentSavedSessionSolves, statCols),
+    [
+      currentSessionSolves.length,
+      hasActiveSession,
+      mostRecentSavedSessionSolves,
+      statCols,
+      stats,
+    ]
+  )
+  const sessionSolveCountForPanel =
+    hasActiveSession || currentSessionSolves.length > 0
+      ? currentSolveCount
+      : mostRecentSavedSessionSolves.length
 
   const sessionChartSolves = useMemo(() => {
     const source =
@@ -2057,6 +2234,7 @@ export function TimerContent() {
 
   const parsedTypeTime = useMemo(() => parseTime(typeVal), [typeVal])
   const last = solves[solves.length - 1]
+  shortcutSolveRef.current = detailSolve ?? selectedSolve ?? last ?? null
   const scrambleNavBtn =
     "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
   const sp = (eventPointer: React.PointerEvent) => eventPointer.stopPropagation()
@@ -2112,7 +2290,10 @@ export function TimerContent() {
             {practiceType !== "Comp Sim" && (
               <div className="flex-1 min-w-0 flex items-center justify-center">
                 <button
-                  className="text-center text-lg sm:text-xl 2xl:text-[1.45rem] font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer"
+                  className={cn(
+                    "text-center font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer",
+                    SCRAMBLE_TEXT_SIZE_CLASSES[timerTextSize]
+                  )}
                   onClick={() => {
                     navigator.clipboard.writeText(scramble).then(() => {
                       setScrambleCopied(true)
@@ -2141,7 +2322,7 @@ export function TimerContent() {
                     className={scrambleNavBtn}
                     onClick={nextScramble}
                     disabled={timingActive}
-                    title="Skip to next scramble"
+                    title="Skip to next scramble (N)"
                   >
                     Next →
                   </button>
@@ -2322,6 +2503,52 @@ export function TimerContent() {
                           >
                             {option.label}
                           </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Text Size
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            className={cn(
+                              "h-7 rounded border text-[11px] font-medium transition-colors",
+                              timerTextSize === option.value
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => {
+                              setTimerTextSize(option.value)
+                              try {
+                                localStorage.setItem(TIMER_TEXT_SIZE_KEY, option.value)
+                              } catch {}
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Shortcuts
+                      </span>
+                      <div className="space-y-1">
+                        {TIMER_SHORTCUT_LABELS.map((shortcut) => (
+                          <div
+                            key={shortcut.key}
+                            className="flex items-center justify-between gap-3 rounded border border-border/50 bg-muted/20 px-2 py-1 text-[11px]"
+                          >
+                            <span className="text-muted-foreground">
+                              {shortcut.action}
+                            </span>
+                            <span className="font-mono text-foreground">
+                              {shortcut.key}
+                            </span>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -2538,6 +2765,7 @@ export function TimerContent() {
             scrollResetKey={event}
             frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
             stats={panelStats}
+            sessionStats={sessionStatsForPanel}
             statCols={statCols}
             latestSolve={last ?? null}
             selectedId={selectedId}
@@ -2547,9 +2775,11 @@ export function TimerContent() {
             groupBoundaries={groupDividers.boundaries}
             groupDividerLabels={groupDividers.labels}
             currentSessionLabel={currentSessionLabel}
-            currentSolveCount={panelCurrentSolveCount}
+            currentSolveCount={sessionSolveCountForPanel}
             showAllStats={showAllStatsInList}
+            textSize={timerTextSize}
             onSetSelectedId={setSelectedId}
+            onOpenSolveDetail={handleOpenSolveDetail}
             onSelectSolveCell={handleSelectSolveCell}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}
@@ -2587,7 +2817,10 @@ export function TimerContent() {
                       addSolve(parsedTypeTime, null)
                       setTypeVal("")
                     }}
-                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30 read-only:opacity-40 read-only:cursor-not-allowed"
+                    className={cn(
+                      "bg-transparent border-b-2 border-border text-center font-mono font-light w-full outline-none placeholder:text-muted-foreground/30 read-only:opacity-40 read-only:cursor-not-allowed",
+                      TYPING_INPUT_SIZE_CLASSES[timerTextSize]
+                    )}
                   />
                 </div>
                 <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
@@ -2603,7 +2836,8 @@ export function TimerContent() {
             ) : (
               <TimerReadout
                 className={cn(
-                  "font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light transition-colors duration-75 cursor-default",
+                  "font-mono font-light transition-colors duration-75 cursor-default",
+                  TIMER_READOUT_SIZE_CLASSES[timerTextSize],
                   timeColor
                 )}
                 phase={phase}
@@ -2632,6 +2866,7 @@ export function TimerContent() {
                       : "border-border text-muted-foreground hover:border-yellow-500 hover:text-yellow-400"
                   )}
                   onClick={() => setPenalty(last.id, last.penalty === "+2" ? null : "+2")}
+                  title="+2 penalty (+)"
                 >
                   +2
                 </button>
@@ -2645,6 +2880,7 @@ export function TimerContent() {
                   onClick={() =>
                     setPenalty(last.id, last.penalty === "DNF" ? null : "DNF")
                   }
+                  title="DNF (D)"
                 >
                   DNF
                 </button>
@@ -2751,6 +2987,18 @@ export function TimerContent() {
           onSaved={handleSessionSaved}
         />
       )}
+      <SolveDetailModal
+        key={detailSolve?.id ?? "closed"}
+        solve={detailSolve}
+        solveNumber={detailSolveNumber}
+        isOpen={detailSolve !== null}
+        isPersonalBest={isSolvePersonalBest(detailSolve)}
+        onClose={() => setDetailSolveId(null)}
+        onPenaltyChange={setPenalty}
+        onDelete={deleteSolve}
+        onNotesChange={handleSolveNotesChange}
+        onShare={handleShareSolve}
+      />
       {shareCardData && (
         <ShareModal
           isOpen={shareModalOpen}

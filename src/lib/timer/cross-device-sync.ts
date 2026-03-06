@@ -57,6 +57,11 @@ function dbSolveToTimer(
     time_ms: s.time_ms,
     penalty: s.penalty,
     scramble: s.scramble,
+    notes: s.notes ?? null,
+    phases: s.phases ?? null,
+    solve_number: s.solve_number,
+    solved_at: s.solved_at,
+    created_at: s.created_at,
     // Prefer timer session grouping; fall back to day-based grouping for old/imported solves.
     group: group ?? null,
   }

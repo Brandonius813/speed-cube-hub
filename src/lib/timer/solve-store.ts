@@ -66,6 +66,10 @@ const memoryStore: MemoryStoreState = {
 
 export interface SolveStore {
   appendSolve(sessionId: string, solve: TimerSolve): Promise<void>
+  updateSolve(
+    id: string,
+    updates: Partial<Pick<TimerSolve, "penalty" | "notes">>
+  ): Promise<void>
   updatePenalty(id: string, penalty: Penalty): Promise<void>
   deleteSolve(id: string): Promise<void>
   listWindow(sessionId: string, offset: number, limit: number): Promise<TimerSolve[]>
@@ -126,6 +130,11 @@ async function loadIndexedDbSession(
         penalty: value.penalty,
         scramble: value.scramble,
         group: value.group ?? null,
+        notes: value.notes ?? null,
+        phases: value.phases ?? null,
+        solve_number: value.solve_number,
+        solved_at: value.solved_at,
+        created_at: value.created_at,
       })
       cursor.continue()
     }
@@ -181,6 +190,11 @@ async function listIndexedDbWindow(
         penalty: value.penalty,
         scramble: value.scramble,
         group: value.group ?? null,
+        notes: value.notes ?? null,
+        phases: value.phases ?? null,
+        solve_number: value.solve_number,
+        solved_at: value.solved_at,
+        created_at: value.created_at,
       })
       cursor.continue()
     }
@@ -189,16 +203,20 @@ async function listIndexedDbWindow(
   return rows
 }
 
-async function updateIndexedDbPenalty(
+async function updateIndexedDbSolve(
   db: IDBDatabase,
   id: string,
-  penalty: Penalty
+  updates: Partial<Pick<TimerSolve, "penalty" | "notes">>
 ): Promise<void> {
   const tx = db.transaction(STORE_NAME, "readwrite")
   const store = tx.objectStore(STORE_NAME)
   const record = await requestToPromise(store.get(id)) as SolveRecord | undefined
   if (record) {
-    store.put({ ...record, penalty, updatedAt: Date.now() } satisfies SolveRecord)
+    store.put({
+      ...record,
+      ...updates,
+      updatedAt: Date.now(),
+    } satisfies SolveRecord)
   }
   await transactionDone(tx)
 }
@@ -346,9 +364,26 @@ export function createSolveStore(): SolveStore {
       )
     },
 
+    async updateSolve(id: string, updates: Partial<Pick<TimerSolve, "penalty" | "notes">>) {
+      return withDb(
+        (db) => updateIndexedDbSolve(db, id, updates),
+        async () => {
+          for (const [sessionId, solves] of memoryStore.bySession.entries()) {
+            const idx = solves.findIndex((solve) => solve.id === id)
+            if (idx !== -1) {
+              const next = [...solves]
+              next[idx] = { ...next[idx], ...updates }
+              memoryStore.bySession.set(sessionId, next)
+              break
+            }
+          }
+        }
+      )
+    },
+
     async updatePenalty(id: string, penalty: Penalty) {
       return withDb(
-        (db) => updateIndexedDbPenalty(db, id, penalty),
+        (db) => updateIndexedDbSolve(db, id, { penalty }),
         async () => {
           for (const [sessionId, solves] of memoryStore.bySession.entries()) {
             const idx = solves.findIndex((solve) => solve.id === id)
@@ -471,4 +506,3 @@ export function createSolveStore(): SolveStore {
     },
   }
 }
-

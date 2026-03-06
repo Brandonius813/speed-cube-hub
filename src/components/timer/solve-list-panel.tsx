@@ -56,6 +56,7 @@ export type SolveListRow = {
 }
 
 export type SolveSelectionMetric = "single" | "stat1" | "stat2"
+export type SolveListTextSize = "md" | "lg" | "xl"
 
 export type SolveListPanelHandle = {
   preserveScrollPosition: () => void
@@ -74,6 +75,7 @@ interface SolveListPanelProps {
   scrollResetKey: string
   frozen?: boolean
   stats: SolveStats
+  sessionStats: SolveStats
   statCols: [string, string]
   latestSolve: Solve | null
   selectedId: string | null
@@ -85,7 +87,9 @@ interface SolveListPanelProps {
   currentSessionLabel?: CurrentSessionLabel | null
   currentSolveCount?: number
   showAllStats?: boolean
+  textSize?: SolveListTextSize
   onSetSelectedId: (id: string | null) => void
+  onOpenSolveDetail: (id: string) => void
   onSelectSolveCell: (id: string, metric: SolveSelectionMetric) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
@@ -94,9 +98,66 @@ interface SolveListPanelProps {
   onRangeChange: (next: { start: number; end: number }) => void
 }
 
-const ROW_HEIGHT = 34
 const DIVIDER_GAP = 24
 const OVERSCAN = 14
+const ROW_HEIGHT_BY_SIZE: Record<SolveListTextSize, number> = {
+  md: 34,
+  lg: 38,
+  xl: 42,
+}
+
+const PANEL_TEXT_CLASSES: Record<
+  SolveListTextSize,
+  {
+    summaryHeader: string
+    summaryLabel: string
+    summaryValue: string
+    footerHeader: string
+    footerValue: string
+    listHeader: string
+    listIndex: string
+    listValue: string
+    listStat: string
+    actionButton: string
+  }
+> = {
+  md: {
+    summaryHeader: "text-[11px] 2xl:text-[12px]",
+    summaryLabel: "text-[12px] 2xl:text-[13px]",
+    summaryValue: "text-[14px] 2xl:text-[15px]",
+    footerHeader: "text-[11px] 2xl:text-[12px]",
+    footerValue: "text-[13px] 2xl:text-[14px]",
+    listHeader: "text-[11px]",
+    listIndex: "text-[12px] 2xl:text-[13px]",
+    listValue: "text-[14px] 2xl:text-[15px]",
+    listStat: "text-[12px] 2xl:text-[13px]",
+    actionButton: "text-[12px]",
+  },
+  lg: {
+    summaryHeader: "text-[12px] 2xl:text-[13px]",
+    summaryLabel: "text-[13px] 2xl:text-[14px]",
+    summaryValue: "text-[15px] 2xl:text-[16px]",
+    footerHeader: "text-[12px] 2xl:text-[13px]",
+    footerValue: "text-[14px] 2xl:text-[15px]",
+    listHeader: "text-[12px]",
+    listIndex: "text-[13px] 2xl:text-[14px]",
+    listValue: "text-[15px] 2xl:text-[16px]",
+    listStat: "text-[13px] 2xl:text-[14px]",
+    actionButton: "text-[13px]",
+  },
+  xl: {
+    summaryHeader: "text-[13px] 2xl:text-[14px]",
+    summaryLabel: "text-[14px] 2xl:text-[15px]",
+    summaryValue: "text-[16px] 2xl:text-[17px]",
+    footerHeader: "text-[13px] 2xl:text-[14px]",
+    footerValue: "text-[15px] 2xl:text-[16px]",
+    listHeader: "text-[13px]",
+    listIndex: "text-[14px] 2xl:text-[15px]",
+    listValue: "text-[16px] 2xl:text-[17px]",
+    listStat: "text-[14px] 2xl:text-[15px]",
+    actionButton: "text-[14px]",
+  },
+}
 
 function countBoundariesAtOrBefore(boundaries: number[], rowIndex: number): number {
   let low = 0
@@ -133,6 +194,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   scrollResetKey,
   frozen = false,
   stats,
+  sessionStats,
   statCols,
   latestSolve,
   selectedId,
@@ -144,7 +206,9 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   currentSessionLabel,
   currentSolveCount,
   showAllStats = false,
+  textSize = "md",
   onSetSelectedId,
+  onOpenSolveDetail,
   onSelectSolveCell,
   onSetPenalty,
   onDeleteSolve,
@@ -164,11 +228,13 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
         : [],
     [groupBoundaries]
   )
+  const rowHeight = ROW_HEIGHT_BY_SIZE[textSize]
+  const textClasses = PANEL_TEXT_CLASSES[textSize]
   const getPrefixHeight = useCallback(
     (rowIndex: number) =>
-      rowIndex * ROW_HEIGHT +
+      rowIndex * rowHeight +
       countBoundariesAtOrBefore(sortedBoundaries, rowIndex) * DIVIDER_GAP,
-    [sortedBoundaries]
+    [rowHeight, sortedBoundaries]
   )
   const totalHeight = useMemo(
     () => getPrefixHeight(totalCount),
@@ -245,6 +311,10 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
     },
     []
   )
+  const sessionBestByKey = useMemo(
+    () => new Map(sessionStats.milestoneRows.map((row) => [row.key, row.best])),
+    [sessionStats.milestoneRows]
+  )
 
   return (
     <div
@@ -256,41 +326,48 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
           <thead>
             <tr className="text-foreground">
               <th className="text-left font-normal pb-2"></th>
-              <th className="text-right font-sans text-[11px] 2xl:text-[12px] uppercase tracking-widest font-normal pb-2 pr-2">cur</th>
-              <th className="text-right font-sans text-[11px] 2xl:text-[12px] uppercase tracking-widest font-normal pb-2">best</th>
+              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 pr-2", textClasses.summaryHeader)}>current</th>
+              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 pr-2", textClasses.summaryHeader)}>all-time</th>
+              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2", textClasses.summaryHeader)}>session</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="font-sans text-[12px] 2xl:text-[13px] text-foreground py-1 pr-2">single</td>
-              <td className="text-right pr-2 font-mono text-[14px] 2xl:text-[15px] text-foreground font-medium">{last ? fmtSolve(last) : "—"}</td>
-              <td className="text-right font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(stats.best)}</td>
+              <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>single</td>
+              <td className={cn("text-right pr-2 font-mono text-foreground font-medium", textClasses.summaryValue)}>{last ? fmtSolve(last) : "—"}</td>
+              <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(stats.best)}</td>
+              <td className={cn("text-right font-mono text-foreground", textClasses.summaryValue)}>{D(sessionStats.best)}</td>
             </tr>
             {stats.milestoneRows.map((row) => (
               <tr key={row.key}>
-                <td className="font-sans text-[12px] 2xl:text-[13px] text-foreground py-1 pr-2">{row.key}</td>
-                <td className="text-right pr-2 font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(row.cur)}</td>
-                <td className="text-right font-mono text-[14px] 2xl:text-[15px] text-foreground">{D(row.best)}</td>
+                <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>{row.key}</td>
+                <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(row.cur)}</td>
+                <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(row.best)}</td>
+                <td className={cn("text-right font-mono text-foreground", textClasses.summaryValue)}>{D(sessionBestByKey.get(row.key) ?? null)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="flex justify-between border-t border-border mt-2.5 pt-2">
-          <span className="font-sans text-[11px] 2xl:text-[12px] uppercase tracking-wider text-foreground">
-            Count <span className="font-mono normal-case tracking-normal text-[13px] 2xl:text-[14px] text-foreground">{currentSolveCount ?? totalCount}</span>
+        <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-border pt-2">
+          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
+            Count <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{currentSolveCount ?? totalCount}</span>
             {savedSolveCount > 0 && (
-              <span className="font-mono normal-case tracking-normal text-[11px] 2xl:text-[12px] text-foreground/80 ml-1">/{totalCount}</span>
+              <span className={cn("ml-1 font-mono normal-case tracking-normal text-foreground/80", textClasses.footerHeader)}>/{totalCount}</span>
             )}
           </span>
-          <span className="font-sans text-[11px] 2xl:text-[12px] uppercase tracking-wider text-foreground">
-            Mean <span className="font-mono normal-case tracking-normal text-[13px] 2xl:text-[14px] text-foreground">{D(stats.mean)}</span>
+          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
+            All Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(stats.mean)}</span>
+          </span>
+          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
+            Sess Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(sessionStats.mean)}</span>
           </span>
         </div>
         {selectedSolve && (
           <div className="mt-2.5 flex gap-2">
             <button
               className={cn(
-                "text-[12px] font-sans px-2.5 py-1.5 rounded border transition-colors",
+                textClasses.actionButton,
+                "font-sans px-2.5 py-1.5 rounded border transition-colors",
                 selectedSolve.penalty === "+2"
                   ? "bg-yellow-500 text-black border-yellow-500"
                   : "border-border text-foreground hover:border-yellow-500 hover:text-yellow-400"
@@ -301,7 +378,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             </button>
             <button
               className={cn(
-                "text-[12px] font-sans px-2.5 py-1.5 rounded border transition-colors",
+                textClasses.actionButton,
+                "font-sans px-2.5 py-1.5 rounded border transition-colors",
                 selectedSolve.penalty === "DNF"
                   ? "bg-red-500 text-white border-red-500"
                   : "border-border text-foreground hover:border-red-500 hover:text-red-400"
@@ -311,21 +389,21 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
               DNF
             </button>
             <button
-              className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-destructive hover:text-destructive transition-colors"
+              className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-destructive hover:text-destructive transition-colors")}
               onClick={() => onDeleteSolve(selectedSolve.id)}
             >
               Del
             </button>
             {onShareSolve && (
               <button
-                className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors"
+                className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors")}
                 onClick={() => onShareSolve(selectedSolve)}
               >
                 Share
               </button>
             )}
             <button
-              className="text-[12px] font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:text-foreground transition-colors"
+              className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:text-foreground transition-colors")}
               onClick={() => onSetSelectedId(null)}
             >
               Clear
@@ -355,12 +433,12 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
         <table className="w-full text-[13px] font-mono border-collapse">
           <thead className="sticky top-0 bg-background z-10">
             <tr className="text-foreground border-b border-border">
-              <th className="pr-1.5 py-2 w-[4.25rem] font-normal"></th>
-              <th className="text-right pr-1.5 py-2 font-sans text-[11px] font-normal uppercase tracking-wider text-foreground">single</th>
+              <th className={cn("pr-1.5 py-2 w-[4.25rem] font-normal", textClasses.listHeader)}></th>
+              <th className={cn("text-right pr-1.5 py-2 font-sans font-normal uppercase tracking-wider text-foreground", textClasses.listHeader)}>single</th>
               {([0, 1] as const).map((idx) => (
-                <th key={idx} className={cn("py-1 font-normal text-right", idx === 0 ? "pr-1.5" : "pr-2")}>
+                <th key={idx} className={cn("py-1 font-normal text-right", textClasses.listHeader, idx === 0 ? "pr-1.5" : "pr-2")}>
                   <select
-                    className="bg-transparent text-[11px] font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right"
+                    className={cn("bg-transparent font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right", textClasses.listHeader)}
                     value={statCols[idx]}
                     onChange={(e) => onUpdateStatCol(idx, e.target.value)}
                     title="Click to change"
@@ -425,15 +503,19 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                       "hover:bg-muted/30 transition-colors cursor-pointer",
                       selectedId === row.solve.id && "bg-muted/40"
                     )}
-                    onClick={() => onSelectSolveCell(row.solve.id, "single")}
-                    style={{ height: `${ROW_HEIGHT}px` }}
+                    onClick={() => {
+                      onSelectSolveCell(row.solve.id, "single")
+                      onOpenSolveDetail(row.solve.id)
+                    }}
+                    style={{ height: `${rowHeight}px` }}
                   >
-                    <td className="text-right pr-1.5 py-0.5 text-foreground/90 font-mono text-[12px] 2xl:text-[13px]">
+                    <td className={cn("text-right pr-1.5 py-0.5 text-foreground/90 font-mono", textClasses.listIndex)}>
                       {row.displayNumber}
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 font-mono text-[14px] 2xl:text-[15px] text-foreground transition-colors",
+                        "text-right pr-1.5 py-0.5 font-mono text-foreground transition-colors",
+                        textClasses.listValue,
                         selectedId === row.solve.id &&
                           selectedMetric === "single" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -441,13 +523,15 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                       onClick={(eventClick) => {
                         eventClick.stopPropagation()
                         onSelectSolveCell(row.solve.id, "single")
+                        onOpenSolveDetail(row.solve.id)
                       }}
                     >
                       {fmtSolve(row.solve)}
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-1.5 py-0.5 text-foreground font-mono text-[12px] 2xl:text-[13px] transition-colors",
+                        "text-right pr-1.5 py-0.5 text-foreground font-mono transition-colors",
+                        textClasses.listStat,
                         selectedId === row.solve.id &&
                           selectedMetric === "stat1" &&
                           "text-indigo-300 bg-indigo-500/15"
@@ -461,7 +545,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                     </td>
                     <td
                       className={cn(
-                        "text-right pr-2 py-0.5 text-foreground font-mono text-[12px] 2xl:text-[13px] transition-colors",
+                        "text-right pr-2 py-0.5 text-foreground font-mono transition-colors",
+                        textClasses.listStat,
                         selectedId === row.solve.id &&
                           selectedMetric === "stat2" &&
                           "text-indigo-300 bg-indigo-500/15"

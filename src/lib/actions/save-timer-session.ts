@@ -6,7 +6,15 @@ import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 
 export async function saveTimerSession(data: {
   event: string
-  solves: Array<{ time_ms: number; penalty: "+2" | "DNF" | null; scramble: string; comp_sim_group?: number | null }>
+  solves: Array<{
+    time_ms: number
+    penalty: "+2" | "DNF" | null
+    scramble: string
+    notes?: string | null
+    phases?: number[] | null
+    solved_at?: string
+    comp_sim_group?: number | null
+  }>
   duration_minutes: number
   practice_type: string
   title: string | null
@@ -63,6 +71,9 @@ export async function saveTimerSession(data: {
     scramble: s.scramble,
     event: data.event,
     comp_sim_group: s.comp_sim_group ?? null,
+    notes: s.notes ?? null,
+    phases: s.phases ?? null,
+    solved_at: s.solved_at ?? undefined,
     solve_session_id: solveSession.id,
   }))
 
