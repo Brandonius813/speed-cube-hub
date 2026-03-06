@@ -211,9 +211,17 @@ export async function updateSolve(
   return {}
 }
 
+type DeleteSolveFallback = {
+  event: string
+  time_ms: number
+  penalty: "+2" | "DNF" | null
+  scramble: string
+}
+
 export async function deleteSolve(
-  solveId: string
-): Promise<{ error?: string }> {
+  solveId: string,
+  fallback?: DeleteSolveFallback
+): Promise<{ error?: string; deleted?: boolean }> {
   const supabase = await createClient()
 
   const {
@@ -224,17 +232,64 @@ export async function deleteSolve(
     return { error: "Not authenticated" }
   }
 
-  const { error } = await supabase
+  const { data: deletedRows, error } = await supabase
     .from("solves")
     .delete()
     .eq("id", solveId)
     .eq("user_id", user.id)
+    .select("id")
 
   if (error) {
     return { error: error.message }
   }
 
-  return {}
+  if ((deletedRows?.length ?? 0) > 0) {
+    return { deleted: true }
+  }
+
+  if (!fallback) {
+    return { deleted: false }
+  }
+
+  // Legacy local solve IDs can differ from DB IDs after session saves.
+  // Fallback to a best-match lookup so delete persists across navigation.
+  let fallbackQuery = supabase
+    .from("solves")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("event", fallback.event)
+    .eq("time_ms", fallback.time_ms)
+    .eq("scramble", fallback.scramble)
+    .order("solved_at", { ascending: false })
+    .limit(1)
+
+  if (fallback.penalty === null) {
+    fallbackQuery = fallbackQuery.is("penalty", null)
+  } else {
+    fallbackQuery = fallbackQuery.eq("penalty", fallback.penalty)
+  }
+
+  const { data: matches, error: matchError } = await fallbackQuery
+  if (matchError) {
+    return { error: matchError.message }
+  }
+
+  const fallbackId = matches?.[0]?.id
+  if (!fallbackId) {
+    return { deleted: false }
+  }
+
+  const { error: fallbackDeleteError } = await supabase
+    .from("solves")
+    .delete()
+    .eq("id", fallbackId)
+    .eq("user_id", user.id)
+
+  if (fallbackDeleteError) {
+    return { error: fallbackDeleteError.message }
+  }
+
+  return { deleted: true }
 }
 
 /**

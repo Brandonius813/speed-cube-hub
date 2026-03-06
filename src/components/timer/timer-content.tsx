@@ -30,6 +30,7 @@ import {
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
+import { deleteSolve as deleteSolveAction } from "@/lib/actions/timer"
 import {
   computeSessionDividers,
   formatSessionDividerDate,
@@ -1657,10 +1658,30 @@ export function TimerContent() {
     const confirmed = window.confirm("Are you sure you want to delete this solve?")
     if (!confirmed) return false
 
+    const solveSnapshot = solvesRef.current.find((solve) => solve.id === id) ?? null
+
     setSolves((previous) => previous.filter((solve) => solve.id !== id))
     void solveStoreRef.current
       .deleteSolve(id)
       .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_delete" }))
+    void deleteSolveAction(
+      id,
+      solveSnapshot
+        ? {
+            event: eventRef.current,
+            time_ms: solveSnapshot.time_ms,
+            penalty: solveSnapshot.penalty,
+            scramble: solveSnapshot.scramble,
+          }
+        : undefined
+    ).then((result) => {
+      if (result.error) {
+        emitTimerTelemetry("timer_error", {
+          scope: "solve_delete_server",
+          message: result.error,
+        })
+      }
+    })
     deleteStatsSolve(eventRef.current, id)
     setSelectedId(null)
     return true
