@@ -60,6 +60,7 @@ interface SolveListPanelProps {
   frozen?: boolean
   stats: SolveStats
   statCols: [string, string]
+  latestSolve: Solve | null
   selectedId: string | null
   selectedMetric: SolveSelectionMetric
   selectedSolve: Solve | null
@@ -118,6 +119,7 @@ export const SolveListPanel = memo(function SolveListPanel({
   frozen = false,
   stats,
   statCols,
+  latestSolve,
   selectedId,
   selectedMetric,
   selectedSolve,
@@ -204,7 +206,7 @@ export const SolveListPanel = memo(function SolveListPanel({
 
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
-  const last = totalCount > 0 ? rows[0]?.solve ?? null : null
+  const last = latestSolve
   const closeSessionStats = useCallback(() => setOpenSessionStats(null), [])
   const openStatsForDivider = useCallback(
     (label: DividerLabel | null) => {

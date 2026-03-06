@@ -2222,6 +2222,7 @@ export function TimerContent() {
             frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
             stats={panelStats}
             statCols={statCols}
+            latestSolve={last ?? null}
             selectedId={selectedId}
             selectedMetric={selectedMetric}
             selectedSolve={selectedSolve}
