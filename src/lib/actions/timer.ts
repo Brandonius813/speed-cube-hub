@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstError } from "@/lib/validations"
 import type { TimerSession, Solve } from "@/lib/types"
+import type { SessionGroupMeta } from "@/lib/timer/session-dividers"
 
 export async function createTimerSession(
   event: string,
@@ -338,6 +339,88 @@ export async function getSolvesByEvent(
   }
 
   return { solves: (data as Solve[]) || [] }
+}
+
+type SessionDividerRow = {
+  timer_session_id: string | null
+  title: string | null
+  created_at: string
+  num_solves: number | null
+  num_dnf: number | null
+  duration_minutes: number | null
+  avg_time: number | null
+  best_time: number | null
+  practice_type: string
+}
+
+/**
+ * Fetch session-divider metadata keyed by timer_session_id.
+ * Used by the timer to show real saved-session titles after cross-device sync.
+ */
+export async function getSessionDividerGroupsByTimerSession(
+  event: string,
+  timerSessionIds: string[]
+): Promise<{ data: SessionGroupMeta[]; error?: string }> {
+  const uniqueTimerSessionIds = Array.from(
+    new Set(
+      timerSessionIds
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0)
+    )
+  )
+
+  if (uniqueTimerSessionIds.length === 0) {
+    return { data: [] }
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { data: [], error: "Not authenticated" }
+  }
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select(
+      "timer_session_id, title, created_at, num_solves, num_dnf, duration_minutes, avg_time, best_time, practice_type"
+    )
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .in("timer_session_id", uniqueTimerSessionIds)
+
+  if (error) {
+    return { data: [], error: error.message }
+  }
+
+  const byTimerSessionId = new Map<string, SessionGroupMeta>()
+
+  for (const row of (data ?? []) as SessionDividerRow[]) {
+    if (!row.timer_session_id) continue
+    const savedAtMs = new Date(row.created_at).getTime()
+    const savedAt = Number.isFinite(savedAtMs) ? savedAtMs : Date.now()
+    const group: SessionGroupMeta = {
+      id: row.timer_session_id,
+      title: row.title?.trim() || "Saved Session",
+      savedAt,
+      solveCount: row.num_solves ?? 0,
+      durationMinutes: row.duration_minutes ?? undefined,
+      numDnf: row.num_dnf ?? undefined,
+      avgSeconds: row.avg_time ?? null,
+      bestSeconds: row.best_time ?? null,
+      practiceType: row.practice_type ?? undefined,
+    }
+
+    const existing = byTimerSessionId.get(row.timer_session_id)
+    if (!existing || group.savedAt > existing.savedAt) {
+      byTimerSessionId.set(row.timer_session_id, group)
+    }
+  }
+
+  return { data: Array.from(byTimerSessionId.values()) }
 }
 
 /**

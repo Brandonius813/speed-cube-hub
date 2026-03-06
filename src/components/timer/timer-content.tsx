@@ -56,6 +56,7 @@ import type {
   StatsWorkerResponse,
 } from "@/lib/timer/stats-worker-types"
 import { getProfile } from "@/lib/actions/profiles"
+import { getSessionDividerGroupsByTimerSession } from "@/lib/actions/timer"
 import type { ShareCardData } from "@/components/share/share-card"
 import type { Solve as StoredSolve } from "@/lib/types"
 
@@ -226,8 +227,11 @@ function fmtWholeSeconds(ms: number): string {
 }
 
 function parseTime(raw: string): number | null {
-  if (raw.includes(":")) {
-    const colonMatch = raw.trim().match(/^(\d+):(\d{1,2})(?:[.,](\d{1,2}))?$/)
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  if (trimmed.includes(":")) {
+    const colonMatch = trimmed.match(/^(\d+):(\d{1,2})(?:[.,](\d{1,2}))?$/)
     if (!colonMatch) return null
     const mins = parseInt(colonMatch[1], 10)
     const secs = parseInt(colonMatch[2], 10)
@@ -236,7 +240,17 @@ function parseTime(raw: string): number | null {
     const ms = (mins * 60 + secs) * 1000 + cs * 10
     return ms > 0 ? ms : null
   }
-  const digits = raw.replace(/\D/g, "")
+
+  const normalized = trimmed.replace(",", ".")
+  if (normalized.includes(".")) {
+    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(normalized)) return null
+    const seconds = Number(normalized)
+    if (!Number.isFinite(seconds) || seconds <= 0) return null
+    const ms = Math.round(seconds * 100) * 10
+    return ms > 0 ? ms : null
+  }
+
+  const digits = normalized.replace(/\D/g, "")
   if (!digits) return null
   const padded = digits.padStart(3, "0")
   const cs = parseInt(padded.slice(-2), 10)
@@ -444,6 +458,7 @@ export function TimerContent() {
     }
   })
   const [showEndModal, setShowEndModal] = useState(false)
+  const [pendingEventSwitch, setPendingEventSwitch] = useState<string | null>(null)
   const [sessionSaved, setSessionSaved] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
   const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
@@ -598,10 +613,62 @@ export function TimerContent() {
       }
     })()
   )
+  const sessionPausedRef = useRef(false)
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
   const btSolveFinalizedRef = useRef(false)
+
+  const hydrateDividerMetadata = useCallback(async (
+    eventId: string,
+    nextSolves: Solve[]
+  ): Promise<SessionGroupMeta[] | null> => {
+    const groupedIds = Array.from(
+      new Set(
+        nextSolves
+          .map((solve) => solve.group)
+          .filter(
+            (groupId): groupId is string =>
+              typeof groupId === "string" &&
+              groupId.length > 0 &&
+              !groupId.startsWith("date:")
+          )
+      )
+    )
+
+    if (groupedIds.length === 0) return null
+
+    const existingGroups = loadSessionGroups(eventId)
+    const existingById = new Map(existingGroups.map((group) => [group.id, group]))
+    const missingIds = groupedIds.filter((groupId) => !existingById.has(groupId))
+    if (missingIds.length === 0) return null
+
+    const { data, error } = await getSessionDividerGroupsByTimerSession(eventId, missingIds)
+    if (error || data.length === 0) return null
+
+    let changed = false
+    for (const group of data) {
+      const existing = existingById.get(group.id)
+      if (!existing) {
+        existingById.set(group.id, group)
+        changed = true
+        continue
+      }
+      const shouldRefreshTitle =
+        existing.title.trim().toLowerCase() === "saved session" &&
+        group.title.trim().length > 0
+      if (shouldRefreshTitle) {
+        existingById.set(group.id, { ...existing, ...group })
+        changed = true
+      }
+    }
+
+    if (!changed) return null
+
+    const merged = Array.from(existingById.values()).sort((a, b) => a.savedAt - b.savedAt)
+    saveSessionGroups(eventId, merged)
+    return merged
+  }, [])
 
   const insp = useInspection({
     voice: inspVoiceOn,
@@ -617,6 +684,7 @@ export function TimerContent() {
   eventRef.current = event
   inspOnRef.current = inspOn
   inspRef.current = insp
+  sessionPausedRef.current = sessionPaused
   scrambleReadyRef.current = engineSnapshot.scrambleReady
   solvesRef.current = solves
   statColsRef.current = statCols
@@ -1092,6 +1160,10 @@ export function TimerContent() {
       // Stats only computed on current session solves (ungrouped)
       const currentSolves = loaded.filter((s) => !s.group)
       initStats(event, currentSolves)
+      void hydrateDividerMetadata(event, loaded).then((mergedGroups) => {
+        if (cancelled || !mergedGroups || eventRef.current !== event) return
+        setSessionGroups(mergedGroups)
+      })
 
       // Background cross-device sync: if DB has more solves than local,
       // pull them in. This is a one-time cost per device per event.
@@ -1106,13 +1178,17 @@ export function TimerContent() {
           setSolves(synced)
           const syncedCurrent = synced.filter((s) => !s.group)
           initStats(event, syncedCurrent)
+          void hydrateDividerMetadata(event, synced).then((mergedGroups) => {
+            if (cancelled || !mergedGroups || eventRef.current !== event) return
+            setSessionGroups(mergedGroups)
+          })
         }
       )
     })()
     return () => {
       cancelled = true
     }
-  }, [event, initStats, migrateLegacySolves])
+  }, [event, hydrateDividerMetadata, initStats, migrateLegacySolves])
 
   useEffect(() => {
     clearPendingScrambleRequests()
@@ -1404,6 +1480,11 @@ export function TimerContent() {
       localStorage.removeItem(SESSION_PAUSED_KEY)
       localStorage.removeItem(SESSION_PAUSED_AT_KEY)
     } catch {}
+
+    if (pendingEventSwitch && pendingEventSwitch !== eventRef.current) {
+      applyEventChange(pendingEventSwitch)
+    }
+    setPendingEventSwitch(null)
   }
 
   function startTimer() {
@@ -1468,6 +1549,7 @@ export function TimerContent() {
 
   function handlePress() {
     const currentPhase = phaseRef.current
+    if (sessionPausedRef.current && currentPhase !== "running") return
     if (currentPhase === "running") {
       stopTimer()
       return
@@ -1481,7 +1563,6 @@ export function TimerContent() {
     }
 
     if (currentPhase === "idle" || currentPhase === "stopped") {
-      if (sessionPaused) return
       if (!scrambleReadyRef.current) return
       inspHoldRef.current = false
       if (inspOnRef.current) {
@@ -1496,6 +1577,7 @@ export function TimerContent() {
   }
 
   function addSolve(time_ms: number, penalty: Penalty) {
+    if (sessionPausedRef.current) return
     const solve: Solve = {
       id: crypto.randomUUID(),
       time_ms,
@@ -1542,8 +1624,7 @@ export function TimerContent() {
     } catch {}
   }
 
-  function changeEvent(newEvent: string) {
-    if (hasActiveSession) cancelSession()
+  function applyEventChange(newEvent: string) {
     insp.cancelInspection()
     setSelectedId(null)
     setEvent(newEvent)
@@ -1557,6 +1638,48 @@ export function TimerContent() {
     if (!available.includes(practiceType)) {
       changePracticeType("Solves")
     }
+  }
+
+  function changeEvent(newEvent: string) {
+    if (newEvent === eventRef.current) return
+
+    if (
+      phaseRef.current === "running" ||
+      phaseRef.current === "inspecting" ||
+      phaseRef.current === "holding" ||
+      phaseRef.current === "ready"
+    ) {
+      window.alert("Finish the current solve before switching puzzles.")
+      return
+    }
+
+    if (hasActiveSession) {
+      const unsavedSolveCount = solvesRef.current.filter((solve) => !solve.group).length
+      if (unsavedSolveCount > 0) {
+        const currentEventName =
+          EVENTS.find((entry) => entry.id === eventRef.current)?.name ?? eventRef.current
+        const nextEventName = EVENTS.find((entry) => entry.id === newEvent)?.name ?? newEvent
+        const shouldEndSession = window.confirm(
+          `You have an active ${currentEventName} session with ${unsavedSolveCount} unsaved solve${
+            unsavedSolveCount === 1 ? "" : "s"
+          }. End this session before switching to ${nextEventName}?`
+        )
+        if (shouldEndSession) {
+          setPendingEventSwitch(newEvent)
+          endSession()
+        }
+        return
+      }
+
+      const shouldCancelEmptySession = window.confirm(
+        "You have an active session with no solves. Cancel it and switch puzzles?"
+      )
+      if (!shouldCancelEmptySession) return
+      cancelSession()
+    }
+
+    setPendingEventSwitch(null)
+    applyEventChange(newEvent)
   }
 
   function updateStatCol(idx: 0 | 1, key: string) {
@@ -1610,21 +1733,25 @@ export function TimerContent() {
 
   btCallbacksRef.current = {
     onHandsOn: () => {
+      if (sessionPausedRef.current) return
       dispatchEngine({ type: "BT_HANDS_ON" })
     },
     onGetSet: () => {
+      if (sessionPausedRef.current) return
       if (phaseRef.current !== "inspecting") {
         inspRef.current?.cancelInspection()
       }
       dispatchEngine({ type: "BT_GET_SET" })
     },
     onHandsOff: () => {
+      if (sessionPausedRef.current) return
       if (phaseRef.current !== "inspecting") {
         inspRef.current?.cancelInspection()
       }
       dispatchEngine({ type: "BT_HANDS_OFF" })
     },
     onRunning: () => {
+      if (sessionPausedRef.current) return
       inspRef.current?.cancelInspection()
       btSolveFinalizedRef.current = false
       if (engineRef.current.getSnapshot().phase !== "running") {
@@ -1633,6 +1760,7 @@ export function TimerContent() {
       dispatchEngine({ type: "BT_RUNNING" })
     },
     onStopped: (time_ms: number | null) => {
+      if (sessionPausedRef.current) return
       const phaseNow = engineRef.current.getSnapshot().phase
       const canFinalize = phaseNow === "running" || phaseNow === "stopped"
       if (!canFinalize || btSolveFinalizedRef.current) return
@@ -1646,6 +1774,7 @@ export function TimerContent() {
       addSolve(solveMs, null)
     },
     onIdle: () => {
+      if (sessionPausedRef.current) return
       inspRef.current?.cancelInspection()
       const phaseNow = engineRef.current.getSnapshot().phase
       if (phaseNow === "running" && !btSolveFinalizedRef.current) {
@@ -2314,22 +2443,26 @@ export function TimerContent() {
                 >
                   <input
                     type="text"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     placeholder="0000"
                     value={typeVal}
                     autoFocus
+                    disabled={sessionPaused}
                     onChange={(eventInput) => setTypeVal(eventInput.target.value)}
                     onKeyDown={(eventInput) => {
                       if (eventInput.key !== "Enter") return
+                      if (sessionPaused) return
                       if (!parsedTypeTime) return
                       addSolve(parsedTypeTime, null)
                       setTypeVal("")
                     }}
-                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30"
+                    className="bg-transparent border-b-2 border-border text-center font-mono text-8xl sm:text-[10rem] md:text-[12rem] leading-none font-light w-full outline-none placeholder:text-muted-foreground/30 disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
                 <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
-                  {typeVal
+                  {sessionPaused
+                    ? "Session paused"
+                    : typeVal
                     ? parsedTypeTime !== null
                       ? `= ${fmt(parsedTypeTime)}`
                       : "invalid"
@@ -2471,7 +2604,10 @@ export function TimerContent() {
             (Date.now() - activeSessionStartMs - sessionPausedMsRef.current) / 1000 / 60
           }
           sessionStartMs={activeSessionStartMs}
-          onClose={() => setShowEndModal(false)}
+          onClose={() => {
+            setShowEndModal(false)
+            setPendingEventSwitch(null)
+          }}
           onSaved={handleSessionSaved}
         />
       )}
