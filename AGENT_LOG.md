@@ -6,16 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
----
-
-### 2026-03-02 PT — Timer Scramble Top Bar Session
-
-**Task:** Move scramble into top bar of timer
-**Status:** Scramble text moved to top bar between event dropdown and settings. Linter changed `HOLD_MS` from 200→550.
-**Files touched:** timer-content.tsx
-
----
-
 ### 2026-03-02 PT — Timer Typing Mode Bug Fix Session
 
 **Task:** Bug fix — colon-separated time parsing
@@ -196,3 +186,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Identified two causes: (1) `npm run dev` launched as a background job was not reliably persistent, and (2) dev responses sent HSTS headers, creating HTTPS confusion on localhost. Implemented a PID-tracked detached starter (`dev:up/dev:status/dev:down/dev:logs`), made HSTS production-only, and updated docs/tracking files.
 **Files touched:** `scripts/dev-server.mjs`, `package.json`, `.gitignore`, `next.config.ts`, `README.md`, `AGENTS.md`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `npx tsc --noEmit` passed. Verified `npm run dev:up` → `dev:status` → HTTP 200 on `http://127.0.0.1:3000` → `dev:down`.
+
+---
+
+### 2026-03-06 09:18 AM PT — Timer Event Switch Session Guard
+
+**Task:** Prevent active timer session from being silently reset when changing puzzle/event
+**Status:** Added guarded event-switch flow in `timer-content.tsx`. If an active session has unsaved solves, switching events now prompts the user to end/save the session first (opens End Session flow), then switches automatically after save. If an active session is empty, user gets a cancel-and-switch confirmation instead of silent reset. Also blocks event switching mid-solve/inspection.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `npx eslint src/components/timer/timer-content.tsx` passed. `npx tsc --noEmit` passed after removing duplicate generated `.next/types/* 2.ts` artifacts from local workspace.
