@@ -5,6 +5,7 @@ import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
+import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import {
   IdleScreen,
   ScrambleScreen,
@@ -37,6 +38,12 @@ export function CompSimOverlay({
   const compSim = useCompSim({ event, sessionStartMs })
   const { snapshot, ao5Result } = compSim
   const { phase } = snapshot
+  const wakeLockEnabled = phase !== "idle" && phase !== "sim_complete"
+
+  useScreenWakeLock({
+    enabled: wakeLockEnabled,
+    context: "comp_sim",
+  })
 
   const insp = useInspection({
     voice: inspectionVoiceEnabled,
