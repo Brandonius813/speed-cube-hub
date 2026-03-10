@@ -317,8 +317,14 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             <tr className="text-foreground">
               <th className="text-left font-normal pb-2"></th>
               <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 pr-2", textClasses.summaryHeader)}>current</th>
-              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 pr-2", textClasses.summaryHeader)}>all-time</th>
-              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2", textClasses.summaryHeader)}>session</th>
+              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 pr-2 leading-tight", textClasses.summaryHeader)}>
+                <span className="block">all-time</span>
+                <span className="block">best</span>
+              </th>
+              <th className={cn("text-right font-sans uppercase tracking-widest font-normal pb-2 leading-tight", textClasses.summaryHeader)}>
+                <span className="block">session</span>
+                <span className="block">best</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -346,10 +352,10 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             )}
           </span>
           <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            All Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(stats.mean)}</span>
+            All-Time Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(stats.mean)}</span>
           </span>
           <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            Sess Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(sessionStats.mean)}</span>
+            Session Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(sessionStats.mean)}</span>
           </span>
         </div>
         {selectedSolve && (
