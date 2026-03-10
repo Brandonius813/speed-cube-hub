@@ -2,6 +2,8 @@ import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions } from "@/lib/actions/sessions"
 import type { Session } from "@/lib/types"
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardPage() {
   let sessions: Session[] = []
 
