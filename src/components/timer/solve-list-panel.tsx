@@ -194,7 +194,6 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   groupBoundaries,
   groupDividerLabels,
   currentSessionLabel,
-  currentSolveCount,
   showAllStats = false,
   textSize = "md",
   onSetSelectedId,
@@ -346,10 +345,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
         </table>
         <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-border pt-2">
           <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            Count <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{currentSolveCount ?? totalCount}</span>
-            {savedSolveCount > 0 && (
-              <span className={cn("ml-1 font-mono normal-case tracking-normal text-foreground/80", textClasses.footerHeader)}>/{totalCount}</span>
-            )}
+            Count <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{totalCount}</span>
           </span>
           <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
             All-Time Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(stats.mean)}</span>
