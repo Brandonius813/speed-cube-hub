@@ -64,6 +64,7 @@ function getDesktopMaxRows(): number {
 function cloneDefaultLayout(): TimerPaneLayoutV1 {
   return {
     ...DEFAULT_TIMER_PANE_LAYOUT,
+    toolPreferences: {},
     desktop: {
       ...DEFAULT_TIMER_PANE_LAYOUT.desktop,
       panes: [],
@@ -183,8 +184,11 @@ function normalizeLayout(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
     heights[paneId] = layout.mobile.heights[paneId] ?? "md"
   }
 
+  const toolPreferences = layout.toolPreferences ?? {}
+
   return {
     ...layout,
+    toolPreferences,
     desktop: {
       cols: TARGET_DESKTOP_COLS,
       rowHeight: DEFAULT_TIMER_PANE_LAYOUT.desktop.rowHeight,
@@ -308,7 +312,12 @@ export function useTimerPaneLayout(layoutKey = "main") {
       if (previous.desktop.panes.some((pane) => pane.tool === tool)) return previous
 
       const usedSlots = getUsedSlots(previous.desktop.panes)
-      const preferredSlot = PANE_REGISTRY[tool].defaultSlot
+      const preference = previous.toolPreferences?.[tool]
+      const preferredSlot = preference?.slot && isDesktopPaneSlot(preference.slot)
+        ? preference.slot
+        : preference?.slot && isLegacyDesktopPaneSlot(preference.slot)
+          ? mapLegacySlot(preference.slot)
+          : PANE_REGISTRY[tool].defaultSlot
       const slot = usedSlots.has(preferredSlot)
         ? firstFreeSlot(usedSlots) ?? preferredSlot
         : preferredSlot
@@ -318,10 +327,10 @@ export function useTimerPaneLayout(layoutKey = "main") {
         tool,
         slot,
         rect: rectForSlot(tool, slot),
-        options:
-          tool === "time_distribution" || tool === "time_trend"
+        options: preference?.options ??
+          (tool === "time_distribution" || tool === "time_trend"
             ? { scope: "session" }
-            : undefined,
+            : undefined),
       }
 
       const next = withUpdatedAt({
@@ -335,7 +344,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
           order: [...previous.mobile.order, pane.id],
           heights: {
             ...previous.mobile.heights,
-            [pane.id]: previous.mobile.heights[pane.id] ?? "md",
+            [pane.id]: preference?.mobileHeight ?? "md",
           },
         },
       })
@@ -347,8 +356,25 @@ export function useTimerPaneLayout(layoutKey = "main") {
   const removePane = useCallback((paneId: string) => {
     localMutatedRef.current = true
     setLayout((previous) => {
+      const removedPane = previous.desktop.panes.find((pane) => pane.id === paneId)
+      if (!removedPane) return previous
+
+      const nextToolPreferences = {
+        ...(previous.toolPreferences ?? {}),
+        [removedPane.tool]: {
+          slot: isDesktopPaneSlot(removedPane.slot)
+            ? removedPane.slot
+            : isLegacyDesktopPaneSlot(removedPane.slot)
+              ? removedPane.slot
+              : inferSlotFromRect(removedPane.rect),
+          options: removedPane.options,
+          mobileHeight: previous.mobile.heights[paneId] ?? "md",
+        },
+      }
+
       const next = withUpdatedAt({
         ...previous,
+        toolPreferences: nextToolPreferences,
         desktop: {
           ...previous.desktop,
           panes: previous.desktop.panes.filter((pane) => pane.id !== paneId),
@@ -372,6 +398,18 @@ export function useTimerPaneLayout(layoutKey = "main") {
       if (existing) {
         const next = withUpdatedAt({
           ...previous,
+          toolPreferences: {
+            ...(previous.toolPreferences ?? {}),
+            [existing.tool]: {
+              slot: isDesktopPaneSlot(existing.slot)
+                ? existing.slot
+                : isLegacyDesktopPaneSlot(existing.slot)
+                  ? existing.slot
+                  : inferSlotFromRect(existing.rect),
+              options: existing.options,
+              mobileHeight: previous.mobile.heights[existing.id] ?? "md",
+            },
+          },
           desktop: {
             ...previous.desktop,
             panes: previous.desktop.panes.filter((pane) => pane.id !== existing.id),
@@ -390,7 +428,12 @@ export function useTimerPaneLayout(layoutKey = "main") {
       if (previous.desktop.panes.length >= TIMER_PANE_MAX) return previous
 
       const usedSlots = getUsedSlots(previous.desktop.panes)
-      const preferredSlot = PANE_REGISTRY[tool].defaultSlot
+      const preference = previous.toolPreferences?.[tool]
+      const preferredSlot = preference?.slot && isDesktopPaneSlot(preference.slot)
+        ? preference.slot
+        : preference?.slot && isLegacyDesktopPaneSlot(preference.slot)
+          ? mapLegacySlot(preference.slot)
+          : PANE_REGISTRY[tool].defaultSlot
       const slot = usedSlots.has(preferredSlot)
         ? firstFreeSlot(usedSlots) ?? preferredSlot
         : preferredSlot
@@ -400,10 +443,10 @@ export function useTimerPaneLayout(layoutKey = "main") {
         tool,
         slot,
         rect: rectForSlot(tool, slot),
-        options:
-          tool === "time_distribution" || tool === "time_trend"
+        options: preference?.options ??
+          (tool === "time_distribution" || tool === "time_trend"
             ? { scope: "session" }
-            : undefined,
+            : undefined),
       }
 
       const next = withUpdatedAt({
@@ -417,7 +460,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
           order: [...previous.mobile.order, pane.id],
           heights: {
             ...previous.mobile.heights,
-            [pane.id]: previous.mobile.heights[pane.id] ?? "md",
+            [pane.id]: preference?.mobileHeight ?? "md",
           },
         },
       })

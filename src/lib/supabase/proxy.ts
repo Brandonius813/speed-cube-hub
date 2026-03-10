@@ -50,6 +50,22 @@ function isProtectedRoute(pathname: string): boolean {
   )
 }
 
+function getSafeNextPath(rawNext: string | null) {
+  if (!rawNext) {
+    return "/feed"
+  }
+
+  if (!rawNext.startsWith("/") || rawNext.startsWith("//") || rawNext.startsWith("/\\")) {
+    return "/feed"
+  }
+
+  if (AUTH_ROUTES.includes(rawNext)) {
+    return "/feed"
+  }
+
+  return rawNext
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -106,7 +122,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from login/signup to feed
   if (user && AUTH_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone()
-    url.pathname = "/feed"
+    url.pathname = getSafeNextPath(request.nextUrl.searchParams.get("next"))
     url.search = ""
     const redirectResponse = NextResponse.redirect(url)
     supabaseResponse.cookies.getAll().forEach((cookie) => {

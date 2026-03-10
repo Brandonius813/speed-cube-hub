@@ -77,10 +77,17 @@ export type TimerPaneInstance = {
   }
 }
 
+export type TimerPaneToolPreference = {
+  slot?: DesktopPaneSlot | LegacyDesktopPaneSlot
+  options?: TimerPaneInstance["options"]
+  mobileHeight?: "sm" | "md" | "lg"
+}
+
 export type TimerPaneLayoutV1 = {
   version: 1
   updatedAtMs: number
   autoHideDuringSolve: boolean
+  toolPreferences?: Partial<Record<PaneToolId, TimerPaneToolPreference>>
   desktop: {
     cols: 12 | 24
     rowHeight: 36

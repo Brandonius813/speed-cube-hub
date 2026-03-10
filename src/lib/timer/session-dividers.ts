@@ -1,3 +1,4 @@
+import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import type { TimerSolve } from "@/lib/timer/stats"
 
 export type SessionGroupMeta = {
@@ -113,13 +114,13 @@ export function computeSessionDividers(
         typeof meta?.avgSeconds === "number"
           ? meta.avgSeconds
           : avgMs !== null
-            ? Math.round(avgMs / 10) / 100
+            ? msToTruncatedSeconds(avgMs)
             : null,
       bestSeconds:
         typeof meta?.bestSeconds === "number"
           ? meta.bestSeconds
           : bestMs !== null
-            ? Math.round(bestMs / 10) / 100
+            ? msToTruncatedSeconds(bestMs)
             : null,
     })
   }

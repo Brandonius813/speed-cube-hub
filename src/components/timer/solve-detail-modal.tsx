@@ -1,19 +1,22 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Copy, Check, Pencil } from "lucide-react"
+import { X, Copy, Check, Pencil, Share2, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { formatTimeMs, getEffectiveTime } from "@/lib/timer/averages"
+import { formatTimeMs } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
-import type { Solve } from "@/lib/types"
+import type { TimerSolve } from "@/lib/timer/stats"
 
 type SolveDetailModalProps = {
-  solve: Solve | null
+  solve: TimerSolve | null
   isOpen: boolean
   onClose: () => void
   onPenaltyChange: (solveId: string, penalty: "+2" | "DNF" | null) => void
-  onDelete: (solveId: string) => void
+  onDelete: (solveId: string) => boolean
   onNotesChange?: (solveId: string, notes: string) => void
+  onShare?: (solve: TimerSolve) => void
+  isPersonalBest?: boolean
+  solveNumber?: number | null
   phaseLabels?: string[]
 }
 
@@ -24,20 +27,15 @@ export function SolveDetailModal({
   onPenaltyChange,
   onDelete,
   onNotesChange,
+  onShare,
+  isPersonalBest = false,
+  solveNumber,
   phaseLabels,
 }: SolveDetailModalProps) {
   const [copied, setCopied] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
-  const [notesValue, setNotesValue] = useState("")
+  const [notesValue, setNotesValue] = useState(() => solve?.notes ?? "")
   const notesRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (solve) {
-      setNotesValue(solve.notes ?? "")
-      setEditingNotes(false)
-      setCopied(false)
-    }
-  }, [solve])
 
   useEffect(() => {
     if (editingNotes && notesRef.current) {
@@ -60,21 +58,32 @@ export function SolveDetailModal({
 
   if (!isOpen || !solve) return null
 
-  const effectiveTime = getEffectiveTime(solve)
+  const effectiveTime =
+    solve.penalty === "DNF"
+      ? Infinity
+      : solve.penalty === "+2"
+        ? solve.time_ms + 2000
+        : solve.time_ms
   const isDNF = solve.penalty === "DNF"
   const isPlus2 = solve.penalty === "+2"
 
-  const solvedDate = new Date(solve.solved_at)
-  const dateStr = solvedDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-  const timeStr = solvedDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  })
+  const solvedAt = solve.solved_at ?? solve.created_at ?? null
+  const solvedDate = solvedAt ? new Date(solvedAt) : null
+  const hasValidDate = !!solvedDate && !Number.isNaN(solvedDate.getTime())
+  const dateStr = hasValidDate
+    ? solvedDate.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null
+  const timeStr = hasValidDate
+    ? solvedDate.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null
 
   const handleCopyScramble = async () => {
     if (!solve.scramble) return
@@ -91,8 +100,8 @@ export function SolveDetailModal({
   }
 
   const handleDelete = () => {
-    onDelete(solve.id)
-    onClose()
+    const deleted = onDelete(solve.id)
+    if (deleted) onClose()
   }
 
   return (
@@ -111,9 +120,17 @@ export function SolveDetailModal({
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-            <span className="text-sm text-muted-foreground">
-              Solve #{solve.solve_number}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Solve #{solveNumber ?? solve.solve_number ?? "?"}
+              </span>
+              {isPersonalBest && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-400/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-green-300">
+                  <Trophy className="h-3 w-3" />
+                  PB
+                </span>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-1 rounded hover:bg-secondary/80 transition-colors"
@@ -139,9 +156,11 @@ export function SolveDetailModal({
                 ({formatTimeMs(solve.time_ms)} + 2.000)
               </span>
             )}
-            <span className="text-xs text-muted-foreground mt-2">
-              {dateStr} at {timeStr}
-            </span>
+            {dateStr && timeStr && (
+              <span className="text-xs text-muted-foreground mt-2">
+                {dateStr} at {timeStr}
+              </span>
+            )}
           </div>
 
           {/* Phase breakdown */}
@@ -275,6 +294,20 @@ export function SolveDetailModal({
               </Button>
             </div>
           </div>
+
+          {onShare && (
+            <div className="px-4 pb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9"
+                onClick={() => onShare(solve)}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                {isPersonalBest ? "Share PB" : "Share Solve"}
+              </Button>
+            </div>
+          )}
 
           {/* Delete */}
           <div className="px-4 pb-4">

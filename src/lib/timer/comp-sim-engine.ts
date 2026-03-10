@@ -1,6 +1,8 @@
 // Competition Simulator state machine
 // Follows the same dispatch/subscribe/getSnapshot pattern as engine.ts
 
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
+
 export type CompSimPhase =
   | "idle"           // Not started — shows start button + noise selector
   | "scramble_shown" // Scramble visible, "Cube is under cover" button
@@ -184,11 +186,7 @@ function effectiveTime(solve: CompSimSolve): number {
 
 /** Format ms to time string (e.g. 10320 → "10.32", 65120 → "1:05.12") */
 function fmtMs(ms: number): string {
-  if (!isFinite(ms)) return "DNF"
-  const s = ms / 1000
-  if (s < 60) return s.toFixed(2)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toFixed(2).padStart(5, "0")}`
+  return formatTimeMsCentiseconds(ms)
 }
 
 export type Ao5Result = {

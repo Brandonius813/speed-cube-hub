@@ -2,16 +2,10 @@
 
 import { useState, useTransition } from "react"
 import { X } from "lucide-react"
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
 import type { TimerSolve } from "@/lib/timer/stats"
-
-function fmtTime(ms: number): string {
-  const s = ms / 1000
-  if (s < 60) return s.toFixed(2)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toFixed(2).padStart(5, "0")}`
-}
 
 function fmtDuration(minutes: number): string {
   const m = Math.floor(minutes)
@@ -75,6 +69,9 @@ export function EndSessionModal({
           time_ms: s.time_ms,
           penalty: s.penalty,
           scramble: s.scramble,
+          notes: s.notes ?? null,
+          phases: s.phases ?? null,
+          solved_at: s.solved_at,
         })),
         duration_minutes: durationMinutes,
         practice_type: practiceType,
@@ -136,11 +133,15 @@ export function EndSessionModal({
             <div className="text-[11px] text-muted-foreground mt-0.5">DNF</div>
           </div>
           <div className="text-center">
-            <div className="font-mono text-base font-medium">{bestMs ? fmtTime(bestMs) : "—"}</div>
+            <div className="font-mono text-base font-medium">
+              {bestMs ? formatTimeMsCentiseconds(bestMs) : "—"}
+            </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Best</div>
           </div>
           <div className="text-center">
-            <div className="font-mono text-base font-medium">{avgMs ? fmtTime(avgMs) : "—"}</div>
+            <div className="font-mono text-base font-medium">
+              {avgMs ? formatTimeMsCentiseconds(avgMs) : "—"}
+            </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Avg</div>
           </div>
         </div>

@@ -57,6 +57,11 @@ function dbSolveToTimer(
     time_ms: s.time_ms,
     penalty: s.penalty,
     scramble: s.scramble,
+    notes: s.notes ?? null,
+    phases: s.phases ?? null,
+    solve_number: s.solve_number,
+    solved_at: s.solved_at,
+    created_at: s.created_at,
     // Prefer timer session grouping; fall back to day-based grouping for old/imported solves.
     group: group ?? null,
   }
@@ -81,11 +86,14 @@ type SyncOptions = {
  */
 export async function syncSolvesFromDb(
   event: string,
-  localCount: number,
   store: SolveStore,
   options?: SyncOptions
 ): Promise<TimerSolve[] | null> {
   try {
+    const localSolves = options?.localSolves ?? (await store.loadSession(event))
+    const localUnsavedSolves = localSolves.filter((solve) => !solve.group)
+    const localSavedCount = localSolves.length - localUnsavedSolves.length
+
     // Event-wide sync: timer view is event-scoped and should include all solves
     // regardless of solve_session_id linkage.
     const { count: dbCount, error: countError } =
@@ -95,11 +103,11 @@ export async function syncSolvesFromDb(
       return null
     }
 
-    const shouldSyncAll = dbCount > localCount
+    const shouldSyncAll = dbCount !== localSavedCount
     const shouldBackfillGroups = options?.forceGroupBackfill === true
 
     if (!shouldSyncAll && !shouldBackfillGroups) {
-      // DB has same or fewer solves and no forced group backfill requested.
+      // Saved history matches and no forced group backfill was requested.
       return null
     }
 
@@ -128,8 +136,6 @@ export async function syncSolvesFromDb(
       }
     }
 
-    if (allDbSolves.length === 0) return null
-
     // Imported datasets can contain one timer_session_id spanning many days.
     // For those sessions, split groups by date so divider labels still render.
     const daysByTimerSessionId = new Map<string, Set<string>>()
@@ -151,17 +157,19 @@ export async function syncSolvesFromDb(
     )
 
     if (shouldSyncAll) {
-      // DB has newer data: replace local cache with authoritative DB list.
-      await store.clearSession(event)
-      await store.importSolves(event, allSolves)
-      return allSolves
+      // Preserve any in-progress local block while reconciling saved history.
+      const mergedSolves =
+        localUnsavedSolves.length > 0
+          ? [...allSolves, ...localUnsavedSolves]
+          : allSolves
+      await store.replaceSession(event, mergedSolves)
+      return mergedSolves
     }
 
-    // Count matched (or was lower) but we were asked to recover missing grouping.
-    // Patch groups in-place by solve id so local-only unsaved solves are preserved.
-    const localSolves = options?.localSolves ?? (await store.loadSession(event))
-    if (localSolves.length === 0) return null
+    if (localSolves.length === 0 || allSolves.length === 0) return null
 
+    // Count matched but we were asked to recover missing grouping.
+    // Patch groups in-place by solve id so local-only unsaved solves are preserved.
     const groupBySolveId = new Map(
       allSolves.map((solve) => [solve.id, solve.group ?? null])
     )

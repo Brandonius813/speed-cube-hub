@@ -168,10 +168,21 @@ export const timerPaneInstanceSchema = z.object({
     .optional(),
 })
 
+const timerPaneToolPreferenceSchema = z.object({
+  slot: timerPaneSlotSchema.optional(),
+  options: z
+    .object({
+      scope: z.enum(["session", "all"]).optional(),
+    })
+    .optional(),
+  mobileHeight: z.enum(["sm", "md", "lg"]).optional(),
+})
+
 export const timerPaneLayoutSchema = z.object({
   version: z.literal(1),
   updatedAtMs: z.number().int().min(0),
   autoHideDuringSolve: z.boolean(),
+  toolPreferences: z.record(timerPaneToolSchema, timerPaneToolPreferenceSchema).optional(),
   desktop: z.object({
     cols: z.union([z.literal(12), z.literal(24)]),
     rowHeight: z.literal(36),

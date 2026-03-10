@@ -273,6 +273,13 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Local-first layout persistence with account sync (`timer_pane_layouts`) and latest-write-wins merge
 - [x] User controls: edit/lock mode, auto-hide panes during solve toggle, reset layout
 
+**Phase 26 — Timer QoL Polish — T155:**
+- [x] Quick timer shortcuts for `+2`, `DNF`, and next scramble
+- [x] Reopening a tool pane restores its last slot/settings instead of jumping back to defaults
+- [x] Timer text sizing controls for larger scramble/readout/list text
+- [x] Session-vs-all-time stats in the left timer panel (session best + session mean alongside current/all-time)
+- [x] Click a solve on the left to open a richer detail modal with notes, scramble, PB/share, penalty changes, and delete
+
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events

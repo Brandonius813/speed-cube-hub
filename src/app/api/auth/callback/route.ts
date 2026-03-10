@@ -1,11 +1,26 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextRequest, NextResponse } from "next/server"
 
+function getSafeNextPath(rawNext: string | null) {
+  if (!rawNext) {
+    return "/feed"
+  }
+
+  if (!rawNext.startsWith("/") || rawNext.startsWith("//") || rawNext.startsWith("/\\")) {
+    return "/feed"
+  }
+
+  if (rawNext === "/login" || rawNext === "/signup") {
+    return "/feed"
+  }
+
+  return rawNext
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get("code")
-  const rawNext = searchParams.get("next") ?? "/feed"
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/feed"
+  const next = getSafeNextPath(searchParams.get("next"))
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url))

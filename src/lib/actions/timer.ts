@@ -1,5 +1,6 @@
 "use server"
 
+import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstError } from "@/lib/validations"
@@ -211,9 +212,17 @@ export async function updateSolve(
   return {}
 }
 
+type DeleteSolveFallback = {
+  event: string
+  time_ms: number
+  penalty: "+2" | "DNF" | null
+  scramble: string
+}
+
 export async function deleteSolve(
-  solveId: string
-): Promise<{ error?: string }> {
+  solveId: string,
+  fallback?: DeleteSolveFallback
+): Promise<{ error?: string; deleted?: boolean }> {
   const supabase = await createClient()
 
   const {
@@ -224,17 +233,64 @@ export async function deleteSolve(
     return { error: "Not authenticated" }
   }
 
-  const { error } = await supabase
+  const { data: deletedRows, error } = await supabase
     .from("solves")
     .delete()
     .eq("id", solveId)
     .eq("user_id", user.id)
+    .select("id")
 
   if (error) {
     return { error: error.message }
   }
 
-  return {}
+  if ((deletedRows?.length ?? 0) > 0) {
+    return { deleted: true }
+  }
+
+  if (!fallback) {
+    return { deleted: false }
+  }
+
+  // Legacy local solve IDs can differ from DB IDs after session saves.
+  // Fallback to a best-match lookup so delete persists across navigation.
+  let fallbackQuery = supabase
+    .from("solves")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("event", fallback.event)
+    .eq("time_ms", fallback.time_ms)
+    .eq("scramble", fallback.scramble)
+    .order("solved_at", { ascending: false })
+    .limit(1)
+
+  if (fallback.penalty === null) {
+    fallbackQuery = fallbackQuery.is("penalty", null)
+  } else {
+    fallbackQuery = fallbackQuery.eq("penalty", fallback.penalty)
+  }
+
+  const { data: matches, error: matchError } = await fallbackQuery
+  if (matchError) {
+    return { error: matchError.message }
+  }
+
+  const fallbackId = matches?.[0]?.id
+  if (!fallbackId) {
+    return { deleted: false }
+  }
+
+  const { error: fallbackDeleteError } = await supabase
+    .from("solves")
+    .delete()
+    .eq("id", fallbackId)
+    .eq("user_id", user.id)
+
+  if (fallbackDeleteError) {
+    return { error: fallbackDeleteError.message }
+  }
+
+  return { deleted: true }
 }
 
 /**
@@ -570,8 +626,8 @@ export async function bulkImportSolves(
       num_solves: solves.length,
       num_dnf: solves.length - nonDnf.length,
       duration_minutes: durationMinutes,
-      avg_time: avgMs ? Math.round(avgMs / 10) / 100 : null,
-      best_time: bestMs ? Math.round(bestMs / 10) / 100 : null,
+      avg_time: avgMs ? msToTruncatedSeconds(avgMs) : null,
+      best_time: bestMs ? msToTruncatedSeconds(bestMs) : null,
       timer_session_id: timerSession.id,
       solve_session_id: solveSessionId,
       feed_visible: false,
@@ -663,10 +719,10 @@ export async function finalizeTimerSession(
 
   // Convert ms to decimal seconds for the sessions table
   const avgTimeSeconds = avgTimeMs
-    ? Math.round(avgTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    ? msToTruncatedSeconds(avgTimeMs)
     : null
   const bestTimeSeconds = bestTimeMs
-    ? Math.round(bestTimeMs / 10) / 100 // Round to centiseconds (2 decimal places)
+    ? msToTruncatedSeconds(bestTimeMs)
     : null
 
   // Today's date in YYYY-MM-DD format (Pacific Time, not UTC)

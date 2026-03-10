@@ -213,3 +213,46 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Updated Comp Sim `ready` phase so inspection no longer starts on a single tap/keypress. Users must now hold and release (550ms threshold) to begin inspection, matching the intentional hold-to-start behavior used elsewhere in the timer. Added matching visual/text feedback on the Ready screen.
 **Files touched:** `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx` passed. `npx tsc --noEmit` passed.
+
+### 2026-03-06 11:05 AM PT — Timer History Delete + Scroll Retention
+
+**Task:** Fix timer-history outlier deletion persistence and keep list scroll position after delete
+**Status:** Confirmed the root cause of returning solves: timer deletes were only removing rows from IndexedDB, so DB-backed sync could restore them later. Built on the latest server-delete fix by updating cross-device sync to reconcile when DB saved-history counts differ in either direction while preserving unsaved local solves. Added a solve-list imperative scroll-preservation hook so deleting a time no longer jumps the list back to the top. Backed up and hard-deleted 16 suspicious 3x3 outlier/DNF rows for the admin account from Supabase (`/tmp/speed-cube-hub-brandon-outlier-solves-20260306.json`).
+**Files touched:** `src/lib/timer/cross-device-sync.ts`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/cross-device-sync.ts src/components/timer/solve-list-panel.tsx src/components/timer/timer-content.tsx` passed. Verified no remaining `333` solves for admin user matched `time_ms < 5000` or `penalty = 'DNF'`.
+
+---
+
+### 2026-03-06 11:42 AM PT — Timer Session Boundary Guard + Duplicate 3x3 Cleanup
+
+**Task:** Stop end-session flows from scooping up stale ungrouped history; remove the duplicate 3x3 block still polluting all-time charts
+**Status:** Added a session-start solve-index boundary in `timer-content.tsx` so active session save/discard/end-switch logic only touches solves added after the session began, even if older ungrouped solves exist in local cache. This prevents a repeat of the March 5 duplication bug where a save bundled nearly the full 3x3 history into one new session. Cleaned the existing duplicate data in Supabase by backing up and trimming timer session `371a27bf-e9b6-486b-bc72-030b6c40b2db` from 1495 solves down to the 10 real new solves, updating its linked `sessions` row stats, and deleting the last late 6.16 outlier. Backups saved to `/tmp/speed-cube-hub-brandon-duplicate-session-371a-20260306.json` and `/tmp/speed-cube-hub-brandon-outlier-solve-76142ec7-20260306.json`.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. Verified admin `333` total is now 1517 and there are no late (`overallIndex >= 1450`) solves with `time_ms < 8000` or `penalty = 'DNF'`.
+
+---
+
+### 2026-03-06 PT — Timer QoL Polish
+
+**Task:** Add timer shortcuts, bigger text options, richer solve editing, session-vs-all-time stats, and pane reopen memory
+**Status:** Added keyboard shortcuts for `+2`, `DNF`, and next scramble in the live timer. Added timer text-size controls that scale the scramble line, main readout, typing input, and left stats/history panel. Upgraded the left solve list so clicking a solve opens a richer detail modal with notes, scramble copy, PB/share, penalty toggles, and delete. Extended local timer solve persistence to keep per-solve notes/timestamps through refreshes and session save, and updated saved-solve inserts to persist solve notes/phases/timestamps. Added session-best and session-mean stats alongside the existing current/all-time values. Pane layout state now remembers each tool's last slot/options/height so reopening a tool returns it to the same place.
+**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/solve-detail-modal.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/panes/types.ts`, `src/lib/timer/stats.ts`, `src/lib/timer/solve-store.ts`, `src/lib/timer/cross-device-sync.ts`, `src/lib/validations.ts`, `src/components/timer/end-session-modal.tsx`, `src/lib/actions/save-timer-session.ts`, `TASKS.md`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/solve-detail-modal.tsx src/components/timer/panes/use-timer-pane-layout.ts src/components/timer/end-session-modal.tsx src/lib/actions/save-timer-session.ts src/lib/timer/cross-device-sync.ts src/lib/timer/solve-store.ts src/lib/timer/stats.ts src/lib/validations.ts` passed. `./node_modules/.bin/tsc --noEmit` passed.
+
+---
+
+### 2026-03-06 12:33 PM PST — Timer Centisecond Truncation Fix
+
+**Task:** Stop timer displays and saved session stats from rounding centiseconds up; truncate instead
+**Status:** Added shared timer helpers for centisecond truncation and routed the timer readout, solve list, end-session summary, competition simulator, and timer-session save paths through them. The live timer now shows `59.39` for a `59.397` GAN result instead of rounding to `59.40`, and the local/fallback timing path now truncates to centiseconds before saving as well so the stored result matches the visible one.
+**Files touched:** `src/lib/timer/averages.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/end-session-modal.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/lib/timer/comp-sim-engine.ts`, `src/lib/actions/save-timer-session.ts`, `src/lib/actions/timer.ts`, `src/lib/timer/session-dividers.ts`, `AGENT_LOG.md`
+**Checks:** `npx eslint src/lib/timer/averages.ts src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/end-session-modal.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-overlay.tsx src/lib/timer/comp-sim-engine.ts src/lib/actions/save-timer-session.ts src/lib/actions/timer.ts src/lib/timer/session-dividers.ts` passed. `npx tsc --noEmit` passed.
+
+---
+
+### 2026-03-10 PT — Build Prerender Fixes For Auth + Dashboard
+
+**Task:** Fix Vercel build failures caused by auth-page search-param usage and dashboard prerendering
+**Status:** Cherry-picked the auth-page prerender fix so `login` and `signup` now resolve `next` on the server and pass it into client content components instead of calling `useSearchParams()` in the page entrypoints. Also marked `/dashboard` as force-dynamic so Next.js no longer attempts static generation for a route that depends on Supabase auth cookies.
+**Files touched:** `src/app/login/page.tsx`, `src/app/login/login-content.tsx`, `src/app/signup/page.tsx`, `src/app/signup/signup-content.tsx`, `src/app/(main)/dashboard/page.tsx`, `AGENT_LOG.md`
+**Checks:** `npm run build`
