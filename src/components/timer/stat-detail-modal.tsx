@@ -2,36 +2,36 @@
 
 import { useState, useEffect } from "react"
 import { X, Copy, Check } from "lucide-react"
-import { formatTimeMs, getEffectiveTime } from "@/lib/timer/averages"
+import { formatTimeMs } from "@/lib/timer/averages"
+import { type Penalty } from "@/lib/timer/stats"
 import { cn } from "@/lib/utils"
-import type { Solve } from "@/lib/types"
+
+type StatSolve = {
+  id: string
+  time_ms: number
+  penalty: Penalty
+  scramble: string
+}
 
 export type StatDetailInfo = {
   label: string
-  column: "current" | "best"
+  solves: StatSolve[]
 }
 
 type StatDetailModalProps = {
   isOpen: boolean
   onClose: () => void
   info: StatDetailInfo | null
-  solves: Solve[]
-  onSolveClick: (solve: Solve) => void
+  onSolveClick: (solve: StatSolve) => void
 }
 
 export function StatDetailModal({
   isOpen,
   onClose,
   info,
-  solves,
   onSolveClick,
 }: StatDetailModalProps) {
-  const [copied, setCopied] = useState(false)
-
-  // Reset copied state when modal opens/closes
-  useEffect(() => {
-    setCopied(false)
-  }, [isOpen, info])
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Close on Escape
   useEffect(() => {
@@ -46,26 +46,16 @@ export function StatDetailModal({
     return () => window.removeEventListener("keydown", handleKey)
   }, [isOpen, onClose])
 
-  if (!isOpen || !info || solves.length === 0) return null
+  if (!isOpen || !info || info.solves.length === 0) return null
 
-  const { label, column } = info
-  const n = parseWindowSize(label)
+  const { label, solves } = info
+  const modalKey = `${label}:${solves[0]?.id ?? "none"}:${solves[solves.length - 1]?.id ?? "none"}:${solves.length}`
+  const copied = copiedKey === modalKey
   const isMean = label.startsWith("mo")
-  const isSingle = label === "single"
-
-  // Get the window of solves for this stat
-  const solveWindow = isSingle
-    ? getBestSingleWindow(solves)
-    : column === "current"
-      ? getCurrentWindow(solves, n)
-      : isMean
-        ? getBestMoNWindow(solves, n)
-        : getBestAoNWindow(solves, n)
-
-  if (solveWindow.length === 0) return null
+  const isSingle = label === "single" || solves.length === 1
 
   // Compute the average/mean value and identify trimmed solves
-  const times = solveWindow.map(getEffectiveTime)
+  const times = solves.map(getSolveEffectiveTime)
   let displayValue: string
   let trimmedIndices = new Set<number>()
   let sigma: number | null = null
@@ -105,13 +95,15 @@ export function StatDetailModal({
     }
   }
 
-  const headerLabel = `${column === "best" ? "Best " : ""}${label}`
+  const headerLabel = label
 
   const handleCopy = async () => {
-    const text = buildCsTimerText(headerLabel, displayValue, solveWindow, trimmedIndices)
+    const text = buildCsTimerText(headerLabel, displayValue, solves, trimmedIndices)
     await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedKey(modalKey)
+    window.setTimeout(() => {
+      setCopiedKey((current) => (current === modalKey ? null : current))
+    }, 2000)
   }
 
   return (
@@ -158,9 +150,9 @@ export function StatDetailModal({
 
           {/* Solve list */}
           <div className="overflow-y-auto flex-1 min-h-0">
-            {solveWindow.map((solve, idx) => {
+            {solves.map((solve, idx) => {
               const isTrimmed = trimmedIndices.has(idx)
-              const effective = getEffectiveTime(solve)
+              const effective = getSolveEffectiveTime(solve)
               const isDNF = solve.penalty === "DNF"
               const isPlus2 = solve.penalty === "+2"
               const timeStr = isDNF ? "DNF" : formatTimeMs(effective)
@@ -205,74 +197,6 @@ export function StatDetailModal({
   )
 }
 
-// ── Window extraction helpers ───────────────────────────────────────
-
-function parseWindowSize(label: string): number {
-  if (label === "single") return 1
-  const match = label.match(/\d+/)
-  return match ? parseInt(match[0], 10) : 5
-}
-
-function getCurrentWindow(solves: Solve[], n: number): Solve[] {
-  if (solves.length < n) return []
-  return solves.slice(-n)
-}
-
-function getBestSingleWindow(solves: Solve[]): Solve[] {
-  const nonDnf = solves.filter((s) => s.penalty !== "DNF")
-  if (nonDnf.length === 0) return []
-  let best = nonDnf[0]
-  for (const s of nonDnf) {
-    if (getEffectiveTime(s) < getEffectiveTime(best)) best = s
-  }
-  return [best]
-}
-
-function getBestAoNWindow(solves: Solve[], n: number): Solve[] {
-  if (solves.length < n) return []
-  let bestAvg: number | null = null
-  let bestWindow: Solve[] = []
-
-  for (let i = n; i <= solves.length; i++) {
-    const w = solves.slice(i - n, i)
-    const times = w.map(getEffectiveTime)
-    const dnfCount = times.filter((t) => t === Infinity).length
-    if (dnfCount > 1) continue
-
-    const sorted = [...times].sort((a, b) => a - b)
-    const trimmed = sorted.slice(1, -1)
-    if (trimmed.some((t) => t === Infinity)) continue
-
-    const avg = Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length)
-    if (bestAvg === null || avg < bestAvg) {
-      bestAvg = avg
-      bestWindow = w
-    }
-  }
-
-  return bestWindow
-}
-
-function getBestMoNWindow(solves: Solve[], n: number): Solve[] {
-  if (solves.length < n) return []
-  let bestAvg: number | null = null
-  let bestWindow: Solve[] = []
-
-  for (let i = n; i <= solves.length; i++) {
-    const w = solves.slice(i - n, i)
-    const times = w.map(getEffectiveTime)
-    if (times.some((t) => t === Infinity)) continue
-
-    const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
-    if (bestAvg === null || avg < bestAvg) {
-      bestAvg = avg
-      bestWindow = w
-    }
-  }
-
-  return bestWindow
-}
-
 // ── Math helpers ────────────────────────────────────────────────────
 
 function computeStdDev(timesMs: number[]): number | null {
@@ -288,14 +212,14 @@ function computeStdDev(timesMs: number[]): number | null {
 function buildCsTimerText(
   header: string,
   value: string,
-  solves: Solve[],
+  solves: StatSolve[],
   trimmedIndices: Set<number>
 ): string {
   const lines: string[] = [`${header}: ${value}`, ""]
 
   for (let i = 0; i < solves.length; i++) {
     const solve = solves[i]
-    const effective = getEffectiveTime(solve)
+    const effective = getSolveEffectiveTime(solve)
     const isDNF = solve.penalty === "DNF"
     const timeStr = isDNF ? "DNF" : formatTimeMs(effective)
     const display = trimmedIndices.has(i) ? `(${timeStr})` : timeStr
@@ -304,4 +228,9 @@ function buildCsTimerText(
   }
 
   return lines.join("\n")
+}
+
+function getSolveEffectiveTime(solve: StatSolve): number {
+  if (solve.penalty === "DNF") return Infinity
+  return solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
 }

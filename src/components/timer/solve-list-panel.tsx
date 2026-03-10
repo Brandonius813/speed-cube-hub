@@ -47,6 +47,7 @@ export type SolveListRow = {
 
 export type SolveSelectionMetric = "single" | "stat1" | "stat2"
 export type SolveListTextSize = "md" | "lg" | "xl"
+export type SolveListStatMetric = Exclude<SolveSelectionMetric, "single">
 
 export type SolveListPanelHandle = {
   preserveScrollPosition: () => void
@@ -80,6 +81,7 @@ interface SolveListPanelProps {
   textSize?: SolveListTextSize
   onSetSelectedId: (id: string | null) => void
   onOpenSolveDetail: (id: string) => void
+  onOpenStatDetail: (id: string, metric: SolveListStatMetric) => void
   onSelectSolveCell: (id: string, metric: SolveSelectionMetric) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
@@ -198,6 +200,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   textSize = "md",
   onSetSelectedId,
   onOpenSolveDetail,
+  onOpenStatDetail,
   onSelectSolveCell,
   onSetPenalty,
   onDeleteSolve,
@@ -466,6 +469,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                   ? row.solveIndex - savedSolveCount
                   : row.solveIndex
               }
+              const stat1Value = statsIdx >= 0 ? stats.rolling1[statsIdx] ?? null : null
+              const stat2Value = statsIdx >= 0 ? stats.rolling2[statsIdx] ?? null : null
 
               return (
                 <Fragment key={row.solve.id}>
@@ -524,31 +529,37 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                       className={cn(
                         "text-right pr-1.5 py-0.5 text-foreground font-mono transition-colors",
                         textClasses.listStat,
+                        stat1Value !== null && "cursor-pointer hover:text-indigo-200",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat1" &&
                           "text-indigo-300 bg-indigo-500/15"
                       )}
                       onClick={(eventClick) => {
+                        if (stat1Value === null) return
                         eventClick.stopPropagation()
                         onSelectSolveCell(row.solve.id, "stat1")
+                        onOpenStatDetail(row.solve.id, "stat1")
                       }}
                     >
-                      {statsIdx >= 0 ? D(stats.rolling1[statsIdx] ?? null) : "—"}
+                      {D(stat1Value)}
                     </td>
                     <td
                       className={cn(
                         "text-right pr-2 py-0.5 text-foreground font-mono transition-colors",
                         textClasses.listStat,
+                        stat2Value !== null && "cursor-pointer hover:text-indigo-200",
                         selectedId === row.solve.id &&
                           selectedMetric === "stat2" &&
                           "text-indigo-300 bg-indigo-500/15"
                       )}
                       onClick={(eventClick) => {
+                        if (stat2Value === null) return
                         eventClick.stopPropagation()
                         onSelectSolveCell(row.solve.id, "stat2")
+                        onOpenStatDetail(row.solve.id, "stat2")
                       }}
                     >
-                      {statsIdx >= 0 ? D(stats.rolling2[statsIdx] ?? null) : "—"}
+                      {D(stat2Value)}
                     </td>
                   </tr>
                 </Fragment>

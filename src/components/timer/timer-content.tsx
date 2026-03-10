@@ -19,6 +19,7 @@ import {
   type SolveListPanelHandle,
   type SolveListRow,
   type SolveSelectionMetric,
+  type SolveListStatMetric,
   type SolveStats,
 } from "@/components/timer/solve-list-panel"
 import {
@@ -49,6 +50,7 @@ import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
+import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import {
   PANE_REGISTRY,
   PANE_TOOL_OPTIONS,
@@ -135,6 +137,13 @@ const TIMER_SHORTCUT_LABELS = [
 
 function parseTextSize(raw: string | null): TimerTextSize | null {
   return raw === "md" || raw === "lg" || raw === "xl" ? raw : null
+}
+
+function getStatWindowSize(statKey: string): number | null {
+  const match = statKey.match(/\d+/)
+  if (!match) return null
+  const value = parseInt(match[0], 10)
+  return Number.isFinite(value) && value > 0 ? value : null
 }
 
 const INLINE_SLOT_OPTIONS: Array<{ slot: DesktopPaneSlot; label: string }> = [
@@ -402,6 +411,11 @@ type TimerViewer = {
   handle: string | null
 }
 
+type StatDetailState = {
+  label: string
+  solves: Solve[]
+}
+
 type TimerContentProps = {
   viewer?: TimerViewer
 }
@@ -490,6 +504,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<SolveSelectionMetric>("single")
   const [detailSolveId, setDetailSolveId] = useState<string | null>(null)
+  const [statDetail, setStatDetail] = useState<StatDetailState | null>(null)
   const [scrambleCopied, setScrambleCopied] = useState(false)
   const [scrambleCanGoPrev, setScrambleCanGoPrev] = useState(false)
   const [practiceType, setPracticeType] = useState(() => {
@@ -2102,10 +2117,37 @@ export function TimerContent({ viewer }: TimerContentProps) {
     []
   )
   const handleOpenSolveDetail = useCallback((id: string) => {
+    setStatDetail(null)
     setSelectedId(id)
     setSelectedMetric("single")
     setDetailSolveId(id)
   }, [])
+  const handleOpenStatDetail = useCallback(
+    (id: string, metric: SolveListStatMetric) => {
+      const statKey = metric === "stat1" ? statCols[0] : statCols[1]
+      const windowSize = getStatWindowSize(statKey)
+      if (!windowSize) return
+
+      const sourceSolves = showAllStatsInList ? solves : currentSessionSolves
+      const solveIndex = sourceSolves.findIndex((solve) => solve.id === id)
+      if (solveIndex < 0 || solveIndex + 1 < windowSize) return
+
+      const solveWindow = sourceSolves.slice(
+        solveIndex + 1 - windowSize,
+        solveIndex + 1
+      )
+      if (solveWindow.length !== windowSize) return
+
+      setDetailSolveId(null)
+      setSelectedId(id)
+      setSelectedMetric(metric)
+      setStatDetail({
+        label: statKey,
+        solves: solveWindow,
+      })
+    },
+    [currentSessionSolves, showAllStatsInList, solves, statCols]
+  )
 
   useEffect(() => {
     if (detailSolveId && !detailSolve) {
@@ -2906,6 +2948,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             textSize={paneTimeTextSize}
             onSetSelectedId={setSelectedId}
             onOpenSolveDetail={handleOpenSolveDetail}
+            onOpenStatDetail={handleOpenStatDetail}
             onSelectSolveCell={handleSelectSolveCell}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}
@@ -3132,6 +3175,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
         onDelete={deleteSolve}
         onNotesChange={handleSolveNotesChange}
         onShare={handleShareSolve}
+      />
+      <StatDetailModal
+        isOpen={statDetail !== null}
+        onClose={() => setStatDetail(null)}
+        info={statDetail}
+        onSolveClick={(solve) => handleOpenSolveDetail(solve.id)}
       />
       {shareCardData && (
         <ShareModal

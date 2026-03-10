@@ -203,6 +203,37 @@ function normalizeLayout(layout: TimerPaneLayoutV1): TimerPaneLayoutV1 {
   }
 }
 
+function getToolPreferenceForPane(
+  pane: TimerPaneInstance,
+  mobileHeights: Record<string, "sm" | "md" | "lg">
+) {
+  return {
+    slot: isDesktopPaneSlot(pane.slot)
+      ? pane.slot
+      : isLegacyDesktopPaneSlot(pane.slot)
+        ? pane.slot
+        : inferSlotFromRect(pane.rect),
+    options: pane.options,
+    mobileHeight: mobileHeights[pane.id] ?? "md",
+  }
+}
+
+function syncToolPreferences(
+  basePreferences: TimerPaneLayoutV1["toolPreferences"] | undefined,
+  panes: TimerPaneInstance[],
+  mobileHeights: Record<string, "sm" | "md" | "lg">
+) {
+  const next = {
+    ...(basePreferences ?? {}),
+  }
+
+  for (const pane of panes) {
+    next[pane.tool] = getToolPreferenceForPane(pane, mobileHeights)
+  }
+
+  return next
+}
+
 function readLocalLayout(): TimerPaneLayoutV1 | null {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
@@ -349,6 +380,12 @@ export function useTimerPaneLayout(layoutKey = "main") {
         },
       })
 
+      next.toolPreferences = syncToolPreferences(
+        previous.toolPreferences,
+        next.desktop.panes,
+        next.mobile.heights
+      )
+
       return normalizeLayout(next)
     })
   }, [])
@@ -359,31 +396,29 @@ export function useTimerPaneLayout(layoutKey = "main") {
       const removedPane = previous.desktop.panes.find((pane) => pane.id === paneId)
       if (!removedPane) return previous
 
-      const nextToolPreferences = {
-        ...(previous.toolPreferences ?? {}),
-        [removedPane.tool]: {
-          slot: isDesktopPaneSlot(removedPane.slot)
-            ? removedPane.slot
-            : isLegacyDesktopPaneSlot(removedPane.slot)
-              ? removedPane.slot
-              : inferSlotFromRect(removedPane.rect),
-          options: removedPane.options,
-          mobileHeight: previous.mobile.heights[paneId] ?? "md",
+      const nextPanes = previous.desktop.panes.filter((pane) => pane.id !== paneId)
+      const nextHeights = Object.fromEntries(
+        Object.entries(previous.mobile.heights).filter(([id]) => id !== paneId)
+      )
+      const nextToolPreferences = syncToolPreferences(
+        {
+          ...(previous.toolPreferences ?? {}),
+          [removedPane.tool]: getToolPreferenceForPane(removedPane, previous.mobile.heights),
         },
-      }
+        nextPanes,
+        nextHeights
+      )
 
       const next = withUpdatedAt({
         ...previous,
         toolPreferences: nextToolPreferences,
         desktop: {
           ...previous.desktop,
-          panes: previous.desktop.panes.filter((pane) => pane.id !== paneId),
+          panes: nextPanes,
         },
         mobile: {
           order: previous.mobile.order.filter((id) => id !== paneId),
-          heights: Object.fromEntries(
-            Object.entries(previous.mobile.heights).filter(([id]) => id !== paneId)
-          ),
+          heights: nextHeights,
         },
       })
 
@@ -396,29 +431,27 @@ export function useTimerPaneLayout(layoutKey = "main") {
     setLayout((previous) => {
       const existing = previous.desktop.panes.find((pane) => pane.tool === tool)
       if (existing) {
+        const nextPanes = previous.desktop.panes.filter((pane) => pane.id !== existing.id)
+        const nextHeights = Object.fromEntries(
+          Object.entries(previous.mobile.heights).filter(([id]) => id !== existing.id)
+        )
         const next = withUpdatedAt({
           ...previous,
-          toolPreferences: {
-            ...(previous.toolPreferences ?? {}),
-            [existing.tool]: {
-              slot: isDesktopPaneSlot(existing.slot)
-                ? existing.slot
-                : isLegacyDesktopPaneSlot(existing.slot)
-                  ? existing.slot
-                  : inferSlotFromRect(existing.rect),
-              options: existing.options,
-              mobileHeight: previous.mobile.heights[existing.id] ?? "md",
+          toolPreferences: syncToolPreferences(
+            {
+              ...(previous.toolPreferences ?? {}),
+              [existing.tool]: getToolPreferenceForPane(existing, previous.mobile.heights),
             },
-          },
+            nextPanes,
+            nextHeights
+          ),
           desktop: {
             ...previous.desktop,
-            panes: previous.desktop.panes.filter((pane) => pane.id !== existing.id),
+            panes: nextPanes,
           },
           mobile: {
             order: previous.mobile.order.filter((id) => id !== existing.id),
-            heights: Object.fromEntries(
-              Object.entries(previous.mobile.heights).filter(([id]) => id !== existing.id)
-            ),
+            heights: nextHeights,
           },
         })
 
@@ -465,11 +498,18 @@ export function useTimerPaneLayout(layoutKey = "main") {
         },
       })
 
+      next.toolPreferences = syncToolPreferences(
+        previous.toolPreferences,
+        next.desktop.panes,
+        next.mobile.heights
+      )
+
       return normalizeLayout(next)
     })
   }, [])
 
   const setPaneSlot = useCallback((paneId: string, slot: DesktopPaneSlot) => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       const currentPane = previous.desktop.panes.find((pane) => pane.id === paneId)
       if (!currentPane) return previous
@@ -503,6 +543,11 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
       return withUpdatedAt({
         ...previous,
+        toolPreferences: syncToolPreferences(
+          previous.toolPreferences,
+          nextPanes,
+          previous.mobile.heights
+        ),
         desktop: {
           ...previous.desktop,
           panes: nextPanes,
@@ -513,6 +558,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
   const updatePaneRect = useCallback((paneId: string, rect: TimerPaneRect): boolean => {
     let updated = false
+    localMutatedRef.current = true
     setLayout((previous) => {
       const currentPane = previous.desktop.panes.find((pane) => pane.id === paneId)
       if (!currentPane) return previous
@@ -528,6 +574,11 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
       return withUpdatedAt({
         ...previous,
+        toolPreferences: syncToolPreferences(
+          previous.toolPreferences,
+          nextPanes,
+          previous.mobile.heights
+        ),
         desktop: {
           ...previous.desktop,
           panes: nextPanes,
@@ -538,9 +589,13 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const changePaneTool = useCallback((paneId: string, tool: PaneToolId) => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       const existing = previous.desktop.panes.find((pane) => pane.tool === tool)
       if (existing && existing.id !== paneId) return previous
+
+      const currentPane = previous.desktop.panes.find((pane) => pane.id === paneId)
+      if (!currentPane) return previous
 
       const usedSlots = getUsedSlots(previous.desktop.panes.filter((pane) => pane.id !== paneId))
       const nextPanes = previous.desktop.panes.map((pane) => {
@@ -565,6 +620,17 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
       return withUpdatedAt({
         ...previous,
+        toolPreferences: syncToolPreferences(
+          {
+            ...(previous.toolPreferences ?? {}),
+            [currentPane.tool]: getToolPreferenceForPane(
+              currentPane,
+              previous.mobile.heights
+            ),
+          },
+          nextPanes,
+          previous.mobile.heights
+        ),
         desktop: {
           ...previous.desktop,
           panes: nextPanes,
@@ -575,6 +641,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
   const updatePaneOptions = useCallback(
     (paneId: string, options: TimerPaneInstance["options"]) => {
+      localMutatedRef.current = true
       setLayout((previous) => {
         const nextPanes = previous.desktop.panes.map((pane) =>
           pane.id === paneId ? { ...pane, options } : pane
@@ -582,6 +649,11 @@ export function useTimerPaneLayout(layoutKey = "main") {
 
         return withUpdatedAt({
           ...previous,
+          toolPreferences: syncToolPreferences(
+            previous.toolPreferences,
+            nextPanes,
+            previous.mobile.heights
+          ),
           desktop: {
             ...previous.desktop,
             panes: nextPanes,
@@ -593,10 +665,12 @@ export function useTimerPaneLayout(layoutKey = "main") {
   )
 
   const resetLayout = useCallback(() => {
+    localMutatedRef.current = true
     setLayout(withUpdatedAt(cloneDefaultLayout()))
   }, [])
 
   const setAutoHideDuringSolve = useCallback((value: boolean) => {
+    localMutatedRef.current = true
     setLayout((previous) =>
       withUpdatedAt({
         ...previous,
@@ -606,6 +680,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const setDesktopPaneSize = useCallback((size: DesktopPaneSize) => {
+    localMutatedRef.current = true
     setLayout((previous) =>
       withUpdatedAt({
         ...previous,
@@ -618,6 +693,7 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const moveMobilePane = useCallback((paneId: string, direction: "up" | "down") => {
+    localMutatedRef.current = true
     setLayout((previous) => {
       const order = [...previous.mobile.order]
       const idx = order.indexOf(paneId)
@@ -639,9 +715,18 @@ export function useTimerPaneLayout(layoutKey = "main") {
   }, [])
 
   const setMobilePaneHeight = useCallback((paneId: string, height: "sm" | "md" | "lg") => {
+    localMutatedRef.current = true
     setLayout((previous) =>
       withUpdatedAt({
         ...previous,
+        toolPreferences: syncToolPreferences(
+          previous.toolPreferences,
+          previous.desktop.panes,
+          {
+            ...previous.mobile.heights,
+            [paneId]: height,
+          }
+        ),
         mobile: {
           ...previous.mobile,
           heights: {
