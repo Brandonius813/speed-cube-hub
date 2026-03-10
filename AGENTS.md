@@ -9,6 +9,10 @@ Canonical Codex coordination files are at repository root:
 
 Treat `.claude/` as legacy reference material. Do not update coordination state there.
 
+Live cross-worktree file locks live outside the repo at:
+
+- `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`
+
 ## 1) Session Startup Checklist
 
 At the start of each new session:
@@ -17,14 +21,19 @@ At the start of each new session:
 2. Read `SPEED_CUBE_HUB_PRD.md`
 3. Read `TASKS.md`
 4. Skim recent entries in `AGENT_LOG.md`
-5. Check what is already built vs still open
-6. Tell the user what is currently built and confirm what to work on next (unless the user already gave a specific task)
+5. Read `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`
+6. Check what is already built vs still open
+7. Tell the user what is currently built and confirm what to work on next (unless the user already gave a specific task)
 
 ## 2) Core Working Rules
 
 - Build exactly what was asked. Do not add extra features.
 - Use the smallest change possible.
 - Read relevant files before editing anything.
+- For non-trivial feature work, create/use a dedicated worktree automatically before editing when running from the shared repo root or when multiple agents may be active.
+- Do not ask the user to run normal setup commands like worktree creation, branch creation, or claims commands; do that yourself.
+- Before editing, claim the exact files or directories in `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`.
+- Do not edit a file or directory that is actively claimed by another agent.
 - Do not refactor unrelated working code.
 - Do not assume files, functions, tables, or DB columns exist; verify first.
 - If something breaks, explain the exact error in plain English, share the likely cause, then apply one targeted fix.
@@ -62,8 +71,13 @@ Parallel-session override (when coordinating multiple agents):
 
 - Follow `TASKS.md` claiming flow (worktree + task branch)
 - Claim only one task at a time
+- For new feature work, run `npm run agent:bootstrap -- --task "<short task name>"` automatically, then do implementation work in that worktree
+- Run `npm run claims:claim -- --task "<task>" --files "path/one,path/two"` before editing
+- Run `npm run claims:touch` if the task stays active for a while
+- Run `npm run claims:release` as soon as the claimed edit is finished
 - Do not touch files owned by another claimed task
 - Log work in `AGENT_LOG.md`
+- Treat `/Users/brandontrue/Documents/Coding/speed-cube-hub` as merge/integration space only when multiple agents are active; do feature work in dedicated worktrees
 
 ## 5) Build/Test Commands
 
@@ -74,6 +88,11 @@ npm run dev
 npm run dev:up
 npm run dev:status
 npm run dev:down
+npm run agent:bootstrap -- --task "Task name"
+npm run claims:status
+npm run claims:claim -- --task "Task name" --files "src/path-a.ts,src/path-b.ts"
+npm run claims:touch
+npm run claims:release
 npm run build
 npm run lint
 ```
@@ -92,6 +111,25 @@ npx tsc --noEmit
 ```
 
 Reason: avoid `.next/lock` conflicts from concurrent builds.
+
+## 11) Live Coordination Locks
+
+Use the shared coordination helper from any worktree:
+
+```bash
+npm run agent:bootstrap -- --task "Task name"
+npm run claims:status
+npm run claims:claim -- --task "Task name" --files "src/path-a.ts,src/path-b.ts"
+npm run claims:touch
+npm run claims:release
+```
+
+Rules:
+
+- `agent:bootstrap` creates or reuses a dedicated `codex/...` branch + sibling worktree automatically
+- Claim exact files when possible; claim a directory only if you expect to touch several files inside it
+- If `claims:claim` reports a conflict, do not edit that path until the other claim is released
+- `AGENT_LOG.md` is the handoff/history log; `ACTIVE_CLAIMS.md` is only for live in-progress file locks
 
 ## 6) Product and Architecture Constraints
 

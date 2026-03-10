@@ -2,6 +2,10 @@
 
 This project is now pre-wired for 3 parallel agents.
 
+Shared live lock file:
+
+- `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`
+
 ## Worktrees Created
 
 - `../speed-cube-hub-agent-profile` on branch `task/activate-profile-components`
@@ -22,6 +26,26 @@ For best isolation with Codex UI, open each agent folder in its own VS Code wind
 
 Then run one Codex chat tab per window and keep each tab on only its assigned task.
 
+Before any agent edits code in its worktree, run:
+
+```bash
+npm run agent:bootstrap -- --task "Task name"
+npm run claims:status
+npm run claims:claim -- --task "Task name" --files "src/path-a.ts,src/path-b.ts"
+```
+
+While the task is still in progress, refresh the heartbeat occasionally:
+
+```bash
+npm run claims:touch
+```
+
+When the edit is finished, release the lock:
+
+```bash
+npm run claims:release
+```
+
 ## Suggested Prompt Per Agent
 
 Agent 1 (profile components):
@@ -36,6 +60,10 @@ Agent 3 (challenges RLS):
 ## Coordination Rules
 
 - One task per agent
+- One worktree per agent; do not run multiple Codex sessions in the shared `main` worktree
+- Let the agent run `npm run agent:bootstrap -- --task "..."` itself; the user should not need to do the setup manually
+- Claim exact files/directories in `ACTIVE_CLAIMS.md` before editing
+- If `claims:claim` reports a conflict, stop and pick a different path or wait for the other agent
 - Do not edit another agent's files unless required and coordinated
 - Verify with `npx tsc --noEmit` (avoid concurrent `npm run build`)
 - Record outcomes in `AGENT_LOG.md`

@@ -8,6 +8,11 @@
     "dev:down": "node scripts/dev-server.mjs down",
     "dev:status": "node scripts/dev-server.mjs status",
     "dev:logs": "node scripts/dev-server.mjs logs",
+    "agent:bootstrap": "node scripts/agent-bootstrap.mjs",
+    "claims:status": "node scripts/agent-claims.mjs status",
+    "claims:claim": "node scripts/agent-claims.mjs claim",
+    "claims:touch": "node scripts/agent-claims.mjs touch",
+    "claims:release": "node scripts/agent-claims.mjs release",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

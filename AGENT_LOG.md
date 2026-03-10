@@ -198,6 +198,15 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 ---
 
+### 2026-03-06 PT — Shared Multi-Agent Coordination Setup
+
+**Task:** Prevent parallel Codex sessions from colliding on the same files
+**Status:** Added a shared cross-worktree claims registry at `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`, a versioned helper script at `scripts/agent-claims.mjs`, and an auto-bootstrap helper at `scripts/agent-bootstrap.mjs` so new agents can create/reuse their own `codex/...` worktree automatically before coding. Wired repo commands (`agent:bootstrap`, `claims:status`, `claims:claim`, `claims:touch`, `claims:release`) and updated startup/multi-agent docs to require self-bootstrap + live file claims before editing.
+**Files touched:** `AGENTS.md`, `package.json`, `README.md`, `docs/multi-agent-vscode.md`, `scripts/agent-claims.mjs`, `scripts/agent-bootstrap.mjs`, `AGENT_LOG.md`, `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`, `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/claims.mjs`
+**Checks:** `npm run claims:status`, `npm run claims:claim -- --task "Self test" --files "README.md,docs/multi-agent-vscode.md"`, `npm run claims:touch`, `npm run claims:release`, and `npm run claims:status` all passed. Overlap protection also passed: a second claim on `AGENTS.md` from a different `--cwd` was rejected until the first claim was released. `npm run agent:bootstrap -- --task "auto bootstrap self test"` created a sibling worktree + `codex/auto-bootstrap-self-test` branch, then reused that worktree on a second run.
+
+---
+
 ### 2026-03-06 09:39 AM PT — Comp Sim Accidental-Start Guard
 
 **Task:** Reduce accidental DNF risk in Competition Simulator when solver is called
