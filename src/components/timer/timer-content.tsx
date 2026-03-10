@@ -62,11 +62,7 @@ import {
   type TimerPaneTextSize,
 } from "@/components/timer/panes/types"
 import { ShareModal } from "@/components/share/share-modal"
-import { ScrambleImage } from "@/components/timer/scramble-image"
-import { CrossSolverPanel } from "@/components/timer/cross-solver-panel"
 import { PbPhotoModeOverlay } from "@/components/timer/pb-photo-mode-overlay"
-import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
-import { TimeTrendChart } from "@/components/shared/time-trend-chart"
 import { getLastSinglePbCandidate } from "@/lib/timer/pb-share"
 import type {
   StatsSummary,
