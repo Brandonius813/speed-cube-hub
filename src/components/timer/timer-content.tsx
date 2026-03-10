@@ -2338,7 +2338,7 @@ export function TimerContent() {
                   <Settings size={14} />
                 </button>
                 {settingsOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 p-1 text-sm">
+                  <div className="absolute right-0 top-full mt-1 z-50 max-h-[calc(100dvh-4.5rem)] w-72 overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover p-1 text-sm shadow-xl">
                     <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       Timer
                     </div>

@@ -231,3 +231,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added shared timer helpers for centisecond truncation and routed the timer readout, solve list, end-session summary, competition simulator, and timer-session save paths through them. The live timer now shows `59.39` for a `59.397` GAN result instead of rounding to `59.40`, and the local/fallback timing path now truncates to centiseconds before saving as well so the stored result matches the visible one.
 **Files touched:** `src/lib/timer/averages.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/end-session-modal.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/lib/timer/comp-sim-engine.ts`, `src/lib/actions/save-timer-session.ts`, `src/lib/actions/timer.ts`, `src/lib/timer/session-dividers.ts`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/lib/timer/averages.ts src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/end-session-modal.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-overlay.tsx src/lib/timer/comp-sim-engine.ts src/lib/actions/save-timer-session.ts src/lib/actions/timer.ts src/lib/timer/session-dividers.ts` passed. `npx tsc --noEmit` passed.
+
+---
+
+### 2026-03-10 05:38 AM PDT — Timer Settings Dropdown Scroll Fix
+
+**Task:** Make the timer settings menu scroll when it grows taller than the viewport
+**Status:** Updated the inline timer settings dropdown in `timer-content.tsx` to cap its height to the visible viewport and enable internal scrolling. This keeps the existing compact right-side menu behavior, but prevents settings near the bottom from becoming unreachable on shorter screens.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.
