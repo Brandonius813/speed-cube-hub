@@ -276,7 +276,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 **Phase 26 — Timer QoL Polish — T155:**
 - [x] Quick timer shortcuts for `+2`, `DNF`, and next scramble
 - [x] Reopening a tool pane restores its last slot/settings instead of jumping back to defaults
-- [x] Timer text sizing controls for larger scramble/readout/list text
+- [x] Timer text sizing controls for larger scramble/readout/list text, plus separate pane scramble/solve-time sizing in settings
 - [x] Session-vs-all-time stats in the left timer panel (session best + session mean alongside current/all-time)
 - [x] Click a solve on the left to open a richer detail modal with notes, scramble, PB/share, penalty changes, and delete
 - [x] Screen wake lock keeps laptops awake while GAN timer or active timer/Comp Sim flows are in use

@@ -9,6 +9,7 @@ export type PaneToolId =
   | "time_trend"
 
 export type TimerPaneScope = "session" | "all"
+export type TimerPaneTextSize = "md" | "lg" | "xl"
 export type DesktopPaneSize = "sm" | "md" | "lg"
 export type DesktopPaneSlot =
   | "top_right"
@@ -105,6 +106,7 @@ export type TimerPaneRenderContext = {
   event: string
   phase: TimerPhase
   scramble: string
+  scramblePaneTextSize: TimerPaneTextSize
   canShowCrossTrainer: boolean
   chartSolvesSession: StoredSolve[]
   chartSolvesAll: StoredSolve[]

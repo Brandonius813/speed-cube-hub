@@ -59,6 +59,7 @@ import { MobilePaneDrawer } from "@/components/timer/panes/mobile-pane-drawer"
 import {
   type DesktopPaneSlot,
   type PaneToolId,
+  type TimerPaneTextSize,
 } from "@/components/timer/panes/types"
 import { ShareModal } from "@/components/share/share-modal"
 import { ScrambleImage } from "@/components/timer/scramble-image"
@@ -91,6 +92,8 @@ const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
 const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
 const TIMER_TEXT_SIZE_KEY = "timer-text-size"
+const TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY = "timer-pane-scramble-text-size"
+const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
 type TimerTextSize = "md" | "lg" | "xl"
@@ -133,6 +136,10 @@ const TIMER_SHORTCUT_LABELS = [
   { key: "D", action: "DNF on selected or last solve" },
   { key: "N", action: "Next scramble" },
 ]
+
+function parseTextSize(raw: string | null): TimerTextSize | null {
+  return raw === "md" || raw === "lg" || raw === "xl" ? raw : null
+}
 
 const INLINE_SLOT_OPTIONS: Array<{ slot: DesktopPaneSlot; label: string }> = [
   { slot: "bottom_left", label: "Left" },
@@ -456,8 +463,29 @@ export function TimerContent({ viewer }: TimerContentProps) {
   })
   const [timerTextSize, setTimerTextSize] = useState<TimerTextSize>(() => {
     try {
-      const raw = localStorage.getItem(TIMER_TEXT_SIZE_KEY)
-      return raw === "md" || raw === "lg" || raw === "xl" ? raw : "lg"
+      return parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ?? "lg"
+    } catch {
+      return "lg"
+    }
+  })
+  const [paneScrambleTextSize, setPaneScrambleTextSize] = useState<TimerPaneTextSize>(() => {
+    try {
+      return (
+        parseTextSize(localStorage.getItem(TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ??
+        "md"
+      )
+    } catch {
+      return "md"
+    }
+  })
+  const [paneTimeTextSize, setPaneTimeTextSize] = useState<TimerPaneTextSize>(() => {
+    try {
+      return (
+        parseTextSize(localStorage.getItem(TIMER_PANE_TIME_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ??
+        "lg"
+      )
     } catch {
       return "lg"
     }
@@ -2230,6 +2258,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       event,
       phase,
       scramble,
+      scramblePaneTextSize: paneScrambleTextSize,
       canShowCrossTrainer,
       chartSolvesSession: sessionChartSolves,
       chartSolvesAll: allChartSolves,
@@ -2240,6 +2269,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       canShowCrossTrainer,
       event,
       phase,
+      paneScrambleTextSize,
       scramble,
       sessionChartSolves,
       statCols,
@@ -2576,6 +2606,64 @@ export function TimerContent({ viewer }: TimerContentProps) {
                     </div>
                     <div className="px-3 py-2 space-y-1.5">
                       <span className="block text-[11px] font-medium text-foreground">
+                        Pane Scramble
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            className={cn(
+                              "h-7 rounded border text-[11px] font-medium transition-colors",
+                              paneScrambleTextSize === option.value
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => {
+                              setPaneScrambleTextSize(option.value)
+                              try {
+                                localStorage.setItem(
+                                  TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY,
+                                  option.value
+                                )
+                              } catch {}
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Solve Times
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            className={cn(
+                              "h-7 rounded border text-[11px] font-medium transition-colors",
+                              paneTimeTextSize === option.value
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => {
+                              setPaneTimeTextSize(option.value)
+                              try {
+                                localStorage.setItem(
+                                  TIMER_PANE_TIME_TEXT_SIZE_KEY,
+                                  option.value
+                                )
+                              } catch {}
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
                         Shortcuts
                       </span>
                       <div className="space-y-1">
@@ -2819,7 +2907,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             currentSessionLabel={currentSessionLabel}
             currentSolveCount={sessionSolveCountForPanel}
             showAllStats={showAllStatsInList}
-            textSize={timerTextSize}
+            textSize={paneTimeTextSize}
             onSetSelectedId={setSelectedId}
             onOpenSolveDetail={handleOpenSolveDetail}
             onSelectSolveCell={handleSelectSolveCell}
