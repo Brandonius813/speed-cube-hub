@@ -164,7 +164,7 @@
 - ✅ T154: Persistent localhost workflow (`dev:up/dev:status/dev:down`) + development HTTPS/HSTS guardrails
 
 ### Phase 26: Timer QoL Polish (T155)
-- ✅ T155: Timer shortcuts, text sizing, solve detail modal, session-vs-all-time stats, and pane reopen memory
+- ✅ T155: Timer shortcuts, text sizing and pane size controls, solve detail modal, session-vs-all-time stats, and pane reopen memory
 
 ---
 
