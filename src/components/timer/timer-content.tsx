@@ -25,6 +25,7 @@ import {
   useBluetoothTimer,
   type BtTimerCallbacks,
 } from "@/components/timer/use-bluetooth-timer"
+import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import { isBleSupported } from "@/lib/timer/bluetooth"
 import { EndSessionModal } from "@/components/timer/end-session-modal"
 import {
@@ -2196,6 +2197,17 @@ export function TimerContent() {
   const inInspHold =
     (phase === "holding" || phase === "ready") && inspHoldRef.current
   const timingActive = phase === "running" || phase === "inspecting" || inInspHold
+  const wakeLockEnabled =
+    practiceType !== "Comp Sim" &&
+    (btStatus === "connected" ||
+      phase === "running" ||
+      phase === "inspecting" ||
+      inInspHold)
+
+  useScreenWakeLock({
+    enabled: wakeLockEnabled,
+    context: "main_timer",
+  })
 
   const paneContext = useMemo(
     () => ({

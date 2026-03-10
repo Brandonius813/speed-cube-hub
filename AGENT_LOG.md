@@ -231,3 +231,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added shared timer helpers for centisecond truncation and routed the timer readout, solve list, end-session summary, competition simulator, and timer-session save paths through them. The live timer now shows `59.39` for a `59.397` GAN result instead of rounding to `59.40`, and the local/fallback timing path now truncates to centiseconds before saving as well so the stored result matches the visible one.
 **Files touched:** `src/lib/timer/averages.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/end-session-modal.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/lib/timer/comp-sim-engine.ts`, `src/lib/actions/save-timer-session.ts`, `src/lib/actions/timer.ts`, `src/lib/timer/session-dividers.ts`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/lib/timer/averages.ts src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/end-session-modal.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-overlay.tsx src/lib/timer/comp-sim-engine.ts src/lib/actions/save-timer-session.ts src/lib/actions/timer.ts src/lib/timer/session-dividers.ts` passed. `npx tsc --noEmit` passed.
+
+---
+
+### 2026-03-10 PT — Timer Wake Lock
+
+**Task:** Keep laptops awake while the timer is actively in use, especially with a connected GAN timer
+**Status:** Added a shared `use-screen-wake-lock` hook and wired it into the main timer plus Competition Simulator. The timer now requests a browser screen wake lock while a GAN timer is connected or while active timing/inspection is happening, releases it when inactive or hidden, and silently falls back if wake lock is unsupported or denied. Comp Sim uses the same hook for all active simulator phases except idle/results. No new UI was added; failures only emit timer telemetry.
+**Files touched:** `src/components/timer/use-screen-wake-lock.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
+**Checks:** `npx eslint src/components/timer/timer-content.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/use-screen-wake-lock.ts` passed. `npx tsc --noEmit` passed.
