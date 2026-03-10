@@ -270,3 +270,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added two new settings-menu controls in `timer-content.tsx`: `Pane Scramble` and `Solve Times`. The scramble text pane now reads a pane-specific text-size preference from pane render context, and the left solve list/stats panel uses its own persisted size setting instead of sharing the main timer readout size. New settings fall back to the existing timer text-size preference so current users keep their display preference unless they change it.
 **Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/panes/pane-scramble-text.tsx`, `src/components/timer/panes/types.ts`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/panes/pane-scramble-text.tsx src/components/timer/panes/types.ts` passed.
+
+### 2026-03-10 05:38 AM PDT — Timer Settings Dropdown Scroll Fix
+
+**Task:** Make the timer settings menu scroll when it grows taller than the viewport
+**Status:** Updated the inline timer settings dropdown in `timer-content.tsx` to cap its height to the visible viewport and enable internal scrolling. This keeps the existing compact right-side menu behavior, but prevents settings near the bottom from becoming unreachable on shorter screens.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.
