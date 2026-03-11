@@ -196,6 +196,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   groupBoundaries,
   groupDividerLabels,
   currentSessionLabel,
+  currentSolveCount,
   showAllStats = false,
   textSize = "md",
   onSetSelectedId,
@@ -295,6 +296,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = latestSolve
+  const countDisplay = `${currentSolveCount ?? totalCount}/${totalCount}`
   const closeSessionStats = useCallback(() => setOpenSessionStats(null), [])
   const openStatsForDivider = useCallback(
     (label: DividerLabel | null) => {
@@ -346,16 +348,33 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             ))}
           </tbody>
         </table>
-        <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-border pt-2">
-          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            Count <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{totalCount}</span>
-          </span>
-          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            All-Time Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(stats.mean)}</span>
-          </span>
-          <span className={cn("font-sans uppercase tracking-wider text-foreground", textClasses.footerHeader)}>
-            Session Mean <span className={cn("font-mono normal-case tracking-normal text-foreground", textClasses.footerValue)}>{D(sessionStats.mean)}</span>
-          </span>
+        <div className="mt-2.5 border-t border-border pt-2">
+          <div className="space-y-1 text-center">
+            <div className="whitespace-nowrap">
+              <span className={cn("font-sans normal-case tracking-normal text-muted-foreground", textClasses.footerHeader)}>
+                count:
+              </span>{" "}
+              <span className={cn("font-mono text-foreground", textClasses.footerValue)}>
+                {countDisplay}
+              </span>
+            </div>
+            <div className="whitespace-nowrap">
+              <span className={cn("font-sans normal-case tracking-normal text-muted-foreground", textClasses.footerHeader)}>
+                session mean:
+              </span>{" "}
+              <span className={cn("font-mono text-foreground", textClasses.footerValue)}>
+                {D(sessionStats.mean)}
+              </span>
+            </div>
+            <div className="whitespace-nowrap">
+              <span className={cn("font-sans normal-case tracking-normal text-muted-foreground", textClasses.footerHeader)}>
+                all-time mean:
+              </span>{" "}
+              <span className={cn("font-mono text-foreground", textClasses.footerValue)}>
+                {D(stats.mean)}
+              </span>
+            </div>
+          </div>
         </div>
         {selectedSolve && (
           <div className="mt-2.5 flex gap-2">
