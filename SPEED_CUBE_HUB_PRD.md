@@ -176,7 +176,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **V1 Features (Complete):**
 - [x] Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
-- [x] NxN scrambles (2x2–7x7) via `cubing` library — WCA-standard random-state for all events via server-side API route (`/api/scramble`), with random-move fallback
+- [x] NxN scrambles (2x2–7x7) via `cubing` library, plus a dedicated TNoodle-style Square-1 core — WCA-standard random-state for supported events via server-side API route (`/api/scramble`), without the old unsafe Square-1 random-tuple fallback
 - [x] Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
 - [x] Running averages: Ao5, Ao12, Ao50, Ao100, BPA, WPA, best single, best Ao5, best Ao12, session mean
 - [x] WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
@@ -210,7 +210,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)
 - [x] Undo last solve with toast notification (T112)
 - [x] Solve notes/comments UI in detail modal (T113)
-- [x] 2D scramble image visualization (T114)
+- [x] 2D scramble image visualization (T114) — includes a custom TNoodle-style Square-1 renderer so draw/animation match the legal Square-1 state model
 - [x] Cross solver tool (T115) with fixed cube-orientation guidance per cross color (for example: Red bottom, Green front)
 
 **Phase 16 — Training Scrambles — T116-T123:**
