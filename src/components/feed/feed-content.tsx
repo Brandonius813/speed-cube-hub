@@ -2,77 +2,227 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Compass, Shield, Sparkles, Users } from "lucide-react"
+import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { Button } from "@/components/ui/button"
-import { Users } from "lucide-react"
-import { FeedItem as FeedItemCard } from "@/components/feed/feed-item"
+import { FeedComposer } from "@/components/feed/feed-composer"
+import { FeedEntryCard } from "@/components/feed/feed-entry-card"
 import { getFeed } from "@/lib/actions/feed"
-import type { FeedItem } from "@/lib/types"
+import type { Challenge, FeedEntry } from "@/lib/types"
+
+type FeedMode = "following" | "explore" | "clubs"
 
 export function FeedContent({
   initialItems,
+  initialHighlights,
   initialCursor,
   currentUserId,
 }: {
-  initialItems: FeedItem[]
+  initialItems: FeedEntry[]
+  initialHighlights: Challenge[]
   initialCursor: string | null
   currentUserId: string | null
 }) {
   const [items, setItems] = useState(initialItems)
+  const [highlights, setHighlights] = useState(initialHighlights)
   const [cursor, setCursor] = useState(initialCursor)
+  const [mode, setMode] = useState<FeedMode>("following")
   const [loading, setLoading] = useState(false)
 
-  async function loadMore() {
-    if (!cursor || loading) return
+  async function load(nextMode: FeedMode, nextCursor?: string | null, replace = false) {
     setLoading(true)
-
     try {
-      const result = await getFeed(cursor)
-      setItems((prev) => [...prev, ...result.items])
+      const result = await getFeed({
+        mode: nextMode,
+        cursor: nextCursor ?? null,
+      })
+
+      if (replace) {
+        setItems(result.items)
+        setHighlights(result.highlights)
+      } else {
+        setItems((prev) => [...prev, ...result.items])
+      }
       setCursor(result.nextCursor)
-    } catch {
-      // Network error — fail silently, user can retry
     } finally {
       setLoading(false)
     }
   }
 
-  if (items.length === 0) {
+  async function handleModeChange(nextMode: FeedMode) {
+    if (nextMode === mode || loading) return
+    setMode(nextMode)
+    setCursor(null)
+    setItems([])
+    await load(nextMode, null, true)
+  }
+
+  if (items.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-lg border border-border/50 bg-card p-8 text-center">
-        <Users className="h-12 w-12 text-muted-foreground/50" />
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Your feed is empty
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Follow other cubers to see their practice sessions here.
-          </p>
+      <div className="space-y-4">
+        <div className="flex justify-end lg:absolute lg:right-0 lg:top-0 lg:z-10 lg:w-64">
+          {currentUserId ? (
+            <FeedComposer
+              onCreated={(post) =>
+                setItems((prev) => [
+                  {
+                    ...post,
+                    entry_type: "post",
+                    entry_created_at: post.created_at,
+                  },
+                  ...prev,
+                ])
+              }
+            />
+          ) : null}
         </div>
-        <Link href="/discover">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Discover Cubers
-          </Button>
-        </Link>
+
+        <div className="flex gap-2 rounded-full border border-border/50 bg-card p-1">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => void handleModeChange(id)}
+              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                mode === id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {highlights.length > 0 ? (
+          <div className="rounded-[1.75rem] border border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(24,24,27,0.96))] p-4 shadow-[0_24px_60px_-42px_rgba(245,158,11,0.8)]">
+            <div className="mb-4 rounded-2xl border border-amber-500/15 bg-black/10 px-4 py-3 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-amber-100">Challenges</p>
+            </div>
+            <div className="space-y-3">
+              {highlights.map((challenge) => (
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  currentUserId={currentUserId}
+                  onUpdate={(updatedChallenge) =>
+                    setHighlights((prev) =>
+                      prev.map((challengeItem) =>
+                        challengeItem.id === updatedChallenge.id ? updatedChallenge : challengeItem
+                      )
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/50 bg-card p-8 text-center">
+          <Sparkles className="h-12 w-12 text-muted-foreground/50" />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {mode === "following" ? "Your feed is empty" : "Explore is warming up"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {mode === "following"
+                ? "Follow more cubers or publish your first training update."
+                : mode === "clubs"
+                  ? "Join a club or post into one to get this tab moving."
+                  : "There are no recommended posts yet. Seed preview data or follow active cubers."}
+            </p>
+          </div>
+          <Link href="/discover">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Discover Cubers
+            </Button>
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end lg:absolute lg:right-0 lg:top-0 lg:z-10 lg:w-64">
+        {currentUserId ? (
+          <FeedComposer
+            onCreated={(post) =>
+              setItems((prev) => [
+                {
+                  ...post,
+                  entry_type: "post",
+                  entry_created_at: post.created_at,
+                },
+                ...prev,
+              ])
+            }
+          />
+        ) : null}
+      </div>
+
+      <div className="flex gap-2 rounded-full border border-border/50 bg-card p-1">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => void handleModeChange(id)}
+            className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+              mode === id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {highlights.length > 0 ? (
+        <div className="rounded-[1.75rem] border border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(24,24,27,0.96))] p-4 shadow-[0_24px_60px_-42px_rgba(245,158,11,0.8)]">
+          <div className="mb-4 rounded-2xl border border-amber-500/15 bg-black/10 px-4 py-3 text-center">
+            <p className="text-xs uppercase tracking-[0.3em] text-amber-100">Challenges</p>
+          </div>
+          <div className="space-y-3">
+            {highlights.map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                currentUserId={currentUserId}
+                onUpdate={(updatedChallenge) =>
+                  setHighlights((prev) =>
+                    prev.map((challengeItem) =>
+                      challengeItem.id === updatedChallenge.id ? updatedChallenge : challengeItem
+                    )
+                  )
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {items.map((item) => (
-        <FeedItemCard key={item.id} item={item} currentUserId={currentUserId} />
+        <FeedEntryCard key={`${item.entry_type}-${item.id}`} entry={item} currentUserId={currentUserId} />
       ))}
 
-      {cursor && (
+      {cursor ? (
         <Button
           variant="outline"
-          onClick={loadMore}
+          onClick={() => void load(mode, cursor)}
           disabled={loading}
           className="mx-auto min-h-11 w-full max-w-xs border-border/50"
         >
           {loading ? "Loading..." : "Load More"}
         </Button>
-      )}
+      ) : null}
     </div>
   )
 }
+  const tabs: { id: FeedMode; label: string; icon: typeof Compass }[] = [
+    { id: "explore", label: "Explore", icon: Compass },
+    { id: "following", label: "Following", icon: Users },
+    { id: "clubs", label: "Clubs", icon: Shield },
+  ]

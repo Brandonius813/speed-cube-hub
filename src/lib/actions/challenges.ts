@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { revalidatePath } from "next/cache"
+import { getSocialPreviewChallenges, isSocialPreviewMode } from "@/lib/social-preview/mock-data"
 import type { Challenge } from "@/lib/types"
 
 /**
@@ -14,6 +15,10 @@ export async function getChallenges(): Promise<{
   currentUserId?: string
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewChallenges()
+  }
+
   const supabase = await createClient()
 
   const {
@@ -66,6 +71,8 @@ export async function getChallenges(): Promise<{
       title: string
       description: string | null
       type: "solves" | "time" | "streak" | "events"
+      scope?: "official" | "club"
+      club_id?: string | null
       target_value: number
       start_date: string
       end_date: string
@@ -75,6 +82,8 @@ export async function getChallenges(): Promise<{
       title: c.title,
       description: c.description,
       type: c.type,
+      scope: c.scope ?? "official",
+      club_id: c.club_id ?? null,
       target_value: c.target_value,
       start_date: c.start_date,
       end_date: c.end_date,
@@ -243,6 +252,8 @@ export async function createChallenge(fields: {
   title: string
   description: string
   type: "solves" | "time" | "streak" | "events"
+  scope?: "official" | "club"
+  club_id?: string | null
   target_value: number
   start_date: string
   end_date: string
@@ -287,6 +298,8 @@ export async function createChallenge(fields: {
     title: fields.title.trim(),
     description: fields.description.trim() || null,
     type: fields.type,
+    scope: fields.scope ?? "official",
+    club_id: fields.scope === "club" ? fields.club_id ?? null : null,
     target_value: fields.target_value,
     start_date: fields.start_date,
     end_date: fields.end_date,

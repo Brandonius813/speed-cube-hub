@@ -173,6 +173,9 @@
 ### Phase 28: Import Preview Parity (T158)
 - ✅ T158: Shared raw-solve import review parity for csTimer, CubeTime, and future timer parsers
 
+### Phase 29: Social Preview Foundation (T159)
+- ✅ T159: Social preview foundation (mixed feed, standalone posts, richer session/PB cards, clubs feed, unified discover tabs, favorites/mutes, preview seed + hosted preview reset flow)
+
 ---
 
 ## Open / Remaining Items

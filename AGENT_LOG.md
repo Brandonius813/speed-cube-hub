@@ -6,36 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-11 10:41 AM PT — Comp Sim / GAN Flow Hardening
-
-**Task:** Stop Competition Simulator from overlapping with the normal timer or GAN Bluetooth timer
-**Status:** Added an exclusive Comp Sim mode guard in `timer-content.tsx` so the normal timer keyboard path, normal solve saves, and GAN timer callbacks all bail out while Comp Sim is active. Added a new `CompSimEntryDialog` that blocks entry when a normal session still needs to be saved/discarded, cancels empty normal sessions before entering, and recommends disconnecting the GAN timer before starting Comp Sim. Updated Comp Sim copy so users know it auto-saves and does not require a normal practice session, and moved Comp Sim save timing into `use-comp-sim.ts` so each Ao5 uses its own start time instead of depending on the normal session timer.
-**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/use-comp-sim.ts`, `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-entry-dialog.tsx`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/use-comp-sim.ts src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-entry-dialog.tsx` passed.
-
-### 2026-03-10 PT — Timer Pane Text Size Controls
-
-**Task:** Add settings controls to enlarge pane scramble text and solve times
-**Status:** Added two new settings-menu controls in `timer-content.tsx`: `Pane Scramble` and `Solve Times`. The scramble text pane now reads a pane-specific text-size preference from pane render context, and the left solve list/stats panel uses its own persisted size setting instead of sharing the main timer readout size. New settings fall back to the existing timer text-size preference so current users keep their display preference unless they change it.
-**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/panes/pane-scramble-text.tsx`, `src/components/timer/panes/types.ts`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/panes/pane-scramble-text.tsx src/components/timer/panes/types.ts` passed.
-
-### 2026-03-10 05:38 AM PDT — Timer Settings Dropdown Scroll Fix
-
-**Task:** Make the timer settings menu scroll when it grows taller than the viewport
-**Status:** Updated the inline timer settings dropdown in `timer-content.tsx` to cap its height to the visible viewport and enable internal scrolling. This keeps the existing compact right-side menu behavior, but prevents settings near the bottom from becoming unreachable on shorter screens.
-**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.
-
----
-
-### 2026-03-10 06:06 AM PT — Timer Average Popup + Pane Memory Fix
-
-**Task:** Open average-detail popups from the time list and make tool panes reopen in their last slot/settings
-**Status:** Wired the timer time-list average cells (`stat1` / `stat2`) to open the centered stat detail modal with the exact rolling solve window for the clicked row, and kept single-solve clicks on the existing solve detail modal. Also fixed timer pane reopen memory by syncing each tool's remembered slot/options/mobile height whenever layout mutations happen, instead of only when a pane is closed, so reopening a tool uses the last location/settings the user actually saw.
-**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/stat-detail-modal.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/solve-list-panel.tsx src/components/timer/stat-detail-modal.tsx src/components/timer/timer-content.tsx src/components/timer/panes/use-timer-pane-layout.ts` passed.
-
 ### 2026-03-11 PT — Timer Settings Menu Measured Scroll Fix
 
 **Task:** Fix the timer settings dropdown so the bottom tools remain reachable on short mobile viewports
@@ -178,3 +148,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Promoted raw-solve preview metadata into the shared import parser contract so solve-based timers now feed one live importer path instead of parser-specific branches. The `/import` chat flow now reads preview data uniformly for csTimer, CubeTime, and Twisty Timer, which means csTimer gets the same pre-import summary cards and solve review flow as CubeTime: best single, current/best Ao5, Ao12, Ao100, plus flagged outlier toggles that immediately rebuild the session summaries. Added parser coverage to prove csTimer/CubeTime/Twisty Timer all expose the shared preview payload and that the existing preview stats/outlier tests still pass.
 **Files touched:** `src/lib/import/types.ts`, `src/lib/import/parsers.ts`, `src/components/import/use-import-chat.ts`, `src/lib/import/parsers.test.ts`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/vitest run src/lib/import/parsers.test.ts src/lib/import/preview.test.ts` passed. `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/import/types.ts src/lib/import/parsers.ts src/components/import/use-import-chat.ts src/lib/import/parsers.test.ts src/lib/import/preview.test.ts` passed.
+
+### 2026-03-11 03:34 PM EDT — Social Preview Foundation
+
+**Task:** Build the feed/discovery rework foundation and make it previewable locally and on the hosted dev project
+**Status:** Added the new social data/model foundation for mixed feed entries: first-class posts, post media, favorite follows, muted users, one-level threaded comments, challenge scope, club visibility, club pinning, club-scoped posts, and post-image storage migrations. Reworked the feed into `Explore`, `Following`, and `Clubs`, moved compose into a top-right action, upgraded session recap and PB cards, added drag-and-drop image upload, added club posting/pinning flows, and removed the old events surface from Discover. The hosted Supabase preview project was repaired by applying migrations `027`-`029` directly, reseeding preview data successfully, and wiring shell access so future agent sessions inherit both `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD`.
+**Files touched:** `scripts/seed-social-preview.mjs`, `supabase/migrations/026_social_preview_foundation.sql`, `supabase/migrations/027_club_feed_pins.sql`, `supabase/migrations/028_post_images_storage.sql`, `supabase/migrations/029_club_scoped_posts.sql`, `src/app/(main)/discover/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/app/(main)/clubs/[id]/page.tsx`, `src/components/discover/discover-content.tsx`, `src/components/feed/feed-composer.tsx`, `src/components/feed/feed-content.tsx`, `src/components/feed/feed-entry-card.tsx`, `src/components/clubs/club-detail-content.tsx`, `src/components/clubs/create-club-modal.tsx`, `src/components/clubs/edit-club-modal.tsx`, `src/components/shared/navbar.tsx`, `src/lib/actions/clubs.ts`, `src/lib/actions/club-mutations.ts`, `src/lib/actions/feed.ts`, `src/lib/actions/posts.ts`, `src/lib/social-preview/mock-data.ts`, `src/lib/types.ts`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. Remote verification passed for preview users, club-scoped posts, pinned clubs, and `post-images` bucket creation. `npm run preview:reseed` completed successfully against the hosted preview project.

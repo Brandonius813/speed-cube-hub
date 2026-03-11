@@ -147,6 +147,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
 - [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
+- [ ] Social feed/discovery rework foundation — In progress on `codex/social-preview-foundation`: mixed feed entries (sessions + posts), richer session recap cards, unified Discover tabs (`All`, `People`, `Posts`, `Clubs`, `Events`), favorites/mutes, post composer, post/thread comments, preview seed script, and a localhost mock-preview fallback. Hosted dev still needs Supabase migration `026_social_preview_foundation.sql` applied before remote reseeding works.
 
 ### Security & Performance Hardening (Phase 9)
 - [x] Fix open redirect in Google OAuth callback (T41)

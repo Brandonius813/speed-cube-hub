@@ -4,6 +4,13 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
@@ -18,22 +25,35 @@ export function EditClubModal({
   onOpenChange,
   clubName,
   clubDescription,
+  clubAvatarUrl,
+  clubVisibility,
   onSave,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   clubName: string
   clubDescription: string
-  onSave: (name: string, description: string) => void
+  clubAvatarUrl: string
+  clubVisibility: "public" | "private"
+  onSave: (
+    name: string,
+    description: string,
+    avatarUrl: string,
+    visibility: "public" | "private"
+  ) => void
 }) {
   const [name, setName] = useState(clubName)
   const [description, setDescription] = useState(clubDescription)
+  const [avatarUrl, setAvatarUrl] = useState(clubAvatarUrl)
+  const [visibility, setVisibility] = useState<"public" | "private">(clubVisibility)
 
   // Reset form when modal opens with new data
   function handleOpenChange(isOpen: boolean) {
     if (isOpen) {
       setName(clubName)
       setDescription(clubDescription)
+      setAvatarUrl(clubAvatarUrl)
+      setVisibility(clubVisibility)
     }
     onOpenChange(isOpen)
   }
@@ -41,7 +61,7 @@ export function EditClubModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    onSave(name, description)
+    onSave(name, description, avatarUrl, visibility)
   }
 
   return (
@@ -74,6 +94,30 @@ export function EditClubModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-club-avatar-url">Club Icon URL</Label>
+            <Input
+              id="edit-club-avatar-url"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              placeholder="https://..."
+              maxLength={500}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Visibility</Label>
+            <Select value={visibility} onValueChange={(value) => setVisibility(value as "public" | "private")}>
+              <SelectTrigger className="min-h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-2">

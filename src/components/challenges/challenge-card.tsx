@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { format, parseISO } from "date-fns"
-import { Users, CheckCircle2 } from "lucide-react"
+import { CheckCircle2, Shield, Swords, Target, Users } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   joinChallenge,
@@ -26,6 +27,28 @@ const TYPE_DESCRIPTIONS: Record<Challenge["type"], (target: number) => string> =
     events: (t) => `Practice ${t} different events`,
   }
 
+function ChallengeArt({
+  scope,
+  completed,
+}: {
+  scope: Challenge["scope"]
+  completed: boolean
+}) {
+  const Icon = scope === "club" ? Swords : Shield
+
+  return (
+    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.26),rgba(15,23,42,0.16))] shadow-[0_18px_40px_-26px_rgba(250,204,21,0.85)]">
+      <div className="absolute inset-3 rounded-[1.2rem] border border-white/10 bg-black/15" />
+      <Icon className="relative h-8 w-8 text-amber-200" />
+      {completed ? (
+        <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/20 text-emerald-200">
+          <CheckCircle2 className="h-4 w-4" />
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 export function ChallengeCard({
   challenge,
   currentUserId,
@@ -41,18 +64,20 @@ export function ChallengeCard({
   const [progress, setProgress] = useState<number | undefined>(
     challenge.user_progress
   )
-  const [loadingProgress, setLoadingProgress] = useState(false)
 
   // Load progress when the user has joined
   useEffect(() => {
     if (challenge.has_joined && currentUserId && progress === undefined) {
-      setLoadingProgress(true)
+      let cancelled = false
       getChallengeProgress(challenge.id).then((result) => {
+        if (cancelled) return
         setProgress(result.progress)
-        setLoadingProgress(false)
       }).catch(() => {
-        setLoadingProgress(false)
+        if (cancelled) return
       })
+      return () => {
+        cancelled = true
+      }
     }
   }, [challenge.has_joined, challenge.id, currentUserId, progress])
 
@@ -103,29 +128,52 @@ export function ChallengeCard({
 
   return (
     <div
-      className={`rounded-lg border border-border/50 bg-card p-4 sm:p-5 ${
+      className={`overflow-hidden rounded-[1.75rem] border border-border/50 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(18,18,22,0.96))] p-4 shadow-[0_24px_60px_-42px_rgba(245,158,11,0.8)] sm:p-5 ${
         isPast ? "opacity-60" : ""
       }`}
     >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-foreground sm:text-lg">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex gap-4">
+          <ChallengeArt scope={challenge.scope} completed={isCompleted} />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="border-amber-500/25 bg-amber-500/15 text-[10px] uppercase tracking-[0.22em] text-amber-100">
+                {challenge.scope === "club" ? "Club Challenge" : "Official Challenge"}
+              </Badge>
+              <Badge variant="outline" className="border-border/60 bg-background/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                {challenge.type}
+              </Badge>
+            </div>
+
+            <h3 className="mt-3 text-lg font-semibold text-foreground sm:text-xl">
               {challenge.title}
             </h3>
-            {isCompleted && (
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
-            )}
-          </div>
-          {challenge.description && (
-            <p className="mt-1 text-sm text-muted-foreground">
+            {challenge.description && (
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {challenge.description}
-            </p>
-          )}
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <span>
+                {startDate} - {endDate}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                <span className="font-mono text-foreground">
+                  {challenge.participant_count}
+                </span>
+                participant{challenge.participant_count !== 1 ? "s" : ""}
+              </span>
+              <span className="inline-flex items-center gap-1 font-medium text-foreground/75">
+                <Target className="h-3.5 w-3.5 text-amber-300" />
+                {TYPE_DESCRIPTIONS[challenge.type](challenge.target_value)}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Join/Leave button */}
         {currentUserId && !isPast && (
           <div className="shrink-0">
             {challenge.has_joined ? (
@@ -134,7 +182,7 @@ export function ChallengeCard({
                 size="sm"
                 onClick={handleLeave}
                 disabled={joining}
-                className="min-h-11 min-w-[80px] border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive sm:min-h-0"
+                className="min-h-11 min-w-[96px] border-border/50 bg-background/50 text-muted-foreground hover:border-destructive hover:text-destructive sm:min-h-0"
               >
                 {joining ? "..." : "Joined"}
               </Button>
@@ -143,7 +191,7 @@ export function ChallengeCard({
                 size="sm"
                 onClick={handleJoin}
                 disabled={joining}
-                className="min-h-11 min-w-[80px] bg-primary text-primary-foreground hover:bg-primary/90 sm:min-h-0"
+                className="min-h-11 min-w-[96px] bg-primary text-primary-foreground hover:bg-primary/90 sm:min-h-0"
               >
                 {joining ? "..." : "Join"}
               </Button>
@@ -152,30 +200,12 @@ export function ChallengeCard({
         )}
       </div>
 
-      {/* Info row */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:text-sm">
-        <span>
-          {startDate} &ndash; {endDate}
-        </span>
-        <span className="flex items-center gap-1">
-          <Users className="h-3.5 w-3.5" />
-          <span className="font-mono">
-            {challenge.participant_count}
-          </span>{" "}
-          participant{challenge.participant_count !== 1 ? "s" : ""}
-        </span>
-        <span className="font-medium text-foreground/70">
-          {TYPE_DESCRIPTIONS[challenge.type](challenge.target_value)}
-        </span>
-      </div>
-
-      {/* Progress bar (only if user has joined) */}
       {challenge.has_joined && (
-        <div className="mt-4">
-          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-4 rounded-2xl border border-border/50 bg-background/50 p-4">
+          <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <span>Your progress</span>
-            <span className="font-mono">
-              {loadingProgress
+              <span className="font-mono text-foreground">
+              {progress === undefined
                 ? "..."
                 : `${(progress ?? 0).toLocaleString()} / ${challenge.target_value.toLocaleString()} ${TYPE_LABELS[challenge.type]}`}
             </span>
@@ -189,7 +219,7 @@ export function ChallengeCard({
             />
           </div>
           {isCompleted && (
-            <p className="mt-1.5 text-xs font-medium text-green-500">
+            <p className="mt-2 text-xs font-medium text-green-500">
               Challenge completed!
             </p>
           )}

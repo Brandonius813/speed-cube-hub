@@ -2,15 +2,59 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createNotification } from "@/lib/helpers/create-notification"
-import type { Comment } from "@/lib/types"
+import type { Comment, CommentThread } from "@/lib/types"
 
-/**
- * Add a comment to a session.
- * Returns the new comment (with profile info) or an error.
- */
-export async function addComment(
-  sessionId: string,
-  content: string
+type CommentCountRow = Partial<Record<"session_id" | "post_id", string | null>>
+
+type CommentTarget = {
+  sessionId?: string
+  postId?: string
+}
+
+function normalizeTarget(target: CommentTarget) {
+  const hasSession = typeof target.sessionId === "string" && target.sessionId.length > 0
+  const hasPost = typeof target.postId === "string" && target.postId.length > 0
+
+  if ((hasSession ? 1 : 0) + (hasPost ? 1 : 0) !== 1) {
+    throw new Error("Comments require exactly one target.")
+  }
+
+  return {
+    session_id: hasSession ? target.sessionId! : null,
+    post_id: hasPost ? target.postId! : null,
+    tableName: hasSession ? "sessions" : "posts",
+    targetId: hasSession ? target.sessionId! : target.postId!,
+  }
+}
+
+function buildThreads(comments: Comment[]): CommentThread[] {
+  const topLevel: CommentThread[] = []
+  const byId = new Map<string, CommentThread>()
+
+  for (const comment of comments) {
+    if (comment.parent_comment_id) {
+      continue
+    }
+    const thread: CommentThread = { ...comment, replies: [] }
+    byId.set(comment.id, thread)
+    topLevel.push(thread)
+  }
+
+  for (const comment of comments) {
+    if (!comment.parent_comment_id) continue
+    const parent = byId.get(comment.parent_comment_id)
+    if (parent) {
+      parent.replies.push(comment)
+    }
+  }
+
+  return topLevel
+}
+
+async function addCommentToTarget(
+  target: CommentTarget,
+  content: string,
+  parentCommentId?: string | null
 ): Promise<{ comment?: Comment; error?: string }> {
   const trimmed = content.trim()
   if (!trimmed) {
@@ -20,6 +64,7 @@ export async function addComment(
     return { error: "Comment must be 500 characters or less" }
   }
 
+  const normalized = normalizeTarget(target)
   const supabase = await createClient()
   const {
     data: { user },
@@ -29,9 +74,38 @@ export async function addComment(
     return { error: "Not authenticated" }
   }
 
+  if (parentCommentId) {
+    const { data: parentComment, error: parentError } = await supabase
+      .from("comments")
+      .select("id, session_id, post_id, parent_comment_id")
+      .eq("id", parentCommentId)
+      .single()
+
+    if (parentError || !parentComment) {
+      return { error: "Reply target not found" }
+    }
+
+    if (parentComment.parent_comment_id) {
+      return { error: "Replies can only be one level deep" }
+    }
+
+    if (
+      parentComment.session_id !== normalized.session_id ||
+      parentComment.post_id !== normalized.post_id
+    ) {
+      return { error: "Reply target mismatch" }
+    }
+  }
+
   const { data, error } = await supabase
     .from("comments")
-    .insert({ session_id: sessionId, user_id: user.id, content: trimmed })
+    .insert({
+      session_id: normalized.session_id,
+      post_id: normalized.post_id,
+      parent_comment_id: parentCommentId ?? null,
+      user_id: user.id,
+      content: trimmed,
+    })
     .select(
       `
       *,
@@ -48,30 +122,26 @@ export async function addComment(
     return { error: error.message }
   }
 
-  // Notify the session owner (don't notify if you comment on your own session)
-  const { data: session } = await supabase
-    .from("sessions")
+  const { data: ownerRow } = await supabase
+    .from(normalized.tableName)
     .select("user_id")
-    .eq("id", sessionId)
+    .eq("id", normalized.targetId)
     .single()
 
-  if (session && session.user_id !== user.id) {
-    await createNotification(session.user_id, "comment", user.id, sessionId)
+  if (ownerRow?.user_id && ownerRow.user_id !== user.id) {
+    await createNotification(ownerRow.user_id, "comment", user.id, normalized.targetId)
   }
 
   return { comment: data as Comment }
 }
 
-/**
- * Get all comments for a session, ordered oldest-first so
- * the conversation reads top-to-bottom.
- */
-export async function getComments(
-  sessionId: string
-): Promise<{ comments: Comment[]; error?: string }> {
+async function getCommentsForTarget(
+  target: CommentTarget
+): Promise<{ comments: CommentThread[]; error?: string }> {
+  const normalized = normalizeTarget(target)
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("comments")
     .select(
       `
@@ -83,19 +153,90 @@ export async function getComments(
       )
     `
     )
-    .eq("session_id", sessionId)
     .order("created_at", { ascending: true })
+
+  query =
+    normalized.session_id !== null
+      ? query.eq("session_id", normalized.session_id)
+      : query.eq("post_id", normalized.post_id)
+
+  const { data, error } = await query
 
   if (error) {
     return { comments: [], error: error.message }
   }
 
-  return { comments: (data ?? []) as Comment[] }
+  return { comments: buildThreads((data ?? []) as Comment[]) }
 }
 
-/**
- * Delete a comment. Only the comment author can delete their own comment.
- */
+async function getCommentCountsForTarget(
+  target: "session" | "post",
+  ids: string[]
+): Promise<Record<string, number>> {
+  if (ids.length === 0) return {}
+
+  const supabase = await createClient()
+  const targetColumn = target === "session" ? "session_id" : "post_id"
+
+  const { data, error } = await supabase
+    .from("comments")
+    .select(targetColumn)
+    .in(targetColumn, ids)
+
+  if (error || !data) return {}
+
+  const counts: Record<string, number> = {}
+  for (const row of data as CommentCountRow[]) {
+    const id = row[targetColumn]
+    if (typeof id === "string") {
+      counts[id] = (counts[id] ?? 0) + 1
+    }
+  }
+  return counts
+}
+
+export async function addComment(
+  sessionId: string,
+  content: string
+): Promise<{ comment?: Comment; error?: string }> {
+  return addCommentToTarget({ sessionId }, content)
+}
+
+export async function addPostComment(
+  postId: string,
+  content: string,
+  parentCommentId?: string | null
+): Promise<{ comment?: Comment; error?: string }> {
+  return addCommentToTarget({ postId }, content, parentCommentId)
+}
+
+export async function addCommentReply(
+  target: { sessionId?: string; postId?: string; parentCommentId: string },
+  content: string
+): Promise<{ comment?: Comment; error?: string }> {
+  return addCommentToTarget(
+    { sessionId: target.sessionId, postId: target.postId },
+    content,
+    target.parentCommentId
+  )
+}
+
+export async function getComments(
+  sessionId: string
+): Promise<{ comments: Comment[]; error?: string }> {
+  const result = await getCommentsForTarget({ sessionId })
+  return {
+    comments: result.comments,
+    error: result.error,
+  }
+}
+
+export async function getPostComments(
+  postId: string
+): Promise<{ comments: CommentThread[]; error?: string }> {
+  return getCommentsForTarget({ postId })
+}
+
 export async function deleteComment(
   commentId: string
 ): Promise<{ error?: string }> {
@@ -121,27 +262,14 @@ export async function deleteComment(
   return {}
 }
 
-/**
- * Get comment counts for multiple sessions in a single query.
- * Returns a map of session_id → count.
- */
 export async function getCommentCounts(
   sessionIds: string[]
 ): Promise<Record<string, number>> {
-  if (sessionIds.length === 0) return {}
+  return getCommentCountsForTarget("session", sessionIds)
+}
 
-  const supabase = await createClient()
-
-  // Use RPC for SQL COUNT GROUP BY — no row transfer
-  const { data, error } = await supabase.rpc("get_batch_comment_counts", {
-    p_session_ids: sessionIds,
-  })
-
-  if (error || !data) return {}
-
-  const counts: Record<string, number> = {}
-  for (const row of data) {
-    counts[row.session_id] = Number(row.comment_count)
-  }
-  return counts
+export async function getPostCommentCounts(
+  postIds: string[]
+): Promise<Record<string, number>> {
+  return getCommentCountsForTarget("post", postIds)
 }
