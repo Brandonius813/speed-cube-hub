@@ -159,3 +159,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/cross-solver.ts src/components/timer/cross-solver-panel.tsx` passed.
 
 ---
+
+### 2026-03-11 PT — Fix Profile Daily Charts Hidden Event Series
+
+**Task:** Stop profile daily charts from silently dropping smaller events like 6x6 and make profile stats fetch complete history
+**Status:** Replaced the duplicated top-3 chart bucketing logic with shared helpers so the profile `Daily Practice` and `Daily Solves` charts now render every event present in the filtered session set, with centralized label/color fallbacks and zero-free tooltips. Also moved session pagination into a reusable helper and updated `getSessionsByUserId` to fetch all pages instead of capping profile stats at 200 sessions. Added Vitest with helper-level unit coverage for chart grouping/series visibility and multi-page fetch behavior.
+**Files touched:** `src/components/dashboard/daily-bar-chart.tsx`, `src/components/dashboard/daily-solves-chart.tsx`, `src/lib/actions/sessions.ts`, `src/lib/helpers/fetch-all-pages.ts`, `src/lib/helpers/session-chart-data.ts`, `src/lib/helpers/fetch-all-pages.test.ts`, `src/lib/helpers/session-chart-data.test.ts`, `package.json`, `package-lock.json`, `vitest.config.ts`, `AGENT_LOG.md`
+**Checks:** `npm test` passed. `npx tsc --noEmit` passed. `npx eslint src/components/dashboard/daily-bar-chart.tsx src/components/dashboard/daily-solves-chart.tsx src/lib/actions/sessions.ts src/lib/helpers/fetch-all-pages.ts src/lib/helpers/fetch-all-pages.test.ts src/lib/helpers/session-chart-data.ts src/lib/helpers/session-chart-data.test.ts vitest.config.ts` passed. `npm run lint` still fails due pre-existing unrelated errors in other files.

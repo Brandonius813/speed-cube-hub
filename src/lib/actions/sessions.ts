@@ -1,46 +1,25 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/helpers/fetch-all-pages";
 import { createSessionSchema, bulkSessionItemSchema, zodFirstError } from "@/lib/validations";
 import type { Session } from "@/lib/types";
 
-// Supabase caps each request at ~1000 rows by default (PostgREST max-rows).
-// This helper paginates to fetch ALL matching rows.
 const PAGE_SIZE = 1000;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchAllPages(
-  queryFn: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>
-): Promise<{ data: Session[]; error?: string }> {
-  const all: Session[] = [];
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await queryFn(from, from + PAGE_SIZE - 1);
-    if (error) return { data: [], error: error.message };
-    if (!data || data.length === 0) break;
-    all.push(...(data as Session[]));
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
-  }
-
-  return { data: all };
-}
 
 export async function getSessionsByUserId(
   userId: string
 ): Promise<{ data: Session[]; error?: string }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("user_id", userId)
-    .order("session_date", { ascending: false })
-    .limit(200);
-
-  if (error) return { data: [], error: error.message };
-  return { data: (data as Session[]) ?? [] };
+  return fetchAllPages((from, to) => (
+    supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("session_date", { ascending: false })
+      .range(from, to)
+  ));
 }
 
 export async function createSession(data: {
