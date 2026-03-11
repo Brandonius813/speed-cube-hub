@@ -131,7 +131,7 @@
 - ✅ T96–T105: Full named session system (DB, types, server actions, UI, integration)
 
 ### Phase 15: Core UX — csTimer Parity (T106–T115)
-- ✅ T106–T115: Stats panel, customizable indicators, solve/stat detail modals, time list, keyboard shortcuts, undo, notes, scramble image, cross solver
+- ✅ T106–T115: Stats panel, customizable indicators, solve/stat detail modals, time list, keyboard shortcuts, undo, notes, scramble image, cross solver + orientation guidance
 
 ### Phase 16: Training Scrambles (T116–T123)
 - ✅ T116–T123: CFOP/advanced/Roux/Mehta/subset/2x2/4x4+/case filtering/per-case stats
