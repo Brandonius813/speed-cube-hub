@@ -293,3 +293,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Replaced the static dropdown max-height in `timer-content.tsx` with a measured viewport-based cap tied to the settings button's actual screen position, and refresh that cap while the menu is open as the visual viewport changes. Also enabled touch-friendly internal scrolling so the bottom tools can be reached reliably on mobile.
 **Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
+
+### 2026-03-11 PT — Move Pane Scramble Size Control
+
+**Task:** Move the pane scramble size setting so it lives with the related tool controls instead of the general timer section
+**Status:** Removed the `Pane Scramble` size control from the top timer settings block and rendered the same size buttons directly under the `Draw Scramble` tool row in the `Tools` section. This keeps the control in the same menu, but places it where users expect pane-specific settings to live.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
