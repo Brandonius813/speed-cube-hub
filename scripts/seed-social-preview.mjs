@@ -8,6 +8,7 @@ const previewPassword = "speedcube-preview";
 const previewPrefix = "[Preview]";
 const args = new Set(process.argv.slice(2));
 const shouldReset = args.has("--reset");
+const shouldCleanup = args.has("--cleanup");
 const projectDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { loadEnvConfig } = nextEnv;
 
@@ -540,6 +541,12 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       sort_order: 0,
     },
     {
+      post_id: postByType[`${users[5].id}:competition`],
+      url: "https://picsum.photos/seed/sch-comp-2/1200/900",
+      alt_text: "Competition recap crowd photo",
+      sort_order: 1,
+    },
+    {
       post_id: postByType[`${users[6].id}:text`],
       url: "https://picsum.photos/seed/sch-puzzle/1200/900",
       alt_text: "New puzzle desk photo",
@@ -554,7 +561,12 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       tag_type: "pb",
       reference_id: pbByUser[users[1].id]?.id ?? null,
       label: "3x3 single",
-      metadata: { event: "333", pb_type: "single" },
+      metadata: {
+        event: "333",
+        pb_type: "single",
+        time_seconds: 7.91,
+        scramble: "R U R' F2 U2 L2 D' R2 U F'",
+      },
     },
     {
       post_id: postByType[`${users[5].id}:competition`],
@@ -643,6 +655,12 @@ async function main() {
   const existingPreviewUsers = allUsers.filter((user) =>
     demoUsers.some((demoUser) => demoUser.email === user.email)
   );
+
+  if (shouldCleanup) {
+    await resetPreviewData(existingPreviewUsers);
+    console.log("Removed social preview seed data.");
+    return;
+  }
 
   if (!shouldReset && existingPreviewUsers.length > 0) {
     console.log("Preview seed data already exists. Run `npm run preview:reseed` to reset it.");

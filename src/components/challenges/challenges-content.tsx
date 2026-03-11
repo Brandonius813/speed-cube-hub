@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Trophy, Users, Calendar, Target, Plus } from "lucide-react"
+import { Flag, Plus, Target, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { CreateChallengeModal } from "@/components/challenges/create-challenge-modal"
@@ -53,6 +53,14 @@ export function ChallengesContent({
     () => challenges.filter((c) => c.end_date >= today),
     [challenges, today]
   )
+  const activeOfficialChallenges = useMemo(
+    () => activeChallenges.filter((challenge) => challenge.scope === "official"),
+    [activeChallenges]
+  )
+  const activeClubChallenges = useMemo(
+    () => activeChallenges.filter((challenge) => challenge.scope === "club"),
+    [activeChallenges]
+  )
 
   const pastChallenges = useMemo(
     () => challenges.filter((c) => c.end_date < today),
@@ -83,25 +91,27 @@ export function ChallengesContent({
         </Button>
       )}
 
-      {/* Active challenges */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
+      <section className="space-y-4">
+        <div className="mb-1 flex items-center gap-2">
           <Trophy className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold text-foreground">
-            Active Challenges
+            Official Challenges
           </h2>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Whole-app community pushes that belong in the home feed and give everyone something to chase together.
+        </p>
 
-        {activeChallenges.length === 0 ? (
+        {activeOfficialChallenges.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-lg border border-border/50 bg-card p-8 text-center">
             <Target className="h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
-              No active challenges right now. Check back soon!
+              No official challenges are live right now.
             </p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {activeChallenges.map((challenge) => (
+            {activeOfficialChallenges.map((challenge) => (
               <ChallengeCard
                 key={challenge.id}
                 challenge={challenge}
@@ -113,11 +123,42 @@ export function ChallengesContent({
         )}
       </section>
 
-      {/* Past challenges */}
+      <section className="space-y-4">
+        <div className="mb-1 flex items-center gap-2">
+          <Flag className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">
+            Club Challenges
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Smaller accountability loops for clubs and private groups.
+        </p>
+
+        {activeClubChallenges.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-border/50 bg-card p-8 text-center">
+            <Users className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
+              No club challenges are active right now.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {activeClubChallenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                currentUserId={currentUserId}
+                onUpdate={handleChallengeUpdate}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
       {pastChallenges.length > 0 && (
         <section>
           <div className="mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <Trophy className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-lg font-semibold text-muted-foreground">
               Past Challenges
             </h2>

@@ -117,6 +117,155 @@ function SessionStats({ entry }: { entry: Extract<FeedEntry, { entry_type: "sess
   )
 }
 
+function getPbMeta(entry: Extract<FeedEntry, { entry_type: "post" }>) {
+  const pbTag = entry.tags.find((tag) => tag.tag_type === "pb")
+  const metadata = pbTag?.metadata ?? {}
+
+  return {
+    event: typeof metadata.event === "string" ? metadata.event : null,
+    pbType: typeof metadata.pb_type === "string" ? metadata.pb_type : null,
+    timeSeconds:
+      typeof metadata.time_seconds === "number"
+        ? metadata.time_seconds
+        : typeof metadata.time === "number"
+          ? metadata.time
+          : null,
+    scramble: typeof metadata.scramble === "string" ? metadata.scramble : null,
+  }
+}
+
+function PostMediaGallery({ entry }: { entry: Extract<FeedEntry, { entry_type: "post" }> }) {
+  if (entry.media.length === 0) return null
+
+  if (entry.media.length === 1) {
+    const media = entry.media[0]
+    return (
+      <div className="mt-4 overflow-hidden rounded-2xl border border-border/50 bg-secondary/30">
+        <img
+          src={media.url}
+          alt={media.alt_text ?? "Feed photo"}
+          className="aspect-[4/3] w-full object-cover"
+        />
+      </div>
+    )
+  }
+
+  if (entry.media.length === 2) {
+    return (
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {entry.media.map((media) => (
+          <div
+            key={media.id}
+            className="overflow-hidden rounded-2xl border border-border/50 bg-secondary/30"
+          >
+            <img
+              src={media.url}
+              alt={media.alt_text ?? "Feed photo"}
+              className="aspect-square w-full object-cover"
+            />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (entry.media.length === 3) {
+    return (
+      <div className="mt-4 grid grid-cols-[1.4fr_1fr] gap-2">
+        <div className="overflow-hidden rounded-2xl border border-border/50 bg-secondary/30">
+          <img
+            src={entry.media[0].url}
+            alt={entry.media[0].alt_text ?? "Feed photo"}
+            className="h-full min-h-[18rem] w-full object-cover"
+          />
+        </div>
+        <div className="grid gap-2">
+          {entry.media.slice(1).map((media) => (
+            <div
+              key={media.id}
+              className="overflow-hidden rounded-2xl border border-border/50 bg-secondary/30"
+            >
+              <img
+                src={media.url}
+                alt={media.alt_text ?? "Feed photo"}
+                className="aspect-square w-full object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-2">
+      {entry.media.slice(0, 4).map((media) => (
+        <div
+          key={media.id}
+          className="overflow-hidden rounded-2xl border border-border/50 bg-secondary/30"
+        >
+          <img
+            src={media.url}
+            alt={media.alt_text ?? "Feed photo"}
+            className="aspect-square w-full object-cover"
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PbHighlight({ entry }: { entry: Extract<FeedEntry, { entry_type: "post" }> }) {
+  const pb = getPbMeta(entry)
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-500/25 bg-[linear-gradient(180deg,rgba(16,185,129,0.16),rgba(16,185,129,0.05))]">
+      <div className="border-b border-emerald-500/15 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="gap-1 bg-emerald-500/15 text-emerald-100">
+            <Trophy className="h-3 w-3" />
+            New PB
+          </Badge>
+          {pb.event ? <EventBadge event={pb.event} /> : null}
+          {pb.pbType ? (
+            <Badge variant="outline" className="border-emerald-500/20 bg-background/50 text-emerald-100">
+              {pb.pbType.toUpperCase()}
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="rounded-2xl bg-background/80 p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">PB Time</p>
+          <p className="mt-2 font-mono text-4xl font-semibold text-emerald-200">
+            {pb.timeSeconds !== null ? formatSolveTime(pb.timeSeconds) : "PB"}
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-background/80 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Event</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {pb.event ? <EventBadge event={pb.event} /> : "Unspecified"}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-background/80 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Type</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {pb.pbType ? pb.pbType.toUpperCase() : "PB"}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-background/80 p-4 sm:col-span-2">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scramble</p>
+          <p className="mt-2 break-words font-mono text-sm text-foreground/85">
+            {pb.scramble ?? "Scramble not attached to this post."}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function FeedEntryCard({
   entry,
   currentUserId,
@@ -130,6 +279,7 @@ export function FeedEntryCard({
   const [commentCount, setCommentCount] = useState(entry.comment_count)
   const [showComments, setShowComments] = useState(false)
   const [liking, setLiking] = useState(false)
+  const isPbPost = entry.entry_type === "post" && entry.post_type === "pb"
   const bodyText =
     entry.entry_type === "session"
       ? entry.notes || "Logged a focused training session."
@@ -208,7 +358,7 @@ export function FeedEntryCard({
               <h3 className="mt-3 text-lg font-semibold text-foreground">{entry.title}</h3>
             ) : null}
 
-            {bodyText ? (
+            {!isPbPost && bodyText ? (
               <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
                 {bodyText}
               </p>
@@ -230,36 +380,9 @@ export function FeedEntryCard({
           </div>
         ) : null}
 
-        {entry.entry_type === "post" && entry.media.length > 0 ? (
-          <div
-            className={cn(
-              "mt-4 grid gap-2",
-              entry.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
-            )}
-          >
-            {entry.media.map((media) => (
-              <div
-                key={media.id}
-                className="overflow-hidden rounded-2xl border border-border/50 bg-secondary/30"
-              >
-                <img
-                  src={media.url}
-                  alt={media.alt_text ?? "Feed photo"}
-                  className="h-56 w-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-
         {entry.entry_type === "session" ? <SessionStats entry={entry} /> : null}
 
-        {entry.entry_type === "post" && entry.post_type === "pb" ? (
-          <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            <Trophy className="h-4 w-4" />
-            PB update shared with the community
-          </div>
-        ) : null}
+        {entry.entry_type === "post" && entry.post_type === "pb" ? <PbHighlight entry={entry} /> : null}
 
         {entry.entry_type === "post" && entry.post_type === "competition" ? (
           <div className="mt-4 flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-300">
@@ -267,6 +390,14 @@ export function FeedEntryCard({
             Competition recap
           </div>
         ) : null}
+
+        {entry.entry_type === "post" && bodyText && isPbPost ? (
+          <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
+            {bodyText}
+          </p>
+        ) : null}
+
+        {entry.entry_type === "post" && entry.media.length > 0 ? <PostMediaGallery entry={entry} /> : null}
 
         <div className="mt-4 flex items-center gap-1">
           <button

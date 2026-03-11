@@ -53,7 +53,14 @@ function isLocalSocialPreviewPublicRoute(pathname: string) {
   return (
     process.env.NODE_ENV === "development" &&
     process.env.NEXT_PUBLIC_SOCIAL_PREVIEW_MODE === "1" &&
-    (pathname === "/feed" || pathname.startsWith("/feed/"))
+    (
+      pathname === "/feed" ||
+      pathname.startsWith("/feed/") ||
+      pathname === "/clubs" ||
+      pathname.startsWith("/clubs/") ||
+      pathname === "/challenges" ||
+      pathname.startsWith("/challenges/")
+    )
   )
 }
 

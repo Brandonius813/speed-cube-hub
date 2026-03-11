@@ -5,7 +5,7 @@ import { getFeed } from "@/lib/actions/feed"
 import { getFollowing } from "@/lib/actions/follows"
 
 export default async function FeedPage() {
-  const { items, nextCursor, currentUserId } = await getFeed({ mode: "following" })
+  const { items, highlights, nextCursor, currentUserId } = await getFeed({ mode: "following" })
   const following = currentUserId ? await getFollowing(currentUserId) : []
 
   return (
@@ -16,6 +16,7 @@ export default async function FeedPage() {
         <div className="min-w-0">
           <FeedContent
             initialItems={items}
+            initialHighlights={highlights}
             initialCursor={nextCursor}
             currentUserId={currentUserId ?? null}
           />

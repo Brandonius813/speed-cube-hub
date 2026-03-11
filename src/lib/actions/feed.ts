@@ -6,7 +6,7 @@ import { getViewerSocialState } from "@/lib/actions/follows"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { loadPosts } from "@/lib/actions/posts"
 import { getSocialPreviewFeed, isSocialPreviewMode } from "@/lib/social-preview/mock-data"
-import type { FeedEntry, SessionFeedEntry } from "@/lib/types"
+import type { Challenge, FeedEntry, SessionFeedEntry } from "@/lib/types"
 
 const FEED_PAGE_SIZE = 20
 
@@ -116,10 +116,110 @@ async function loadSessionEntries(options: {
   }))
 }
 
+async function loadFeedHighlights(options: {
+  viewerId: string
+  mode: FeedMode
+}): Promise<Challenge[]> {
+  const supabase = await createClient()
+  const today = new Date().toISOString().slice(0, 10)
+
+  let clubIds: string[] = []
+  if (options.mode === "following") {
+    const { data } = await supabase
+      .from("club_members")
+      .select("club_id")
+      .eq("user_id", options.viewerId)
+    clubIds = (data ?? []).map((row) => row.club_id as string)
+  }
+
+  let query = supabase
+    .from("challenges")
+    .select("*")
+    .gte("end_date", today)
+    .order("created_at", { ascending: false })
+    .limit(options.mode === "following" ? 4 : 3)
+
+  if (options.mode === "following") {
+    const filters = ["scope.eq.official"]
+    if (clubIds.length > 0) {
+      filters.push(`club_id.in.(${clubIds.join(",")})`)
+    }
+    query = query.or(filters.join(","))
+  } else {
+    query = query.eq("scope", "official")
+  }
+
+  const { data: challenges, error } = await query
+  if (error || !challenges || challenges.length === 0) {
+    return []
+  }
+
+  const challengeIds = challenges.map((challenge: { id: string }) => challenge.id)
+  const [countResult, joinedResult] = await Promise.all([
+    supabase.rpc("get_batch_challenge_participant_counts", {
+      p_challenge_ids: challengeIds,
+    }),
+    supabase
+      .from("challenge_participants")
+      .select("challenge_id")
+      .eq("user_id", options.viewerId)
+      .in("challenge_id", challengeIds),
+  ])
+
+  const countMap = new Map<string, number>()
+  for (const row of countResult.data ?? []) {
+    countMap.set(row.challenge_id, Number(row.participant_count))
+  }
+
+  const joinedSet = new Set(
+    (joinedResult.data ?? []).map((row) => row.challenge_id as string)
+  )
+
+  return challenges
+    .map(
+    (challenge: {
+      id: string
+      title: string
+      description: string | null
+      type: "solves" | "time" | "streak" | "events"
+      scope?: "official" | "club"
+      club_id?: string | null
+      target_value: number
+      start_date: string
+      end_date: string
+      created_at: string
+    }) => ({
+      id: challenge.id,
+      title: challenge.title,
+      description: challenge.description,
+      type: challenge.type,
+      scope: challenge.scope ?? "official",
+      club_id: challenge.club_id ?? null,
+      target_value: challenge.target_value,
+      start_date: challenge.start_date,
+      end_date: challenge.end_date,
+      created_at: challenge.created_at,
+      participant_count: countMap.get(challenge.id) ?? 0,
+      has_joined: joinedSet.has(challenge.id),
+    })
+  )
+    .sort((a, b) => {
+      if (Number(b.has_joined) !== Number(a.has_joined)) {
+        return Number(b.has_joined) - Number(a.has_joined)
+      }
+      if (b.participant_count !== a.participant_count) {
+        return b.participant_count - a.participant_count
+      }
+      return Date.parse(b.created_at) - Date.parse(a.created_at)
+    })
+    .slice(0, options.mode === "following" ? 3 : 2)
+}
+
 export async function getFeed(
   options: FeedOptions = {}
 ): Promise<{
   items: FeedEntry[]
+  highlights: Challenge[]
   nextCursor: string | null
   currentUserId?: string
   error?: string
@@ -136,12 +236,16 @@ export async function getFeed(
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return { items: [], nextCursor: null, error: "Not authenticated" }
+    return { items: [], highlights: [], nextCursor: null, error: "Not authenticated" }
   }
 
   const { followingIds, favoriteIds, mutedIds } = await getViewerSocialState()
   const mutedSet = new Set(mutedIds)
   const favoriteSet = new Set(favoriteIds)
+  const highlights = await loadFeedHighlights({
+    viewerId: user.id,
+    mode,
+  })
 
   let allowedUserIds: string[] | undefined
   let sessionEntries: SessionFeedEntry[]
@@ -157,7 +261,7 @@ export async function getFeed(
     )
 
     if (allowedUserIds.length === 0) {
-      return { items: [], nextCursor: null, currentUserId: user.id }
+      return { items: [], highlights, nextCursor: null, currentUserId: user.id }
     }
 
     sessionEntries = await loadSessionEntries({
@@ -201,6 +305,7 @@ export async function getFeed(
 
   return {
     items,
+    highlights,
     nextCursor,
     currentUserId: user.id,
   }

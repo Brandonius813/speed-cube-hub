@@ -1,5 +1,8 @@
 import type {
+  Challenge,
   Club,
+  ClubLeaderboardEntry,
+  ClubMember,
   Comment,
   CommentThread,
   FeedEntry,
@@ -7,7 +10,6 @@ import type {
   PostTag,
   PostType,
   Profile,
-  SearchEventResult,
   SearchResults,
   SessionFeedEntry,
 } from "@/lib/types"
@@ -186,6 +188,8 @@ const previewPosts: Post[] = [
       createPostTag("preview-post-lena-pb", "pb", "3x3 single", daysAgo(0, 20), "preview-pb-lena", {
         event: "333",
         pb_type: "single",
+        time_seconds: 7.91,
+        scramble: "R U R' F2 U2 L2 D' R2 U F'",
       }),
     ],
     like_count: 14,
@@ -215,6 +219,15 @@ const previewPosts: Post[] = [
         url: "https://picsum.photos/seed/sch-comp/1200/900",
         alt_text: "Competition recap photo",
         sort_order: 0,
+        created_at: daysAgo(1, 18),
+      },
+      {
+        id: "preview-media-riley-comp-2",
+        post_id: "preview-post-riley-comp",
+        media_type: "image",
+        url: "https://picsum.photos/seed/sch-comp-2/1200/900",
+        alt_text: "Competition recap crowd photo",
+        sort_order: 1,
         created_at: daysAgo(1, 18),
       },
     ],
@@ -429,30 +442,99 @@ const previewClubs: Club[] = [
   },
 ]
 
-const previewEvents: SearchEventResult[] = [
+const previewClubMembers: Record<string, ClubMember[]> = {
+  "preview-club-daily-solvers": [
+    {
+      user_id: "preview-brandon",
+      display_name: profileById["preview-brandon"].display_name,
+      handle: profileById["preview-brandon"].handle,
+      avatar_url: profileById["preview-brandon"].avatar_url,
+      role: "owner",
+      joined_at: daysAgo(18, 13),
+    },
+    {
+      user_id: "preview-lena",
+      display_name: profileById["preview-lena"].display_name,
+      handle: profileById["preview-lena"].handle,
+      avatar_url: profileById["preview-lena"].avatar_url,
+      role: "member",
+      joined_at: daysAgo(17, 13),
+    },
+    {
+      user_id: "preview-mateo",
+      display_name: profileById["preview-mateo"].display_name,
+      handle: profileById["preview-mateo"].handle,
+      avatar_url: profileById["preview-mateo"].avatar_url,
+      role: "member",
+      joined_at: daysAgo(16, 13),
+    },
+    {
+      user_id: "preview-jules",
+      display_name: profileById["preview-jules"].display_name,
+      handle: profileById["preview-jules"].handle,
+      avatar_url: profileById["preview-jules"].avatar_url,
+      role: "member",
+      joined_at: daysAgo(15, 13),
+    },
+  ],
+  "preview-club-bootcamp": [
+    {
+      user_id: "preview-brandon",
+      display_name: profileById["preview-brandon"].display_name,
+      handle: profileById["preview-brandon"].handle,
+      avatar_url: profileById["preview-brandon"].avatar_url,
+      role: "owner",
+      joined_at: daysAgo(12, 13),
+    },
+    {
+      user_id: "preview-ari",
+      display_name: profileById["preview-ari"].display_name,
+      handle: profileById["preview-ari"].handle,
+      avatar_url: profileById["preview-ari"].avatar_url,
+      role: "member",
+      joined_at: daysAgo(11, 13),
+    },
+    {
+      user_id: "preview-riley",
+      display_name: profileById["preview-riley"].display_name,
+      handle: profileById["preview-riley"].handle,
+      avatar_url: profileById["preview-riley"].avatar_url,
+      role: "member",
+      joined_at: daysAgo(10, 13),
+    },
+  ],
+}
+
+const previewChallenges: Challenge[] = [
   {
-    id: "SacramentoOpen2026",
-    name: "Sacramento Open 2026",
-    city: "Sacramento, California",
-    start_date: daysAgo(-16, 9).slice(0, 10),
-    end_date: daysAgo(-15, 18).slice(0, 10),
-    url: "https://www.worldcubeassociation.org/competitions/SacramentoOpen2026",
+    id: "preview-challenge-official",
+    title: "Community Solve Streak",
+    description: "Log at least one session every day this week and post a recap.",
+    type: "streak",
+    scope: "official",
+    club_id: null,
+    target_value: 7,
+    start_date: daysAgo(2, 9).slice(0, 10),
+    end_date: daysAgo(-4, 18).slice(0, 10),
+    created_at: daysAgo(2, 9),
+    participant_count: 48,
+    has_joined: true,
+    user_progress: 4,
   },
   {
-    id: "NortheastSpring2026",
-    name: "Northeast Spring 2026",
-    city: "Boston, Massachusetts",
-    start_date: daysAgo(-24, 9).slice(0, 10),
-    end_date: daysAgo(-23, 18).slice(0, 10),
-    url: "https://www.worldcubeassociation.org/competitions/NortheastSpring2026",
-  },
-  {
-    id: "BerlinTurningDays2026",
-    name: "Berlin Turning Days 2026",
-    city: "Berlin, Germany",
-    start_date: daysAgo(-31, 9).slice(0, 10),
-    end_date: daysAgo(-30, 18).slice(0, 10),
-    url: "https://www.worldcubeassociation.org/competitions/BerlinTurningDays2026",
+    id: "preview-challenge-bootcamp",
+    title: "Bootcamp 150 Solves",
+    description: "Private club challenge for the accountability pod.",
+    type: "solves",
+    scope: "club",
+    club_id: "preview-club-bootcamp",
+    target_value: 150,
+    start_date: daysAgo(1, 9).slice(0, 10),
+    end_date: daysAgo(-4, 18).slice(0, 10),
+    created_at: daysAgo(1, 9),
+    participant_count: 6,
+    has_joined: true,
+    user_progress: 120,
   },
 ]
 
@@ -555,8 +637,16 @@ export function getSocialPreviewFeed(mode: "following" | "explore") {
     return entry.user_id !== socialPreviewViewerId && !followedSet.has(entry.user_id)
   })
 
+  const highlights = previewChallenges.filter((challenge) => {
+    if (mode === "explore") {
+      return challenge.scope === "official"
+    }
+    return challenge.scope === "official" || challenge.has_joined
+  })
+
   return {
     items: clone(items),
+    highlights: clone(highlights),
     nextCursor: null,
     currentUserId: socialPreviewViewerId,
   }
@@ -571,7 +661,7 @@ export function searchSocialPreview(query: string): SearchResults {
       profiles: previewProfiles.filter((profile) => profile.id !== socialPreviewViewerId && !socialPreviewState.mutedIds.includes(profile.id)).slice(0, 6),
       posts: searchablePosts.slice(0, 5),
       clubs: previewClubs.filter((club) => club.visibility === "public" || club.is_member),
-      events: previewEvents,
+      challenges: previewChallenges,
     })
   }
 
@@ -596,9 +686,110 @@ export function searchSocialPreview(query: string): SearchResults {
       if (club.visibility === "private" && !club.is_member) return false
       return [club.name, club.description ?? ""].join(" ").toLowerCase().includes(safe)
     }),
-    events: previewEvents.filter((event) =>
-      [event.name, event.city].join(" ").toLowerCase().includes(safe)
+    challenges: previewChallenges.filter((challenge) =>
+      [challenge.title, challenge.description ?? ""].join(" ").toLowerCase().includes(safe)
     ),
+  })
+}
+
+export function getSocialPreviewClubs(query?: string) {
+  const safe = query?.trim().toLowerCase() ?? ""
+  const clubs = previewClubs.filter((club) => {
+    if (club.visibility === "private" && !club.is_member) return false
+    if (!safe) return true
+    return [club.name, club.description ?? ""].join(" ").toLowerCase().includes(safe)
+  })
+
+  return clone({
+    clubs,
+    currentUserId: socialPreviewViewerId,
+  })
+}
+
+export function getSocialPreviewUserClubs() {
+  return clone({
+    clubs: previewClubs.filter((club) => club.is_member),
+  })
+}
+
+export function getSocialPreviewClub(clubId: string) {
+  const club = previewClubs.find((item) => item.id === clubId) ?? null
+  return clone({
+    club,
+    currentUserId: socialPreviewViewerId,
+  })
+}
+
+export function getSocialPreviewClubMembers(clubId: string) {
+  return clone({
+    members: previewClubMembers[clubId] ?? [],
+  })
+}
+
+export function getSocialPreviewClubFeed(clubId: string) {
+  const memberIds = new Set((previewClubMembers[clubId] ?? []).map((member) => member.user_id))
+  return clone({
+    items: allFeedEntries.filter((entry) => memberIds.has(entry.user_id)),
+    currentUserId: socialPreviewViewerId,
+  })
+}
+
+export function getSocialPreviewClubChallenges(clubId: string) {
+  return clone({
+    challenges: previewChallenges.filter((challenge) => challenge.club_id === clubId),
+    currentUserId: socialPreviewViewerId,
+  })
+}
+
+export function getSocialPreviewChallenges() {
+  return clone({
+    data: previewChallenges,
+    currentUserId: socialPreviewViewerId,
+  })
+}
+
+export function getSocialPreviewClubLeaderboard(clubId: string) {
+  const memberIds = new Set((previewClubMembers[clubId] ?? []).map((member) => member.user_id))
+  const leaderboard = [...memberIds].map((memberId) => {
+    const profile = profileById[memberId]
+    const sessions = previewSessions.filter((session) => session.user_id === memberId)
+    return {
+      user_id: memberId,
+      display_name: profile.display_name,
+      handle: profile.handle,
+      avatar_url: profile.avatar_url,
+      session_count: sessions.length,
+      total_solves: sessions.reduce((sum, session) => sum + (session.num_solves ?? 0), 0),
+      total_minutes: sessions.reduce((sum, session) => sum + (session.duration_minutes ?? 0), 0),
+      best_single: sessions.reduce<number | null>(
+        (best, session) =>
+          best === null
+            ? session.best_time ?? null
+            : session.best_time === null
+              ? best
+              : Math.min(best, session.best_time),
+        null
+      ),
+      best_mean: sessions.reduce<number | null>(
+        (best, session) =>
+          best === null
+            ? session.avg_time ?? null
+            : session.avg_time === null
+              ? best
+              : Math.min(best, session.avg_time),
+        null
+      ),
+    } satisfies ClubLeaderboardEntry
+  })
+    .sort((a, b) => {
+      if (b.total_solves !== a.total_solves) return b.total_solves - a.total_solves
+      if (b.session_count !== a.session_count) return b.session_count - a.session_count
+      return a.display_name.localeCompare(b.display_name)
+    })
+
+  return clone({
+    entries: leaderboard,
+    windowDays: 30,
   })
 }
 
@@ -637,13 +828,13 @@ export function buildSocialPreviewPost({
   title,
   content,
   postType,
-  imageUrl,
+  imageUrls,
   tags,
 }: {
   title: string
   content: string
   postType: PostType
-  imageUrl?: string
+  imageUrls: string[]
   tags: { tagType: PostTag["tag_type"]; label: string }[]
 }): Post {
   const createdAt = new Date().toISOString()
@@ -663,19 +854,18 @@ export function buildSocialPreviewPost({
       handle: socialPreviewCurrentProfile.handle,
       avatar_url: socialPreviewCurrentProfile.avatar_url,
     },
-    media: imageUrl?.trim()
-      ? [
-          {
-            id: crypto.randomUUID(),
-            post_id: postId,
-            media_type: "image",
-            url: imageUrl.trim(),
-            alt_text: title.trim() || "Feed image",
-            sort_order: 0,
-            created_at: createdAt,
-          },
-        ]
-      : [],
+    media: imageUrls
+      .filter((url) => url.trim().length > 0)
+      .slice(0, 4)
+      .map((url, index) => ({
+        id: crypto.randomUUID(),
+        post_id: postId,
+        media_type: "image" as const,
+        url: url.trim(),
+        alt_text: title.trim() || "Feed image",
+        sort_order: index,
+        created_at: createdAt,
+      })),
     tags: tags.map((tag) =>
       createPostTag(postId, tag.tagType, tag.label, createdAt)
     ),

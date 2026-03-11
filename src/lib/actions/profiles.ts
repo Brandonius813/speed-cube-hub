@@ -3,16 +3,16 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getChallenges } from "@/lib/actions/challenges"
 import { getClubs } from "@/lib/actions/clubs"
+import { getViewerSocialState } from "@/lib/actions/follows"
 import { getRecentPosts, searchPosts } from "@/lib/actions/posts"
 import { isSocialPreviewMode, searchSocialPreview } from "@/lib/social-preview/mock-data"
-import { getUpcomingCompetitions } from "@/lib/actions/wca"
 import type {
   CubeHistoryEntry,
   Profile,
   ProfileCube,
   ProfileLink,
-  SearchEventResult,
   SearchResults,
 } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
@@ -152,6 +152,104 @@ export async function getDistinctLocations(): Promise<{
   return { locations: unique }
 }
 
+async function getRecommendedProfiles(viewerId: string): Promise<Profile[]> {
+  const supabase = await createClient()
+  const { currentUserId, followingIds, mutedIds } = await getViewerSocialState()
+  const viewerProfileResult = await supabase
+    .from("profiles")
+    .select("main_events")
+    .eq("id", viewerId)
+    .single()
+
+  const viewerEvents = new Set(
+    ((viewerProfileResult.data?.main_events as string[] | null) ?? []).filter(Boolean)
+  )
+  const excludedIds = new Set([currentUserId, ...followingIds, ...mutedIds].filter(Boolean) as string[])
+
+  const { data: candidates, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(40)
+
+  if (error || !candidates) return []
+
+  const availableProfiles = (candidates as Profile[]).filter(
+    (profile) => !excludedIds.has(profile.id)
+  )
+  if (availableProfiles.length === 0) return []
+
+  const candidateIds = availableProfiles.map((profile) => profile.id)
+  const since = new Date()
+  since.setDate(since.getDate() - 30)
+  const sinceIso = since.toISOString()
+  const sinceDate = sinceIso.slice(0, 10)
+
+  const [postsResult, sessionsResult, mutualsResult] = await Promise.all([
+    supabase
+      .from("posts")
+      .select("user_id")
+      .eq("visibility", "public")
+      .in("user_id", candidateIds)
+      .gte("created_at", sinceIso),
+    supabase
+      .from("sessions")
+      .select("user_id")
+      .in("user_id", candidateIds)
+      .gte("session_date", sinceDate),
+    followingIds.length > 0
+      ? supabase
+          .from("follows")
+          .select("follower_id, following_id")
+          .in("follower_id", candidateIds)
+          .in("following_id", followingIds)
+      : Promise.resolve({ data: [] as { follower_id: string; following_id: string }[] }),
+  ])
+
+  const postCounts = new Map<string, number>()
+  for (const row of postsResult.data ?? []) {
+    postCounts.set(row.user_id as string, (postCounts.get(row.user_id as string) ?? 0) + 1)
+  }
+
+  const sessionCounts = new Map<string, number>()
+  for (const row of sessionsResult.data ?? []) {
+    sessionCounts.set(row.user_id as string, (sessionCounts.get(row.user_id as string) ?? 0) + 1)
+  }
+
+  const mutualCounts = new Map<string, number>()
+  for (const row of mutualsResult.data ?? []) {
+    mutualCounts.set(
+      row.follower_id as string,
+      (mutualCounts.get(row.follower_id as string) ?? 0) + 1
+    )
+  }
+
+  return availableProfiles
+    .map((profile) => {
+      const sharedEvents = (profile.main_events ?? []).filter((eventId) =>
+        viewerEvents.has(eventId)
+      ).length
+      const completenessScore = [
+        profile.bio,
+        profile.avatar_url,
+        profile.location,
+      ].filter(Boolean).length
+      const score =
+        sharedEvents * 12 +
+        (mutualCounts.get(profile.id) ?? 0) * 10 +
+        (postCounts.get(profile.id) ?? 0) * 5 +
+        (sessionCounts.get(profile.id) ?? 0) * 3 +
+        completenessScore
+
+      return { profile, score }
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      return Date.parse(b.profile.created_at) - Date.parse(a.profile.created_at)
+    })
+    .map((item) => item.profile)
+}
+
 export async function searchAll(
   query: string
 ): Promise<{ results: SearchResults; error?: string }> {
@@ -165,41 +263,34 @@ export async function searchAll(
   } = await supabase.auth.getUser()
 
   const trimmed = query.trim()
-  const [profilesResult, postsResult, clubsResult, competitionsResult] =
+  const recommendedProfiles =
+    !trimmed && user?.id ? await getRecommendedProfiles(user.id) : null
+  const [profilesResult, postsResult, clubsResult, challengesResult] =
     await Promise.all([
-      searchProfiles(trimmed),
+      recommendedProfiles
+        ? Promise.resolve({ profiles: recommendedProfiles })
+        : searchProfiles(trimmed),
       trimmed.length >= 2
         ? searchPosts(trimmed, user?.id ?? null)
         : Promise.resolve({ posts: await getRecentPosts(6, user?.id ?? null) }),
       getClubs(trimmed || undefined),
-      getUpcomingCompetitions(),
+      getChallenges(),
     ])
 
   const safe = trimmed.toLowerCase()
-  const events: SearchEventResult[] = (competitionsResult.data ?? [])
-    .filter((event) => {
+  const challenges = (challengesResult.data ?? [])
+    .filter((challenge) => {
       if (!safe) return true
-      return (
-        event.name.toLowerCase().includes(safe) ||
-        event.city.toLowerCase().includes(safe)
-      )
+      return [challenge.title, challenge.description ?? ""].join(" ").toLowerCase().includes(safe)
     })
     .slice(0, 8)
-    .map((event) => ({
-      id: event.id,
-      name: event.name,
-      city: event.city,
-      start_date: event.start_date,
-      end_date: event.end_date,
-      url: event.url,
-    }))
 
   return {
     results: {
       profiles: profilesResult.profiles,
       posts: postsResult.posts.slice(0, 8),
       clubs: clubsResult.clubs.slice(0, 8),
-      events,
+      challenges,
     },
   }
 }

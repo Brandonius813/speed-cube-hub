@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { revalidatePath } from "next/cache"
+import { getSocialPreviewChallenges, isSocialPreviewMode } from "@/lib/social-preview/mock-data"
 import type { Challenge } from "@/lib/types"
 
 /**
@@ -14,6 +15,10 @@ export async function getChallenges(): Promise<{
   currentUserId?: string
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewChallenges()
+  }
+
   const supabase = await createClient()
 
   const {

@@ -220,6 +220,18 @@ export type ClubMember = {
   joined_at: string;
 };
 
+export type ClubLeaderboardEntry = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  avatar_url: string | null;
+  session_count: number;
+  total_solves: number;
+  total_minutes: number;
+  best_single: number | null;
+  best_mean: number | null;
+};
+
 export type PBRecord = {
   id: string
   user_id: string
@@ -294,20 +306,11 @@ export type Challenge = {
   user_progress?: number;
 };
 
-export type SearchTab = "all" | "people" | "posts" | "clubs" | "events";
-
-export type SearchEventResult = {
-  id: string;
-  name: string;
-  city: string;
-  start_date: string;
-  end_date: string;
-  url: string;
-};
+export type SearchTab = "all" | "people" | "posts" | "clubs" | "challenges";
 
 export type SearchResults = {
   profiles: Profile[];
   posts: Post[];
   clubs: Club[];
-  events: SearchEventResult[];
+  challenges: Challenge[];
 };

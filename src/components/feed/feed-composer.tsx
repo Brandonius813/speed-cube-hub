@@ -3,8 +3,15 @@
 import { useState } from "react"
 import { ImagePlus, Loader2, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -41,12 +48,13 @@ export function FeedComposer({
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [postType, setPostType] = useState<PostType>("text")
-  const [imageUrl, setImageUrl] = useState("")
+  const [imageUrls, setImageUrls] = useState([""])
   const [tagType, setTagType] = useState<PostTagType>("session")
   const [tagLabel, setTagLabel] = useState("")
   const [tags, setTags] = useState<{ tagType: PostTagType; label: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
 
   function addTag() {
     const label = tagLabel.trim()
@@ -60,8 +68,10 @@ export function FeedComposer({
     setError(null)
 
     try {
+      const trimmedImages = imageUrls.map((url) => url.trim()).filter(Boolean)
+
       if (previewMode) {
-        if (!title.trim() && !content.trim() && !imageUrl.trim()) {
+        if (!title.trim() && !content.trim() && trimmedImages.length === 0) {
           setError("Post cannot be empty.")
           return
         }
@@ -70,16 +80,17 @@ export function FeedComposer({
           title,
           content,
           postType,
-          imageUrl,
+          imageUrls: trimmedImages,
           tags,
         })
 
         setTitle("")
         setContent("")
         setPostType("text")
-        setImageUrl("")
+        setImageUrls([""])
         setTags([])
         setTagLabel("")
+        setOpen(false)
         onCreated(post)
         return
       }
@@ -88,9 +99,7 @@ export function FeedComposer({
         title,
         content,
         postType,
-        imageUrls: imageUrl.trim()
-          ? [{ url: imageUrl.trim(), altText: title.trim() || "Feed image" }]
-          : [],
+        imageUrls: trimmedImages.map((url) => ({ url, altText: title.trim() || "Feed image" })),
         tags,
       })
 
@@ -102,9 +111,10 @@ export function FeedComposer({
       setTitle("")
       setContent("")
       setPostType("text")
-      setImageUrl("")
+      setImageUrls([""])
       setTags([])
       setTagLabel("")
+      setOpen(false)
       onCreated(result.post)
     } finally {
       setSubmitting(false)
@@ -112,8 +122,21 @@ export function FeedComposer({
   }
 
   return (
-    <Card className="border-border/50 bg-card">
-      <CardContent className="space-y-4 p-4">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="min-h-11 self-start bg-primary text-primary-foreground hover:bg-primary/90">
+          <Plus className="mr-2 h-4 w-4" />
+          Create Post
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Create Post</DialogTitle>
+          <DialogDescription>
+            Share training, PBs, session recaps, photos, and challenge updates.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
             <Input
@@ -148,14 +171,45 @@ export function FeedComposer({
         />
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="relative">
-            <ImagePlus className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="Image URL (optional for preview)"
-              className="min-h-11 pl-10"
-            />
+          <div className="space-y-2">
+            {imageUrls.map((imageUrl, index) => (
+              <div key={`image-${index}`} className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <ImagePlus className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={imageUrl}
+                    onChange={(event) =>
+                      setImageUrls((prev) => prev.map((value, currentIndex) => currentIndex === index ? event.target.value : value))
+                    }
+                    placeholder={`Image URL ${index + 1} (optional for preview)`}
+                    className="min-h-11 pl-10"
+                  />
+                </div>
+                {imageUrls.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() =>
+                      setImageUrls((prev) => prev.filter((_, currentIndex) => currentIndex !== index))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+            {imageUrls.length < 4 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => setImageUrls((prev) => [...prev, ""])}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Image
+              </Button>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Select value={tagType} onValueChange={(value) => setTagType(value as PostTagType)}>
@@ -221,7 +275,8 @@ export function FeedComposer({
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish"}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

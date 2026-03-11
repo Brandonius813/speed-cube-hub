@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
-import { Calendar, MapPin, Search, Star, UserCheck, UserPlus, VolumeX } from "lucide-react"
+import { MapPin, Search, Star, UserCheck, UserPlus, VolumeX } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { Input } from "@/components/ui/input"
 import { FeedEntryCard } from "@/components/feed/feed-entry-card"
 import { joinClub, leaveClub } from "@/lib/actions/club-mutations"
@@ -19,7 +20,7 @@ import {
 import { searchAll } from "@/lib/actions/profiles"
 import { FollowButton } from "@/components/profile/follow-button"
 import { WCA_EVENTS } from "@/lib/constants"
-import type { FeedEntry, Profile, SearchResults, SearchTab } from "@/lib/types"
+import type { Challenge, FeedEntry, Profile, SearchResults, SearchTab } from "@/lib/types"
 
 function getInitials(name: string) {
   return name
@@ -287,6 +288,15 @@ export function DiscoverContent({
     }))
   }
 
+  function handleChallengeUpdate(updatedChallenge: Challenge) {
+    setResults((prev) => ({
+      ...prev,
+      challenges: prev.challenges.map((challenge) =>
+        challenge.id === updatedChallenge.id ? updatedChallenge : challenge
+      ),
+    }))
+  }
+
   function renderPeople(profiles: Profile[]) {
     if (profiles.length === 0) {
       return <p className="py-8 text-center text-sm text-muted-foreground">No people found.</p>
@@ -396,42 +406,20 @@ export function DiscoverContent({
     )
   }
 
-  function renderEvents() {
-    if (results.events.length === 0) {
-      return <p className="py-8 text-center text-sm text-muted-foreground">No events found.</p>
+  function renderChallenges() {
+    if (results.challenges.length === 0) {
+      return <p className="py-8 text-center text-sm text-muted-foreground">No challenges found.</p>
     }
 
     return (
-      <div className="grid gap-4 md:grid-cols-2">
-        {results.events.map((event) => (
-          <a
-            key={event.id}
-            href={event.url}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-2xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30"
-          >
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-primary/10 p-3 text-primary">
-                <Calendar className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-foreground">{event.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{event.city}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(event.start_date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}{" "}
-                  -{" "}
-                  {new Date(event.end_date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            </div>
-          </a>
+      <div className="flex flex-col gap-4">
+        {results.challenges.map((challenge) => (
+          <ChallengeCard
+            key={challenge.id}
+            challenge={challenge}
+            currentUserId={currentUserId}
+            onUpdate={handleChallengeUpdate}
+          />
         ))}
       </div>
     )
@@ -442,7 +430,7 @@ export function DiscoverContent({
     { id: "people", label: "People" },
     { id: "posts", label: "Posts" },
     { id: "clubs", label: "Clubs" },
-    { id: "events", label: "Events" },
+    { id: "challenges", label: "Challenges" },
   ]
 
   return (
@@ -452,7 +440,7 @@ export function DiscoverContent({
         <Input
           value={query}
           onChange={(event) => queueSearch(event.target.value)}
-          placeholder="Search people, posts, clubs, and upcoming comps..."
+          placeholder="Search people, posts, clubs, and challenges..."
           className="min-h-12 pl-10"
         />
       </div>
@@ -496,8 +484,8 @@ export function DiscoverContent({
           </section>
 
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">Events</h2>
-            {renderEvents()}
+            <h2 className="mb-3 text-lg font-semibold text-foreground">Challenges</h2>
+            {renderChallenges()}
           </section>
         </div>
       ) : null}
@@ -505,7 +493,7 @@ export function DiscoverContent({
       {tab === "people" ? renderPeople(results.profiles) : null}
       {tab === "posts" ? renderPosts() : null}
       {tab === "clubs" ? renderClubs() : null}
-      {tab === "events" ? renderEvents() : null}
+      {tab === "challenges" ? renderChallenges() : null}
     </div>
   )
 }

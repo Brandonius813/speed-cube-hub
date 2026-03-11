@@ -3,7 +3,25 @@
 import { createClient } from "@/lib/supabase/server"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { getCommentCounts } from "@/lib/actions/comments"
-import type { Club, ClubMember, FeedItem } from "@/lib/types"
+import { loadPosts } from "@/lib/actions/posts"
+import {
+  getSocialPreviewClub,
+  getSocialPreviewClubChallenges,
+  getSocialPreviewClubFeed,
+  getSocialPreviewClubLeaderboard,
+  getSocialPreviewClubMembers,
+  getSocialPreviewClubs,
+  getSocialPreviewUserClubs,
+  isSocialPreviewMode,
+} from "@/lib/social-preview/mock-data"
+import type {
+  Challenge,
+  Club,
+  ClubLeaderboardEntry,
+  ClubMember,
+  FeedEntry,
+  SessionFeedEntry,
+} from "@/lib/types"
 
 type ClubRow = {
   id: string
@@ -21,6 +39,10 @@ export async function getClubs(query?: string): Promise<{
   currentUserId?: string
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClubs(query)
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -87,6 +109,10 @@ export async function getClub(clubId: string): Promise<{
   currentUserId?: string
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClub(clubId)
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -135,6 +161,10 @@ export async function getClubMembers(clubId: string): Promise<{
   members: ClubMember[]
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClubMembers(clubId)
+  }
+
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -161,12 +191,16 @@ export async function getClubMembers(clubId: string): Promise<{
   return { members }
 }
 
-/** Get recent sessions from all club members (club activity feed). */
+/** Get recent mixed activity from all club members (sessions + posts). */
 export async function getClubFeed(clubId: string): Promise<{
-  items: FeedItem[]
+  items: FeedEntry[]
   currentUserId?: string
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClubFeed(clubId)
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -178,12 +212,19 @@ export async function getClubFeed(clubId: string): Promise<{
   const memberIds = (memberData ?? []).map((m: { user_id: string }) => m.user_id)
   if (memberIds.length === 0) return { items: [], currentUserId: user?.id }
 
-  const { data, error } = await supabase
-    .from("sessions")
-    .select(`*, profile:profiles(display_name, handle, avatar_url)`)
-    .in("user_id", memberIds)
-    .order("created_at", { ascending: false })
-    .limit(30)
+  const [{ data, error }, posts] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select(`*, profile:profiles(display_name, handle, avatar_url)`)
+      .in("user_id", memberIds)
+      .order("created_at", { ascending: false })
+      .limit(24),
+    loadPosts({
+      viewerId: user?.id ?? null,
+      userIds: memberIds,
+      limit: 24,
+    }),
+  ])
 
   if (error) return { items: [], error: error.message }
 
@@ -195,14 +236,225 @@ export async function getClubFeed(clubId: string): Promise<{
     getCommentCounts(sessionIds),
   ])
 
-  const items: FeedItem[] = rawItems.map((s: Record<string, unknown>) => ({
-    ...s,
+  const sessions: SessionFeedEntry[] = rawItems.map((s: Record<string, unknown>) => ({
+    ...(s as unknown as SessionFeedEntry),
+    entry_type: "session",
+    entry_created_at: s.created_at as string,
     like_count: likeInfo.get(s.id as string)?.count ?? 0,
     has_liked: likeInfo.get(s.id as string)?.hasLiked ?? false,
     comment_count: commentCounts[s.id as string] ?? 0,
-  })) as FeedItem[]
+  }))
+
+  const items: FeedEntry[] = [
+    ...sessions,
+    ...posts.map((post) => ({
+      ...post,
+      entry_type: "post" as const,
+      entry_created_at: post.created_at,
+    })),
+  ]
+    .sort((a, b) => Date.parse(b.entry_created_at) - Date.parse(a.entry_created_at))
+    .slice(0, 24)
 
   return { items, currentUserId: user?.id }
+}
+
+export async function getClubChallenges(clubId: string): Promise<{
+  challenges: Challenge[]
+  currentUserId?: string
+  error?: string
+}> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClubChallenges(clubId)
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: challenges, error } = await supabase
+    .from("challenges")
+    .select("*")
+    .eq("club_id", clubId)
+    .order("end_date", { ascending: true })
+
+  if (error) {
+    return { challenges: [], error: error.message }
+  }
+
+  if (!challenges || challenges.length === 0) {
+    return { challenges: [], currentUserId: user?.id }
+  }
+
+  const challengeIds = challenges.map((challenge: { id: string }) => challenge.id)
+
+  const [countResult, joinedResult] = await Promise.all([
+    supabase.rpc("get_batch_challenge_participant_counts", {
+      p_challenge_ids: challengeIds,
+    }),
+    user
+      ? supabase
+          .from("challenge_participants")
+          .select("challenge_id")
+          .eq("user_id", user.id)
+          .in("challenge_id", challengeIds)
+      : Promise.resolve({ data: [] as { challenge_id: string }[] }),
+  ])
+
+  const countMap = new Map<string, number>()
+  for (const row of countResult.data ?? []) {
+    countMap.set(row.challenge_id, Number(row.participant_count))
+  }
+
+  const joinedSet = new Set(
+    (joinedResult.data ?? []).map((row) => row.challenge_id as string)
+  )
+
+  const mapped: Challenge[] = challenges.map(
+    (challenge: {
+      id: string
+      title: string
+      description: string | null
+      type: "solves" | "time" | "streak" | "events"
+      scope?: "official" | "club"
+      club_id?: string | null
+      target_value: number
+      start_date: string
+      end_date: string
+      created_at: string
+    }) => ({
+      id: challenge.id,
+      title: challenge.title,
+      description: challenge.description,
+      type: challenge.type,
+      scope: challenge.scope ?? "club",
+      club_id: challenge.club_id ?? clubId,
+      target_value: challenge.target_value,
+      start_date: challenge.start_date,
+      end_date: challenge.end_date,
+      created_at: challenge.created_at,
+      participant_count: countMap.get(challenge.id) ?? 0,
+      has_joined: joinedSet.has(challenge.id),
+    })
+  )
+
+  return { challenges: mapped, currentUserId: user?.id }
+}
+
+export async function getClubLeaderboard(clubId: string): Promise<{
+  entries: ClubLeaderboardEntry[]
+  windowDays: number
+  error?: string
+}> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewClubLeaderboard(clubId)
+  }
+
+  const supabase = await createClient()
+  const windowDays = 30
+
+  const { data: members, error: memberError } = await supabase
+    .from("club_members")
+    .select(`
+      user_id,
+      profile:profiles(display_name, handle, avatar_url)
+    `)
+    .eq("club_id", clubId)
+
+  if (memberError) {
+    return { entries: [], windowDays, error: memberError.message }
+  }
+
+  const memberList = ((members ?? []) as {
+    user_id: string
+    profile:
+      | { display_name: string; handle: string; avatar_url: string | null }
+      | { display_name: string; handle: string; avatar_url: string | null }[]
+      | null
+  }[])
+    .map((member) => ({
+      user_id: member.user_id,
+      profile: Array.isArray(member.profile) ? member.profile[0] : member.profile,
+    }))
+    .filter(
+      (member): member is {
+        user_id: string
+        profile: { display_name: string; handle: string; avatar_url: string | null }
+      } => Boolean(member.profile)
+    )
+  const memberIds = memberList.map((member) => member.user_id)
+
+  if (memberIds.length === 0) {
+    return { entries: [], windowDays }
+  }
+
+  const since = new Date()
+  since.setDate(since.getDate() - windowDays)
+  const sinceDate = since.toISOString().slice(0, 10)
+
+  const { data: sessions, error: sessionError } = await supabase
+    .from("sessions")
+    .select("user_id, num_solves, duration_minutes, best_time, avg_time")
+    .in("user_id", memberIds)
+    .gte("session_date", sinceDate)
+
+  if (sessionError) {
+    return { entries: [], windowDays, error: sessionError.message }
+  }
+
+  const aggregateMap = new Map<string, ClubLeaderboardEntry>()
+  for (const member of memberList) {
+    aggregateMap.set(member.user_id, {
+      user_id: member.user_id,
+      display_name: member.profile.display_name,
+      handle: member.profile.handle,
+      avatar_url: member.profile.avatar_url,
+      session_count: 0,
+      total_solves: 0,
+      total_minutes: 0,
+      best_single: null,
+      best_mean: null,
+    })
+  }
+
+  for (const session of (sessions ?? []) as {
+    user_id: string
+    num_solves: number | null
+    duration_minutes: number | null
+    best_time: number | null
+    avg_time: number | null
+  }[]) {
+    const entry = aggregateMap.get(session.user_id)
+    if (!entry) continue
+
+    entry.session_count += 1
+    entry.total_solves += session.num_solves ?? 0
+    entry.total_minutes += session.duration_minutes ?? 0
+    entry.best_single =
+      entry.best_single === null
+        ? session.best_time ?? null
+        : session.best_time === null
+          ? entry.best_single
+          : Math.min(entry.best_single, session.best_time)
+    entry.best_mean =
+      entry.best_mean === null
+        ? session.avg_time ?? null
+        : session.avg_time === null
+          ? entry.best_mean
+          : Math.min(entry.best_mean, session.avg_time)
+  }
+
+  const entries = [...aggregateMap.values()]
+    .sort((a, b) => {
+      if (b.total_solves !== a.total_solves) return b.total_solves - a.total_solves
+      if (b.session_count !== a.session_count) return b.session_count - a.session_count
+      if ((a.best_single ?? Number.POSITIVE_INFINITY) !== (b.best_single ?? Number.POSITIVE_INFINITY)) {
+        return (a.best_single ?? Number.POSITIVE_INFINITY) - (b.best_single ?? Number.POSITIVE_INFINITY)
+      }
+      return a.display_name.localeCompare(b.display_name)
+    })
+    .slice(0, 8)
+
+  return { entries, windowDays }
 }
 
 /** Get clubs that a specific user belongs to. */
@@ -210,6 +462,10 @@ export async function getUserClubs(userId: string): Promise<{
   clubs: Club[]
   error?: string
 }> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewUserClubs()
+  }
+
   const supabase = await createClient()
 
   const { data: memberships, error: memberError } = await supabase
