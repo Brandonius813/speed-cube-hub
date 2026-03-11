@@ -8,9 +8,10 @@ import { createClubSchema, updateClubSchema, zodFirstError } from "@/lib/validat
  */
 export async function createClub(
   name: string,
-  description?: string
+  description?: string,
+  visibility: "public" | "private" = "public"
 ): Promise<{ clubId?: string; error?: string }> {
-  const parsed = createClubSchema.safeParse({ name, description })
+  const parsed = createClubSchema.safeParse({ name, description, visibility })
   if (!parsed.success) {
     return { error: zodFirstError(parsed.error) }
   }
@@ -29,6 +30,7 @@ export async function createClub(
     .insert({
       name: parsed.data.name,
       description: parsed.data.description?.trim() || null,
+      visibility: parsed.data.visibility,
       created_by: user.id,
     })
     .select("id")
@@ -138,7 +140,7 @@ export async function leaveClub(
  */
 export async function updateClub(
   clubId: string,
-  fields: { name?: string; description?: string }
+  fields: { name?: string; description?: string; visibility?: "public" | "private" }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const {
@@ -171,6 +173,9 @@ export async function updateClub(
   }
   if (parsed.data.description !== undefined) {
     updates.description = parsed.data.description?.trim() || null
+  }
+  if (parsed.data.visibility !== undefined) {
+    updates.visibility = parsed.data.visibility
   }
 
   const { error } = await supabase

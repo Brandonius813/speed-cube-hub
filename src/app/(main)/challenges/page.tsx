@@ -1,8 +1,10 @@
 import { ChallengesContent } from "@/components/challenges/challenges-content"
 import { getChallenges } from "@/lib/actions/challenges"
+import { getUserClubs } from "@/lib/actions/clubs"
 
 export default async function ChallengesPage() {
   const { data: challenges, currentUserId } = await getChallenges()
+  const userClubs = currentUserId ? await getUserClubs(currentUserId) : { clubs: [] }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
@@ -10,6 +12,7 @@ export default async function ChallengesPage() {
       <ChallengesContent
         initialChallenges={challenges}
         currentUserId={currentUserId ?? null}
+        availableClubs={userClubs.clubs}
       />
     </main>
   )

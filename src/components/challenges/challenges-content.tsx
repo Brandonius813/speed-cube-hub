@@ -6,14 +6,16 @@ import { Button } from "@/components/ui/button"
 import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { CreateChallengeModal } from "@/components/challenges/create-challenge-modal"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import type { Challenge } from "@/lib/types"
+import type { Challenge, Club } from "@/lib/types"
 
 export function ChallengesContent({
   initialChallenges,
   currentUserId,
+  availableClubs,
 }: {
   initialChallenges: Challenge[]
   currentUserId: string | null
+  availableClubs: Club[]
 }) {
   const [challenges, setChallenges] = useState(initialChallenges)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -156,6 +158,7 @@ export function ChallengesContent({
           open={showCreateModal}
           onOpenChange={setShowCreateModal}
           onCreated={handleChallengeCreated}
+          clubs={availableClubs}
         />
       )}
     </div>

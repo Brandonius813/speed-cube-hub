@@ -125,15 +125,20 @@ export function ClubDetailContent({
     })
   }
 
-  function handleEditSaved(name: string, description: string) {
+  function handleEditSaved(
+    name: string,
+    description: string,
+    visibility: "public" | "private"
+  ) {
     setShowEditModal(false)
     startTransition(async () => {
-      const result = await updateClub(club.id, { name, description })
+      const result = await updateClub(club.id, { name, description, visibility })
       if (result.success) {
         setClub((prev) => ({
           ...prev,
           name,
           description: description || null,
+          visibility,
         }))
       }
     })
@@ -165,6 +170,9 @@ export function ClubDetailContent({
                 <Users className="h-4 w-4" />
                 <span className="font-mono">{club.member_count}</span>
                 <span>{club.member_count === 1 ? "member" : "members"}</span>
+                <Badge variant="outline" className="ml-2 border-border/50 bg-secondary/50">
+                  {club.visibility}
+                </Badge>
               </div>
             </div>
 
@@ -317,6 +325,7 @@ export function ClubDetailContent({
         onOpenChange={setShowEditModal}
         clubName={club.name}
         clubDescription={club.description ?? ""}
+        clubVisibility={club.visibility}
         onSave={handleEditSaved}
       />
     </div>

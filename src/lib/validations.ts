@@ -267,9 +267,11 @@ export const updateSolveSessionSchema = z.object({
 export const createClubSchema = z.object({
   name: z.string().trim().min(1, "Club name is required").max(100, "Club name must be 100 characters or less"),
   description: z.string().max(500).optional(),
+  visibility: z.enum(["public", "private"]).default("public"),
 })
 
 export const updateClubSchema = z.object({
   name: z.string().trim().min(1, "Club name is required").max(100, "Club name must be 100 characters or less").optional(),
   description: z.string().max(500).optional(),
+  visibility: z.enum(["public", "private"]).optional(),
 })

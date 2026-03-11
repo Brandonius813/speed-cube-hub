@@ -49,6 +49,14 @@ const TABLET_USER_AGENT_RE = /ipad|tablet|playbook|silk/i
 const PHONE_USER_AGENT_RE =
   /iphone|ipod|windows phone|iemobile|blackberry|bb10|webos|opera mini|android.+mobile/i
 
+function isLocalSocialPreviewPublicRoute(pathname: string) {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_SOCIAL_PREVIEW_MODE === "1" &&
+    (pathname === "/feed" || pathname.startsWith("/feed/"))
+  )
+}
+
 /**
  * Public exceptions — sub-paths of protected prefixes that should stay public.
  */
@@ -61,6 +69,7 @@ function isPublicException(pathname: string): boolean {
 }
 
 function isProtectedRoute(pathname: string): boolean {
+  if (isLocalSocialPreviewPublicRoute(pathname)) return false
   if (isPublicException(pathname)) return false
   if (PROTECTED_EXACT.includes(pathname)) return true
   return PROTECTED_PREFIXES.some(

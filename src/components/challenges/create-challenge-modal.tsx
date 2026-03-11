@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createChallenge } from "@/lib/actions/challenges"
-import type { Challenge } from "@/lib/types"
+import type { Challenge, Club } from "@/lib/types"
 
 const CHALLENGE_TYPES = [
   { value: "solves", label: "Total Solves", hint: "e.g. Log 100 solves" },
@@ -45,14 +45,18 @@ export function CreateChallengeModal({
   open,
   onOpenChange,
   onCreated,
+  clubs,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: (challenge: Challenge) => void
+  clubs: Club[]
 }) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [type, setType] = useState<Challenge["type"]>("solves")
+  const [scope, setScope] = useState<Challenge["scope"]>("official")
+  const [clubId, setClubId] = useState("")
   const [targetValue, setTargetValue] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -68,6 +72,8 @@ export function CreateChallengeModal({
       title,
       description,
       type,
+      scope,
+      club_id: scope === "club" ? clubId : null,
       target_value: parseInt(targetValue, 10),
       start_date: startDate,
       end_date: endDate,
@@ -85,8 +91,8 @@ export function CreateChallengeModal({
       title: title.trim(),
       description: description.trim() || null,
       type,
-      scope: "official",
-      club_id: null,
+      scope,
+      club_id: scope === "club" ? clubId : null,
       target_value: parseInt(targetValue, 10),
       start_date: startDate,
       end_date: endDate,
@@ -165,6 +171,49 @@ export function CreateChallengeModal({
             )}
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label>Challenge Scope</Label>
+            <Select
+              value={scope}
+              onValueChange={(value) => {
+                const nextScope = value as Challenge["scope"]
+                setScope(nextScope)
+                if (nextScope === "official") setClubId("")
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select scope" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="official">Official / Community-wide</SelectItem>
+                <SelectItem value="club">Club-only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {scope === "club" ? (
+            <div className="flex flex-col gap-1.5">
+              <Label>Club</Label>
+              <Select value={clubId} onValueChange={setClubId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a club" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clubs.map((club) => (
+                    <SelectItem key={club.id} value={club.id}>
+                      {club.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {clubs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Join or create a club before creating a club challenge.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Target Value */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="challenge-target">Target Value</Label>
@@ -212,7 +261,7 @@ export function CreateChallengeModal({
           {/* Submit */}
           <Button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (scope === "club" && !clubId)}
             className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {submitting ? "Creating..." : "Create Challenge"}

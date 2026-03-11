@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
@@ -27,6 +34,7 @@ export function CreateClubModal({
   const router = useRouter()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [visibility, setVisibility] = useState<"public" | "private">("public")
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -35,7 +43,7 @@ export function CreateClubModal({
     setError(null)
 
     startTransition(async () => {
-      const result = await createClub(name, description)
+      const result = await createClub(name, description, visibility)
 
       if (result.error) {
         setError(result.error)
@@ -45,6 +53,7 @@ export function CreateClubModal({
       // Reset form
       setName("")
       setDescription("")
+      setVisibility("public")
       onCreated()
 
       // Navigate to the new club
@@ -86,6 +95,22 @@ export function CreateClubModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Visibility</Label>
+            <Select value={visibility} onValueChange={(value) => setVisibility(value as "public" | "private")}>
+              <SelectTrigger className="min-h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Public clubs appear in discovery. Private clubs only appear to members.
+            </p>
           </div>
 
           {error && (
