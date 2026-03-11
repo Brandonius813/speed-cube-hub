@@ -286,3 +286,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Wired the timer time-list average cells (`stat1` / `stat2`) to open the centered stat detail modal with the exact rolling solve window for the clicked row, and kept single-solve clicks on the existing solve detail modal. Also fixed timer pane reopen memory by syncing each tool's remembered slot/options/mobile height whenever layout mutations happen, instead of only when a pane is closed, so reopening a tool uses the last location/settings the user actually saw.
 **Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/stat-detail-modal.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/solve-list-panel.tsx src/components/timer/stat-detail-modal.tsx src/components/timer/timer-content.tsx src/components/timer/panes/use-timer-pane-layout.ts` passed.
+
+### 2026-03-11 PT — Timer Settings Menu Measured Scroll Fix
+
+**Task:** Fix the timer settings dropdown so the bottom tools remain reachable on short mobile viewports
+**Status:** Replaced the static dropdown max-height in `timer-content.tsx` with a measured viewport-based cap tied to the settings button's actual screen position, and refresh that cap while the menu is open as the visual viewport changes. Also enabled touch-friendly internal scrolling so the bottom tools can be reached reliably on mobile.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.

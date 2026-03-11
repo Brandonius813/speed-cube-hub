@@ -81,6 +81,8 @@ const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
 const SCRAMBLE_TIMEOUT_MS = 1800
 const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
+const SETTINGS_MENU_VIEWPORT_MARGIN_PX = 12
+const SETTINGS_MENU_MIN_HEIGHT_PX = 180
 const TIMER_V2_ENGINE_ENABLED = process.env.NEXT_PUBLIC_TIMER_V2_ENGINE !== "false"
 const SESSION_START_KEY = "timer-session-start"
 const SESSION_START_SOLVE_INDEX_KEY = "timer-session-start-solve-index"
@@ -515,6 +517,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsMenuMaxHeight, setSettingsMenuMaxHeight] = useState<number | null>(null)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try {
       const s = localStorage.getItem("timer-stat-rows")
@@ -809,6 +812,16 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   const dispatchEngine = useCallback((eventMessage: TimerEvent) => {
     engineRef.current.dispatch(eventMessage)
+  }, [])
+
+  const updateSettingsMenuMaxHeight = useCallback(() => {
+    if (typeof window === "undefined") return
+    const rect = settingsRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const nextMaxHeight = Math.floor(
+      window.innerHeight - rect.bottom - SETTINGS_MENU_VIEWPORT_MARGIN_PX
+    )
+    setSettingsMenuMaxHeight(Math.max(SETTINGS_MENU_MIN_HEIGHT_PX, nextMaxHeight))
   }, [])
 
   phaseRef.current = phase
@@ -1475,6 +1488,28 @@ export function TimerContent({ viewer }: TimerContentProps) {
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [settingsOpen])
+
+  useEffect(() => {
+    if (!settingsOpen) {
+      setSettingsMenuMaxHeight(null)
+      return
+    }
+
+    updateSettingsMenuMaxHeight()
+
+    const handleViewportChange = () => updateSettingsMenuMaxHeight()
+    window.addEventListener("resize", handleViewportChange)
+    window.addEventListener("orientationchange", handleViewportChange)
+    window.visualViewport?.addEventListener("resize", handleViewportChange)
+    window.visualViewport?.addEventListener("scroll", handleViewportChange)
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange)
+      window.removeEventListener("orientationchange", handleViewportChange)
+      window.visualViewport?.removeEventListener("resize", handleViewportChange)
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange)
+    }
+  }, [settingsOpen, updateSettingsMenuMaxHeight])
 
   useEffect(() => {
     const dn = (eventKey: KeyboardEvent) => {
@@ -2441,13 +2476,31 @@ export function TimerContent({ viewer }: TimerContentProps) {
               <div className="relative" ref={settingsRef}>
                 <button
                   className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
-                  onClick={() => setSettingsOpen((value) => !value)}
+                  onClick={() =>
+                    setSettingsOpen((value) => {
+                      const nextValue = !value
+                      if (nextValue) {
+                        updateSettingsMenuMaxHeight()
+                      }
+                      return nextValue
+                    })
+                  }
                   title="Timer settings"
                 >
                   <Settings size={14} />
                 </button>
                 {settingsOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 max-h-[calc(100dvh-4.5rem)] w-72 overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover p-1 text-sm shadow-xl">
+                  <div
+                    className="absolute right-0 top-full mt-1 z-50 w-72 overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover p-1 text-sm shadow-xl"
+                    style={{
+                      maxHeight:
+                        settingsMenuMaxHeight !== null
+                          ? `${settingsMenuMaxHeight}px`
+                          : undefined,
+                      WebkitOverflowScrolling: "touch",
+                      touchAction: "pan-y",
+                    }}
+                  >
                     <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       Timer
                     </div>
