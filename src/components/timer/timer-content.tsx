@@ -3392,24 +3392,19 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   </div>
                 </>
               ) : (
-                <>
-                  <button
-                    className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
-                    onClick={startSession}
-                  >
-                    {sessionSaved ? (
-                      <span className="text-white">Practice session saved! Start another</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                        <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
-                        Start Practice Session
-                      </span>
-                    )}
-                  </button>
-                  <div className="border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
-                    Groups normal solves into one saved practice session. Comp Sim auto-saves separately.
-                  </div>
-                </>
+                <button
+                  className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
+                  onClick={startSession}
+                >
+                  {sessionSaved ? (
+                    <span className="text-white">Session saved! Start another</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
+                      Start Session
+                    </span>
+                  )}
+                </button>
               )}
             </div>
           </div>
