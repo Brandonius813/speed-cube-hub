@@ -171,3 +171,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added a new `/profile/[handle]/compare` route that requires login and redirects through `/login?next=...` when opened directly while logged out. Public profiles now show a `Compare With Me` button next to follow controls, and the compare view renders side-by-side last-7-day and last-30-day practice windows, all-time event practice totals, current PB head-to-head cards, and faster/slower summaries derived only from mutually logged PBs. Comparison shaping lives in a dedicated `src/lib/profile-comparison.ts` helper with unit coverage so the page stays server-rendered and thin.
 **Files touched:** `src/app/(main)/profile/[handle]/compare/page.tsx`, `src/components/profile/compare-profile-button.tsx`, `src/components/profile/profile-comparison-content.tsx`, `src/components/profile/public-profile-content.tsx`, `src/lib/profile-comparison.ts`, `src/lib/profile-comparison.test.ts`, `AGENTS.md`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/app/'(main)'/profile/'[handle]'/compare/page.tsx src/components/profile/compare-profile-button.tsx src/components/profile/profile-comparison-content.tsx src/components/profile/public-profile-content.tsx src/lib/profile-comparison.ts src/lib/profile-comparison.test.ts` passed. `./node_modules/.bin/vitest run src/lib/profile-comparison.test.ts` passed.
+
+### 2026-03-11 04:31 PM EDT — Compare Page PB Event Icons
+
+**Task:** Add event icons to the individual PB event cards on the profile comparison page
+**Status:** Reused the shared `CubingIcon` component in `profile-comparison-content.tsx` so each event card in the `PB Head-to-Head` section now shows the matching WCA event icon beside the event name. Kept the change UI-only and limited to the existing card header layout.
+**Files touched:** `src/components/profile/profile-comparison-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/profile/profile-comparison-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.

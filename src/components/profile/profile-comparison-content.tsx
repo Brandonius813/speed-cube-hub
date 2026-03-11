@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EventBadge } from "@/components/shared/event-badge"
+import { CubingIcon } from "@/components/shared/cubing-icon"
 import type {
   ComparisonEventPracticeRow,
   ComparisonPbResult,
@@ -449,7 +450,13 @@ export function ProfileComparisonContent({
                   <Card key={eventRow.eventId} className="border-border/40 bg-secondary/20">
                     <CardHeader className="gap-3">
                       <div className="flex items-center justify-between gap-3">
-                        <CardTitle className="text-lg">{eventRow.eventLabel}</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <CubingIcon
+                            event={eventRow.eventId}
+                            className="text-base text-muted-foreground"
+                          />
+                          <span>{eventRow.eventLabel}</span>
+                        </CardTitle>
                         <Badge className={winnerBadgeClass(eventRow.lead)}>
                           {winnerLabel(eventRow.lead, data.target.displayName)}
                         </Badge>
