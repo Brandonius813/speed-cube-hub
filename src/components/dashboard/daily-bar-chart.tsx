@@ -12,7 +12,11 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Session } from "@/lib/types"
-import { EVENT_COLORS, getEventLabel } from "@/lib/constants"
+import type { SessionChartRow } from "@/lib/helpers/session-chart-data"
+import {
+  buildSessionChartData,
+  getAutoSessionChartGroupMode,
+} from "@/lib/helpers/session-chart-data"
 import { formatDuration } from "@/lib/utils"
 
 function CustomTooltip({
@@ -21,15 +25,22 @@ function CustomTooltip({
   label,
 }: {
   active?: boolean
-  payload?: Array<{ dataKey: string; value: number; color: string; payload: Record<string, number> }>
+  payload?: Array<{
+    color: string
+    dataKey: string
+    payload: SessionChartRow
+    value: number
+  }>
   label?: string
 }) {
-  if (active && payload && payload.length) {
+  const visibleEntries = payload?.filter((entry) => (entry.value ?? 0) > 0) ?? []
+
+  if (active && visibleEntries.length) {
     return (
       <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
         <p className="mb-1 font-medium text-foreground">{label}</p>
-        {payload.map((entry) => {
-          const solves = entry.payload[`_solves_${entry.dataKey}`] || 0
+        {visibleEntries.map((entry) => {
+          const solves = Number(entry.payload[`_solves_${entry.dataKey}`] || 0)
           return (
             <div key={entry.dataKey}>
               <div className="flex items-center gap-2">
@@ -38,7 +49,7 @@ function CustomTooltip({
                   style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-muted-foreground">
-                  {getEventLabel(entry.dataKey) || entry.dataKey}: {formatDuration(entry.value)}
+                  {String(entry.payload[`_label_${entry.dataKey}`] ?? entry.dataKey)}: {formatDuration(entry.value)}
                 </span>
               </div>
               {solves > 0 && (
@@ -53,95 +64,35 @@ function CustomTooltip({
   return null
 }
 
-type GroupMode = "daily" | "weekly" | "monthly"
-
-function getGroupMode(sessions: Session[]): GroupMode {
-  if (sessions.length === 0) return "daily"
-  const dates = sessions.map((s) => new Date(s.session_date + "T00:00:00").getTime())
-  const minDate = Math.min(...dates)
-  const maxDate = Math.max(...dates)
-  const daySpan = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1
-  if (daySpan <= 31) return "daily"
-  if (daySpan <= 90) return "weekly"
-  return "monthly"
-}
-
-/** Returns a numeric timestamp for sorting groups chronologically */
-function getGroupSortKey(dateStr: string, mode: GroupMode): number {
-  const date = new Date(dateStr + "T00:00:00")
-  if (mode === "daily") return date.getTime()
-  if (mode === "weekly") {
-    const start = new Date(date)
-    start.setDate(start.getDate() - start.getDay())
-    return start.getTime()
-  }
-  return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
-}
-
-function getGroupKey(dateStr: string, mode: GroupMode): string {
-  const date = new Date(dateStr + "T00:00:00")
-  if (mode === "daily") {
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`
-  }
-  if (mode === "weekly") {
-    // Start of week (Sunday)
-    const start = new Date(date)
-    start.setDate(start.getDate() - start.getDay())
-    return `${start.getMonth() + 1}/${start.getDate()}`
-  }
-  // Monthly
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`
-}
-
 export function DailyBarChart({ sessions }: { sessions: Session[] }) {
-  const { chartData, topEvents, title } = useMemo(() => {
-    if (sessions.length === 0) return { chartData: [], topEvents: [], title: "Practice Over Time" }
+  const { chartData, series, title } = useMemo(() => {
+    if (sessions.length === 0) return { chartData: [], series: [], title: "Practice Over Time" }
 
-    const mode = getGroupMode(sessions)
-    const titleMap: Record<GroupMode, string> = {
+    const mode = getAutoSessionChartGroupMode(sessions)
+    const titleMap = {
       daily: "Daily Practice",
       weekly: "Weekly Practice",
       monthly: "Monthly Practice",
     }
 
-    // Find top 3 events
-    const eventTotals: Record<string, number> = {}
-    for (const s of sessions) {
-      eventTotals[s.event] = (eventTotals[s.event] || 0) + s.duration_minutes
-    }
-    const top = Object.entries(eventTotals)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([id]) => id)
+    const { chartData, series } = buildSessionChartData({
+      sessions,
+      groupMode: mode,
+      valueMode: "duration",
+      weekStart: 0,
+    })
 
-    // Group by time period
-    const groups: Record<string, Record<string, number>> = {}
-    const groupSortKeys: Record<string, number> = {}
-
-    for (const s of sessions) {
-      const key = getGroupKey(s.session_date, mode)
-      if (!groups[key]) {
-        groups[key] = {}
-        groupSortKeys[key] = getGroupSortKey(s.session_date, mode)
+    const data = chartData.map((row) => {
+      const labels = Object.fromEntries(
+        series.map((entry) => [`_label_${entry.eventId}`, entry.label]),
+      )
+      return {
+        ...row,
+        ...labels,
       }
-      const event = top.includes(s.event) ? s.event : "other"
-      groups[key][event] = (groups[key][event] || 0) + s.duration_minutes
-      groups[key][`_solves_${event}`] = (groups[key][`_solves_${event}`] || 0) + (s.num_solves ?? 0)
-    }
+    })
 
-    // Sort chronologically: earliest on the left, most recent on the right
-    const sortedKeys = Object.keys(groups).sort(
-      (a, b) => groupSortKeys[a] - groupSortKeys[b]
-    )
-
-    const data = sortedKeys.map((key) => ({
-      label: key,
-      ...groups[key],
-    }))
-
-    return { chartData: data, topEvents: top, title: titleMap[mode] }
+    return { chartData: data, series, title: titleMap[mode] }
   }, [sessions])
 
   if (sessions.length === 0) {
@@ -186,15 +137,15 @@ export function DailyBarChart({ sessions }: { sessions: Session[] }) {
                 tickFormatter={(v) => formatDuration(v)}
               />
               <Tooltip content={<CustomTooltip />} />
-              {topEvents.map((eventId, i) => (
+              {series.map((seriesEntry, i) => (
                 <Bar
-                  key={eventId}
-                  dataKey={eventId}
-                  name={getEventLabel(eventId)}
+                  key={seriesEntry.eventId}
+                  dataKey={seriesEntry.eventId}
+                  name={seriesEntry.label}
                   stackId="a"
-                  fill={EVENT_COLORS[eventId] || "#6366F1"}
+                  fill={seriesEntry.color}
                   radius={
-                    i === topEvents.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+                    i === series.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
                   }
                 />
               ))}
