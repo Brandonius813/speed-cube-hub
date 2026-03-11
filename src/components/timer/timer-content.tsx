@@ -131,12 +131,6 @@ const SCRAMBLE_TEXT_SIZE_CLASSES: Record<TimerTextSize, string> = {
   xl: "text-[1.4rem] sm:text-[1.75rem] 2xl:text-[1.9rem]",
 }
 
-const TIMER_SHORTCUT_LABELS = [
-  { key: "+", action: "+2 on selected or last solve" },
-  { key: "D", action: "DNF on selected or last solve" },
-  { key: "N", action: "Next scramble" },
-]
-
 function parseTextSize(raw: string | null): TimerTextSize | null {
   return raw === "md" || raw === "lg" || raw === "xl" ? raw : null
 }
@@ -2721,26 +2715,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
                           >
                             {option.label}
                           </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="px-3 py-2 space-y-1.5">
-                      <span className="block text-[11px] font-medium text-foreground">
-                        Shortcuts
-                      </span>
-                      <div className="space-y-1">
-                        {TIMER_SHORTCUT_LABELS.map((shortcut) => (
-                          <div
-                            key={shortcut.key}
-                            className="flex items-center justify-between gap-3 rounded border border-border/50 bg-muted/20 px-2 py-1 text-[11px]"
-                          >
-                            <span className="text-muted-foreground">
-                              {shortcut.action}
-                            </span>
-                            <span className="font-mono text-foreground">
-                              {shortcut.key}
-                            </span>
-                          </div>
                         ))}
                       </div>
                     </div>
