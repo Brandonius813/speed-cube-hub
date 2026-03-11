@@ -63,20 +63,30 @@ export async function saveTimerSession(data: {
   }
 
   // 2. Bulk insert all solves in one query
-  const solveRows = data.solves.map((s, i) => ({
-    timer_session_id: timerSession.id,
-    user_id: user.id,
-    solve_number: i + 1,
-    time_ms: s.time_ms,
-    penalty: s.penalty,
-    scramble: s.scramble,
-    event: data.event,
-    comp_sim_group: s.comp_sim_group ?? null,
-    notes: s.notes ?? null,
-    phases: s.phases ?? null,
-    solved_at: s.solved_at ?? undefined,
-    solve_session_id: solveSession.id,
-  }))
+  const solveRows = data.solves.map((s, i) => {
+    const row: Record<string, unknown> = {
+      timer_session_id: timerSession.id,
+      user_id: user.id,
+      solve_number: i + 1,
+      time_ms: s.time_ms,
+      penalty: s.penalty,
+      scramble: s.scramble,
+      event: data.event,
+      comp_sim_group: s.comp_sim_group ?? null,
+      notes: s.notes ?? null,
+      solve_session_id: solveSession.id,
+    }
+
+    if (s.phases && s.phases.length > 0) {
+      row.phases = s.phases
+    }
+
+    if (s.solved_at) {
+      row.solved_at = s.solved_at
+    }
+
+    return row
+  })
 
   const { error: solvesError } = await supabase.from("solves").insert(solveRows)
   if (solvesError) {
