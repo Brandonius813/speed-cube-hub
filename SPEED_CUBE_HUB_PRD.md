@@ -211,7 +211,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Undo last solve with toast notification (T112)
 - [x] Solve notes/comments UI in detail modal (T113)
 - [x] 2D scramble image visualization (T114)
-- [x] Cross solver tool (T115)
+- [x] Cross solver tool (T115) with fixed cube-orientation guidance per cross color (for example: Red bottom, Green front)
 
 **Phase 16 — Training Scrambles — T116-T123:**
 - [x] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) — scramble type selector in timer (T116)

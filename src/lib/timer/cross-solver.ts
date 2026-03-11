@@ -56,7 +56,18 @@ const FACE_COLORS: Record<string, string> = {
   B: "Blue",
 }
 
-const FACE_ORDER = ["U", "D", "R", "L", "B", "F"]
+type CubeFace = keyof typeof FACE_COLORS
+
+const FACE_ORDER: CubeFace[] = ["U", "D", "R", "L", "B", "F"]
+
+const CROSS_ORIENTATION: Record<CubeFace, { bottomFace: CubeFace; frontFace: CubeFace }> = {
+  U: { bottomFace: "U", frontFace: "F" },
+  D: { bottomFace: "D", frontFace: "F" },
+  R: { bottomFace: "R", frontFace: "F" },
+  L: { bottomFace: "L", frontFace: "F" },
+  F: { bottomFace: "F", frontFace: "U" },
+  B: { bottomFace: "B", frontFace: "U" },
+}
 
 // ── State encoding ──────────────────────────────────────────────────
 // Each of 4 cross edges encoded as: slot * 2 + orientation (0-23)
@@ -247,8 +258,12 @@ function findSolution(table: Uint8Array, startState: EdgeState): number[] {
 // ── Public API ──────────────────────────────────────────────────────
 
 export type CrossSolution = {
-  face: string
+  face: CubeFace
   color: string
+  bottomFace: CubeFace
+  bottomColor: string
+  frontFace: CubeFace
+  frontColor: string
   moves: string[]
   moveCount: number
 }
@@ -261,10 +276,15 @@ export function solveCross(scramble: string): CrossSolution[] {
     const table = getTable(face)
     const state = extractCrossState(positions, crossEdges)
     const moveIndices = findSolution(table, state)
+    const orientation = CROSS_ORIENTATION[face]
 
     return {
       face,
       color: FACE_COLORS[face],
+      bottomFace: orientation.bottomFace,
+      bottomColor: FACE_COLORS[orientation.bottomFace],
+      frontFace: orientation.frontFace,
+      frontColor: FACE_COLORS[orientation.frontFace],
       moves: moveIndices.map((i) => MOVE_NAMES[i]),
       moveCount: moveIndices.length,
     }
