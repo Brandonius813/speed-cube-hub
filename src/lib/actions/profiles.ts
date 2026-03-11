@@ -3,7 +3,18 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { Profile, ProfileCube, ProfileLink, CubeHistoryEntry } from "@/lib/types"
+import { getClubs } from "@/lib/actions/clubs"
+import { getRecentPosts, searchPosts } from "@/lib/actions/posts"
+import { isSocialPreviewMode, searchSocialPreview } from "@/lib/social-preview/mock-data"
+import { getUpcomingCompetitions } from "@/lib/actions/wca"
+import type {
+  CubeHistoryEntry,
+  Profile,
+  ProfileCube,
+  ProfileLink,
+  SearchEventResult,
+  SearchResults,
+} from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
 
 export async function getProfile(): Promise<{
@@ -139,6 +150,58 @@ export async function getDistinctLocations(): Promise<{
   )]
 
   return { locations: unique }
+}
+
+export async function searchAll(
+  query: string
+): Promise<{ results: SearchResults; error?: string }> {
+  if (isSocialPreviewMode()) {
+    return { results: searchSocialPreview(query) }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const trimmed = query.trim()
+  const [profilesResult, postsResult, clubsResult, competitionsResult] =
+    await Promise.all([
+      searchProfiles(trimmed),
+      trimmed.length >= 2
+        ? searchPosts(trimmed, user?.id ?? null)
+        : Promise.resolve({ posts: await getRecentPosts(6, user?.id ?? null) }),
+      getClubs(trimmed || undefined),
+      getUpcomingCompetitions(),
+    ])
+
+  const safe = trimmed.toLowerCase()
+  const events: SearchEventResult[] = (competitionsResult.data ?? [])
+    .filter((event) => {
+      if (!safe) return true
+      return (
+        event.name.toLowerCase().includes(safe) ||
+        event.city.toLowerCase().includes(safe)
+      )
+    })
+    .slice(0, 8)
+    .map((event) => ({
+      id: event.id,
+      name: event.name,
+      city: event.city,
+      start_date: event.start_date,
+      end_date: event.end_date,
+      url: event.url,
+    }))
+
+  return {
+    results: {
+      profiles: profilesResult.profiles,
+      posts: postsResult.posts.slice(0, 8),
+      clubs: clubsResult.clubs.slice(0, 8),
+      events,
+    },
+  }
 }
 
 /**
@@ -676,5 +739,3 @@ export async function updatePBDisplayTypes(
 
   return { success: true }
 }
-
-

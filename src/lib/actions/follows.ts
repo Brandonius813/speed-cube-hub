@@ -3,12 +3,18 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createNotification } from "@/lib/helpers/create-notification"
+import {
+  getSocialPreviewFollowingUsers,
+  getSocialPreviewSocialState,
+  isSocialPreviewMode,
+} from "@/lib/social-preview/mock-data"
+
+type PreferenceTable = "favorite_follows" | "muted_users"
 
 export async function followUser(
   followingId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -27,18 +33,17 @@ export async function followUser(
   })
 
   if (error) {
-    // Unique constraint violation means already following
     if (error.code === "23505") {
       return { success: true }
     }
     return { success: false, error: error.message }
   }
 
-  // Notify the followed user (self-follow is already blocked above)
   await createNotification(followingId, "follow", user.id)
 
   revalidatePath("/feed")
   revalidatePath("/profile")
+  revalidatePath("/discover")
   return { success: true }
 }
 
@@ -46,7 +51,6 @@ export async function unfollowUser(
   followingId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -67,7 +71,85 @@ export async function unfollowUser(
 
   revalidatePath("/feed")
   revalidatePath("/profile")
+  revalidatePath("/discover")
   return { success: true }
+}
+
+async function togglePreference(
+  table: PreferenceTable,
+  targetUserId: string,
+  mode: "add" | "remove"
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  if (user.id === targetUserId) {
+    return { success: false, error: "You cannot do that to yourself." }
+  }
+
+  const query =
+    table === "favorite_follows"
+      ? mode === "add"
+        ? supabase
+            .from(table)
+            .insert({ follower_id: user.id, following_id: targetUserId })
+        : supabase
+            .from(table)
+            .delete()
+            .eq("follower_id", user.id)
+            .eq("following_id", targetUserId)
+      : mode === "add"
+        ? supabase
+            .from(table)
+            .insert({ user_id: user.id, muted_user_id: targetUserId })
+        : supabase
+            .from(table)
+            .delete()
+            .eq("user_id", user.id)
+            .eq("muted_user_id", targetUserId)
+
+  const { error } = await query
+
+  if (error) {
+    if (mode === "add" && error.code === "23505") {
+      return { success: true }
+    }
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/feed")
+  revalidatePath("/discover")
+  return { success: true }
+}
+
+export async function favoriteUser(
+  targetUserId: string
+): Promise<{ success: boolean; error?: string }> {
+  return togglePreference("favorite_follows", targetUserId, "add")
+}
+
+export async function unfavoriteUser(
+  targetUserId: string
+): Promise<{ success: boolean; error?: string }> {
+  return togglePreference("favorite_follows", targetUserId, "remove")
+}
+
+export async function muteUser(
+  targetUserId: string
+): Promise<{ success: boolean; error?: string }> {
+  return togglePreference("muted_users", targetUserId, "add")
+}
+
+export async function unmuteUser(
+  targetUserId: string
+): Promise<{ success: boolean; error?: string }> {
+  return togglePreference("muted_users", targetUserId, "remove")
 }
 
 export async function getFollowCounts(
@@ -96,7 +178,6 @@ export async function isFollowing(
   targetUserId: string
 ): Promise<boolean> {
   const supabase = await createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -118,9 +199,9 @@ export type FollowListUser = {
   display_name: string
   handle: string
   avatar_url: string | null
+  is_favorite?: boolean
 }
 
-/** Get the list of users who follow a given user */
 export async function getFollowers(
   userId: string
 ): Promise<FollowListUser[]> {
@@ -136,28 +217,120 @@ export async function getFollowers(
   if (error || !data) return []
 
   return data.map((row) => {
-    const p = row.profiles as unknown as FollowListUser
-    return { id: p.id, display_name: p.display_name, handle: p.handle, avatar_url: p.avatar_url }
+    const profile = row.profiles as unknown as FollowListUser
+    return {
+      id: profile.id,
+      display_name: profile.display_name,
+      handle: profile.handle,
+      avatar_url: profile.avatar_url,
+    }
   })
 }
 
-/** Get the list of users that a given user follows */
 export async function getFollowing(
   userId: string
 ): Promise<FollowListUser[]> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewFollowingUsers()
+  }
+
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("follows")
-    .select("following_id, profiles!follows_following_id_fkey(id, display_name, handle, avatar_url)")
-    .eq("follower_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(100)
+  const [followingResult, favoritesResult] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("following_id, profiles!follows_following_id_fkey(id, display_name, handle, avatar_url)")
+      .eq("follower_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("favorite_follows")
+      .select("following_id")
+      .eq("follower_id", userId),
+  ])
 
-  if (error || !data) return []
+  if (followingResult.error || !followingResult.data) return []
 
-  return data.map((row) => {
-    const p = row.profiles as unknown as FollowListUser
-    return { id: p.id, display_name: p.display_name, handle: p.handle, avatar_url: p.avatar_url }
+  const favoriteIds = new Set(
+    (favoritesResult.data ?? []).map((row) => row.following_id as string)
+  )
+
+  return followingResult.data.map((row) => {
+    const profile = row.profiles as unknown as FollowListUser
+    return {
+      id: profile.id,
+      display_name: profile.display_name,
+      handle: profile.handle,
+      avatar_url: profile.avatar_url,
+      is_favorite: favoriteIds.has(profile.id),
+    }
   })
+}
+
+export async function getFavoriteFollowingIds(): Promise<string[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const { data } = await supabase
+    .from("favorite_follows")
+    .select("following_id")
+    .eq("follower_id", user.id)
+
+  return (data ?? []).map((row) => row.following_id as string)
+}
+
+export async function getMutedUserIds(): Promise<string[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const { data } = await supabase
+    .from("muted_users")
+    .select("muted_user_id")
+    .eq("user_id", user.id)
+
+  return (data ?? []).map((row) => row.muted_user_id as string)
+}
+
+export async function getViewerSocialState(): Promise<{
+  currentUserId: string | null
+  followingIds: string[]
+  favoriteIds: string[]
+  mutedIds: string[]
+}> {
+  if (isSocialPreviewMode()) {
+    return getSocialPreviewSocialState()
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { currentUserId: null, followingIds: [], favoriteIds: [], mutedIds: [] }
+  }
+
+  const [following, favorites, muted] = await Promise.all([
+    supabase.from("follows").select("following_id").eq("follower_id", user.id),
+    supabase
+      .from("favorite_follows")
+      .select("following_id")
+      .eq("follower_id", user.id),
+    supabase.from("muted_users").select("muted_user_id").eq("user_id", user.id),
+  ])
+
+  return {
+    currentUserId: user.id,
+    followingIds: (following.data ?? []).map((row) => row.following_id as string),
+    favoriteIds: (favorites.data ?? []).map((row) => row.following_id as string),
+    mutedIds: (muted.data ?? []).map((row) => row.muted_user_id as string),
+  }
 }

@@ -2,77 +2,181 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Compass, Sparkles, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Users } from "lucide-react"
-import { FeedItem as FeedItemCard } from "@/components/feed/feed-item"
+import { FeedComposer } from "@/components/feed/feed-composer"
+import { FeedEntryCard } from "@/components/feed/feed-entry-card"
 import { getFeed } from "@/lib/actions/feed"
-import type { FeedItem } from "@/lib/types"
+import type { FeedEntry } from "@/lib/types"
+
+type FeedMode = "following" | "explore"
 
 export function FeedContent({
   initialItems,
   initialCursor,
   currentUserId,
 }: {
-  initialItems: FeedItem[]
+  initialItems: FeedEntry[]
   initialCursor: string | null
   currentUserId: string | null
 }) {
   const [items, setItems] = useState(initialItems)
   const [cursor, setCursor] = useState(initialCursor)
+  const [mode, setMode] = useState<FeedMode>("following")
   const [loading, setLoading] = useState(false)
 
-  async function loadMore() {
-    if (!cursor || loading) return
+  async function load(nextMode: FeedMode, nextCursor?: string | null, replace = false) {
     setLoading(true)
-
     try {
-      const result = await getFeed(cursor)
-      setItems((prev) => [...prev, ...result.items])
+      const result = await getFeed({
+        mode: nextMode,
+        cursor: nextCursor ?? null,
+      })
+
+      if (replace) {
+        setItems(result.items)
+      } else {
+        setItems((prev) => [...prev, ...result.items])
+      }
       setCursor(result.nextCursor)
-    } catch {
-      // Network error — fail silently, user can retry
     } finally {
       setLoading(false)
     }
   }
 
-  if (items.length === 0) {
+  async function handleModeChange(nextMode: FeedMode) {
+    if (nextMode === mode || loading) return
+    setMode(nextMode)
+    setCursor(null)
+    setItems([])
+    await load(nextMode, null, true)
+  }
+
+  if (items.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-lg border border-border/50 bg-card p-8 text-center">
-        <Users className="h-12 w-12 text-muted-foreground/50" />
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Your feed is empty
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Follow other cubers to see their practice sessions here.
-          </p>
+      <div className="space-y-4">
+        <div className="flex gap-2 rounded-full border border-border/50 bg-card p-1">
+          <button
+            type="button"
+            onClick={() => void handleModeChange("following")}
+            className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+              mode === "following"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            Following
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleModeChange("explore")}
+            className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+              mode === "explore"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Compass className="h-4 w-4" />
+            Explore
+          </button>
         </div>
-        <Link href="/discover">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Discover Cubers
-          </Button>
-        </Link>
+
+        {currentUserId ? (
+          <FeedComposer
+            onCreated={(post) =>
+              setItems((prev) => [
+                {
+                  ...post,
+                  entry_type: "post",
+                  entry_created_at: post.created_at,
+                },
+                ...prev,
+              ])
+            }
+          />
+        ) : null}
+
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/50 bg-card p-8 text-center">
+          <Sparkles className="h-12 w-12 text-muted-foreground/50" />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {mode === "following" ? "Your feed is empty" : "Explore is warming up"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {mode === "following"
+                ? "Follow more cubers or publish your first training update."
+                : "There are no recommended posts yet. Seed preview data or follow active cubers."}
+            </p>
+          </div>
+          <Link href="/discover">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Discover Cubers
+            </Button>
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex gap-2 rounded-full border border-border/50 bg-card p-1">
+        <button
+          type="button"
+          onClick={() => void handleModeChange("following")}
+          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+            mode === "following"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          Following
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleModeChange("explore")}
+          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+            mode === "explore"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Compass className="h-4 w-4" />
+          Explore
+        </button>
+      </div>
+
+      {currentUserId ? (
+        <FeedComposer
+          onCreated={(post) =>
+            setItems((prev) => [
+              {
+                ...post,
+                entry_type: "post",
+                entry_created_at: post.created_at,
+              },
+              ...prev,
+            ])
+          }
+        />
+      ) : null}
+
       {items.map((item) => (
-        <FeedItemCard key={item.id} item={item} currentUserId={currentUserId} />
+        <FeedEntryCard key={`${item.entry_type}-${item.id}`} entry={item} currentUserId={currentUserId} />
       ))}
 
-      {cursor && (
+      {cursor ? (
         <Button
           variant="outline"
-          onClick={loadMore}
+          onClick={() => void load(mode, cursor)}
           disabled={loading}
           className="mx-auto min-h-11 w-full max-w-xs border-border/50"
         >
           {loading ? "Loading..." : "Load More"}
         </Button>
-      )}
+      ) : null}
     </div>
   )
 }

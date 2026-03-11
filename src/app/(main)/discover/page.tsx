@@ -1,7 +1,7 @@
 import { DiscoverContent } from "@/components/discover/discover-content"
-import { searchProfiles, getDistinctLocations } from "@/lib/actions/profiles"
+import { getViewerSocialState } from "@/lib/actions/follows"
+import { searchAll } from "@/lib/actions/profiles"
 import { createClient } from "@/lib/supabase/server"
-import { getFollowing } from "@/lib/actions/follows"
 
 export default async function DiscoverPage() {
   const supabase = await createClient()
@@ -9,24 +9,23 @@ export default async function DiscoverPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ profiles }, { locations }, followingList] = await Promise.all([
-    searchProfiles(""),
-    getDistinctLocations(),
-    user ? getFollowing(user.id) : Promise.resolve([]),
+  const [{ results }, socialState] = await Promise.all([
+    searchAll(""),
+    getViewerSocialState(),
   ])
 
-  const followingIds = followingList.map((u) => u.id)
-
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="mb-6 text-2xl font-bold text-foreground">
-        Discover Cubers
-      </h1>
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <h1 className="mb-2 text-2xl font-bold text-foreground">Discover</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Search people, posts, clubs, and upcoming competitions from one place.
+      </p>
       <DiscoverContent
-        initialProfiles={profiles}
-        locations={locations}
-        currentUserId={user?.id ?? null}
-        initialFollowingIds={followingIds}
+        initialResults={results}
+        currentUserId={user?.id ?? socialState.currentUserId ?? null}
+        initialFollowingIds={socialState.followingIds}
+        initialFavoriteIds={socialState.favoriteIds}
+        initialMutedIds={socialState.mutedIds}
       />
     </main>
   )

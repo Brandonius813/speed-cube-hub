@@ -8,6 +8,8 @@
     "dev:down": "node scripts/dev-server.mjs down",
     "dev:status": "node scripts/dev-server.mjs status",
     "dev:logs": "node scripts/dev-server.mjs logs",
+    "preview:seed": "node scripts/seed-social-preview.mjs",
+    "preview:reseed": "node scripts/seed-social-preview.mjs --reset",
     "agent:bootstrap": "node scripts/agent-bootstrap.mjs",
     "claims:status": "node scripts/agent-claims.mjs status",
     "claims:claim": "node scripts/agent-claims.mjs claim",

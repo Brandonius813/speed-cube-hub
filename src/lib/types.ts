@@ -72,6 +72,65 @@ export type FeedItem = Session & {
   comment_count: number;
 };
 
+export type PostType = "text" | "session_recap" | "pb" | "competition";
+
+export type PostTagType = "session" | "pb" | "challenge" | "competition" | "puzzle";
+
+export type PostMedia = {
+  id: string;
+  post_id: string;
+  media_type: "image";
+  url: string;
+  alt_text: string | null;
+  sort_order: number;
+  created_at: string;
+};
+
+export type PostTag = {
+  id: string;
+  post_id: string;
+  tag_type: PostTagType;
+  reference_id: string | null;
+  label: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type Post = {
+  id: string;
+  user_id: string;
+  title: string | null;
+  content: string;
+  post_type: PostType;
+  visibility: "public";
+  created_at: string;
+  updated_at: string;
+  profile: {
+    display_name: string;
+    handle: string;
+    avatar_url: string | null;
+  };
+  media: PostMedia[];
+  tags: PostTag[];
+  like_count: number;
+  has_liked: boolean;
+  comment_count: number;
+};
+
+export type SessionFeedEntry = FeedItem & {
+  entry_type: "session";
+  entry_created_at: string;
+  ranking_score?: number;
+};
+
+export type PostFeedEntry = Post & {
+  entry_type: "post";
+  entry_created_at: string;
+  ranking_score?: number;
+};
+
+export type FeedEntry = SessionFeedEntry | PostFeedEntry;
+
 export type Goal = {
   id: string;
   user_id: string;
@@ -85,7 +144,9 @@ export type Goal = {
 
 export type Comment = {
   id: string;
-  session_id: string;
+  session_id: string | null;
+  post_id: string | null;
+  parent_comment_id: string | null;
   user_id: string;
   content: string;
   created_at: string;
@@ -94,6 +155,10 @@ export type Comment = {
     handle: string;
     avatar_url: string | null;
   };
+};
+
+export type CommentThread = Comment & {
+  replies: Comment[];
 };
 
 export type LeaderboardEntry = {
@@ -139,6 +204,7 @@ export type Club = {
   description: string | null;
   avatar_url: string | null;
   created_by: string;
+  visibility: "public" | "private";
   created_at: string;
   member_count: number;
   is_member: boolean;
@@ -217,6 +283,8 @@ export type Challenge = {
   title: string;
   description: string | null;
   type: "solves" | "time" | "streak" | "events";
+  scope: "official" | "club";
+  club_id: string | null;
   target_value: number;
   start_date: string;
   end_date: string;
@@ -224,4 +292,22 @@ export type Challenge = {
   participant_count: number;
   has_joined: boolean;
   user_progress?: number;
+};
+
+export type SearchTab = "all" | "people" | "posts" | "clubs" | "events";
+
+export type SearchEventResult = {
+  id: string;
+  name: string;
+  city: string;
+  start_date: string;
+  end_date: string;
+  url: string;
+};
+
+export type SearchResults = {
+  profiles: Profile[];
+  posts: Post[];
+  clubs: Club[];
+  events: SearchEventResult[];
 };

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { format, parseISO } from "date-fns"
 import { Users, CheckCircle2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   joinChallenge,
@@ -114,6 +115,9 @@ export function ChallengeCard({
             <h3 className="truncate text-base font-semibold text-foreground sm:text-lg">
               {challenge.title}
             </h3>
+            <Badge variant="outline" className="border-border/50 bg-secondary/50 text-[10px] uppercase tracking-wide">
+              {challenge.scope === "club" ? "Club" : "Official"}
+            </Badge>
             {isCompleted && (
               <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
             )}

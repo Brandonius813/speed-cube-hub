@@ -11,6 +11,7 @@ type ClubRow = {
   description: string | null
   avatar_url: string | null
   created_by: string
+  visibility?: "public" | "private"
   created_at: string
 }
 
@@ -70,6 +71,7 @@ export async function getClubs(query?: string): Promise<{
     description: c.description,
     avatar_url: c.avatar_url,
     created_by: c.created_by,
+    visibility: c.visibility ?? "public",
     created_at: c.created_at,
     member_count: memberCounts.get(c.id) ?? 0,
     is_member: userClubIds.has(c.id),
@@ -120,6 +122,7 @@ export async function getClub(clubId: string): Promise<{
     club: {
       id: club.id, name: club.name, description: club.description,
       avatar_url: club.avatar_url, created_by: club.created_by,
+      visibility: club.visibility ?? "public",
       created_at: club.created_at, member_count: count ?? 0,
       is_member: isMember, user_role: userRole,
     },
@@ -242,6 +245,7 @@ export async function getUserClubs(userId: string): Promise<{
   const enriched: Club[] = (clubs ?? []).map((c: ClubRow) => ({
     id: c.id, name: c.name, description: c.description,
     avatar_url: c.avatar_url, created_by: c.created_by,
+    visibility: c.visibility ?? "public",
     created_at: c.created_at, member_count: memberCounts.get(c.id) ?? 0,
     is_member: true, user_role: roleMap.get(c.id) ?? null,
   }))

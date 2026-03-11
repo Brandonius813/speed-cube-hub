@@ -85,6 +85,8 @@ export function CreateChallengeModal({
       title: title.trim(),
       description: description.trim() || null,
       type,
+      scope: "official",
+      club_id: null,
       target_value: parseInt(targetValue, 10),
       start_date: startDate,
       end_date: endDate,
