@@ -80,15 +80,13 @@ export function ClubsContent({
           />
         </div>
 
-        {currentUserId && (
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Club
-          </Button>
-        )}
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Create Club
+        </Button>
       </div>
 
       {/* Loading state */}
@@ -110,7 +108,7 @@ export function ClubsContent({
                 : "Be the first to create a club!"}
             </p>
           </div>
-          {currentUserId && !searchQuery && (
+          {!searchQuery && (
             <Button
               onClick={() => setShowCreateModal(true)}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
