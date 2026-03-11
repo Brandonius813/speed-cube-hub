@@ -1,15 +1,23 @@
 // Web Worker for off-main-thread scramble generation.
 import { generateScramble } from "./scrambles"
+import {
+  generateSquare1Scramble,
+  generateSquare1ScrambleSequence,
+} from "./square1"
 
 type ScrambleWorkerRequest = {
   requestId: number
   eventId: string
+  mode?: "single" | "sequence"
+  seed?: string
+  count?: number
 }
 
 type ScrambleWorkerResponse = {
   requestId: number
   eventId: string
   scramble: string | null
+  scrambles?: string[]
   error?: string
   warning?: string
 }
@@ -72,9 +80,42 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 self.onmessage = async (e: MessageEvent<ScrambleWorkerRequest>) => {
-  const { requestId, eventId } = e.data
+  const { requestId, eventId, mode = "single", seed, count } = e.data
 
   try {
+    if (eventId === "sq1") {
+      if (mode === "sequence") {
+        if (typeof seed !== "string" || !Number.isFinite(count) || (count ?? 0) < 1) {
+          self.postMessage({
+            requestId,
+            eventId,
+            scramble: null,
+            error: "Square-1 sequence requests require a seed and positive count.",
+          } satisfies ScrambleWorkerResponse)
+          return
+        }
+
+        const sequenceCount = Math.floor(count ?? 0)
+        self.postMessage({
+          requestId,
+          eventId,
+          scramble: null,
+          scrambles: generateSquare1ScrambleSequence({
+            seed,
+            count: sequenceCount,
+          }),
+        } satisfies ScrambleWorkerResponse)
+        return
+      }
+
+      self.postMessage({
+        requestId,
+        eventId,
+        scramble: generateSquare1Scramble(),
+      } satisfies ScrambleWorkerResponse)
+      return
+    }
+
     // Primary path: generate official scramble locally in-worker (no API roundtrip).
     const official = await withTimeout(generateOfficialScrambleLocally(eventId), 1500)
     if (official) {

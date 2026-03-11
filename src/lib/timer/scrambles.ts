@@ -1,5 +1,10 @@
 "use client"
 
+import {
+  generateSquare1Scramble,
+  generateSquare1ScrambleSequence,
+} from "@/lib/timer/square1"
+
 type Rng = () => number
 
 type RandomMoveConfig = {
@@ -143,18 +148,6 @@ function generateMegaminxFallback(): string {
   return rows.join("\n")
 }
 
-function generateSquare1Fallback(): string {
-  const turns: string[] = []
-  for (let i = 0; i < 12; i++) {
-    let top = randomInt(12) - 5
-    const bottom = randomInt(12) - 5
-    if (top === 0 && bottom === 0) top = 1
-    turns.push(`(${top},${bottom})`)
-    if (i < 11) turns.push("/")
-  }
-  return turns.join(" ")
-}
-
 function generateClockFallback(): string {
   const frontDials = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"]
   const backDials = ["U", "R", "D", "L", "ALL"]
@@ -187,7 +180,6 @@ function generateRelayFallback(eventId: string): string {
 
 function generateFallbackScramble(eventId: string): string {
   if (eventId === "minx") return generateMegaminxFallback()
-  if (eventId === "sq1") return generateSquare1Fallback()
   if (eventId === "clock") return generateClockFallback()
   if (eventId.startsWith("relay")) return generateRelayFallback(eventId)
 
@@ -269,11 +261,14 @@ export async function fetchOfficialScramble(
 }
 
 /**
- * Synchronous fallback scramble generator.
- * Non-timer tools use this path directly.
+ * Synchronous local scramble generator.
+ * Square-1 uses the TNoodle-style port; other non-timer tools use fallback generators.
  */
 export function generateScramble(eventId: string): string {
   try {
+    if (eventId === "sq1") {
+      return generateSquare1Scramble(seededRng ?? undefined)
+    }
     return generateFallbackScramble(eventId)
   } catch {
     return "Error generating scramble — try refreshing"
@@ -295,6 +290,10 @@ export function generateSeededScrambles(
   seed: string,
   count: number
 ): string[] {
+  if (eventId === "sq1") {
+    return generateSquare1ScrambleSequence({ seed, count })
+  }
+
   const previousRng = seededRng
   seededRng = createSeededRng(seed)
 

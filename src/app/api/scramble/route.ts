@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { generateSquare1Scramble } from "@/lib/timer/square1"
 
 // Valid WCA event IDs (duplicated to avoid importing client-side constants)
 const VALID_EVENTS = new Set([
@@ -47,6 +48,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    if (event === "sq1") {
+      return NextResponse.json({ scramble: generateSquare1Scramble() })
+    }
+
     const { randomScrambleForEvent } = await import("cubing/scramble")
     const scramble = await randomScrambleForEvent(cubingEventId)
     return NextResponse.json({ scramble: scramble.toString() })

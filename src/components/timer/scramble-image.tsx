@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { renderSquare1SvgFromScramble } from "@/lib/timer/square1"
 
 const PUZZLE_MAP: Record<string, string> = {
   "333": "3x3x3",
@@ -71,9 +72,19 @@ export function ScrambleImage({
   const [twistyReady, setTwistyReady] = useState<boolean | null>(null)
 
   const puzzle = PUZZLE_MAP[event]
+  const isSquare1 = event === "sq1"
   const visualScramble = event === "clock" ? normalizeClockScramble(scramble) : scramble
+  const square1Svg = useMemo(() => {
+    if (!isSquare1) return null
+    try {
+      return renderSquare1SvgFromScramble(scramble)
+    } catch {
+      return null
+    }
+  }, [isSquare1, scramble])
 
   useEffect(() => {
+    if (isSquare1) return
     let cancelled = false
     import("cubing/twisty")
       .then(() => {
@@ -86,11 +97,11 @@ export function ScrambleImage({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isSquare1])
 
   useEffect(() => {
     const host = hostRef.current
-    if (!host || !twistyReady || !puzzle) return
+    if (!host || isSquare1 || !twistyReady || !puzzle) return
 
     const player = document.createElement("twisty-player")
     player.setAttribute("puzzle", puzzle)
@@ -108,10 +119,28 @@ export function ScrambleImage({
         host.removeChild(player)
       }
     }
-  }, [puzzle, twistyReady, visualScramble])
+  }, [isSquare1, puzzle, twistyReady, visualScramble])
 
   if (!puzzle) {
     return <p className="text-xs text-muted-foreground text-center">Scramble draw unavailable for this event.</p>
+  }
+
+  if (isSquare1) {
+    if (!square1Svg) {
+      return <p className="text-xs text-muted-foreground text-center">Invalid Square-1 scramble.</p>
+    }
+
+    return (
+      <div className="flex h-full w-full items-center justify-center overflow-hidden">
+        <div
+          className={cn(
+            "aspect-[5/3] h-full w-full max-h-full max-w-full origin-center transition-transform duration-150 [&_svg]:h-full [&_svg]:w-full",
+            SCRAMBLE_IMAGE_SCALE_CLASSES[size]
+          )}
+          dangerouslySetInnerHTML={{ __html: square1Svg }}
+        />
+      </div>
+    )
   }
 
   if (twistyReady === false) {

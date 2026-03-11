@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Play, Pause, SkipBack, SkipForward, RotateCcw } from "lucide-react"
 import { getImage } from "cstimer_module"
 import { cn } from "@/lib/utils"
+import {
+  Square1State,
+  parseSquare1Algorithm,
+  renderSquare1Svg,
+  splitSquare1Tokens,
+} from "@/lib/timer/square1"
 
 const CSTIMER_TYPE_MAP: Record<string, string> = {
   "333": "333",
@@ -36,7 +42,23 @@ type ScrambleAnimatorProps = {
 }
 
 export function ScrambleAnimator({ scramble, event }: ScrambleAnimatorProps) {
-  const moves = useMemo(() => parseMoves(scramble), [scramble])
+  const isSquare1 = event === "sq1"
+  const sq1Moves = useMemo(() => {
+    if (!isSquare1) return []
+    try {
+      return parseSquare1Algorithm(scramble)
+    } catch {
+      return []
+    }
+  }, [isSquare1, scramble])
+  const moves = useMemo(() => {
+    if (!isSquare1) return parseMoves(scramble)
+    try {
+      return splitSquare1Tokens(scramble)
+    } catch {
+      return []
+    }
+  }, [isSquare1, scramble])
   const [step, setStep] = useState(moves.length) // Start fully applied
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState(500) // ms per move
@@ -51,13 +73,27 @@ export function ScrambleAnimator({ scramble, event }: ScrambleAnimatorProps) {
 
   // Get SVG for current state
   const svgString = useMemo(() => {
+    if (isSquare1) {
+      try {
+        let state = Square1State.solved()
+        for (let i = 0; i < step; i++) {
+          const move = sq1Moves[i]
+          if (!move) break
+          state = state.applyMove(move)
+        }
+        return renderSquare1Svg(state)
+      } catch {
+        return null
+      }
+    }
+
     if (!csType) return null
     try {
       return getImage(partialScramble || "", csType)
     } catch {
       return null
     }
-  }, [partialScramble, csType])
+  }, [isSquare1, partialScramble, csType, sq1Moves, step])
 
   // Auto-play timer
   useEffect(() => {
@@ -66,7 +102,7 @@ export function ScrambleAnimator({ scramble, event }: ScrambleAnimatorProps) {
       return
     }
     intervalRef.current = setInterval(() => {
-      setStep((prev) => {
+      setStep((prev: number) => {
         if (prev >= moves.length) {
           setIsPlaying(false)
           return prev
@@ -85,18 +121,18 @@ export function ScrambleAnimator({ scramble, event }: ScrambleAnimatorProps) {
       setStep(0)
       setIsPlaying(true)
     } else {
-      setIsPlaying((p) => !p)
+      setIsPlaying((playing: boolean) => !playing)
     }
   }, [step, moves.length])
 
   const handlePrev = useCallback(() => {
     setIsPlaying(false)
-    setStep((s) => Math.max(0, s - 1))
+    setStep((currentStep: number) => Math.max(0, currentStep - 1))
   }, [])
 
   const handleNext = useCallback(() => {
     setIsPlaying(false)
-    setStep((s) => Math.min(moves.length, s + 1))
+    setStep((currentStep: number) => Math.min(moves.length, currentStep + 1))
   }, [moves.length])
 
   const handleReset = useCallback(() => {
@@ -132,7 +168,7 @@ export function ScrambleAnimator({ scramble, event }: ScrambleAnimatorProps) {
 
       {/* Move sequence with current move highlighted */}
       <div className="flex flex-wrap gap-1 justify-center px-2">
-        {moves.map((move, i) => (
+        {moves.map((move: string, i: number) => (
           <span
             key={i}
             className={cn(
