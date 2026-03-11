@@ -6,6 +6,7 @@ import { getTodayPacific } from "@/lib/utils"
 import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstError } from "@/lib/validations"
 import type { TimerSession, Solve } from "@/lib/types"
 import type { SessionGroupMeta } from "@/lib/timer/session-dividers"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 
 export async function createTimerSession(
   event: string,
@@ -172,6 +173,8 @@ export async function addSolve(
   if (error) {
     return { data: null, error: error.message }
   }
+
+  await markOnboardingStepComplete("first_timer_solve")
 
   return { data: solve as Solve }
 }

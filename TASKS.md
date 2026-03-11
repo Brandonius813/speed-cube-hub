@@ -173,6 +173,9 @@
 ### Phase 28: Import Preview Parity (T158)
 - ✅ T158: Shared raw-solve import review parity for csTimer, CubeTime, and future timer parsers
 
+### Phase 29: New User Onboarding (T159)
+- ✅ T159: Checklist onboarding + guided tours
+
 ---
 
 ## Open / Remaining Items

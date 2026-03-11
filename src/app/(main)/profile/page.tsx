@@ -5,11 +5,13 @@ import { getSessions } from "@/lib/actions/sessions"
 import { getFollowCounts } from "@/lib/actions/follows"
 import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
+import { getUserOnboarding } from "@/lib/actions/onboarding"
 
 export default async function ProfilePage() {
-  const [profileResult, sessionsResult] = await Promise.all([
+  const [profileResult, sessionsResult, onboarding] = await Promise.all([
     getProfile(),
     getSessions(),
+    getUserOnboarding(),
   ])
 
   if (!profileResult.profile) {
@@ -42,6 +44,7 @@ export default async function ProfilePage() {
           followingCount={followCounts.following}
           pbs={pbsResult.data}
           sorKinchStats={sorKinchStats}
+          onboarding={onboarding}
         />
       </Suspense>
     </main>

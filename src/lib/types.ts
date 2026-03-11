@@ -225,3 +225,18 @@ export type Challenge = {
   has_joined: boolean;
   user_progress?: number;
 };
+
+export type UserOnboarding = {
+  user_id: string;
+  auto_launch_pending: boolean;
+  profile_viewed_at: string | null;
+  main_cube_added_at: string | null;
+  bulk_imported_at: string | null;
+  first_timer_solve_at: string | null;
+  feed_visited_at: string | null;
+  clubs_searched_at: string | null;
+  dismissed_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string;
+};

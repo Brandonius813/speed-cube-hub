@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Profile, ProfileCube, ProfileLink, CubeHistoryEntry } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 
 export async function getProfile(): Promise<{
   profile: Profile | null
@@ -582,6 +583,10 @@ export async function updateProfileCubes(
     return { success: false, error: error.message }
   }
 
+  if (cubes.length > 0) {
+    await markOnboardingStepComplete("main_cube_added")
+  }
+
   revalidatePath("/profile")
   return { success: true }
 }
@@ -676,5 +681,3 @@ export async function updatePBDisplayTypes(
 
   return { success: true }
 }
-
-

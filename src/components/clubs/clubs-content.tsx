@@ -1,14 +1,22 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
 import { Search, Plus, Users, Shield } from "lucide-react"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 import { getClubs } from "@/lib/actions/clubs"
 import { joinClub, leaveClub } from "@/lib/actions/club-mutations"
 import { CreateClubModal } from "@/components/clubs/create-club-modal"
+import {
+  ONBOARDING_TOURS,
+  parseOnboardingTour,
+  shouldTrackClubSearch,
+} from "@/lib/onboarding"
 import type { Club } from "@/lib/types"
 
 export function ClubsContent({
@@ -23,13 +31,28 @@ export function ClubsContent({
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isSearching, startSearch] = useTransition()
   const [joiningClubId, setJoiningClubId] = useState<string | null>(null)
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTour = parseOnboardingTour(searchParams.get("tour"))
+  const clubsTour = activeTour === "clubs-search" ? activeTour : null
 
   function handleSearch(query: string) {
     setSearchQuery(query)
     startSearch(async () => {
       const result = await getClubs(query || undefined)
       setClubs(result.clubs)
+      if (shouldTrackClubSearch(query)) {
+        await markOnboardingStepComplete("clubs_searched")
+      }
     })
+  }
+
+  function clearTour() {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("tour")
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }
 
   async function handleJoinLeave(clubId: string, isMember: boolean) {
@@ -73,6 +96,7 @@ export function ClubsContent({
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            data-onboarding-target="clubs-search"
             placeholder="Search clubs..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
@@ -177,6 +201,16 @@ export function ClubsContent({
         onOpenChange={setShowCreateModal}
         onCreated={handleClubCreated}
       />
+
+      {clubsTour && (
+        <OnboardingTour
+          key={clubsTour}
+          open
+          steps={ONBOARDING_TOURS[clubsTour]}
+          onClose={clearTour}
+          onSkip={clearTour}
+        />
+      )}
     </>
   )
 }

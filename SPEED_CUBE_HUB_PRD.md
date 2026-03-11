@@ -136,6 +136,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [x] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join, progress calculated from real sessions)
+- [x] New-user onboarding checklist + guided tours (first-time users land on `/profile`, see an owner-only checklist on profile overview, and launch page-specific spotlight tours for profile, cubes, bulk import, timer, feed, and clubs that only complete on real successful actions)
 - [ ] Badges & Credentials — REMOVED (v1 was stripped out; to be redesigned)
 
 ### Social Wave 4 — Community & Discovery
@@ -356,6 +357,22 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 | feed_visible | boolean | Whether to show in feed (default true, false for bulk-imported sessions) |
 | created_at | timestamptz | Auto (used for feed ordering) |
 
+**user_onboarding** — Private first-time onboarding progress
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid (PK/FK) | References profiles(id), CASCADE |
+| auto_launch_pending | boolean | Whether the first profile overview tour should auto-open |
+| profile_viewed_at | timestamptz | First owner overview visit completion |
+| main_cube_added_at | timestamptz | First successful main cube save |
+| bulk_imported_at | timestamptz | First successful bulk import |
+| first_timer_solve_at | timestamptz | First successful persisted timer solve |
+| feed_visited_at | timestamptz | Feed checklist step completion via onboarding route |
+| clubs_searched_at | timestamptz | First non-empty clubs search completion |
+| dismissed_at | timestamptz | When auto-launch was dismissed |
+| finished_at | timestamptz | Set once all onboarding steps are complete |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto (trigger) |
+
 **follows** — Social follow relationships
 | Column | Type | Notes |
 |--------|------|-------|
@@ -556,6 +573,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 /log                 → Log a practice session (form) [protected]
 /timer               → Built-in cubing timer [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
+/getting-started/feed → Onboarding entry route that marks the feed checklist step then redirects into `/feed?tour=feed` [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest averages, most solves, streaks, SOR/Kinch) [public]

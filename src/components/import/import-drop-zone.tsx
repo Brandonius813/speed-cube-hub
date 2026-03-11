@@ -70,6 +70,7 @@ export function ImportDropZone({ onData, disabled }: Props) {
     <div className="space-y-6">
       {/* Drop zone */}
       <div
+        data-onboarding-target="import-upload"
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
