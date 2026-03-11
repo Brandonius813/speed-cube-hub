@@ -91,7 +91,9 @@ const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
 const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
-const TIMER_TEXT_SIZE_KEY = "timer-text-size"
+const LEGACY_TIMER_TEXT_SIZE_KEY = "timer-text-size"
+const TIMER_SCRAMBLE_TEXT_SIZE_KEY = "timer-scramble-text-size"
+const TIMER_READOUT_TEXT_SIZE_KEY = "timer-readout-text-size"
 const TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY = "timer-pane-scramble-text-size"
 const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
 
@@ -467,9 +469,24 @@ export function TimerContent({ viewer }: TimerContentProps) {
     } catch {}
     return "realtime"
   })
-  const [timerTextSize, setTimerTextSize] = useState<TimerTextSize>(() => {
+  const [scrambleTextSize, setScrambleTextSize] = useState<TimerTextSize>(() => {
     try {
-      return parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ?? "lg"
+      return (
+        parseTextSize(localStorage.getItem(TIMER_SCRAMBLE_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
+        "lg"
+      )
+    } catch {
+      return "lg"
+    }
+  })
+  const [timerReadoutTextSize, setTimerReadoutTextSize] = useState<TimerTextSize>(() => {
+    try {
+      return (
+        parseTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
+        "lg"
+      )
     } catch {
       return "lg"
     }
@@ -478,7 +495,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
     try {
       return (
         parseTextSize(localStorage.getItem(TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(TIMER_SCRAMBLE_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
         "md"
       )
     } catch {
@@ -489,7 +507,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
     try {
       return (
         parseTextSize(localStorage.getItem(TIMER_PANE_TIME_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(TIMER_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
+        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
         "lg"
       )
     } catch {
@@ -2431,7 +2450,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                 <button
                   className={cn(
                     "text-center font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer",
-                    SCRAMBLE_TEXT_SIZE_CLASSES[timerTextSize]
+                    SCRAMBLE_TEXT_SIZE_CLASSES[scrambleTextSize]
                   )}
                   onClick={() => {
                     navigator.clipboard.writeText(scramble).then(() => {
@@ -2673,14 +2692,46 @@ export function TimerContent({ viewer }: TimerContentProps) {
                             key={option.value}
                             className={cn(
                               "h-7 rounded border text-[11px] font-medium transition-colors",
-                              timerTextSize === option.value
+                              scrambleTextSize === option.value
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                             onClick={() => {
-                              setTimerTextSize(option.value)
+                              setScrambleTextSize(option.value)
                               try {
-                                localStorage.setItem(TIMER_TEXT_SIZE_KEY, option.value)
+                                localStorage.setItem(
+                                  TIMER_SCRAMBLE_TEXT_SIZE_KEY,
+                                  option.value
+                                )
+                              } catch {}
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Timer Size
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
+                          <button
+                            key={`timer-size-${option.value}`}
+                            className={cn(
+                              "h-7 rounded border text-[11px] font-medium transition-colors",
+                              timerReadoutTextSize === option.value
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => {
+                              setTimerReadoutTextSize(option.value)
+                              try {
+                                localStorage.setItem(
+                                  TIMER_READOUT_TEXT_SIZE_KEY,
+                                  option.value
+                                )
                               } catch {}
                             }}
                           >
@@ -3017,7 +3068,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                     }}
                     className={cn(
                       "bg-transparent border-b-2 border-border text-center font-mono font-light w-full outline-none placeholder:text-muted-foreground/30 read-only:opacity-40 read-only:cursor-not-allowed",
-                      TYPING_INPUT_SIZE_CLASSES[timerTextSize]
+                      TYPING_INPUT_SIZE_CLASSES[timerReadoutTextSize]
                     )}
                   />
                 </div>
@@ -3035,7 +3086,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
               <TimerReadout
                 className={cn(
                   "font-mono font-light transition-colors duration-75 cursor-default",
-                  TIMER_READOUT_SIZE_CLASSES[timerTextSize],
+                  TIMER_READOUT_SIZE_CLASSES[timerReadoutTextSize],
                   timeColor
                 )}
                 phase={phase}
