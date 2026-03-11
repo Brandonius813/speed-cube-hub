@@ -17,9 +17,18 @@ import { getEffectiveTime } from "@/lib/timer/averages"
 
 type DisplayMode = "frequency" | "cumulative"
 type ChartScope = "session" | "all"
+type HistogramBucket = {
+  tickLabel: string
+  tooltipLabel: string
+  count: number
+  cumulative: number
+  percent: number
+}
+
+const TARGET_BIN_COUNT = 12
 
 function getIntervalDecimals(bucketSize: number): number {
-  if (bucketSize >= 1) return 0
+  if (bucketSize >= 10) return 0
   if (bucketSize >= 0.1) return 1
   return 2
 }
@@ -37,22 +46,154 @@ function formatIntervalBoundary(seconds: number, decimals: number): string {
   return `${min}:${sec.toFixed(decimals).padStart(decimals + 3, "0")}`
 }
 
+function getPercentile(sortedValues: number[], percentile: number): number {
+  if (sortedValues.length === 1) return sortedValues[0]
+
+  const index = (sortedValues.length - 1) * percentile
+  const lowerIndex = Math.floor(index)
+  const upperIndex = Math.ceil(index)
+
+  if (lowerIndex === upperIndex) return sortedValues[lowerIndex]
+
+  const weight = index - lowerIndex
+  return (
+    sortedValues[lowerIndex] +
+    (sortedValues[upperIndex] - sortedValues[lowerIndex]) * weight
+  )
+}
+
+function snapBucketSize(rawSize: number): number {
+  if (!Number.isFinite(rawSize) || rawSize <= 0) return 0.1
+
+  const exponent = Math.floor(Math.log10(rawSize))
+  const base = 10 ** exponent
+
+  for (const multiplier of [1, 2, 5, 10]) {
+    const candidate = multiplier * base
+    if (candidate >= rawSize) return candidate
+  }
+
+  return 10 ** (exponent + 1)
+}
+
+function buildHistogram(times: number[]): HistogramBucket[] {
+  if (times.length === 0) return []
+
+  const sortedTimes = [...times].sort((a, b) => a - b)
+  const minTime = sortedTimes[0]
+  const maxTime = sortedTimes[sortedTimes.length - 1]
+  const q1 = getPercentile(sortedTimes, 0.25)
+  const q3 = getPercentile(sortedTimes, 0.75)
+  const iqr = q3 - q1
+
+  let coreMin = minTime
+  let coreMax = maxTime
+
+  if (iqr > 0) {
+    const nextCoreMin = Math.max(minTime, q1 - 1.5 * iqr)
+    const nextCoreMax = Math.min(maxTime, q3 + 1.5 * iqr)
+    if (Number.isFinite(nextCoreMin) && Number.isFinite(nextCoreMax) && nextCoreMax > nextCoreMin) {
+      coreMin = nextCoreMin
+      coreMax = nextCoreMax
+    }
+  }
+
+  const bucketSize = snapBucketSize((coreMax - coreMin) / TARGET_BIN_COUNT)
+  const intervalDecimals = getIntervalDecimals(bucketSize)
+  const binCount = coreMax > coreMin
+    ? Math.max(1, Math.ceil((coreMax - coreMin) / bucketSize))
+    : 1
+  const counts = Array.from({ length: binCount }, () => 0)
+  let lowOverflow = 0
+  let highOverflow = 0
+
+  for (const time of sortedTimes) {
+    if (time < coreMin) {
+      lowOverflow += 1
+      continue
+    }
+    if (time > coreMax) {
+      highOverflow += 1
+      continue
+    }
+
+    const index = coreMax > coreMin
+      ? Math.min(binCount - 1, Math.floor((time - coreMin) / bucketSize))
+      : 0
+    counts[index] += 1
+  }
+
+  const total = sortedTimes.length
+  const buckets: HistogramBucket[] = []
+  let cumulative = 0
+
+  if (lowOverflow > 0) {
+    cumulative += lowOverflow
+    buckets.push({
+      tickLabel: `< ${formatIntervalBoundary(coreMin, intervalDecimals)}`,
+      tooltipLabel: `< ${formatIntervalBoundary(coreMin, intervalDecimals)}`,
+      count: lowOverflow,
+      cumulative,
+      percent: (lowOverflow / total) * 100,
+    })
+  }
+
+  for (let index = 0; index < binCount; index += 1) {
+    const start = coreMin + index * bucketSize
+    const end = coreMax > coreMin
+      ? Math.min(coreMax, start + bucketSize)
+      : start + bucketSize
+    const count = counts[index]
+    cumulative += count
+
+    buckets.push({
+      tickLabel: formatIntervalBoundary(start, intervalDecimals),
+      tooltipLabel: `${formatIntervalBoundary(start, intervalDecimals)}-${formatIntervalBoundary(end, intervalDecimals)}`,
+      count,
+      cumulative,
+      percent: (count / total) * 100,
+    })
+  }
+
+  if (highOverflow > 0) {
+    cumulative += highOverflow
+    buckets.push({
+      tickLabel: `> ${formatIntervalBoundary(coreMax, intervalDecimals)}`,
+      tooltipLabel: `> ${formatIntervalBoundary(coreMax, intervalDecimals)}`,
+      count: highOverflow,
+      cumulative,
+      percent: (highOverflow / total) * 100,
+    })
+  }
+
+  return buckets
+}
+
 function CustomTooltip({
   active,
   payload,
-  label,
 }: {
   active?: boolean
-  payload?: Array<{ value: number }>
-  label?: string
+  payload?: Array<{
+    value: number
+    dataKey: string
+    payload: HistogramBucket
+  }>
 }) {
   if (active && payload && payload.length) {
+    const entry = payload[0]
+    const bucket = entry.payload
     return (
       <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-        <p className="mb-1 font-medium text-foreground">{label}</p>
+        <p className="mb-1 font-medium text-foreground">{bucket.tooltipLabel}</p>
         <p className="text-muted-foreground font-mono">
-          {payload[0].value} solve{payload[0].value !== 1 ? "s" : ""}
+          {bucket.count} solve{bucket.count !== 1 ? "s" : ""} ({bucket.percent.toFixed(1)}%)
         </p>
+        {entry.dataKey === "cumulative" ? (
+          <p className="text-muted-foreground font-mono">
+            {bucket.cumulative} cumulative
+          </p>
+        ) : null}
       </div>
     )
   }
@@ -74,51 +215,15 @@ export function TimeDistributionChart({
   const activeScope: ChartScope = scope === "all" ? "all" : "session"
 
   const chartData = useMemo(() => {
-    // Filter out DNFs and get effective times
     const times = solves
       .map(getEffectiveTime)
       .filter((t) => t !== Infinity)
-      .map((t) => t / 1000) // Convert ms to seconds
+      .map((t) => t / 1000)
 
-    if (times.length === 0) return []
-
-    const min = Math.min(...times)
-    const max = Math.max(...times)
-    const range = max - min
-
-    // Adaptive bucket size based on time range
-    let bucketSize: number
-    if (range <= 5) bucketSize = 0.5
-    else if (range <= 15) bucketSize = 1
-    else if (range <= 60) bucketSize = 2
-    else if (range <= 180) bucketSize = 5
-    else bucketSize = 10
-
-    const intervalDecimals = getIntervalDecimals(bucketSize)
-    const bucketStart = Math.floor(min / bucketSize) * bucketSize
-    const bucketEnd = Math.ceil(max / bucketSize) * bucketSize
-
-    const buckets: { label: string; count: number; cumulative: number }[] = []
-    let cumulative = 0
-
-    for (let start = bucketStart; start < bucketEnd; start += bucketSize) {
-      const end = start + bucketSize
-      const count = times.filter((t) => t >= start && t < end).length
-      cumulative += count
-
-      const startLabel = formatIntervalBoundary(start, intervalDecimals)
-      const endLabel = formatIntervalBoundary(end, intervalDecimals)
-      buckets.push({
-        label: `${startLabel}–${endLabel}`,
-        count,
-        cumulative,
-      })
-    }
-
-    return buckets
+    return buildHistogram(times)
   }, [solves])
 
-  if (solves.length === 0) {
+  if (chartData.length === 0) {
     if (embedded) {
       return (
         <div className="flex h-full min-h-0 flex-col">
@@ -236,14 +341,13 @@ export function TimeDistributionChart({
                 vertical={false}
               />
               <XAxis
-                dataKey="label"
+                dataKey="tickLabel"
                 tick={{ fill: "#8B8BA3", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
-                angle={-20}
-                textAnchor="end"
-                height={34}
+                minTickGap={10}
+                height={24}
               />
               <YAxis
                 tick={{ fill: "#8B8BA3", fontSize: 11 }}
@@ -319,14 +423,13 @@ export function TimeDistributionChart({
                 vertical={false}
               />
               <XAxis
-                dataKey="label"
+                dataKey="tickLabel"
                 tick={{ fill: "#8B8BA3", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
-                angle={-30}
-                textAnchor="end"
-                height={50}
+                minTickGap={14}
+                height={28}
               />
               <YAxis
                 tick={{ fill: "#8B8BA3", fontSize: 11 }}
