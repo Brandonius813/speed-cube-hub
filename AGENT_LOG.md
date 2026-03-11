@@ -342,3 +342,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Deleted the draw-pane size control from the timer settings menu and removed the unused pane scramble size state from `timer-content.tsx`. The draw scramble pane and the legacy scramble-text pane now render at `xl` size by default, so the draw tool always uses the largest rendering without exposing a setting that makes it look worse.
 **Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/panes/pane-draw.tsx`, `src/components/timer/panes/pane-scramble-text.tsx`, `src/components/timer/panes/types.ts`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/panes/pane-draw.tsx src/components/timer/panes/pane-scramble-text.tsx src/components/timer/panes/types.ts` passed.
+
+### 2026-03-11 PT — Timer Average Share Cards
+
+**Task:** Add share-card support for timer averages and means
+**Status:** Added a shared stat-window summary helper so average/mean windows reuse one source of truth for trim logic, `DNF` handling, sigma, and distribution bins. Upgraded the timer stat detail modal with richer summary pills, a `Share` action, and a `Distribution` tab for `25+` windows. Extended the existing share modal/card system with a new `average` variant: smaller windows render times-focused cards, `ao25/mo25` can toggle between times and distribution, and `50+` exports stay distribution-only. To avoid the live `timer-content.tsx` claim, the stat detail modal now opens its own average share modal using the current timer event from local storage and the same profile lookup used elsewhere in the timer.
+**Files touched:** `src/lib/timer/stat-window-summary.ts`, `src/components/timer/stat-detail-modal.tsx`, `src/components/share/share-card.tsx`, `src/components/share/share-modal.tsx`, `AGENT_LOG.md`
+**Checks:** `npx eslint src/lib/timer/stat-window-summary.ts src/components/timer/stat-detail-modal.tsx src/components/share/share-card.tsx src/components/share/share-modal.tsx` passed. `npx tsc --noEmit --pretty false` passed.
