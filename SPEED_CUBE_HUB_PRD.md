@@ -48,6 +48,7 @@ Tools for coaches to assign homework, review student practice data, and store co
 ## Architecture Decisions
 
 - **Public-first:** All pages publicly viewable. Admin controls hidden via `isAdmin` boolean.
+- **Phone-web protection:** iPhone/Android phone requests to desktop-style app routes are redirected to `/mobile-unsupported`; iPad/tablets stay on the web experience, and public browse routes remain phone-accessible.
 - **Server + Client component pattern:** `page.tsx` (server) fetches data, `*-content.tsx` (client) handles interactivity.
 - **Server actions** for mutations and data fetching. Client Supabase for auth checks only.
 - **React Compiler** enabled for automatic memoization.

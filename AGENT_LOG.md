@@ -6,20 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-10 PT — Build Prerender Fixes For Auth + Dashboard
-
-**Task:** Fix Vercel build failures caused by auth-page search-param usage and dashboard prerendering
-**Status:** Cherry-picked the auth-page prerender fix so `login` and `signup` now resolve `next` on the server and pass it into client content components instead of calling `useSearchParams()` in the page entrypoints. Also marked `/dashboard` as force-dynamic so Next.js no longer attempts static generation for a route that depends on Supabase auth cookies.
-**Files touched:** `src/app/login/page.tsx`, `src/app/login/login-content.tsx`, `src/app/signup/page.tsx`, `src/app/signup/signup-content.tsx`, `src/app/(main)/dashboard/page.tsx`, `AGENT_LOG.md`
-**Checks:** `npm run build`
-
-### 2026-03-10 PT — Timer Wake Lock
-
-**Task:** Keep laptops awake while the timer is actively in use, especially with a connected GAN timer
-**Status:** Added a shared `use-screen-wake-lock` hook and wired it into the main timer plus Competition Simulator. The timer now requests a browser screen wake lock while a GAN timer is connected or while active timing/inspection is happening, releases it when inactive or hidden, and silently falls back if wake lock is unsupported or denied. Comp Sim uses the same hook for all active simulator phases except idle/results. No new UI was added; failures only emit timer telemetry.
-**Files touched:** `src/components/timer/use-screen-wake-lock.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
-**Checks:** `npx eslint src/components/timer/timer-content.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/use-screen-wake-lock.ts` passed. `npx tsc --noEmit` passed.
-
 ### 2026-03-11 10:41 AM PT — Comp Sim / GAN Flow Hardening
 
 **Task:** Stop Competition Simulator from overlapping with the normal timer or GAN Bluetooth timer
@@ -142,6 +128,22 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Ported the Square-1 search/state tables into `src/lib/timer/square1/` and switched normal WCA `sq1` generation to that core everywhere the app uses the shared scramble utilities. The timer worker and `/api/scramble` now generate legal Square-1 random-state scrambles from the same port, and the 2D scramble draw plus scramble animator now render Square-1 from the same legality-checked state model instead of `cubing/twisty` / `cstimer_module` mismatch paths. Verified the reported bad sample throws as invalid, generated and applied 200 new Square-1 scrambles successfully, and confirmed seeded Square-1 sequences remain deterministic for shared-scramble flows.
 **Files touched:** `src/lib/timer/square1/index.ts`, `src/lib/timer/square1/search.ts`, `src/lib/timer/square1/state.ts`, `src/lib/timer/square1/tables.ts`, `src/lib/timer/scrambles.ts`, `src/lib/timer/scramble-worker.ts`, `src/app/api/scramble/route.ts`, `src/components/timer/scramble-image.tsx`, `src/components/timer/scramble-animator.tsx`, `AGENT_LOG.md`, `SPEED_CUBE_HUB_PRD.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/square1/tables.ts src/lib/timer/square1/search.ts src/lib/timer/square1/state.ts src/lib/timer/square1/index.ts src/lib/timer/scrambles.ts src/lib/timer/scramble-worker.ts src/app/api/scramble/route.ts src/components/timer/scramble-image.tsx src/components/timer/scramble-animator.tsx` passed. Additional smoke test compiled the Square-1 core to `/tmp`, rejected the reported invalid scramble, applied 200 generated scrambles successfully, confirmed deterministic seeded sequences, and verified SVG output.
+
+---
+
+### 2026-03-11 02:08 PM EDT — Revert Start Session Button Copy
+
+**Task:** Remove the helper message under the timer `Start Session` control and restore the previous button copy
+**Status:** Reverted the inactive session CTA in `timer-content.tsx` to the prior single-button state: removed the explanatory line under the button, changed the idle label back to `Start Session`, and restored the saved-state copy to `Session saved! Start another`. Active session controls and Comp Sim behavior were left unchanged.
+**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.
+
+### 2026-03-11 02:25 PM EDT — Phone Web Protection
+
+**Task:** Block phones from desktop-style app routes while leaving public browse pages accessible
+**Status:** Added phone-only request gating in the shared Supabase proxy so iPhone/Android phone UAs are redirected to `/mobile-unsupported` before auth checks on blocked routes. Reused the existing protected-route/public-exception logic for app pages, added public tool routes (`/tools/*`, `/battle`) to the phone block list, excluded tablets/crawlers, and created a standalone blocker page with `Go Home` and `View Leaderboards` CTAs plus an optional `from` hint.
+**Files touched:** `src/lib/supabase/proxy.ts`, `src/app/mobile-unsupported/page.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/supabase/proxy.ts src/app/mobile-unsupported/page.tsx` passed. UA verification passed: iPhone requests to `/feed`, `/timer`, `/profile`, `/tools/scrambles`, and `/battle` redirect to `/mobile-unsupported`; iPad still follows normal web behavior; blocker screenshots at 390px and 375px showed no horizontal overflow.
 
 ---
 
