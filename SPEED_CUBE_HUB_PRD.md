@@ -56,6 +56,24 @@ Tools for coaches to assign homework, review student practice data, and store co
 
 ---
 
+## Native Platform Expansion (Planned)
+
+Speed Cube Hub is now planned as a multi-client platform, not just a website.
+
+- **Near-term target:** native iPhone + iPad app
+- **Next target:** native Android app
+- **Later target:** native macOS app
+- **Sync rule:** one canonical backend and database; all clients read/write the same product data
+- **Architecture rule:** Next.js server actions are not the long-term backend boundary for native work; shared backend contracts must be extracted for cross-client features
+- **Monetization rule:** digital purchases inside native apps must be designed around platform billing plus server-verified entitlements
+
+Canonical implementation plans:
+
+- `plans/native-platform-migration.md`
+- `plans/native-platform-agent-workstreams.md`
+
+---
+
 ## MVP: Practice Tracking + Stats
 
 ### Session Data Model

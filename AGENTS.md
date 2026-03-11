@@ -7,6 +7,11 @@ Canonical Codex coordination files are at repository root:
 - `AGENT_LOG.md`
 - `SPEED_CUBE_HUB_PRD.md`
 
+Native platform planning files live under `plans/`:
+
+- `plans/native-platform-migration.md`
+- `plans/native-platform-agent-workstreams.md`
+
 Treat `.claude/` as legacy reference material. Do not update coordination state there.
 
 Live cross-worktree file locks live outside the repo at:
@@ -22,8 +27,9 @@ At the start of each new session:
 3. Read `TASKS.md`
 4. Skim recent entries in `AGENT_LOG.md`
 5. Read `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`
-6. Check what is already built vs still open
-7. Tell the user what is currently built and confirm what to work on next (unless the user already gave a specific task)
+6. If the task touches native apps, backend-contract extraction, sync, purchases, push, or store release work, read `plans/native-platform-migration.md` and `plans/native-platform-agent-workstreams.md`
+7. Check what is already built vs still open
+8. Tell the user what is currently built and confirm what to work on next (unless the user already gave a specific task)
 
 ## 2) Core Working Rules
 
@@ -38,6 +44,7 @@ At the start of each new session:
 - Do not assume files, functions, tables, or DB columns exist; verify first.
 - If something breaks, explain the exact error in plain English, share the likely cause, then apply one targeted fix.
 - Keep moving: do not ask for permission to make ordinary code changes once requirements are clear.
+- For native-platform migration work, do not deepen Next.js server-action lock-in if a shared backend contract already exists or the plan says one should be introduced first.
 
 ## 3) Communication Style
 

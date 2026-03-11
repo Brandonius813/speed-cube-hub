@@ -177,4 +177,14 @@ These items are tracked in the PRD under "Remaining Security Items (Manual)" and
 - 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
 - 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
 
+## Native Platform Program (Planning Complete)
+
+- 🔲 Planned — Phase 0: native readiness audit, shared contract standards, schema audit, compliance audit, and release-ops plan (see `plans/native-platform-migration.md` and `plans/native-platform-agent-workstreams.md`)
+- 🔲 Planned — Phase 1: extract shared backend contracts for auth/profile, practice/PBs, social/feed, timer, notifications, and purchases
+- 🔲 Planned — Phase 2: migrate the website onto shared backend contracts without regressing current UX
+- 🔲 Planned — Phase 3: ship native iPhone/iPad app foundations and core product flows
+- 🔲 Planned — Phase 4: add app-store billing, push, moderation/reporting surfaces, and release hardening
+- 🔲 Planned — Phase 5: ship native Android app using the same backend platform
+- 🔲 Planned — Phase 6: add native macOS target after Apple-side architecture is stable
+
 ---

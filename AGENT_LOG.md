@@ -155,3 +155,12 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Learnings:** The raw-solve preview already rebuilt session summaries correctly; the stale state was only in the PB list passed to `bulkImportPBs`. The claims helper replaces the task's file list on each call rather than appending to it.
 **Blockers:** None.
 **Warnings:** `npm run build` still panics inside this worktree because Turbopack rejects the symlinked `node_modules` path outside the worktree root. Use the shared repo root for the final production build verification.
+
+---
+
+### 2026-03-11 03:25 PM EDT — Native Platform Migration Planning Package
+
+**Task:** Create a comprehensive native-platform migration plan that parallel agents can execute against while the current web product keeps shipping
+**Status:** Added two canonical planning docs under `plans/`: a master migration strategy (`native-platform-migration.md`) and a parallel execution backlog (`native-platform-agent-workstreams.md`). The plan defines the target platform architecture, sync model, phased delivery order, monetization/entitlement strategy, moderation/compliance requirements, testing/release operations, and a 20-workstream breakdown that agents can claim independently. Updated `AGENTS.md`, `SPEED_CUBE_HUB_PRD.md`, and `TASKS.md` so future sessions automatically discover the native-platform plan.
+**Files touched:** `plans/native-platform-migration.md`, `plans/native-platform-agent-workstreams.md`, `AGENTS.md`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `git diff --check` passed.
