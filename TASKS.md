@@ -165,6 +165,7 @@
 
 ### Phase 26: Timer QoL Polish (T155)
 - ✅ T155: Timer shortcuts, text sizing and pane size controls, solve detail modal, session-vs-all-time stats, and pane reopen memory
+- ✅ T156: Comp Sim / GAN flow hardening (exclusive mode guard, entry modal, standalone auto-save timing)
 
 ---
 

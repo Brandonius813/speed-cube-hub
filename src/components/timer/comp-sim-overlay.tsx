@@ -20,22 +20,22 @@ import {
 
 type Props = {
   event: string
-  sessionStartMs: number | null
   inspectionVoiceEnabled: boolean
   inspectionVoiceGender: InspectionVoiceGender
   onExit: () => void
+  onBusyChange?: (busy: boolean) => void
 }
 
 const HOLD_MS = 550
 
 export function CompSimOverlay({
   event,
-  sessionStartMs,
   inspectionVoiceEnabled,
   inspectionVoiceGender,
   onExit,
+  onBusyChange,
 }: Props) {
-  const compSim = useCompSim({ event, sessionStartMs })
+  const compSim = useCompSim({ event })
   const { snapshot, ao5Result } = compSim
   const { phase } = snapshot
   const wakeLockEnabled = phase !== "idle" && phase !== "sim_complete"
@@ -57,6 +57,14 @@ export function CompSimOverlay({
   const holdStartRef = useRef(0)
   const [holdReady, setHoldReady] = useState(false)
   const [isHolding, setIsHolding] = useState(false)
+
+  useEffect(() => {
+    onBusyChange?.(phase !== "idle")
+  }, [onBusyChange, phase])
+
+  useEffect(() => {
+    return () => onBusyChange?.(false)
+  }, [onBusyChange])
 
   // --- Timer RAF loop for solving phase ---
   useEffect(() => {

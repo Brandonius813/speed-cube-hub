@@ -72,6 +72,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** `src/components/timer/use-screen-wake-lock.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/components/timer/timer-content.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/use-screen-wake-lock.ts` passed. `npx tsc --noEmit` passed.
 
+### 2026-03-11 10:41 AM PT — Comp Sim / GAN Flow Hardening
+
+**Task:** Stop Competition Simulator from overlapping with the normal timer or GAN Bluetooth timer
+**Status:** Added an exclusive Comp Sim mode guard in `timer-content.tsx` so the normal timer keyboard path, normal solve saves, and GAN timer callbacks all bail out while Comp Sim is active. Added a new `CompSimEntryDialog` that blocks entry when a normal session still needs to be saved/discarded, cancels empty normal sessions before entering, and recommends disconnecting the GAN timer before starting Comp Sim. Updated Comp Sim copy so users know it auto-saves and does not require a normal practice session, and moved Comp Sim save timing into `use-comp-sim.ts` so each Ao5 uses its own start time instead of depending on the normal session timer.
+**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/use-comp-sim.ts`, `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-entry-dialog.tsx`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/use-comp-sim.ts src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-entry-dialog.tsx` passed.
+
 ### 2026-03-10 PT — Timer Pane Text Size Controls
 
 **Task:** Add settings controls to enlarge pane scramble text and solve times

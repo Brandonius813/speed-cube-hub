@@ -26,6 +26,9 @@ export function IdleScreen({ compSim }: { compSim: CompSimApi }) {
           Simulates a WCA competition average of 5.
           You&apos;ll scramble, wait, then solve — just like the real thing.
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Each Ao5 auto-saves. You do not need to start a normal practice session first.
+        </p>
       </div>
 
       {/* Noise selector */}

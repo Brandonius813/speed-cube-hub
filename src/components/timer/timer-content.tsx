@@ -49,6 +49,7 @@ import {
 import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
+import { CompSimEntryDialog } from "@/components/timer/comp-sim-entry-dialog"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import {
@@ -91,6 +92,7 @@ const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
 const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
+const COMP_SIM_GAN_IGNORED_MSG = "GAN input ignored during Comp Sim. Use the Comp Sim timer controls."
 const LEGACY_TIMER_TEXT_SIZE_KEY = "timer-text-size"
 const TIMER_SCRAMBLE_TEXT_SIZE_KEY = "timer-scramble-text-size"
 const TIMER_READOUT_TEXT_SIZE_KEY = "timer-readout-text-size"
@@ -98,6 +100,11 @@ const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
 type TimerTextSize = "md" | "lg" | "xl"
+type CompSimEntryGuard =
+  | "gan_connected"
+  | "gan_connected_empty_session"
+  | "empty_session"
+  | "session_unsaved"
 
 const TIMER_UPDATE_MODE_OPTIONS: Array<{
   value: TimerUpdateMode
@@ -588,6 +595,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   })
   const [showEndModal, setShowEndModal] = useState(false)
   const [pendingEventSwitch, setPendingEventSwitch] = useState<string | null>(null)
+  const [pendingPracticeTypeSwitch, setPendingPracticeTypeSwitch] = useState<string | null>(null)
   const [sessionSaved, setSessionSaved] = useState(false)
   const [pbPhotoOpen, setPbPhotoOpen] = useState(false)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
@@ -598,9 +606,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
     end: INITIAL_SOLVE_WINDOW,
   })
   const [pausedAttemptMessage, setPausedAttemptMessage] = useState<string | null>(null)
+  const [compSimIgnoredMessage, setCompSimIgnoredMessage] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [compSimEntryGuard, setCompSimEntryGuard] = useState<CompSimEntryGuard | null>(null)
+  const [compSimBusy, setCompSimBusy] = useState(false)
   const [shareAuthor, setShareAuthor] = useState({
     userName: "You",
     handle: "you",
@@ -714,6 +725,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const inspHoldRef = useRef(false)
   const tapToInspectRef = useRef(false)
   const btConnectedRef = useRef(false)
+  const practiceTypeRef = useRef(practiceType)
+  const compSimBusyRef = useRef(false)
   const settingsRef = useRef<HTMLDivElement>(null)
   const settingsOpenRef = useRef(false)
   const shareModalOpenRef = useRef(false)
@@ -748,6 +761,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   )
   const sessionPausedRef = useRef(false)
   const pausedAttemptTimeoutRef = useRef<number | null>(null)
+  const compSimIgnoredTimeoutRef = useRef<number | null>(null)
+  const compSimGanIgnoredShownRef = useRef(false)
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
@@ -830,6 +845,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   inspOnRef.current = inspOn
   inspRef.current = insp
   sessionPausedRef.current = sessionPaused
+  practiceTypeRef.current = practiceType
+  compSimBusyRef.current = compSimBusy
   scrambleReadyRef.current = engineSnapshot.scrambleReady
   solvesRef.current = solves
   statColsRef.current = statCols
@@ -1513,6 +1530,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   useEffect(() => {
     const dn = (eventKey: KeyboardEvent) => {
+      if (practiceTypeRef.current === "Comp Sim") return
       if (btConnectedRef.current) return
       if (isInteractiveTarget(eventKey.target)) return
       if (settingsOpenRef.current || shareModalOpenRef.current) return
@@ -1557,6 +1575,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
 
     const up = (eventKey: KeyboardEvent) => {
+      if (practiceTypeRef.current === "Comp Sim") return
       if (btConnectedRef.current) return
       if (eventKey.code !== "Space" || typing) return
       eventKey.preventDefault()
@@ -1585,9 +1604,22 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (pausedAttemptTimeoutRef.current !== null) {
         clearTimeout(pausedAttemptTimeoutRef.current)
       }
+      if (compSimIgnoredTimeoutRef.current !== null) {
+        clearTimeout(compSimIgnoredTimeoutRef.current)
+      }
       clearPendingScrambleRequests()
     }
   }, [clearPendingScrambleRequests])
+
+  useEffect(() => {
+    if (practiceType === "Comp Sim") return
+    compSimGanIgnoredShownRef.current = false
+    setCompSimIgnoredMessage(null)
+    if (compSimIgnoredTimeoutRef.current !== null) {
+      clearTimeout(compSimIgnoredTimeoutRef.current)
+      compSimIgnoredTimeoutRef.current = null
+    }
+  }, [practiceType])
 
   function fmtSession(seconds: number): string {
     const m = Math.floor(seconds / 60)
@@ -1606,7 +1638,21 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }, 1300)
   }
 
+  function showCompSimIgnoredPopup() {
+    if (compSimGanIgnoredShownRef.current) return
+    compSimGanIgnoredShownRef.current = true
+    setCompSimIgnoredMessage(COMP_SIM_GAN_IGNORED_MSG)
+    if (compSimIgnoredTimeoutRef.current !== null) {
+      clearTimeout(compSimIgnoredTimeoutRef.current)
+    }
+    compSimIgnoredTimeoutRef.current = window.setTimeout(() => {
+      setCompSimIgnoredMessage(null)
+      compSimIgnoredTimeoutRef.current = null
+    }, 1800)
+  }
+
   function startSession() {
+    if (practiceTypeRef.current === "Comp Sim") return
     const unsavedSolveCount = getUnsavedSolves(solvesRef.current).length
     sessionSolveStartIndexRef.current = unsavedSolveCount
     setSessionStartTime(Date.now())
@@ -1685,6 +1731,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   function discardSessionSolves() {
     const sessionEventId = eventRef.current
     const queuedEventSwitch = pendingEventSwitch
+    const queuedPracticeTypeSwitch = pendingPracticeTypeSwitch
     const allSolves = solvesRef.current
     const sessionSolves = getCurrentSessionSolves(allSolves)
     const sessionSolveIds = new Set(sessionSolves.map((solve) => solve.id))
@@ -1710,6 +1757,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       applyEventChange(queuedEventSwitch)
     }
     setPendingEventSwitch(null)
+    if (queuedPracticeTypeSwitch && queuedPracticeTypeSwitch !== practiceTypeRef.current) {
+      changePracticeType(queuedPracticeTypeSwitch)
+    }
+    setPendingPracticeTypeSwitch(null)
   }
 
   function handleSessionSaved(sessionTitle: string) {
@@ -1717,6 +1768,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
     const groupId = crypto.randomUUID()
     const allSolves = solvesRef.current
     const sessionSolves = getCurrentSessionSolves(allSolves)
+    const queuedEventSwitch = pendingEventSwitch
+    const queuedPracticeTypeSwitch = pendingPracticeTypeSwitch
     const currentCount = sessionSolves.length
     const sessionSolveIds = new Set(sessionSolves.map((solve) => solve.id))
     const nextSolves = allSolves.map((solve) =>
@@ -1755,25 +1808,32 @@ export function TimerContent({ viewer }: TimerContentProps) {
       localStorage.removeItem(SESSION_PAUSED_AT_KEY)
     } catch {}
 
-    if (pendingEventSwitch && pendingEventSwitch !== eventRef.current) {
-      applyEventChange(pendingEventSwitch)
+    if (queuedEventSwitch && queuedEventSwitch !== eventRef.current) {
+      applyEventChange(queuedEventSwitch)
     }
     setPendingEventSwitch(null)
+    if (queuedPracticeTypeSwitch && queuedPracticeTypeSwitch !== practiceTypeRef.current) {
+      changePracticeType(queuedPracticeTypeSwitch)
+    }
+    setPendingPracticeTypeSwitch(null)
     sessionSolveStartIndexRef.current = 0
   }
 
   function startTimer() {
+    if (practiceTypeRef.current === "Comp Sim") return
     startRef.current = performance.now()
     dispatchEngine({ type: "START_RUNNING" })
   }
 
   function stopTimer() {
+    if (practiceTypeRef.current === "Comp Sim") return
     const ms = truncateMsToCentiseconds(performance.now() - startRef.current)
     dispatchEngine({ type: "STOP_SOLVE" })
     addSolve(ms, null)
   }
 
   function startHold() {
+    if (practiceTypeRef.current === "Comp Sim") return
     heldRef.current = true
     dispatchEngine({ type: "START_HOLD" })
     if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
@@ -1785,6 +1845,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }
 
   function releaseHold() {
+    if (practiceTypeRef.current === "Comp Sim") return
     if (holdTimeoutRef.current) {
       clearTimeout(holdTimeoutRef.current)
       holdTimeoutRef.current = null
@@ -1823,6 +1884,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }
 
   function handlePress() {
+    if (practiceTypeRef.current === "Comp Sim") return
     const currentPhase = phaseRef.current
     if (sessionPausedRef.current && currentPhase !== "running") {
       showPausedAttemptPopup(SESSION_PAUSED_SOLVE_MSG)
@@ -1855,6 +1917,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }
 
   function addSolve(time_ms: number, penalty: Penalty) {
+    if (practiceTypeRef.current === "Comp Sim") return
     if (sessionPausedRef.current) {
       showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
       return
@@ -1934,11 +1997,78 @@ export function TimerContent({ viewer }: TimerContentProps) {
     return true
   }
 
-  function changePracticeType(type: string) {
+  function applyPracticeTypeChange(type: string) {
     setPracticeType(type)
     try {
       localStorage.setItem("timer-practice-type", type)
     } catch {}
+  }
+
+  function enterCompSim(options: { disconnectGan?: boolean; cancelEmptySession?: boolean } = {}) {
+    if (options.cancelEmptySession && hasActiveSession) {
+      cancelSession()
+    }
+    if (options.disconnectGan && btStatus === "connected") {
+      btDisconnect()
+    }
+    setCompSimEntryGuard(null)
+    setPendingPracticeTypeSwitch(null)
+    applyPracticeTypeChange("Comp Sim")
+  }
+
+  function changePracticeType(type: string) {
+    if (type === practiceTypeRef.current) return
+
+    const switchingToCompSim = type === "Comp Sim"
+    if (practiceTypeRef.current === "Comp Sim" && !switchingToCompSim) {
+      if (compSimBusyRef.current) {
+        window.alert("Finish or exit the current Competition Simulator before switching practice modes.")
+        return
+      }
+      applyPracticeTypeChange(type)
+      return
+    }
+
+    if (!switchingToCompSim) {
+      applyPracticeTypeChange(type)
+      return
+    }
+
+    if (
+      phaseRef.current === "running" ||
+      phaseRef.current === "inspecting" ||
+      phaseRef.current === "holding" ||
+      phaseRef.current === "ready"
+    ) {
+      window.alert("Finish the current solve before switching to Competition Simulator.")
+      return
+    }
+
+    const unsavedSolveCount = getCurrentSessionSolves(solvesRef.current).length
+    if (hasActiveSession && unsavedSolveCount > 0) {
+      setCompSimEntryGuard("session_unsaved")
+      return
+    }
+
+    if (hasActiveSession) {
+      setCompSimEntryGuard(
+        btStatus === "connected" ? "gan_connected_empty_session" : "empty_session"
+      )
+      return
+    }
+
+    if (btStatus === "connected") {
+      setCompSimEntryGuard("gan_connected")
+      return
+    }
+
+    enterCompSim()
+  }
+
+  function handleCompSimExit() {
+    setCompSimEntryGuard(null)
+    setPendingPracticeTypeSwitch(null)
+    applyPracticeTypeChange("Solves")
   }
 
   function applyEventChange(newEvent: string) {
@@ -1960,6 +2090,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   function changeEvent(newEvent: string) {
     if (newEvent === eventRef.current) return
+
+    if (practiceTypeRef.current === "Comp Sim" && compSimBusyRef.current) {
+      window.alert("Finish or exit the current Competition Simulator before switching puzzles.")
+      return
+    }
 
     if (
       phaseRef.current === "running" ||
@@ -2051,10 +2186,18 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   btCallbacksRef.current = {
     onHandsOn: () => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) return
       dispatchEngine({ type: "BT_HANDS_ON" })
     },
     onGetSet: () => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) return
       if (phaseRef.current !== "inspecting") {
         inspRef.current?.cancelInspection()
@@ -2062,6 +2205,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       dispatchEngine({ type: "BT_GET_SET" })
     },
     onHandsOff: () => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) return
       if (phaseRef.current !== "inspecting") {
         inspRef.current?.cancelInspection()
@@ -2069,6 +2216,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       dispatchEngine({ type: "BT_HANDS_OFF" })
     },
     onRunning: () => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) {
         showPausedAttemptPopup(SESSION_PAUSED_SOLVE_MSG)
         return
@@ -2081,6 +2232,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       dispatchEngine({ type: "BT_RUNNING" })
     },
     onStopped: (time_ms: number | null) => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) {
         showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
         return
@@ -2100,6 +2255,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       addSolve(solveMs, null)
     },
     onIdle: () => {
+      if (practiceTypeRef.current === "Comp Sim") {
+        showCompSimIgnoredPopup()
+        return
+      }
       if (sessionPausedRef.current) return
       inspRef.current?.cancelInspection()
       const phaseNow = engineRef.current.getSnapshot().phase
@@ -2396,6 +2555,86 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     []
   )
+
+  const compSimEntryDialogConfig = (() => {
+    switch (compSimEntryGuard) {
+      case "session_unsaved":
+        return {
+          title: "Finish the current practice session first",
+          description:
+            "Competition Simulator auto-saves its own Ao5s. End or save the current practice session before switching so both timer flows do not run at the same time.",
+          actions: [
+            {
+              label: "End/Save Current Session First",
+              tone: "primary" as const,
+              onSelect: () => {
+                setCompSimEntryGuard(null)
+                setPendingPracticeTypeSwitch("Comp Sim")
+                endSession()
+              },
+            },
+            {
+              label: "Go Back",
+              onSelect: () => setCompSimEntryGuard(null),
+            },
+          ],
+        }
+      case "empty_session":
+        return {
+          title: "Cancel the empty practice session?",
+          description:
+            "That start button is only for grouping normal solves into a saved practice session. Competition Simulator saves its own Ao5 separately.",
+          actions: [
+            {
+              label: "Cancel Empty Session and Start Comp Sim",
+              tone: "primary" as const,
+              onSelect: () => enterCompSim({ cancelEmptySession: true }),
+            },
+            {
+              label: "Go Back",
+              onSelect: () => setCompSimEntryGuard(null),
+            },
+          ],
+        }
+      case "gan_connected_empty_session":
+        return {
+          title: "Disconnect GAN before Comp Sim",
+          description:
+            "Competition Simulator should run on its own so the GAN timer cannot record a second solve underneath it. Your empty normal practice session will be canceled automatically.",
+          actions: [
+            {
+              label: "Disconnect GAN and Start Comp Sim",
+              tone: "primary" as const,
+              onSelect: () =>
+                enterCompSim({ disconnectGan: true, cancelEmptySession: true }),
+            },
+            {
+              label: "Go Back",
+              onSelect: () => setCompSimEntryGuard(null),
+            },
+          ],
+        }
+      case "gan_connected":
+        return {
+          title: "Disconnect GAN before Comp Sim",
+          description:
+            "Competition Simulator should run on its own so the GAN timer cannot record a second solve underneath it.",
+          actions: [
+            {
+              label: "Disconnect GAN and Start Comp Sim",
+              tone: "primary" as const,
+              onSelect: () => enterCompSim({ disconnectGan: true }),
+            },
+            {
+              label: "Go Back",
+              onSelect: () => setCompSimEntryGuard(null),
+            },
+          ],
+        }
+      default:
+        return null
+    }
+  })()
 
   return (
     <div className="flex h-[calc(100dvh-var(--timer-navbar-height,0px))] min-h-0 flex-col overflow-hidden bg-background select-none">
@@ -2951,10 +3190,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       {practiceType === "Comp Sim" ? (
         <CompSimOverlay
           event={event}
-          sessionStartMs={activeSessionStartMs}
           inspectionVoiceEnabled={inspVoiceOn}
           inspectionVoiceGender={inspVoiceGender}
-          onExit={() => changePracticeType("Solves")}
+          onExit={handleCompSimExit}
+          onBusyChange={setCompSimBusy}
         />
       ) : (
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
@@ -3153,19 +3392,24 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   </div>
                 </>
               ) : (
-                <button
-                  className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
-                  onClick={startSession}
-                >
-                  {sessionSaved ? (
-                    <span className="text-white">Session saved! Start another</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                      <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
-                      Start Session
-                    </span>
-                  )}
-                </button>
+                <>
+                  <button
+                    className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
+                    onClick={startSession}
+                  >
+                    {sessionSaved ? (
+                      <span className="text-white">Practice session saved! Start another</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                        <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
+                        Start Practice Session
+                      </span>
+                    )}
+                  </button>
+                  <div className="border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
+                    Groups normal solves into one saved practice session. Comp Sim auto-saves separately.
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -3178,6 +3422,26 @@ export function TimerContent({ viewer }: TimerContentProps) {
             {pausedAttemptMessage}
           </div>
         </div>
+      )}
+
+      {compSimIgnoredMessage && (
+        <div className="pointer-events-none fixed left-1/2 top-28 z-[70] -translate-x-1/2 px-4">
+          <div className="rounded-lg border border-blue-500/40 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-200 shadow-lg backdrop-blur-sm">
+            {compSimIgnoredMessage}
+          </div>
+        </div>
+      )}
+
+      {compSimEntryDialogConfig && (
+        <CompSimEntryDialog
+          open={true}
+          title={compSimEntryDialogConfig.title}
+          description={compSimEntryDialogConfig.description}
+          actions={compSimEntryDialogConfig.actions}
+          onOpenChange={(open) => {
+            if (!open) setCompSimEntryGuard(null)
+          }}
+        />
       )}
 
       {showEndModal && activeSessionStartMs !== null && (
@@ -3193,6 +3457,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           onClose={() => {
             setShowEndModal(false)
             setPendingEventSwitch(null)
+            setPendingPracticeTypeSwitch(null)
           }}
           onDiscard={discardSessionSolves}
           onSaved={handleSessionSaved}
