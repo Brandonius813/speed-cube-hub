@@ -10,6 +10,7 @@ import { TabPBs } from "@/components/profile/tab-pbs"
 import { TabStats } from "@/components/profile/tab-stats"
 import { TabCubes } from "@/components/profile/tab-cubes"
 import { TabOfficial } from "@/components/profile/tab-official"
+import { CompareProfileButton } from "@/components/profile/compare-profile-button"
 import { FollowButton } from "@/components/profile/follow-button"
 import type { Profile, Session, PBRecord } from "@/lib/types"
 import type { UserSorKinchStats } from "@/lib/actions/sor-kinch"
@@ -37,17 +38,25 @@ export function PublicProfileContent({
   pbs?: PBRecord[]
   sorKinchStats?: UserSorKinchStats | null
 }) {
+  void isAdmin
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<ProfileTab>(
     parseTabParam(searchParams.get("tab"))
   )
 
-  const followButton =
+  const profileActions =
     !isOwner && isLoggedIn ? (
-      <FollowButton
-        targetUserId={profile.id}
-        initialIsFollowing={isFollowing}
-      />
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row lg:w-full lg:flex-col">
+        <div className="flex-1 [&>*]:w-full">
+          <FollowButton
+            targetUserId={profile.id}
+            initialIsFollowing={isFollowing}
+          />
+        </div>
+        <div className="flex-1 [&>*]:w-full">
+          <CompareProfileButton handle={profile.handle} />
+        </div>
+      </div>
     ) : undefined
 
   const totalPracticeMinutes = sessions.reduce(
@@ -69,7 +78,7 @@ export function PublicProfileContent({
               isOwner={isOwner}
               followerCount={followerCount}
               followingCount={followingCount}
-              followButton={followButton}
+              followButton={profileActions}
             />
           )}
           {activeTab === "pbs" && (
@@ -103,7 +112,7 @@ export function PublicProfileContent({
         followerCount={followerCount}
         followingCount={followingCount}
         totalPracticeMinutes={totalPracticeMinutes}
-        followButton={followButton}
+        followButton={profileActions}
       />
     </div>
   )

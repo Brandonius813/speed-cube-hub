@@ -167,6 +167,9 @@
 - ✅ T155: Timer shortcuts, text sizing and pane size controls, solve detail modal, session-vs-all-time stats, and pane reopen memory
 - ✅ T156: Comp Sim / GAN flow hardening (exclusive mode guard, entry modal, standalone auto-save timing)
 
+### Phase 27: Profile Comparison (T157)
+- ✅ T157: Profile head-to-head comparison
+
 ---
 
 ## Open / Remaining Items

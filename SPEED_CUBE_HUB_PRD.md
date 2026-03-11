@@ -140,6 +140,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 
 ### Social Wave 4 — Community & Discovery
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
+- [x] Profile Head-to-Head Comparison (`/profile/[handle]/compare`) — logged-in users can compare themselves against a viewed public profile across last 7/30 day practice, all-time event practice totals, and current PBs without changing the default profile view
 - [x] SOR & Kinch Rank Leaderboards (Sum of Ranks + Kinch scores for ALL WCA competitors globally, sourced from WCA database export synced weekly via GitHub Action; region filtering by world/continent/country; single/average toggle; "Find Me" for linked WCA IDs; SOR rank and Kinch score on user profiles)
 - [x] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
@@ -550,6 +551,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 /practice-stats      → Practice stats (filters, charts, session log) [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /profile/[handle]    → Public profile for any user [public]
+/profile/[handle]/compare → Logged-in head-to-head comparison against that public profile [protected]
 /log                 → Log a practice session (form) [protected]
 /timer               → Built-in cubing timer [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
