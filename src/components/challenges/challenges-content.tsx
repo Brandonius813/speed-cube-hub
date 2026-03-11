@@ -1,51 +1,26 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Flag, Plus, Target, Trophy, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { CreateChallengeModal } from "@/components/challenges/create-challenge-modal"
-import { getSupabaseClient } from "@/lib/supabase/client"
 import type { Challenge, Club } from "@/lib/types"
 
 export function ChallengesContent({
   initialChallenges,
   currentUserId,
+  isAdmin,
   availableClubs,
 }: {
   initialChallenges: Challenge[]
   currentUserId: string | null
+  isAdmin: boolean
   availableClubs: Club[]
 }) {
   const [challenges, setChallenges] = useState(initialChallenges)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [modalChallenge, setModalChallenge] = useState<Challenge | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  // Check admin status client-side
-  useEffect(() => {
-    async function checkAdmin() {
-      if (!currentUserId) return
-      const supabase = getSupabaseClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      // We compare against the ADMIN_USER_ID on the server side,
-      // but for UI purposes we check if the user created any challenges
-      // The actual admin check happens in createChallenge server action.
-      // Here we just need to know if this is the admin for showing the button.
-      // We'll use a simple heuristic: pass admin status from the server.
-      // Actually, let's check if user id matches by looking at created_by.
-      // Simplest: we'll just show the create button for the admin.
-      // Since we can't access env vars client-side, we use a different approach:
-      // the server passes currentUserId and the admin check happens when they try to create.
-      // For now, we show the button for all logged-in users but the server action blocks non-admin.
-      // Better approach: check via a lightweight server call.
-      if (user) {
-        setIsAdmin(true) // Show button for all; server action enforces admin
-      }
-    }
-    checkAdmin()
-  }, [currentUserId])
 
   const today = new Date().toISOString().split("T")[0]
 
@@ -73,22 +48,61 @@ export function ChallengesContent({
     )
   }
 
-  function handleChallengeCreated(newChallenge: Challenge) {
-    setChallenges((prev) => [newChallenge, ...prev])
+  function handleChallengeSaved(savedChallenge: Challenge) {
+    setChallenges((prev) => {
+      const existingIndex = prev.findIndex((challenge) => challenge.id === savedChallenge.id)
+      if (existingIndex === -1) {
+        return [savedChallenge, ...prev]
+      }
+
+      return prev.map((challenge) =>
+        challenge.id === savedChallenge.id
+          ? {
+              ...savedChallenge,
+              participant_count: challenge.participant_count,
+              has_joined: challenge.has_joined,
+              user_progress: challenge.user_progress,
+            }
+          : challenge
+      )
+    })
+    setModalChallenge(null)
     setShowCreateModal(false)
+  }
+
+  function handleChallengeDeleted(challengeId: string) {
+    setChallenges((prev) => prev.filter((challenge) => challenge.id !== challengeId))
+    setModalChallenge((prev) => (prev?.id === challengeId ? null : prev))
   }
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Admin create button */}
       {isAdmin && (
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto sm:self-end"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Challenge
-        </Button>
+        <section className="rounded-[1.5rem] border border-amber-500/20 bg-[linear-gradient(180deg,rgba(120,53,15,0.18),rgba(24,24,27,0.88))] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200/80">
+                Super Admin
+              </p>
+              <h2 className="text-lg font-semibold text-foreground">
+                Manage whole-community challenges
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Official challenges can be created, edited, or removed here no matter who originally added them.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setModalChallenge(null)
+                setShowCreateModal(true)
+              }}
+              className="min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Challenge
+            </Button>
+          </div>
+        </section>
       )}
 
       <section className="space-y-4">
@@ -116,7 +130,10 @@ export function ChallengesContent({
                 key={challenge.id}
                 challenge={challenge}
                 currentUserId={currentUserId}
+                canManage={isAdmin}
                 onUpdate={handleChallengeUpdate}
+                onEdit={setModalChallenge}
+                onDelete={handleChallengeDeleted}
               />
             ))}
           </div>
@@ -170,7 +187,10 @@ export function ChallengesContent({
                 key={challenge.id}
                 challenge={challenge}
                 currentUserId={currentUserId}
+                canManage={isAdmin}
                 onUpdate={handleChallengeUpdate}
+                onEdit={setModalChallenge}
+                onDelete={handleChallengeDeleted}
                 isPast
               />
             ))}
@@ -194,11 +214,18 @@ export function ChallengesContent({
       )}
 
       {/* Create challenge modal */}
-      {showCreateModal && (
+      {(showCreateModal || modalChallenge) && (
         <CreateChallengeModal
-          open={showCreateModal}
-          onOpenChange={setShowCreateModal}
-          onCreated={handleChallengeCreated}
+          key={modalChallenge?.id ?? "new-challenge"}
+          open={showCreateModal || !!modalChallenge}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowCreateModal(false)
+              setModalChallenge(null)
+            }
+          }}
+          challenge={modalChallenge}
+          onSaved={handleChallengeSaved}
           clubs={availableClubs}
         />
       )}

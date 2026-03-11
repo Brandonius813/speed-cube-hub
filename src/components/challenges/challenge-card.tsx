@@ -2,10 +2,22 @@
 
 import { useState, useEffect } from "react"
 import { format, parseISO } from "date-fns"
-import { CheckCircle2, Shield, Swords, Target, Users } from "lucide-react"
+import { CheckCircle2, Pencil, Shield, Swords, Target, Trash2, Users } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  deleteChallenge,
   joinChallenge,
   leaveChallenge,
   getChallengeProgress,
@@ -52,15 +64,23 @@ function ChallengeArt({
 export function ChallengeCard({
   challenge,
   currentUserId,
+  canManage = false,
   onUpdate,
+  onEdit,
+  onDelete,
   isPast = false,
 }: {
   challenge: Challenge
   currentUserId: string | null
+  canManage?: boolean
   onUpdate: (updated: Challenge) => void
+  onEdit?: (challenge: Challenge) => void
+  onDelete?: (challengeId: string) => void
   isPast?: boolean
 }) {
   const [joining, setJoining] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [progress, setProgress] = useState<number | undefined>(
     challenge.user_progress
   )
@@ -115,6 +135,23 @@ export function ChallengeCard({
     setJoining(false)
   }
 
+  async function handleDelete() {
+    if (!canManage || deleting) return
+
+    setDeleteError(null)
+    setDeleting(true)
+
+    const result = await deleteChallenge(challenge.id)
+    if (!result.success) {
+      setDeleteError(result.error ?? "Failed to delete challenge")
+      setDeleting(false)
+      return
+    }
+
+    onDelete?.(challenge.id)
+    setDeleting(false)
+  }
+
   const progressPercent =
     progress !== undefined && challenge.target_value > 0
       ? Math.min(100, Math.round((progress / challenge.target_value) * 100))
@@ -125,6 +162,7 @@ export function ChallengeCard({
 
   const startDate = format(parseISO(challenge.start_date), "MMM d")
   const endDate = format(parseISO(challenge.end_date), "MMM d")
+  const showManageControls = canManage && challenge.scope === "official"
 
   return (
     <div
@@ -174,28 +212,80 @@ export function ChallengeCard({
           </div>
         </div>
 
-        {currentUserId && !isPast && (
-          <div className="shrink-0">
-            {challenge.has_joined ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLeave}
-                disabled={joining}
-                className="min-h-11 min-w-[96px] border-border/50 bg-background/50 text-muted-foreground hover:border-destructive hover:text-destructive sm:min-h-0"
-              >
-                {joining ? "..." : "Joined"}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={handleJoin}
-                disabled={joining}
-                className="min-h-11 min-w-[96px] bg-primary text-primary-foreground hover:bg-primary/90 sm:min-h-0"
-              >
-                {joining ? "..." : "Join"}
-              </Button>
-            )}
+        {(showManageControls || (currentUserId && !isPast)) && (
+          <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+            {showManageControls ? (
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit?.(challenge)}
+                  className="min-h-11 border-border/50 bg-background/50 sm:min-h-0"
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 border-border/50 bg-background/50 text-destructive hover:border-destructive hover:text-destructive sm:min-h-0"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete challenge?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes the challenge for everyone and also deletes all participant progress tied to it.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={deleting}
+                        onClick={handleDelete}
+                      >
+                        {deleting ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : null}
+
+            {currentUserId && !isPast ? (
+              challenge.has_joined ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLeave}
+                  disabled={joining}
+                  className="min-h-11 min-w-[96px] border-border/50 bg-background/50 text-muted-foreground hover:border-destructive hover:text-destructive sm:min-h-0"
+                >
+                  {joining ? "..." : "Joined"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleJoin}
+                  disabled={joining}
+                  className="min-h-11 min-w-[96px] bg-primary text-primary-foreground hover:bg-primary/90 sm:min-h-0"
+                >
+                  {joining ? "..." : "Join"}
+                </Button>
+              )
+            ) : null}
+
+            {deleteError ? (
+              <p className="max-w-[240px] text-xs text-destructive sm:text-right">
+                {deleteError}
+              </p>
+            ) : null}
           </div>
         )}
       </div>

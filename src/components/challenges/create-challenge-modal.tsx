@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createChallenge } from "@/lib/actions/challenges"
+import { createChallenge, updateChallenge } from "@/lib/actions/challenges"
 import type { Challenge, Club } from "@/lib/types"
 
 const CHALLENGE_TYPES = [
@@ -44,22 +44,24 @@ const CHALLENGE_TYPES = [
 export function CreateChallengeModal({
   open,
   onOpenChange,
-  onCreated,
+  onSaved,
+  challenge,
   clubs,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreated: (challenge: Challenge) => void
+  onSaved: (challenge: Challenge) => void
+  challenge: Challenge | null
   clubs: Club[]
 }) {
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [type, setType] = useState<Challenge["type"]>("solves")
-  const [scope, setScope] = useState<Challenge["scope"]>("official")
-  const [clubId, setClubId] = useState("")
-  const [targetValue, setTargetValue] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [title, setTitle] = useState(challenge?.title ?? "")
+  const [description, setDescription] = useState(challenge?.description ?? "")
+  const [type, setType] = useState<Challenge["type"]>(challenge?.type ?? "solves")
+  const [scope, setScope] = useState<Challenge["scope"]>(challenge?.scope ?? "official")
+  const [clubId, setClubId] = useState(challenge?.club_id ?? "")
+  const [targetValue, setTargetValue] = useState(challenge ? String(challenge.target_value) : "")
+  const [startDate, setStartDate] = useState(challenge?.start_date ?? "")
+  const [endDate, setEndDate] = useState(challenge?.end_date ?? "")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -68,7 +70,7 @@ export function CreateChallengeModal({
     setError(null)
     setSubmitting(true)
 
-    const result = await createChallenge({
+    const payload = {
       title,
       description,
       type,
@@ -77,44 +79,35 @@ export function CreateChallengeModal({
       target_value: parseInt(targetValue, 10),
       start_date: startDate,
       end_date: endDate,
-    })
+    }
 
-    if (!result.success) {
-      setError(result.error ?? "Failed to create challenge")
+    const result = challenge
+      ? await updateChallenge(challenge.id, payload)
+      : await createChallenge(payload)
+
+    if (!result.success || !result.challenge) {
+      setError(result.error ?? (challenge ? "Failed to update challenge" : "Failed to create challenge"))
       setSubmitting(false)
       return
     }
 
-    // Construct a Challenge object for optimistic UI
-    const newChallenge: Challenge = {
-      id: crypto.randomUUID(), // Temporary ID until revalidation
-      title: title.trim(),
-      description: description.trim() || null,
-      type,
-      scope,
-      club_id: scope === "club" ? clubId : null,
-      target_value: parseInt(targetValue, 10),
-      start_date: startDate,
-      end_date: endDate,
-      created_at: new Date().toISOString(),
-      participant_count: 0,
-      has_joined: false,
-    }
-
-    onCreated(newChallenge)
+    onSaved(result.challenge)
     setSubmitting(false)
   }
 
   const selectedTypeHint =
     CHALLENGE_TYPES.find((t) => t.value === type)?.hint ?? ""
+  const isEditing = !!challenge
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Challenge</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Challenge" : "Create Challenge"}</DialogTitle>
           <DialogDescription>
-            Create a community challenge for all cubers to join.
+            {isEditing
+              ? "Update the challenge details and save the changes."
+              : "Create a community challenge for all cubers to join."}
           </DialogDescription>
         </DialogHeader>
 
@@ -264,7 +257,13 @@ export function CreateChallengeModal({
             disabled={submitting || (scope === "club" && !clubId)}
             className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {submitting ? "Creating..." : "Create Challenge"}
+            {submitting
+              ? isEditing
+                ? "Saving..."
+                : "Creating..."
+              : isEditing
+                ? "Save Changes"
+                : "Create Challenge"}
           </Button>
         </form>
       </DialogContent>

@@ -1,9 +1,11 @@
 import { ChallengesContent } from "@/components/challenges/challenges-content"
+import { checkIsAdmin } from "@/lib/actions/auth"
 import { getChallenges } from "@/lib/actions/challenges"
 import { getUserClubs } from "@/lib/actions/clubs"
 
 export default async function ChallengesPage() {
   const { data: challenges, currentUserId } = await getChallenges()
+  const isAdmin = await checkIsAdmin()
   const userClubs = currentUserId ? await getUserClubs(currentUserId) : { clubs: [] }
 
   return (
@@ -12,6 +14,7 @@ export default async function ChallengesPage() {
       <ChallengesContent
         initialChallenges={challenges}
         currentUserId={currentUserId ?? null}
+        isAdmin={isAdmin}
         availableClubs={userClubs.clubs}
       />
     </main>
