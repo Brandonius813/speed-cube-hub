@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { BarChart3, Box, ClipboardList, Rss, Timer, Trophy, User } from "lucide-react"
+import { BarChart3, Box, ClipboardList, Rss, Trophy, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -26,9 +26,51 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+function StatsNavLinkInner({ isActive }: { isActive: boolean }) {
+  return (
+    <Link
+      href="/profile?tab=stats"
+      className={cn(
+        "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
+        isActive
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+      aria-label="Stats"
+    >
+      <BarChart3
+        className={cn("h-5 w-5 sm:hidden", isActive && "text-foreground")}
+      />
+      <span
+        className={cn(
+          "hidden text-lg font-bold sm:inline",
+          isActive && "border-b-2 border-primary pb-0.5"
+        )}
+      >
+        Stats
+      </span>
+    </Link>
+  )
+}
+
+function StatsNavLinkWithSearch({ pathname }: { pathname: string }) {
+  const searchParams = useSearchParams()
+  const isActive =
+    pathname === "/profile" && searchParams.get("tab") === "stats"
+
+  return <StatsNavLinkInner isActive={isActive} />
+}
+
+function StatsNavLink({ pathname }: { pathname: string }) {
+  return (
+    <Suspense fallback={<StatsNavLinkInner isActive={false} />}>
+      <StatsNavLinkWithSearch pathname={pathname} />
+    </Suspense>
+  )
+}
+
 export function Navbar() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -60,10 +102,6 @@ export function Navbar() {
       isActive(href) ? "text-foreground" : ""
     )
   }
-
-  // Stats top-nav link should only be active on your profile stats tab.
-  const isStatsTabActive =
-    pathname === "/profile" && searchParams.get("tab") === "stats"
 
   useEffect(() => {
     const supabase = getSupabaseClient()
@@ -165,28 +203,7 @@ export function Navbar() {
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
             </Link>
-            <Link
-              href="/profile?tab=stats"
-              className={cn(
-                "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
-                isStatsTabActive
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              aria-label="Stats"
-            >
-              <BarChart3
-                className={cn("h-5 w-5 sm:hidden", isStatsTabActive && "text-foreground")}
-              />
-              <span
-                className={cn(
-                  "hidden text-lg font-bold sm:inline",
-                  isStatsTabActive && "border-b-2 border-primary pb-0.5"
-                )}
-              >
-                Stats
-              </span>
-            </Link>
+            <StatsNavLink pathname={pathname} />
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>

@@ -1,19 +1,7 @@
 "use server"
 
 import { unstable_cache } from "next/cache"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
-import { createClient } from "@/lib/supabase/server"
-
-/**
- * Cookie-free Supabase client for public read-only queries.
- * Required inside unstable_cache callbacks — cookies() cannot be called there.
- */
-function createPublicClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
+import { createPublicClient } from "@/lib/supabase/public"
 
 export type SorKinchCategory = "sor" | "kinch"
 export type SorKinchType = "single" | "average"
@@ -185,7 +173,7 @@ export async function findUserInSorKinch(
   userRank: number
   totalCount: number
 } | null> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const isSor = category === "sor"
   const column = isSor ? getSorColumn(type, region) : getKinchColumn()
@@ -267,7 +255,7 @@ export async function getUserSorKinchStats(
   wcaId: string
 ): Promise<UserSorKinchStats | null> {
   if (!wcaId) return null
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const { data } = await supabase
     .from("wca_rankings")
@@ -344,6 +332,22 @@ export const getWcaCountries = unstable_cache(
   },
   ["wca-countries"],
   { revalidate: 60 * 60 * 24 * 7 } // 1 week — countries never change
+)
+
+export const getLatestWcaSyncTimestamp = unstable_cache(
+  async (): Promise<string | null> => {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from("wca_rankings")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    return data?.updated_at ?? null
+  },
+  ["wca-rankings-last-updated"],
+  { revalidate: WCA_CACHE_TTL }
 )
 
 /**

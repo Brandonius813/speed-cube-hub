@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/public"
 import type { LeaderboardEntry } from "@/lib/types"
 import type { LeaderboardCategory, TimePeriod, LeaderboardPage } from "@/lib/leaderboard-types"
 
@@ -83,12 +84,14 @@ export async function getLeaderboard(
   const rpcName = getRpcName(category, timePeriod)
   if (!rpcName) return { entries: [], totalCount: 0 }
 
-  const supabase = await createClient()
-
   let friendIds: string[] | null = null
+  if (friendsOnly && !userId) {
+    return { entries: [], totalCount: 0 }
+  }
   if (friendsOnly && userId) {
     friendIds = await getFriendUserIds(userId)
   }
+  const supabase = friendsOnly ? await createClient() : createPublicClient()
 
   const { data, error } = await supabase.rpc(rpcName, {
     p_friend_ids: friendIds,

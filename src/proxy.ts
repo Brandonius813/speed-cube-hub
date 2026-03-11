@@ -7,6 +7,22 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.*|apple-icon.*|api/auth/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/login",
+    "/signup",
+    "/practice-stats/:path*",
+    "/dashboard/:path*",
+    "/feed/:path*",
+    "/notifications/:path*",
+    "/log/:path*",
+    "/pbs/:path*",
+    "/wrapped/:path*",
+    "/challenges/:path*",
+    "/clubs",
+    "/timer/:path*",
+    "/import/:path*",
+    "/admin/:path*",
+    "/profile",
+    "/tools/:path*",
+    "/battle/:path*",
   ],
 }

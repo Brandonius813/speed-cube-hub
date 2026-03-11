@@ -67,13 +67,11 @@ export function LeaderboardsContent({
   initialData,
   initialWcaData = {},
   countries = [],
-  userWcaId,
   wcaLastUpdated,
 }: {
   initialData: Record<string, LeaderboardPage>
   initialWcaData?: Record<string, WcaLeaderboardPage>
   countries?: WcaCountry[]
-  userWcaId?: string | null
   wcaLastUpdated?: string | null
 }) {
   // Practice leaderboard state
@@ -83,6 +81,7 @@ export function LeaderboardsContent({
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("weekly")
   const [friendsOnly, setFriendsOnly] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [viewerWcaId, setViewerWcaId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [prefsLoaded, setPrefsLoaded] = useState(false)
 
@@ -137,9 +136,46 @@ export function LeaderboardsContent({
   useEffect(() => { if (prefsLoaded) savePrefs(category, friendsOnly) }, [category, friendsOnly, prefsLoaded])
 
   useEffect(() => {
-    getSupabaseClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null)).catch(() => {
-      // Auth check failed — keep userId as null (logged-out state)
-    })
+    let cancelled = false
+
+    async function loadViewer() {
+      try {
+        const supabase = getSupabaseClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (cancelled) return
+
+        setUserId(user?.id ?? null)
+
+        if (!user) {
+          setViewerWcaId(null)
+          return
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("wca_id")
+          .eq("id", user.id)
+          .maybeSingle()
+
+        if (!cancelled) {
+          setViewerWcaId(profile?.wca_id ?? null)
+        }
+      } catch {
+        if (!cancelled) {
+          setUserId(null)
+          setViewerWcaId(null)
+        }
+      }
+    }
+
+    loadViewer()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Fetch practice data when cache misses
@@ -225,7 +261,7 @@ export function LeaderboardsContent({
 
   const handleFindMe = () => {
     if (isWca) {
-      if (!userWcaId) {
+      if (!viewerWcaId) {
         setFindMeNoData(true)
         return
       }
@@ -234,7 +270,7 @@ export function LeaderboardsContent({
         const result = await findUserInSorKinch(
           category as "sor" | "kinch",
           type,
-          userWcaId,
+          viewerWcaId,
           { level: region.level, id: region.id }
         )
         if (result) {
@@ -276,7 +312,7 @@ export function LeaderboardsContent({
   const isLoading =
     isPending && (isWca ? !currentWcaPage : !currentPracticePage)
   const myRankData = isWca ? wcaMyRank : practiceMyRank
-  const canFindMe = isWca ? !!userWcaId : !!userId
+  const canFindMe = isWca ? !!viewerWcaId : !!userId
 
   const wcaUpdatedLabel = isWca && wcaLastUpdated
     ? new Date(wcaLastUpdated).toLocaleDateString("en-US", {
@@ -314,7 +350,7 @@ export function LeaderboardsContent({
         onFindMe={handleFindMe}
         onBackToTop={handleBackToTop}
         isFindingMe={isFindingMe}
-        userWcaId={userWcaId}
+        userWcaId={viewerWcaId}
       />
 
       {/* "Find Me" rank banner */}
@@ -334,7 +370,7 @@ export function LeaderboardsContent({
 
       {findMeNoData && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-center text-sm text-amber-200">
-          {isWca && !userWcaId
+          {isWca && !viewerWcaId
             ? "Link your WCA account on your profile to find yourself in WCA leaderboards."
             : "You don\u2019t have any data for this category yet."}
         </div>
@@ -361,7 +397,7 @@ export function LeaderboardsContent({
             <WcaLeaderboardTable
               entries={displayEntries as WcaLeaderboardEntry[]}
               category={category}
-              highlightWcaId={viewingMyRank ? userWcaId : null}
+              highlightWcaId={viewingMyRank ? viewerWcaId : null}
             />
           </div>
           <div className="flex flex-col gap-2 sm:hidden">
@@ -370,7 +406,7 @@ export function LeaderboardsContent({
                 key={entry.wca_id}
                 entry={entry}
                 category={category}
-                isHighlighted={viewingMyRank && entry.wca_id === userWcaId}
+                isHighlighted={viewingMyRank && entry.wca_id === viewerWcaId}
               />
             ))}
           </div>

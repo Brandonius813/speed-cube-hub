@@ -1,39 +1,22 @@
 import { LeaderboardsContent } from "@/components/leaderboards/leaderboards-content"
 import { getAllLeaderboards } from "@/lib/actions/leaderboards"
-import { getWcaCountries, getSorKinchLeaderboard } from "@/lib/actions/sor-kinch"
+import {
+  getLatestWcaSyncTimestamp,
+  getSorKinchLeaderboard,
+  getWcaCountries,
+} from "@/lib/actions/sor-kinch"
 import type { WcaLeaderboardPage } from "@/lib/actions/sor-kinch"
-import { createClient } from "@/lib/supabase/server"
+
+export const revalidate = 300
 
 export default async function LeaderboardsPage() {
-  const supabase = await createClient()
-
-  // Fetch leaderboards + user WCA ID all in parallel
-  // The profile query chains off the auth promise so it starts as soon as auth resolves
-  const authPromise = supabase.auth.getUser()
-  const [initialData, countries, sorSingleData, kinchSingleData, userWcaId, wcaLastUpdatedRow] = await Promise.all([
+  const [initialData, countries, sorSingleData, kinchSingleData, wcaLastUpdated] = await Promise.all([
     getAllLeaderboards(),
     getWcaCountries().catch(() => []),
     getSorKinchLeaderboard("sor", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
     getSorKinchLeaderboard("kinch", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
-    authPromise.then(async ({ data: { user } }) => {
-      if (!user) return null
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("wca_id")
-        .eq("id", user.id)
-        .single()
-      return profile?.wca_id ?? null
-    }),
-    supabase
-      .from("wca_rankings")
-      .select("updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => data?.updated_at ?? null, () => null),
+    getLatestWcaSyncTimestamp().catch(() => null),
   ])
-
-  const wcaLastUpdated = wcaLastUpdatedRow ?? null
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -47,12 +30,8 @@ export default async function LeaderboardsPage() {
           "kinch:combined:world:all": kinchSingleData,
         }}
         countries={countries}
-        userWcaId={userWcaId}
         wcaLastUpdated={wcaLastUpdated}
       />
     </main>
   )
 }
-
-// Always fetch fresh data — leaderboards change whenever anyone logs a session
-export const dynamic = "force-dynamic"
