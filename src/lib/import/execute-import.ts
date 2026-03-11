@@ -9,11 +9,15 @@ import type { SessionSummary, NormalizedPB, RawImportSolve } from "@/lib/import/
 import type { SolveStore } from "@/lib/timer/solve-store"
 import { createSessionsBulk } from "@/lib/actions/sessions"
 import { bulkImportPBs } from "@/lib/actions/personal-bests"
-import { bulkImportSolves } from "@/lib/actions/timer"
+import {
+  appendImportedSolveChunk,
+  createImportedTimerSession,
+} from "@/lib/actions/import-solves"
 import {
   getOrCreateDefaultSession,
   updateSolveSessionActiveFrom,
 } from "@/lib/actions/solve-sessions"
+import { prepareImportedSolveChunks } from "@/lib/import/chunk-import"
 
 export type ImportProgress = (message: string) => void
 export type ImportResult =
@@ -42,17 +46,46 @@ export async function executeImport(
         return { success: false, error: ssError ?? "Failed to create solve session." }
       }
 
-      onProgress(`Saving ${rawSolves.length.toLocaleString()} solves to your account...`)
-
-      const { imported, error: importError } = await bulkImportSolves(
-        solveSession.id,
-        event,
-        rawSolves,
-        { skipSessionEntry: true }
-      )
-      if (importError) {
-        return { success: false, error: importError }
+      const { data: timerSession, error: timerSessionError } =
+        await createImportedTimerSession(solveSession.id, event)
+      if (timerSessionError || !timerSession) {
+        return {
+          success: false,
+          error: timerSessionError ?? "Failed to prepare import session.",
+        }
       }
+
+      const solveChunks = prepareImportedSolveChunks(rawSolves)
+      let imported = 0
+
+      for (const chunk of solveChunks) {
+        const chunkStart = chunk[0]?.solve_number ?? imported + 1
+        const chunkEnd = chunk.at(-1)?.solve_number ?? imported
+        onProgress(
+          `Saving solves ${chunkStart.toLocaleString()}-${chunkEnd.toLocaleString()} of ${rawSolves.length.toLocaleString()}...`
+        )
+
+        const { imported: chunkImported, error: importError } =
+          await appendImportedSolveChunk(timerSession.id, chunk)
+
+        imported += chunkImported
+
+        if (importError) {
+          return {
+            success: false,
+            error: `Imported ${imported.toLocaleString()} of ${rawSolves.length.toLocaleString()} solves. Error: ${importError}`,
+          }
+        }
+      }
+
+      if (imported !== rawSolves.length) {
+        return {
+          success: false,
+          error: `Imported ${imported.toLocaleString()} of ${rawSolves.length.toLocaleString()} solves.`,
+        }
+      }
+
+      count += imported
 
       const earliestDate = rawSolves.reduce(
         (min, s) => (s.date < min ? s.date : min),
@@ -73,7 +106,6 @@ export async function executeImport(
         group: `date:${s.date}`,
       }))
       await solveStore.importSolves(event, timerSolves)
-      count += imported
     }
 
     // Phase 2: Session summaries
