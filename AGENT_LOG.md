@@ -6,40 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-06 PT — Shared Multi-Agent Coordination Setup
-
-**Task:** Prevent parallel Codex sessions from colliding on the same files
-**Status:** Added a shared cross-worktree claims registry at `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`, a versioned helper script at `scripts/agent-claims.mjs`, and an auto-bootstrap helper at `scripts/agent-bootstrap.mjs` so new agents can create/reuse their own `codex/...` worktree automatically before coding. Wired repo commands (`agent:bootstrap`, `claims:status`, `claims:claim`, `claims:touch`, `claims:release`) and updated startup/multi-agent docs to require self-bootstrap + live file claims before editing.
-**Files touched:** `AGENTS.md`, `package.json`, `README.md`, `docs/multi-agent-vscode.md`, `scripts/agent-claims.mjs`, `scripts/agent-bootstrap.mjs`, `AGENT_LOG.md`, `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`, `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/claims.mjs`
-**Checks:** `npm run claims:status`, `npm run claims:claim -- --task "Self test" --files "README.md,docs/multi-agent-vscode.md"`, `npm run claims:touch`, `npm run claims:release`, and `npm run claims:status` all passed. Overlap protection also passed: a second claim on `AGENTS.md` from a different `--cwd` was rejected until the first claim was released. `npm run agent:bootstrap -- --task "auto bootstrap self test"` created a sibling worktree + `codex/auto-bootstrap-self-test` branch, then reused that worktree on a second run.
-
----
-
-### 2026-03-06 09:39 AM PT — Comp Sim Accidental-Start Guard
-
-**Task:** Reduce accidental DNF risk in Competition Simulator when solver is called
-**Status:** Updated Comp Sim `ready` phase so inspection no longer starts on a single tap/keypress. Users must now hold and release (550ms threshold) to begin inspection, matching the intentional hold-to-start behavior used elsewhere in the timer. Added matching visual/text feedback on the Ready screen.
-**Files touched:** `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `AGENT_LOG.md`
-**Checks:** `npx eslint src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx` passed. `npx tsc --noEmit` passed.
-
-### 2026-03-06 11:05 AM PT — Timer History Delete + Scroll Retention
-
-**Task:** Fix timer-history outlier deletion persistence and keep list scroll position after delete
-**Status:** Confirmed the root cause of returning solves: timer deletes were only removing rows from IndexedDB, so DB-backed sync could restore them later. Built on the latest server-delete fix by updating cross-device sync to reconcile when DB saved-history counts differ in either direction while preserving unsaved local solves. Added a solve-list imperative scroll-preservation hook so deleting a time no longer jumps the list back to the top. Backed up and hard-deleted 16 suspicious 3x3 outlier/DNF rows for the admin account from Supabase (`/tmp/speed-cube-hub-brandon-outlier-solves-20260306.json`).
-**Files touched:** `src/lib/timer/cross-device-sync.ts`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/cross-device-sync.ts src/components/timer/solve-list-panel.tsx src/components/timer/timer-content.tsx` passed. Verified no remaining `333` solves for admin user matched `time_ms < 5000` or `penalty = 'DNF'`.
-
----
-
-### 2026-03-06 11:42 AM PT — Timer Session Boundary Guard + Duplicate 3x3 Cleanup
-
-**Task:** Stop end-session flows from scooping up stale ungrouped history; remove the duplicate 3x3 block still polluting all-time charts
-**Status:** Added a session-start solve-index boundary in `timer-content.tsx` so active session save/discard/end-switch logic only touches solves added after the session began, even if older ungrouped solves exist in local cache. This prevents a repeat of the March 5 duplication bug where a save bundled nearly the full 3x3 history into one new session. Cleaned the existing duplicate data in Supabase by backing up and trimming timer session `371a27bf-e9b6-486b-bc72-030b6c40b2db` from 1495 solves down to the 10 real new solves, updating its linked `sessions` row stats, and deleting the last late 6.16 outlier. Backups saved to `/tmp/speed-cube-hub-brandon-duplicate-session-371a-20260306.json` and `/tmp/speed-cube-hub-brandon-outlier-solve-76142ec7-20260306.json`.
-**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. Verified admin `333` total is now 1517 and there are no late (`overallIndex >= 1450`) solves with `time_ms < 8000` or `penalty = 'DNF'`.
-
----
-
 ### 2026-03-06 PT — Timer QoL Polish
 
 **Task:** Add timer shortcuts, bigger text options, richer solve editing, session-vs-all-time stats, and pane reopen memory
@@ -180,3 +146,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added a shared stat-window summary helper so average/mean windows reuse one source of truth for trim logic, `DNF` handling, sigma, and distribution bins. Upgraded the timer stat detail modal with richer summary pills, a `Share` action, and a `Distribution` tab for `25+` windows. Extended the existing share modal/card system with a new `average` variant: smaller windows render times-focused cards, `ao25/mo25` can toggle between times and distribution, and `50+` exports stay distribution-only. To avoid the live `timer-content.tsx` claim, the stat detail modal now opens its own average share modal using the current timer event from local storage and the same profile lookup used elsewhere in the timer.
 **Files touched:** `src/lib/timer/stat-window-summary.ts`, `src/components/timer/stat-detail-modal.tsx`, `src/components/share/share-card.tsx`, `src/components/share/share-modal.tsx`, `AGENT_LOG.md`
 **Checks:** `npx eslint src/lib/timer/stat-window-summary.ts src/components/timer/stat-detail-modal.tsx src/components/share/share-card.tsx src/components/share/share-modal.tsx` passed. `npx tsc --noEmit --pretty false` passed.
+
+### 2026-03-11 10:54 AM PT — Release Preview Branches To Main
+
+**Task:** Promote the six latest preview branches onto `main`
+**Status:** Merged `codex/fix-solves-phases-save-failure`, `codex/robust-time-distribution-histogram`, `codex/cross-trainer-orientation-guidance`, `codex/fix-profile-daily-charts`, `codex/comp-sim-gan-hardening`, and `codex/timer-average-share-flow` into one integration branch, resolved the shared `AGENT_LOG.md` merge conflicts, and prepared the result for fast-forwarding onto `main`. Deliberately left `codex/square1-tnoodle-port` out because its files are still actively claimed in another worktree.
+**Files touched:** `AGENT_LOG.md`
+**Checks:** `npm test` passed. `npx tsc --noEmit --pretty false` passed. `npm run build` passed.
