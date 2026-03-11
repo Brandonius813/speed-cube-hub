@@ -78,6 +78,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
 
+### 2026-03-11 03:26 PM EDT — Performance Roadmap Phase 1 Foundation Fixes
+
+**Task:** Implement Phase 1 of the web performance roadmap and stop at the approval gate for Phase 2
+**Status:** Removed the global AdSense script from the root layout, replaced the homepage/main-layout null-fallback navbar streaming pattern with direct navbar rendering, added a cookie-free `createPublicClient()` for safe public Supabase reads, moved homepage stats and public leaderboard/WCA reads onto that path, narrowed `src/proxy.ts` so anonymous public routes no longer run auth refresh, and restored ISR behavior on `/` and `/leaderboards`. Captured a Phase 1 report at `plans/performance-phase-1-report.md` with before/after measurements: current production on March 11, 2026 returns `cache-control: private, no-cache, no-store` on `/` and `/leaderboards`, while the local production build from this branch serves both routes with `Cache-Control: s-maxage=300, stale-while-revalidate=31535700`. The production homepage currently streams the navbar after the main content via a hidden Suspense payload; this branch returns `<header ...>` directly in the first HTML response and no longer includes the root-level `adsbygoogle` script.
+**Files touched:** `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/(main)/layout.tsx`, `src/app/(main)/leaderboards/page.tsx`, `src/components/leaderboards/leaderboards-content.tsx`, `src/components/shared/navbar.tsx`, `src/lib/actions/leaderboards.ts`, `src/lib/actions/sor-kinch.ts`, `src/lib/actions/stats.ts`, `src/lib/supabase/public.ts`, `src/proxy.ts`, `plans/performance-phase-1-report.md`, `TASKS.md`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/app/layout.tsx src/app/page.tsx src/app/(main)/layout.tsx src/app/(main)/leaderboards/page.tsx src/components/shared/navbar.tsx src/components/leaderboards/leaderboards-content.tsx src/lib/actions/stats.ts src/lib/actions/leaderboards.ts src/lib/actions/sor-kinch.ts src/lib/supabase/public.ts src/proxy.ts` passed. `npm run build -- --webpack` passed. `curl -I http://127.0.0.1:3101/` and `curl -I http://127.0.0.1:3101/leaderboards` both returned ISR-style cache headers after the build.
+
 ### 2026-03-11 PT — Split Scramble And Timer Size Settings
 
 **Task:** Separate the shared scramble/timer size control into independent settings

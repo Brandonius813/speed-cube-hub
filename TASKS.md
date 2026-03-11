@@ -167,6 +167,9 @@
 - ✅ T155: Timer shortcuts, text sizing and pane size controls, solve detail modal, session-vs-all-time stats, and pane reopen memory
 - ✅ T156: Comp Sim / GAN flow hardening (exclusive mode guard, entry modal, standalone auto-save timing)
 
+### Phase 27: Platform Performance Roadmap (T157)
+- ✅ T157: Phase 1 foundation fixes (remove global AdSense, restore public ISR on `/` and `/leaderboards`, add cookie-free public Supabase helper, narrow proxy scope, and keep navbar markup in first HTML)
+
 ---
 
 ## Open / Remaining Items
@@ -176,5 +179,6 @@ These items are tracked in the PRD under "Remaining Security Items (Manual)" and
 - 🏗️ In Progress — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart` (branch: `task/activate-profile-components`, worktree: `../speed-cube-hub-agent-profile`)
 - 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
 - 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
+- ⏸️ Approval Gate — Performance Roadmap Phase 2 starts only after the rebuilt feed/challenges/discover system is merged to `main` or otherwise stable enough for performance hardening
 
 ---

@@ -142,6 +142,12 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Fix dashboard — deduplicate session fetches + add limits (T50)
 - [ ] Replace select("*") with explicit column lists (T51) — **Reverted 3x.** Requires a live Supabase DB schema audit first (`SELECT column_name FROM information_schema.columns WHERE table_name = '...'`) because many columns were added via SQL editor and don't match the TypeScript types. Do not re-attempt without verifying every column name against the live database.
 
+### Performance Roadmap (2026)
+- [x] Phase 1 — Foundation fixes: removed the global AdSense app-shell script, restored public caching on `/` and `/leaderboards`, moved audited public reads to a cookie-free Supabase helper, narrowed proxy scope, and ensured the navbar is present in first HTML instead of streaming in after the main content
+- [ ] Phase 2 — Social system hardening after the feed/challenges/discover rebuild is merged or otherwise stable enough for performance work
+- [ ] Phase 3 — Heavy route slimming for `/timer`, `/profile`, `/import`, and `/log`
+- [ ] Phase 4 — Pre-native public/auth contract cleanup plus final cross-route web performance audit
+
 ### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
 
 Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
