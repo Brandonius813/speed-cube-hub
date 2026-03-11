@@ -2671,7 +2671,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                     </div>
                     <div className="px-3 py-2 space-y-1.5">
                       <span className="block text-[11px] font-medium text-foreground">
-                        Text Size
+                        Scramble Size
                       </span>
                       <div className="grid grid-cols-3 gap-1">
                         {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
