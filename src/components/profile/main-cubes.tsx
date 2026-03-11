@@ -377,9 +377,11 @@ export function MainCubes({
                           <p className="font-medium text-foreground">
                             {cube.name}
                           </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {cube.setup || getEventLabel(cube.event)}
-                          </p>
+                          {cube.setup && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {cube.setup}
+                            </p>
+                          )}
                         </div>
                         {hasHistory && !editMode && (
                           <div className="shrink-0 pt-0.5">
