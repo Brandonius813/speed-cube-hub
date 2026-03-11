@@ -170,6 +170,9 @@
 ### Phase 27: Profile Comparison (T157)
 - ✅ T157: Profile head-to-head comparison
 
+### Phase 28: Import Preview Parity (T158)
+- ✅ T158: Shared raw-solve import review parity for csTimer, CubeTime, and future timer parsers
+
 ---
 
 ## Open / Remaining Items

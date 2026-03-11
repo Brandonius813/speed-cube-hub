@@ -301,6 +301,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Click a solve on the left to open a richer detail modal with notes, scramble, PB/share, penalty changes, and delete
 - [x] Screen wake lock keeps laptops awake while GAN timer or active timer/Comp Sim flows are in use
 - [x] Comp Sim / GAN flow hardening: Comp Sim is now an exclusive mode with guarded entry, clearer copy, standalone auto-save timing, and ignored GAN input while the simulator is active
+- [x] Shared solve-import review for timer exports: csTimer, CubeTime, and future raw-solve parsers now use the same pre-import summary cards and suspicious-solve review flow (best single, current/best Ao5, Ao12, Ao100, plus outlier toggles)
 
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning

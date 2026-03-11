@@ -20,6 +20,30 @@ export type NormalizedPB = {
   date_achieved: string // YYYY-MM-DD
 }
 
+/** Session-level summary available before import for solve-based timer exports. */
+export type ImportPreviewSession = {
+  session_date: string
+  num_solves: number
+  num_dnf: number
+  avg_time: number | null
+  best_time: number | null
+}
+
+/** Individual solve ready for bulkImportSolves() */
+export type RawImportSolve = {
+  time_ms: number // base time in ms (before penalty)
+  penalty: "+2" | "DNF" | null
+  scramble: string // empty string if none in export
+  date: string // YYYY-MM-DD
+}
+
+/** Optional preview payload for timer imports that include solve-level data. */
+export type ImportPreviewPayload = {
+  rawSolves: RawImportSolve[]
+  totalSolves: number
+  rawSessions?: ImportPreviewSession[]
+}
+
 export type DetectedFormat =
   | "cstimer"
   | "cubetime"
@@ -40,14 +64,7 @@ export type ParseResult = {
   pbs: NormalizedPB[]
   errors: string[]
   needsEventSelection: boolean // true if event could not be determined
-}
-
-/** Individual solve ready for bulkImportSolves() */
-export type RawImportSolve = {
-  time_ms: number // base time in ms (before penalty)
-  penalty: "+2" | "DNF" | null
-  scramble: string // empty string if none in export
-  date: string // YYYY-MM-DD
+  preview?: ImportPreviewPayload
 }
 
 /** Shape expected by createSessionsBulk() */

@@ -70,6 +70,21 @@ export function useImportChat() {
   const sourceRef = useRef("")
   const solveStoreRef = useRef(createSolveStore())
 
+  const syncPreviewRefs = useCallback((result: ParseResult) => {
+    rawSessionsRef.current = result.preview?.rawSessions ?? []
+    rawSolvesRef.current = result.preview?.rawSolves ?? []
+    rawTotalSolvesRef.current =
+      result.preview?.totalSolves ?? result.preview?.rawSolves.length ?? 0
+  }, [])
+
+  const hasImportData = useCallback((result: ParseResult) => {
+    return (
+      result.solves.length > 0 ||
+      (result.preview?.rawSessions?.length ?? 0) > 0 ||
+      (result.preview?.rawSolves.length ?? 0) > 0
+    )
+  }, [])
+
   // ---- Message helpers ----
 
   const addBotMessage = useCallback(
@@ -257,45 +272,41 @@ export function useImportChat() {
 
         if (detection.format === "cstimer") {
           const result = parseCsTimer(text)
-          if (result.errors.length > 0 && result._rawSessions.length === 0) {
+          if (result.errors.length > 0 && !hasImportData(result)) {
             await addBotMessage(PARSE_ERROR, { type: "error", message: result.errors.join("\n"), canRetry: true })
             return
           }
           parseResultRef.current = result
-          rawSessionsRef.current = result._rawSessions
-          rawTotalSolvesRef.current = result._totalSolves
-          rawSolvesRef.current = result._rawSolves
-          sourceRef.current = "csTimer"
-          await addBotMessage(eventSelectMessage("csTimer"), { type: "event-select", source: "csTimer" })
+          syncPreviewRefs(result)
+          sourceRef.current = result.source
+          await addBotMessage(eventSelectMessage(result.source), { type: "event-select", source: result.source })
           return
         }
 
         if (detection.format === "cubetime") {
           const result = parseCubeTime(text)
-          if (result.errors.length > 0 && result._rawSessions.length === 0) {
+          if (result.errors.length > 0 && !hasImportData(result)) {
             await addBotMessage(PARSE_ERROR, { type: "error", message: result.errors.join("\n"), canRetry: true })
             return
           }
           parseResultRef.current = result
-          rawSessionsRef.current = result._rawSessions
-          rawTotalSolvesRef.current = result._totalSolves
-          rawSolvesRef.current = result._rawSolves
-          sourceRef.current = "CubeTime"
-          await addBotMessage(eventSelectMessage("CubeTime"), { type: "event-select", source: "CubeTime" })
+          syncPreviewRefs(result)
+          sourceRef.current = result.source
+          await addBotMessage(eventSelectMessage(result.source), { type: "event-select", source: result.source })
           return
         }
 
         if (detection.format === "twistytimer") {
           const result = parseTwistyTimer(text)
-          if (result.errors.length > 0 && result.solves.length === 0) {
+          if (result.errors.length > 0 && !hasImportData(result)) {
             await addBotMessage(PARSE_ERROR, { type: "error", message: result.errors.join("\n"), canRetry: true })
             return
           }
           parseResultRef.current = result
-          rawSolvesRef.current = result._rawSolves
-          sourceRef.current = "Twisty Timer"
+          syncPreviewRefs(result)
+          sourceRef.current = result.source
           if (result.needsEventSelection) {
-            await addBotMessage(eventSelectMessage("Twisty Timer"), { type: "event-select", source: "Twisty Timer" })
+            await addBotMessage(eventSelectMessage(result.source), { type: "event-select", source: result.source })
           } else {
             selectedEventRef.current = result.detectedEvent!
             finalizeParse(result, result.detectedEvent!)
@@ -365,7 +376,15 @@ export function useImportChat() {
         await addBotMessage(PARSE_ERROR, { type: "error", message: err instanceof Error ? err.message : "Something went wrong.", canRetry: true })
       }
     },
-    [addBotMessage, addBotMessageImmediate, addUserMessage, finalizeParse, showPreview]
+    [
+      addBotMessage,
+      addBotMessageImmediate,
+      addUserMessage,
+      finalizeParse,
+      hasImportData,
+      showPreview,
+      syncPreviewRefs,
+    ]
   )
 
   // ---- Step 3: Event confirmed → preview ----

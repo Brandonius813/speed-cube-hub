@@ -4,7 +4,12 @@
  * Unknown formats are handled by the AI route, not here.
  */
 
-import type { ParseResult, NormalizedSolve, RawImportSolve } from "./types"
+import type {
+  ParseResult,
+  NormalizedSolve,
+  RawImportSolve,
+  ImportPreviewSession,
+} from "./types"
 import { parseCsTimerCsv } from "@/lib/cstimer/parse-cstimer"
 import { parseCubeTimeCsv } from "@/lib/cubetime/parse-cubetime"
 import { parseCsv } from "@/lib/csv/parse-csv"
@@ -15,21 +20,11 @@ import {
 } from "@/lib/utils"
 
 /** Raw session shape returned by csTimer/CubeTime parsers */
-export type RawSession = {
-  session_date: string
-  num_solves: number
-  num_dnf: number
-  avg_time: number | null
-  best_time: number | null
-}
+export type RawSession = ImportPreviewSession
 
 // -- csTimer --
 
-export function parseCsTimer(text: string): ParseResult & {
-  _rawSessions: RawSession[]
-  _totalSolves: number
-  _rawSolves: RawImportSolve[]
-} {
+export function parseCsTimer(text: string): ParseResult {
   const { sessions, rawSolves, totalSolves, errors } = parseCsTimerCsv(text)
 
   const rawSessions: RawSession[] = sessions.map((s) => ({
@@ -48,19 +43,17 @@ export function parseCsTimer(text: string): ParseResult & {
     pbs: [],
     errors,
     needsEventSelection: true,
-    _rawSessions: rawSessions,
-    _totalSolves: totalSolves,
-    _rawSolves: rawSolves,
+    preview: {
+      rawSessions,
+      totalSolves,
+      rawSolves,
+    },
   }
 }
 
 // -- CubeTime --
 
-export function parseCubeTime(text: string): ParseResult & {
-  _rawSessions: RawSession[]
-  _totalSolves: number
-  _rawSolves: RawImportSolve[]
-} {
+export function parseCubeTime(text: string): ParseResult {
   const { sessions, rawSolves, totalSolves, errors } = parseCubeTimeCsv(text)
 
   const rawSessions: RawSession[] = sessions.map((s) => ({
@@ -79,9 +72,11 @@ export function parseCubeTime(text: string): ParseResult & {
     pbs: [],
     errors,
     needsEventSelection: true,
-    _rawSessions: rawSessions,
-    _totalSolves: totalSolves,
-    _rawSolves: rawSolves,
+    preview: {
+      rawSessions,
+      totalSolves,
+      rawSolves,
+    },
   }
 }
 
@@ -111,9 +106,7 @@ const TWISTY_EVENT_MAP: Record<string, string> = {
   oh: "333oh",
 }
 
-export function parseTwistyTimer(text: string): ParseResult & {
-  _rawSolves: RawImportSolve[]
-} {
+export function parseTwistyTimer(text: string): ParseResult {
   const errors: string[] = []
   const cleaned = text.replace(/^\uFEFF/, "")
   const lines = cleaned.split(/\r?\n/).filter((l) => l.trim())
@@ -127,7 +120,10 @@ export function parseTwistyTimer(text: string): ParseResult & {
       pbs: [],
       errors: ["File is empty or has no data rows."],
       needsEventSelection: false,
-      _rawSolves: [],
+      preview: {
+        rawSolves: [],
+        totalSolves: 0,
+      },
     }
   }
 
@@ -146,7 +142,10 @@ export function parseTwistyTimer(text: string): ParseResult & {
       pbs: [],
       errors: ["Missing Time(millis) or Date(millis) columns."],
       needsEventSelection: false,
-      _rawSolves: [],
+      preview: {
+        rawSolves: [],
+        totalSolves: 0,
+      },
     }
   }
 
@@ -226,7 +225,10 @@ export function parseTwistyTimer(text: string): ParseResult & {
     pbs: [],
     errors,
     needsEventSelection: !detectedEvent,
-    _rawSolves: rawSolves,
+    preview: {
+      rawSolves,
+      totalSolves: rawSolves.length,
+    },
   }
 }
 
