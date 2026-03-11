@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 
 const PUZZLE_MAP: Record<string, string> = {
   "333": "3x3x3",
@@ -22,7 +23,14 @@ const PUZZLE_MAP: Record<string, string> = {
 type ScrambleImageProps = {
   scramble: string
   event: string
+  size?: "md" | "lg" | "xl"
 }
+
+const SCRAMBLE_IMAGE_SCALE_CLASSES = {
+  md: "scale-[0.72]",
+  lg: "scale-[0.86]",
+  xl: "scale-[1]",
+} as const
 
 function normalizeClockScramble(scramble: string): string {
   const tokens = scramble.trim().split(/\s+/)
@@ -54,7 +62,11 @@ function normalizeClockScramble(scramble: string): string {
   return normalized.join(" ")
 }
 
-export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
+export function ScrambleImage({
+  scramble,
+  event,
+  size = "xl",
+}: ScrambleImageProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [twistyReady, setTwistyReady] = useState<boolean | null>(null)
 
@@ -108,7 +120,13 @@ export function ScrambleImage({ scramble, event }: ScrambleImageProps) {
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden">
-      <div ref={hostRef} className="aspect-[5/3] h-full w-full max-h-full max-w-full" />
+      <div
+        ref={hostRef}
+        className={cn(
+          "aspect-[5/3] h-full w-full max-h-full max-w-full origin-center transition-transform duration-150",
+          SCRAMBLE_IMAGE_SCALE_CLASSES[size]
+        )}
+      />
     </div>
   )
 }
