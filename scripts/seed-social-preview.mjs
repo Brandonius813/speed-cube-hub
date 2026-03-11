@@ -494,6 +494,7 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       title: `${previewPrefix} Sub-8 single`,
       content: "Finally hit 7.91 today. Best part is that the solve felt clean, not lucky.",
       post_type: "pb",
+      visibility: "public",
       created_at: daysAgo(0, 20),
     },
     {
@@ -501,6 +502,7 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       title: `${previewPrefix} Sacramento Open recap`,
       content: "Comp nerves were rough in round one, but the finals were the calmest solving I've had all year.",
       post_type: "competition",
+      visibility: "public",
       created_at: daysAgo(1, 18),
     },
     {
@@ -508,6 +510,7 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       title: `${previewPrefix} Whole-app challenge live`,
       content: "Community challenge is up. Log solves, post recaps, and let's make this app feel alive this week.",
       post_type: "text",
+      visibility: "public",
       created_at: daysAgo(0, 17),
     },
     {
@@ -524,6 +527,7 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       title: `${previewPrefix} New puzzle day`,
       content: "Picked up a new magnetic Square-1 and I already know I'm going to lose hours to this thing.",
       post_type: "text",
+      visibility: "public",
       created_at: daysAgo(2, 16),
     },
     {
@@ -531,6 +535,7 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       title: `${previewPrefix} Session breakdown`,
       content: "Big cubes were slower, but centers stayed consistent. That feels fixable.",
       post_type: "session_recap",
+      visibility: "public",
       created_at: daysAgo(2, 21),
     },
   ];
