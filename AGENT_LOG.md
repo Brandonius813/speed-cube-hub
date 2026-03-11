@@ -6,20 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-10 PT — Build Prerender Fixes For Auth + Dashboard
-
-**Task:** Fix Vercel build failures caused by auth-page search-param usage and dashboard prerendering
-**Status:** Cherry-picked the auth-page prerender fix so `login` and `signup` now resolve `next` on the server and pass it into client content components instead of calling `useSearchParams()` in the page entrypoints. Also marked `/dashboard` as force-dynamic so Next.js no longer attempts static generation for a route that depends on Supabase auth cookies.
-**Files touched:** `src/app/login/page.tsx`, `src/app/login/login-content.tsx`, `src/app/signup/page.tsx`, `src/app/signup/signup-content.tsx`, `src/app/(main)/dashboard/page.tsx`, `AGENT_LOG.md`
-**Checks:** `npm run build`
-
-### 2026-03-10 PT — Timer Wake Lock
-
-**Task:** Keep laptops awake while the timer is actively in use, especially with a connected GAN timer
-**Status:** Added a shared `use-screen-wake-lock` hook and wired it into the main timer plus Competition Simulator. The timer now requests a browser screen wake lock while a GAN timer is connected or while active timing/inspection is happening, releases it when inactive or hidden, and silently falls back if wake lock is unsupported or denied. Comp Sim uses the same hook for all active simulator phases except idle/results. No new UI was added; failures only emit timer telemetry.
-**Files touched:** `src/components/timer/use-screen-wake-lock.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
-**Checks:** `npx eslint src/components/timer/timer-content.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/use-screen-wake-lock.ts` passed. `npx tsc --noEmit` passed.
-
 ### 2026-03-11 10:41 AM PT — Comp Sim / GAN Flow Hardening
 
 **Task:** Stop Competition Simulator from overlapping with the normal timer or GAN Bluetooth timer
@@ -156,3 +142,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Added phone-only request gating in the shared Supabase proxy so iPhone/Android phone UAs are redirected to `/mobile-unsupported` before auth checks on blocked routes. Reused the existing protected-route/public-exception logic for app pages, added public tool routes (`/tools/*`, `/battle`) to the phone block list, excluded tablets/crawlers, and created a standalone blocker page with `Go Home` and `View Leaderboards` CTAs plus an optional `from` hint.
 **Files touched:** `src/lib/supabase/proxy.ts`, `src/app/mobile-unsupported/page.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/supabase/proxy.ts src/app/mobile-unsupported/page.tsx` passed. UA verification passed: iPhone requests to `/feed`, `/timer`, `/profile`, `/tools/scrambles`, and `/battle` redirect to `/mobile-unsupported`; iPad still follows normal web behavior; blocker screenshots at 390px and 375px showed no horizontal overflow.
+
+### 2026-03-11 03:34 PM EDT — Social Preview Foundation
+
+**Task:** Build the first vertical slice of the feed/discovery rework, starting with previewability
+**Status:** Added the new social data/model foundation for mixed feed entries: first-class posts, post media/tags, favorite follows, muted users, post/thread comments, challenge scope, and club visibility in `026_social_preview_foundation.sql`. Reworked the feed into `Following` plus `Explore` with richer session recap cards, a post composer, typed mixed entry rendering, and one-level threaded comments. Reworked Discover into unified tabbed search across people, posts, clubs, and events, with local favorite/mute/follow/join interactions in preview mode. Added deterministic social preview seeding scripts plus a development-only mock preview fallback so the new UI can be reviewed immediately on localhost even while the hosted dev database still needs migration `026` applied.
+**Files touched:** `package.json`, `scripts/seed-social-preview.mjs`, `supabase/migrations/026_social_preview_foundation.sql`, `src/app/(main)/discover/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/components/challenges/challenge-card.tsx`, `src/components/challenges/create-challenge-modal.tsx`, `src/components/discover/discover-content.tsx`, `src/components/feed/comment-thread.tsx`, `src/components/feed/feed-composer.tsx`, `src/components/feed/feed-content.tsx`, `src/components/feed/feed-entry-card.tsx`, `src/lib/actions/challenges.ts`, `src/lib/actions/clubs.ts`, `src/lib/actions/comments.ts`, `src/lib/actions/feed.ts`, `src/lib/actions/follows.ts`, `src/lib/actions/likes.ts`, `src/lib/actions/posts.ts`, `src/lib/actions/profiles.ts`, `src/lib/social-preview/mock-data.ts`, `src/lib/types.ts`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. Targeted eslint on the touched social files passed with only two warnings left: an existing `challenge-card.tsx` effect warning and the expected `no-img-element` warning in `feed-entry-card.tsx`. Local smoke test passed for `http://127.0.0.1:3001/discover` with `NEXT_PUBLIC_SOCIAL_PREVIEW_MODE=1`.

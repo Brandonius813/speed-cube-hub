@@ -167,6 +167,9 @@
 - ✅ T155: Timer shortcuts, text sizing and pane size controls, solve detail modal, session-vs-all-time stats, and pane reopen memory
 - ✅ T156: Comp Sim / GAN flow hardening (exclusive mode guard, entry modal, standalone auto-save timing)
 
+### Phase 27: Social Preview Foundation (T157)
+- ✅ T157: Social preview foundation (mixed feed + posts, richer session cards, unified discover tabs, favorites/mutes, preview seed migration, local mock preview mode)
+
 ---
 
 ## Open / Remaining Items
