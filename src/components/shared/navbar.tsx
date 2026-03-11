@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { BarChart3, Box, ClipboardList, Rss, Trophy, User, Users } from "lucide-react"
+import { BarChart3, Bell, Box, ClipboardList, Rss, Trophy, User, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -14,8 +15,18 @@ import {
 import { cn } from "@/lib/utils"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { getNavbarData } from "@/lib/actions/auth"
-import { NotificationPopup } from "@/components/shared/notification-popup"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
+
+const NotificationPopup = dynamic(
+  () =>
+    import("@/components/shared/notification-popup").then(
+      (module) => module.NotificationPopup
+    ),
+  {
+    ssr: false,
+    loading: () => <NotificationButtonFallback unreadCount={0} />,
+  }
+)
 
 function getInitials(name: string): string {
   return name
@@ -26,9 +37,73 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+function NotificationButtonFallback({
+  unreadCount,
+}: {
+  unreadCount: number
+}) {
+  return (
+    <button
+      type="button"
+      className="relative flex h-12 w-12 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
+      aria-label="Notifications"
+      disabled
+    >
+      <Bell className="h-6 w-6" />
+      {unreadCount > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white sm:-right-1.5 sm:-top-1">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function StatsNavLinkInner({ isActive }: { isActive: boolean }) {
+  return (
+    <Link
+      href="/profile?tab=stats"
+      className={cn(
+        "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
+        isActive
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+      aria-label="Stats"
+    >
+      <BarChart3
+        className={cn("h-5 w-5 sm:hidden", isActive && "text-foreground")}
+      />
+      <span
+        className={cn(
+          "hidden text-lg font-bold sm:inline",
+          isActive && "border-b-2 border-primary pb-0.5"
+        )}
+      >
+        Stats
+      </span>
+    </Link>
+  )
+}
+
+function StatsNavLinkWithSearch({ pathname }: { pathname: string }) {
+  const searchParams = useSearchParams()
+  const isActive =
+    pathname === "/profile" && searchParams.get("tab") === "stats"
+
+  return <StatsNavLinkInner isActive={isActive} />
+}
+
+function StatsNavLink({ pathname }: { pathname: string }) {
+  return (
+    <Suspense fallback={<StatsNavLinkInner isActive={false} />}>
+      <StatsNavLinkWithSearch pathname={pathname} />
+    </Suspense>
+  )
+}
+
 export function Navbar() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -60,10 +135,6 @@ export function Navbar() {
       isActive(href) ? "text-foreground" : ""
     )
   }
-
-  // Stats top-nav link should only be active on your profile stats tab.
-  const isStatsTabActive =
-    pathname === "/profile" && searchParams.get("tab") === "stats"
 
   useEffect(() => {
     const supabase = getSupabaseClient()
@@ -169,37 +240,13 @@ export function Navbar() {
               <Users className={cn(navIconClass("/clubs"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/clubs") && "border-b-2 border-primary pb-0.5")}>Clubs</span>
             </Link>
-            <Link
-              href="/profile?tab=stats"
-              className={cn(
-                "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
-                isStatsTabActive
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              aria-label="Stats"
-            >
-              <BarChart3
-                className={cn("h-5 w-5 sm:hidden", isStatsTabActive && "text-foreground")}
-              />
-              <span
-                className={cn(
-                  "hidden text-lg font-bold sm:inline",
-                  isStatsTabActive && "border-b-2 border-primary pb-0.5"
-                )}
-              >
-                Stats
-              </span>
-            </Link>
+            <StatsNavLink pathname={pathname} />
             <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
               <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
             </Link>
             <ThemeToggle />
-            <NotificationPopup
-              unreadCount={unreadCount}
-              onUnreadCountChange={setUnreadCount}
-            />
+            <NotificationPopup unreadCount={unreadCount} onUnreadCountChange={setUnreadCount} />
             <Popover open={profileOpen} onOpenChange={setProfileOpen}>
               <PopoverTrigger asChild>
                 <button

@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import { Navbar } from "@/components/shared/navbar"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
@@ -14,9 +13,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
-      <Suspense fallback={null}>
-        <Navbar />
-      </Suspense>
+      <Navbar />
       <main>
         <Hero />
         <Features />
