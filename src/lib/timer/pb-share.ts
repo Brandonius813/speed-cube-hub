@@ -1,4 +1,5 @@
 import type { TimerSolve } from "@/lib/timer/stats"
+import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 
 export type PbSingleCandidate = {
   solveId: string
@@ -14,10 +15,7 @@ function getEffectiveSingleMs(solve: TimerSolve): number | null {
 }
 
 export function formatEffectiveTimeMs(ms: number): string {
-  const seconds = ms / 1000
-  if (seconds < 60) return seconds.toFixed(2)
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}:${(seconds % 60).toFixed(2).padStart(5, "0")}`
+  return formatTimeMsCentiseconds(ms)
 }
 
 export function getLastSinglePbCandidate(

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Activity, Pencil } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
-import { formatDuration } from "@/lib/utils"
+import { formatDuration, formatEventTime } from "@/lib/utils"
 import { EditSessionModal } from "@/components/dashboard/edit-session-modal"
 
 function formatDate(dateStr: string): string {
@@ -17,12 +17,7 @@ function formatDate(dateStr: string): string {
 
 function formatTime(value: number | null, label: string): string {
   if (value === null) return ""
-  if (value >= 60) {
-    const min = Math.floor(value / 60)
-    const sec = (value % 60).toFixed(2)
-    return `${label}: ${min}:${sec.padStart(5, "0")}`
-  }
-  return `${label}: ${value.toFixed(2)}s`
+  return `${label}: ${formatEventTime(value)}`
 }
 
 export function RecentActivity({ sessions, isOwner = false }: { sessions: Session[]; isOwner?: boolean }) {

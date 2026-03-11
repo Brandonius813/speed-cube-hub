@@ -10,7 +10,7 @@ import { EventBadge } from "@/components/shared/event-badge"
 import { LikeButton } from "@/components/feed/like-button"
 import { CommentSection } from "@/components/feed/comment-section"
 import { ShareButton } from "@/components/feed/share-button"
-import { formatDuration } from "@/lib/utils"
+import { formatDuration, formatEventTime } from "@/lib/utils"
 
 function getInitials(name: string): string {
   return name
@@ -44,12 +44,7 @@ function timeAgo(dateStr: string): string {
 
 function formatAvg(avg: number | null): string {
   if (avg === null) return ""
-  if (avg >= 60) {
-    const min = Math.floor(avg / 60)
-    const sec = (avg % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${avg.toFixed(2)}s`
+  return formatEventTime(avg)
 }
 
 export function FeedItem({ item, currentUserId }: { item: FeedItemType; currentUserId: string | null }) {

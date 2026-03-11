@@ -9,7 +9,10 @@ import { parseCsTimerCsv } from "@/lib/cstimer/parse-cstimer"
 import { parseCubeTimeCsv } from "@/lib/cubetime/parse-cubetime"
 import { parseCsv } from "@/lib/csv/parse-csv"
 import { resolveEventId } from "@/lib/csv/event-aliases"
-import { toDateStringPacific } from "@/lib/utils"
+import {
+  secondsToTruncatedMilliseconds,
+  toDateStringPacific,
+} from "@/lib/utils"
 
 /** Raw session shape returned by csTimer/CubeTime parsers */
 export type RawSession = {
@@ -170,7 +173,7 @@ export function parseTwistyTimer(text: string): ParseResult & {
 
     const isDnf = rawPenalty.toUpperCase() === "DNF"
     const penalty = rawPenalty === "+2" ? ("+2" as const) : null
-    const timeSeconds = isDnf ? null : Math.round(timeMs / 10) / 100
+    const timeSeconds = isDnf ? null : timeMs / 1000
 
     const dateObj = new Date(dateMs)
     const dateStr = isNaN(dateObj.getTime())
@@ -209,7 +212,7 @@ export function parseTwistyTimer(text: string): ParseResult & {
 
   // Build raw solve records for bulk import
   const rawSolves: RawImportSolve[] = solves.map((s) => ({
-    time_ms: s.time_seconds != null ? Math.round(s.time_seconds * 1000) : 0,
+    time_ms: s.time_seconds != null ? secondsToTruncatedMilliseconds(s.time_seconds) : 0,
     penalty: (s.is_dnf ? "DNF" : s.penalty) as "+2" | "DNF" | null,
     scramble: s.scramble ?? "",
     date: s.date,

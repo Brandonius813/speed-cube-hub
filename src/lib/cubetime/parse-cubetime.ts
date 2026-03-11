@@ -1,4 +1,8 @@
-import { toDateStringPacific } from "@/lib/utils"
+import {
+  secondsToTruncatedMilliseconds,
+  toDateStringPacific,
+  truncateSecondsToCentiseconds,
+} from "@/lib/utils"
 import type { RawImportSolve } from "@/lib/import/types"
 
 /**
@@ -153,15 +157,14 @@ export function parseCubeTimeCsv(text: string): {
 
     const avgTime =
       validTimes.length > 0
-        ? Math.round(
-            (validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length) *
-              100
-          ) / 100
+        ? truncateSecondsToCentiseconds(
+            validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length
+          )
         : null;
 
     const bestTime =
       validTimes.length > 0
-        ? Math.round(Math.min(...validTimes) * 100) / 100
+        ? truncateSecondsToCentiseconds(Math.min(...validTimes))
         : null;
 
     sessions.push({
@@ -175,7 +178,7 @@ export function parseCubeTimeCsv(text: string): {
 
   // Build individual solve records for bulk import
   const rawSolves: RawImportSolve[] = solves.map((s) => ({
-    time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+    time_ms: s.time != null ? secondsToTruncatedMilliseconds(s.time) : 0,
     penalty: (s.time == null ? "DNF" : null) as "+2" | "DNF" | null,
     scramble: s.scramble,
     date: s.date,
@@ -186,7 +189,7 @@ export function parseCubeTimeCsv(text: string): {
 
 /**
  * Parses a CubeTime time value.
- * - "9.632094025611877" → 9.63  (rounded to centiseconds)
+ * - "9.632094025611877" → 9.632094025611877
  * - "DNF"               → null
  * - empty/invalid       → null
  */
@@ -200,7 +203,7 @@ function parseSolveTime(raw: string): number | null {
   const num = parseFloat(trimmed);
   if (isNaN(num) || num <= 0) return null;
 
-  return Math.round(num * 100) / 100;
+  return num;
 }
 
 /**

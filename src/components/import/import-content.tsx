@@ -22,13 +22,14 @@ export function ImportContent() {
     handleData,
     handleEventConfirm,
     handleImport,
+    handleToggleSolveIncluded,
     resetChat,
   } = useImportChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const renderAction = useCallback(
-    (action: ChatAction, _messageId: string) => {
+    (action: ChatAction) => {
       switch (action.type) {
         case "timer-select":
           return (
@@ -50,8 +51,9 @@ export function ImportContent() {
         case "preview-confirm":
           return (
             <PreviewConfirmAction
-              stats={action.stats}
+              preview={action.preview}
               onImport={handleImport}
+              onToggleSolveIncluded={handleToggleSolveIncluded}
               onStartOver={resetChat}
             />
           )
@@ -60,7 +62,6 @@ export function ImportContent() {
         case "complete":
           return (
             <CompleteAction
-              solveCount={action.solveCount}
               hasRawSolves={action.hasRawSolves}
               onImportMore={resetChat}
             />
@@ -78,6 +79,7 @@ export function ImportContent() {
       handleData,
       handleEventConfirm,
       handleImport,
+      handleToggleSolveIncluded,
       resetChat,
       isTyping,
     ]

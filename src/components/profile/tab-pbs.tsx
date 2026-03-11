@@ -16,26 +16,14 @@ import {
   getDefaultDisplayTypes,
 } from "@/components/profile/event-detail-modal"
 import type { Profile, PBRecord } from "@/lib/types"
+import { formatEventTime } from "@/lib/utils"
 
 function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId
 }
 
 function formatTime(seconds: number, eventId?: string): string {
-  if (eventId === "333fm")
-    return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
-  if (seconds >= 3600) {
-    const hrs = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
-  }
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
+  return formatEventTime(seconds, eventId)
 }
 
 function formatMBLD(pb: PBRecord): string {

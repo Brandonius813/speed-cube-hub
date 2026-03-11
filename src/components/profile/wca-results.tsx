@@ -9,6 +9,10 @@ import {
 import { WCA_EVENTS } from "@/lib/constants"
 import { CubingIcon } from "@/components/shared/cubing-icon"
 import type { WcaPersonalRecords, WcaRecord } from "@/lib/actions/wca"
+import {
+  formatEventTime,
+  truncateSecondsToCentiseconds,
+} from "@/lib/utils"
 
 /** Legacy/retired WCA events that can still appear in profiles */
 const LEGACY_EVENT_LABELS: Record<string, string> = {
@@ -40,20 +44,13 @@ function formatWcaTime(
   // FMC: single = moves (integer), average = centimoves (e.g. 2733 = 27.33)
   if (eventId === "333fm") {
     if (type === "single") return `${value}`
-    const mean = parseFloat((value / 100).toFixed(2))
-    return `${mean}`
+    return `${truncateSecondsToCentiseconds(value / 100)}`
   }
   // MBLD: special encoding
   if (eventId === "333mbf" || eventId === "333mbo") {
     return formatMbld(value, eventId)
   }
-  const seconds = value / 100
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
+  return formatEventTime(value / 100, eventId)
 }
 
 function formatMbld(value: number, eventId: string): string {

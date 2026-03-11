@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CircleCheck, CircleX } from "lucide-react";
 import type { ParsedRow } from "@/lib/csv/validate-csv-row";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatEventTime } from "@/lib/utils";
 
 const MAX_PREVIEW_ROWS = 50;
 
@@ -108,7 +108,7 @@ function MobileCard({ row }: { row: ParsedRow }) {
         {row.parsed.avg_time !== null && row.parsed.avg_time !== undefined && (
           <div className="shrink-0 text-right">
             <div className="font-mono text-sm font-semibold text-foreground">
-              {row.parsed.avg_time.toFixed(2)}s
+              {formatEventTime(row.parsed.avg_time)}
             </div>
           </div>
         )}
@@ -184,7 +184,7 @@ function DesktopRow({ row }: { row: ParsedRow }) {
           )}
         </td>
         <td className="py-3 text-right font-mono text-sm text-foreground">
-          {row.parsed.avg_time != null ? `${row.parsed.avg_time.toFixed(2)}s` : "--"}
+          {row.parsed.avg_time != null ? formatEventTime(row.parsed.avg_time) : "--"}
         </td>
       </tr>
       {!row.isValid && (

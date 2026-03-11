@@ -26,13 +26,17 @@ const EVENT_LABELS: Record<string, string> = {
 }
 
 function formatTime(seconds: number, eventId?: string): string {
-  if (eventId === "333fm") return Number.isInteger(seconds) ? `${seconds}` : `${seconds.toFixed(2)}`
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
+  const truncated = Math.max(0, Math.trunc((seconds + 1e-9) * 100)) / 100
+
+  if (eventId === "333fm") {
+    return Number.isInteger(truncated) ? `${truncated}` : `${truncated.toFixed(2)}`
+  }
+  if (truncated >= 60) {
+    const min = Math.floor(truncated / 60)
+    const sec = (truncated % 60).toFixed(2)
     return `${min}:${sec.padStart(5, "0")}`
   }
-  return `${seconds.toFixed(2)}s`
+  return `${truncated.toFixed(2)}s`
 }
 
 export async function GET(request: NextRequest) {

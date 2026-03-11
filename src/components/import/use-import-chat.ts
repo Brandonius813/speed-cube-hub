@@ -16,7 +16,6 @@ import {
   completeMessage,
   IMPORTING,
   PARSE_ERROR,
-  type PreviewStats,
 } from "@/lib/import/chat-scripts"
 import { detectFormat } from "@/lib/import/detect-format"
 import {
@@ -27,10 +26,14 @@ import {
 } from "@/lib/import/parsers"
 import type { RawSession } from "@/lib/import/parsers"
 import {
+  buildImportedPbs,
   solvesToSessions,
   rawSessionsToSummaries,
-  extractPBsFromSolves,
 } from "@/lib/import/normalize"
+import {
+  buildRawSolvePreview,
+  buildSessionOnlyPreview,
+} from "@/lib/import/preview"
 import type {
   ParseResult,
   SessionSummary,
@@ -47,22 +50,6 @@ const WCA_EVENTS_MAP: Record<string, string> = Object.fromEntries(
   WCA_EVENTS.map((e) => [e.id, e.label])
 )
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(2)}s`
-  const m = Math.floor(seconds / 60)
-  const s = (seconds % 60).toFixed(2).padStart(5, "0")
-  return `${m}:${s}`
-}
-
-function getDateRange(sessions: SessionSummary[]): string {
-  if (sessions.length === 0) return ""
-  const dates = sessions.map((s) => s.session_date).sort()
-  const first = dates[0]
-  const last = dates[dates.length - 1]
-  if (first === last) return first
-  return `${first} to ${last}`
-}
-
 export function useImportChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     makeMessage("bot", GREETING, { type: "timer-select" }),
@@ -76,7 +63,10 @@ export function useImportChat() {
   const rawSolvesRef = useRef<RawImportSolve[]>([])
   const sessionsRef = useRef<SessionSummary[]>([])
   const pbsRef = useRef<NormalizedPB[]>([])
+  const parserPbsRef = useRef<NormalizedPB[]>([])
   const selectedEventRef = useRef("333")
+  const secondsPerSolveRef = useRef(DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30)
+  const excludedSolveIndexesRef = useRef<Set<number>>(new Set())
   const sourceRef = useRef("")
   const solveStoreRef = useRef(createSolveStore())
 
@@ -127,67 +117,104 @@ export function useImportChat() {
     rawSolvesRef.current = []
     sessionsRef.current = []
     pbsRef.current = []
+    parserPbsRef.current = []
     selectedEventRef.current = "333"
+    secondsPerSolveRef.current = DEFAULT_SECONDS_PER_SOLVE["333"] ?? 30
+    excludedSolveIndexesRef.current = new Set()
     sourceRef.current = ""
     setMessages([makeMessage("bot", GREETING, { type: "timer-select" })])
   }, [])
 
   // ---- Finalize + preview helpers ----
 
-  function showPreview(
-    sessions: SessionSummary[],
-    solveCount: number,
-    pbCount: number,
-    hasRawSolves: boolean
-  ) {
-    const bestTime = sessions.reduce<number | null>((best, s) => {
-      if (s.best_time == null) return best
-      if (best == null) return s.best_time
-      return s.best_time < best ? s.best_time : best
-    }, null)
+  const syncPbsForCurrentSelection = useCallback((event: string) => {
+    const parsedSolves = parseResultRef.current?.solves ?? []
 
-    const stats: PreviewStats = {
-      source: sourceRef.current,
-      sessionCount: sessions.length,
-      solveCount: hasRawSolves ? rawSolvesRef.current.length : solveCount,
-      pbCount,
-      hasRawSolves,
-      dateRange: getDateRange(sessions),
-      bestTime: bestTime != null ? formatTime(bestTime) : null,
+    if (parsedSolves.length === 0) {
+      pbsRef.current = [...parserPbsRef.current]
+      return pbsRef.current.length
     }
 
-    addBotMessage(previewMessage(stats), {
-      type: "preview-confirm",
-      stats,
+    pbsRef.current = buildImportedPbs({
+      explicitPbs: parserPbsRef.current,
+      solves: parsedSolves,
+      event,
+      excludedSolveIndexes: excludedSolveIndexesRef.current,
     })
-  }
 
-  function finalizeParse(
+    return pbsRef.current.length
+  }, [])
+
+  const buildPreviewData = useCallback((
+    sessions: SessionSummary[],
+    solveCount: number,
+    pbCount: number
+  ) => {
+    if (rawSolvesRef.current.length > 0) {
+      const preview = buildRawSolvePreview({
+        source: sourceRef.current,
+        rawSolves: rawSolvesRef.current,
+        event: selectedEventRef.current,
+        secondsPerSolve: secondsPerSolveRef.current,
+        excludedSolveIndexes: excludedSolveIndexesRef.current,
+        pbCount,
+      })
+      sessionsRef.current = preview.sessions
+      return preview
+    }
+
+    sessionsRef.current = sessions
+    return buildSessionOnlyPreview({
+      source: sourceRef.current,
+      sessions,
+      totalSolveCount: solveCount,
+      pbCount,
+    })
+  }, [])
+
+  const showPreview = useCallback((
+    sessions: SessionSummary[],
+    solveCount: number,
+    pbCount: number
+  ) => {
+    const preview = buildPreviewData(sessions, solveCount, pbCount)
+    void addBotMessage(previewMessage(), {
+      type: "preview-confirm",
+      preview,
+    })
+  }, [addBotMessage, buildPreviewData])
+
+  const refreshPreviewAction = useCallback(() => {
+    const pbCount = syncPbsForCurrentSelection(selectedEventRef.current)
+    const preview = buildPreviewData(
+      sessionsRef.current,
+      rawSolvesRef.current.length > 0
+        ? rawSolvesRef.current.length
+        : sessionsRef.current.reduce((sum, session) => sum + session.num_solves, 0),
+      pbCount
+    )
+
+    updateLastBotAction({
+      type: "preview-confirm",
+      preview,
+    })
+  }, [buildPreviewData, syncPbsForCurrentSelection, updateLastBotAction])
+
+  const finalizeParse = useCallback((
     result: ParseResult,
     event: string,
     perSolve?: number
-  ) {
-    if (result.pbs.length > 0) {
-      pbsRef.current = result.pbs
-    }
+  ) => {
+    parserPbsRef.current = result.pbs
 
     if (result.solves.length > 0) {
       const sessionSummaries = solvesToSessions(result.solves, event, perSolve)
       sessionsRef.current = sessionSummaries
+      const pbCount = syncPbsForCurrentSelection(event)
 
-      const bestPBs = extractPBsFromSolves(result.solves, event)
-      if (bestPBs.length > 0) {
-        pbsRef.current = [...pbsRef.current, ...bestPBs]
-      }
-
-      showPreview(
-        sessionSummaries,
-        result.solves.length,
-        pbsRef.current.length,
-        rawSolvesRef.current.length > 0
-      )
+      showPreview(sessionSummaries, result.solves.length, pbCount)
     }
-  }
+  }, [showPreview, syncPbsForCurrentSelection])
 
   // ---- Step 1: Timer selection ----
 
@@ -216,6 +243,14 @@ export function useImportChat() {
     async (text: string, fileName?: string) => {
       addUserMessage(fileName ? `Uploaded ${fileName}` : "Pasted data")
       addBotMessageImmediate(ANALYZING)
+      parseResultRef.current = null
+      rawSessionsRef.current = []
+      rawTotalSolvesRef.current = 0
+      rawSolvesRef.current = []
+      sessionsRef.current = []
+      excludedSolveIndexesRef.current = new Set()
+      pbsRef.current = []
+      parserPbsRef.current = []
 
       try {
         const detection = detectFormat(text)
@@ -287,7 +322,11 @@ export function useImportChat() {
           }))
           sessionsRef.current = csvSessions
           sourceRef.current = "CSV"
-          showPreview(csvSessions, csvSessions.reduce((sum, s) => sum + s.num_solves, 0), 0, false)
+          showPreview(
+            csvSessions,
+            csvSessions.reduce((sum, s) => sum + s.num_solves, 0),
+            0
+          )
           return
         }
 
@@ -326,7 +365,7 @@ export function useImportChat() {
         await addBotMessage(PARSE_ERROR, { type: "error", message: err instanceof Error ? err.message : "Something went wrong.", canRetry: true })
       }
     },
-    [addBotMessage, addBotMessageImmediate, addUserMessage]
+    [addBotMessage, addBotMessageImmediate, addUserMessage, finalizeParse, showPreview]
   )
 
   // ---- Step 3: Event confirmed → preview ----
@@ -334,14 +373,28 @@ export function useImportChat() {
   const handleEventConfirm = useCallback(
     (event: string, secondsPerSolve: number) => {
       selectedEventRef.current = event
+      secondsPerSolveRef.current =
+        secondsPerSolve || DEFAULT_SECONDS_PER_SOLVE[event] || 30
       addUserMessage(WCA_EVENTS_MAP[event] ?? event)
 
-      const perSolve = secondsPerSolve || DEFAULT_SECONDS_PER_SOLVE[event] || 30
+      const perSolve = secondsPerSolveRef.current
 
-      if (rawSessionsRef.current.length > 0) {
-        const sessionSummaries = rawSessionsToSummaries(rawSessionsRef.current, event, perSolve)
+      if (rawSolvesRef.current.length > 0) {
+        if (parseResultRef.current && parseResultRef.current.solves.length > 0) {
+          finalizeParse(parseResultRef.current, event, perSolve)
+          return
+        }
+
+        const sessionSummaries =
+          rawSessionsRef.current.length > 0
+            ? rawSessionsToSummaries(rawSessionsRef.current, event, perSolve)
+            : []
         sessionsRef.current = sessionSummaries
-        showPreview(sessionSummaries, rawTotalSolvesRef.current, 0, rawSolvesRef.current.length > 0)
+        showPreview(
+          sessionSummaries,
+          rawTotalSolvesRef.current || rawSolvesRef.current.length,
+          pbsRef.current.length
+        )
         return
       }
 
@@ -352,7 +405,7 @@ export function useImportChat() {
 
       addBotMessage("No data to import. Want to try a different file?", { type: "file-upload" })
     },
-    [addBotMessage, addUserMessage]
+    [addBotMessage, addUserMessage, finalizeParse, showPreview]
   )
 
   // ---- Step 4: Import ----
@@ -361,10 +414,14 @@ export function useImportChat() {
     addBotMessageImmediate(IMPORTING, { type: "importing", progress: "Preparing..." })
 
     const event = sessionsRef.current[0]?.event ?? selectedEventRef.current
+    syncPbsForCurrentSelection(event)
+    const includedRawSolves = rawSolvesRef.current.filter(
+      (_, index) => !excludedSolveIndexesRef.current.has(index)
+    )
 
     const result = await executeImport(
       event,
-      rawSolvesRef.current,
+      includedRawSolves,
       sessionsRef.current,
       pbsRef.current,
       sourceRef.current,
@@ -382,7 +439,21 @@ export function useImportChat() {
     } else {
       await addBotMessage("", { type: "error", message: result.error })
     }
-  }, [addBotMessage, addBotMessageImmediate, updateLastBotAction])
+  }, [addBotMessage, addBotMessageImmediate, syncPbsForCurrentSelection, updateLastBotAction])
+
+  const handleToggleSolveIncluded = useCallback(
+    (solveIndex: number) => {
+      const nextExcluded = new Set(excludedSolveIndexesRef.current)
+      if (nextExcluded.has(solveIndex)) {
+        nextExcluded.delete(solveIndex)
+      } else {
+        nextExcluded.add(solveIndex)
+      }
+      excludedSolveIndexesRef.current = nextExcluded
+      refreshPreviewAction()
+    },
+    [refreshPreviewAction]
+  )
 
   return {
     messages,
@@ -391,6 +462,7 @@ export function useImportChat() {
     handleData,
     handleEventConfirm,
     handleImport,
+    handleToggleSolveIncluded,
     resetChat,
   }
 }

@@ -6,6 +6,7 @@
 import type { NormalizedSolve, NormalizedPB, SessionSummary } from "./types"
 import type { RawSession } from "./parsers"
 import { DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants"
+import { truncateSecondsToCentiseconds } from "@/lib/utils"
 
 /**
  * Groups individual solves by date and computes session summaries.
@@ -36,20 +37,19 @@ export function solvesToSessions(
     const daySolves = grouped.get(date)!
     const validTimes = daySolves
       .filter((s) => !s.is_dnf && s.time_seconds !== null)
-      .map((s) => s.time_seconds!)
+      .map((s) => s.time_seconds! + (s.penalty === "+2" ? 2 : 0))
 
     const numDnf = daySolves.filter((s) => s.is_dnf).length
     const avgTime =
       validTimes.length > 0
-        ? Math.round(
-            (validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length) *
-              100
-          ) / 100
+        ? truncateSecondsToCentiseconds(
+            validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length
+          )
         : null
 
     const bestTime =
       validTimes.length > 0
-        ? Math.round(Math.min(...validTimes) * 100) / 100
+        ? truncateSecondsToCentiseconds(Math.min(...validTimes))
         : null
 
     const durationMinutes = Math.max(
@@ -108,7 +108,10 @@ export function extractPBsFromSolves(
 ): NormalizedPB[] {
   const validTimes = solves
     .filter((s) => !s.is_dnf && s.time_seconds !== null)
-    .map((s) => ({ time: s.time_seconds!, date: s.date }))
+    .map((s) => ({
+      time: s.time_seconds! + (s.penalty === "+2" ? 2 : 0),
+      date: s.date,
+    }))
 
   if (validTimes.length === 0) return []
 
@@ -125,4 +128,31 @@ export function extractPBsFromSolves(
       date_achieved: best.date,
     },
   ]
+}
+
+export function excludeIndexedSolves(
+  solves: NormalizedSolve[],
+  excludedSolveIndexes?: Set<number>
+): NormalizedSolve[] {
+  if (!excludedSolveIndexes || excludedSolveIndexes.size === 0) {
+    return solves
+  }
+
+  return solves.filter((_, index) => !excludedSolveIndexes.has(index))
+}
+
+export function buildImportedPbs({
+  explicitPbs,
+  solves,
+  event,
+  excludedSolveIndexes,
+}: {
+  explicitPbs: NormalizedPB[]
+  solves: NormalizedSolve[]
+  event: string
+  excludedSolveIndexes?: Set<number>
+}): NormalizedPB[] {
+  const includedSolves = excludeIndexedSolves(solves, excludedSolveIndexes)
+
+  return [...explicitPbs, ...extractPBsFromSolves(includedSolves, event)]
 }

@@ -25,6 +25,24 @@ export function getTodayPacific(): string {
 }
 
 /**
+ * Truncate decimal seconds to centiseconds without rounding up.
+ * - 3.799 -> 3.79
+ * - 12.3 -> 12.30
+ */
+export function truncateSecondsToCentiseconds(seconds: number): number {
+  return Math.max(0, Math.trunc((seconds + 1e-9) * 100)) / 100
+}
+
+/**
+ * Convert decimal seconds to integer milliseconds without rounding up.
+ * - 3.799 -> 3799
+ * - 3.7999 -> 3799
+ */
+export function secondsToTruncatedMilliseconds(seconds: number): number {
+  return Math.max(0, Math.trunc((seconds + 1e-9) * 1000))
+}
+
+/**
  * Format a duration in minutes to a human-readable string.
  * - Under 60 minutes: "45m"
  * - 60+ minutes: "1h 30m" (omits minutes if exactly on the hour, e.g. "2h")
@@ -43,10 +61,37 @@ export function formatDuration(minutes: number): string {
  * - 60s+: "1:30.00"
  */
 export function formatSolveTime(seconds: number): string {
-  if (seconds < 60) return seconds.toFixed(2)
-  const min = Math.floor(seconds / 60)
-  const sec = (seconds % 60).toFixed(2)
+  const truncated = truncateSecondsToCentiseconds(seconds)
+  if (truncated < 60) return truncated.toFixed(2)
+  const min = Math.floor(truncated / 60)
+  const sec = (truncated % 60).toFixed(2)
   return `${min}:${sec.padStart(5, "0")}`
+}
+
+export function formatEventTime(
+  seconds: number,
+  eventId?: string,
+  options?: { showSecondsSuffix?: boolean }
+): string {
+  const truncated = truncateSecondsToCentiseconds(seconds)
+
+  if (eventId === "333fm") {
+    return Number.isInteger(truncated) ? `${truncated}` : `${truncated.toFixed(2)}`
+  }
+
+  if (truncated >= 3600) {
+    const hrs = Math.floor(truncated / 3600)
+    const mins = Math.floor((truncated % 3600) / 60)
+    const secs = Math.floor(truncated % 60)
+    return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  }
+
+  const formatted = formatSolveTime(truncated)
+  if (options?.showSecondsSuffix !== false && truncated < 60) {
+    return `${formatted}s`
+  }
+
+  return formatted
 }
 
 /**

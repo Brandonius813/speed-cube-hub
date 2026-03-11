@@ -9,14 +9,10 @@ import { GoalModal } from "@/components/dashboard/goal-modal"
 import { deleteGoal } from "@/lib/actions/goals"
 import { WCA_EVENTS } from "@/lib/constants"
 import type { Goal } from "@/lib/types"
+import { formatEventTime } from "@/lib/utils"
 
 function formatTime(seconds: number): string {
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
+  return formatEventTime(seconds)
 }
 
 function getEventLabel(eventId: string): string {

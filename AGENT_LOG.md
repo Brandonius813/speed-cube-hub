@@ -6,24 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-06 PT — Timer QoL Polish
-
-**Task:** Add timer shortcuts, bigger text options, richer solve editing, session-vs-all-time stats, and pane reopen memory
-**Status:** Added keyboard shortcuts for `+2`, `DNF`, and next scramble in the live timer. Added timer text-size controls that scale the scramble line, main readout, typing input, and left stats/history panel. Upgraded the left solve list so clicking a solve opens a richer detail modal with notes, scramble copy, PB/share, penalty toggles, and delete. Extended local timer solve persistence to keep per-solve notes/timestamps through refreshes and session save, and updated saved-solve inserts to persist solve notes/phases/timestamps. Added session-best and session-mean stats alongside the existing current/all-time values. Pane layout state now remembers each tool's last slot/options/height so reopening a tool returns it to the same place.
-**Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/solve-detail-modal.tsx`, `src/components/timer/panes/use-timer-pane-layout.ts`, `src/components/timer/panes/types.ts`, `src/lib/timer/stats.ts`, `src/lib/timer/solve-store.ts`, `src/lib/timer/cross-device-sync.ts`, `src/lib/validations.ts`, `src/components/timer/end-session-modal.tsx`, `src/lib/actions/save-timer-session.ts`, `TASKS.md`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/solve-detail-modal.tsx src/components/timer/panes/use-timer-pane-layout.ts src/components/timer/end-session-modal.tsx src/lib/actions/save-timer-session.ts src/lib/timer/cross-device-sync.ts src/lib/timer/solve-store.ts src/lib/timer/stats.ts src/lib/validations.ts` passed. `./node_modules/.bin/tsc --noEmit` passed.
-
----
-
-### 2026-03-06 12:33 PM PST — Timer Centisecond Truncation Fix
-
-**Task:** Stop timer displays and saved session stats from rounding centiseconds up; truncate instead
-**Status:** Added shared timer helpers for centisecond truncation and routed the timer readout, solve list, end-session summary, competition simulator, and timer-session save paths through them. The live timer now shows `59.39` for a `59.397` GAN result instead of rounding to `59.40`, and the local/fallback timing path now truncates to centiseconds before saving as well so the stored result matches the visible one.
-**Files touched:** `src/lib/timer/averages.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/solve-list-panel.tsx`, `src/components/timer/end-session-modal.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/lib/timer/comp-sim-engine.ts`, `src/lib/actions/save-timer-session.ts`, `src/lib/actions/timer.ts`, `src/lib/timer/session-dividers.ts`, `AGENT_LOG.md`
-**Checks:** `npx eslint src/lib/timer/averages.ts src/components/timer/timer-content.tsx src/components/timer/solve-list-panel.tsx src/components/timer/end-session-modal.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/comp-sim-overlay.tsx src/lib/timer/comp-sim-engine.ts src/lib/actions/save-timer-session.ts src/lib/actions/timer.ts src/lib/timer/session-dividers.ts` passed. `npx tsc --noEmit` passed.
-
----
-
 ### 2026-03-10 PT — Build Prerender Fixes For Auth + Dashboard
 
 **Task:** Fix Vercel build failures caused by auth-page search-param usage and dashboard prerendering
@@ -160,3 +142,14 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Ported the Square-1 search/state tables into `src/lib/timer/square1/` and switched normal WCA `sq1` generation to that core everywhere the app uses the shared scramble utilities. The timer worker and `/api/scramble` now generate legal Square-1 random-state scrambles from the same port, and the 2D scramble draw plus scramble animator now render Square-1 from the same legality-checked state model instead of `cubing/twisty` / `cstimer_module` mismatch paths. Verified the reported bad sample throws as invalid, generated and applied 200 new Square-1 scrambles successfully, and confirmed seeded Square-1 sequences remain deterministic for shared-scramble flows.
 **Files touched:** `src/lib/timer/square1/index.ts`, `src/lib/timer/square1/search.ts`, `src/lib/timer/square1/state.ts`, `src/lib/timer/square1/tables.ts`, `src/lib/timer/scrambles.ts`, `src/lib/timer/scramble-worker.ts`, `src/app/api/scramble/route.ts`, `src/components/timer/scramble-image.tsx`, `src/components/timer/scramble-animator.tsx`, `AGENT_LOG.md`, `SPEED_CUBE_HUB_PRD.md`
 **Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/timer/square1/tables.ts src/lib/timer/square1/search.ts src/lib/timer/square1/state.ts src/lib/timer/square1/index.ts src/lib/timer/scrambles.ts src/lib/timer/scramble-worker.ts src/app/api/scramble/route.ts src/components/timer/scramble-image.tsx src/components/timer/scramble-animator.tsx` passed. Additional smoke test compiled the Square-1 core to `/tmp`, rejected the reported invalid scramble, applied 200 generated scrambles successfully, confirmed deterministic seeded sequences, and verified SVG output.
+
+---
+
+### 2026-03-11 12:03 PM PT — CubeTime Import Hardening Recovery
+
+**Task:** Recover the stuck `codex/cubetime-import-hardening` branch, fix the solve-review PB regression, and prepare it for release
+**Status:** Took over the dirty hardening worktree, kept the existing CubeTime/csTimer precision-preservation changes, and fixed the new import-review bug where unchecked solves still left their derived PB import behind. Parser-provided PBs are now tracked separately from solve-derived PBs, and the solve-derived single PB is rebuilt whenever the included solve set changes so preview counts and imported PBs stay aligned. Added unit coverage for that regression and updated Vitest path alias resolution so import-layer tests can load `@/` modules directly.
+**Files touched:** `src/components/import/use-import-chat.ts`, `src/lib/import/normalize.ts`, `src/lib/import/normalize.test.ts`, `src/lib/import/preview.ts`, `src/lib/import/preview.test.ts`, `src/lib/cubetime/parse-cubetime.ts`, `src/lib/cstimer/parse-cstimer.ts`, `src/lib/utils.ts`, `vitest.config.ts`, `AGENT_LOG.md`
+**Learnings:** The raw-solve preview already rebuilt session summaries correctly; the stale state was only in the PB list passed to `bulkImportPBs`. The claims helper replaces the task's file list on each call rather than appending to it.
+**Blockers:** None.
+**Warnings:** `npm run build` still panics inside this worktree because Turbopack rejects the symlinked `node_modules` path outside the worktree root. Use the shared repo root for the final production build verification.

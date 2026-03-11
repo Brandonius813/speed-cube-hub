@@ -31,42 +31,8 @@ export function eventSelectMessage(source: string) {
   return `I detected **${source}** data! One thing I need from you — which event are these solves for?`
 }
 
-export type PreviewStats = {
-  source: string
-  sessionCount: number
-  solveCount: number
-  pbCount: number
-  hasRawSolves: boolean
-  dateRange: string
-  bestTime: string | null
-}
-
-export function previewMessage(stats: PreviewStats) {
-  const lines: string[] = ["Here's what I found:"]
-
-  if (stats.hasRawSolves) {
-    lines.push(`\n**${stats.solveCount.toLocaleString()} individual solves** across ${stats.sessionCount} day${stats.sessionCount !== 1 ? "s" : ""}`)
-  } else {
-    lines.push(`\n**${stats.sessionCount} session${stats.sessionCount !== 1 ? "s" : ""}** with ${stats.solveCount.toLocaleString()} total solves`)
-  }
-
-  if (stats.dateRange) {
-    lines.push(`Date range: ${stats.dateRange}`)
-  }
-
-  if (stats.bestTime) {
-    lines.push(`Best time: **${stats.bestTime}**`)
-  }
-
-  if (stats.pbCount > 0) {
-    lines.push(`${stats.pbCount} personal best${stats.pbCount !== 1 ? "s" : ""} detected`)
-  }
-
-  if (stats.hasRawSolves) {
-    lines.push(`\nEvery individual solve will be saved to your timer, so you can pick up right where you left off.`)
-  }
-
-  return lines.join("\n")
+export function previewMessage() {
+  return `I parsed your file. Review the summary below, and if anything looks off you can remove solves before importing.`
 }
 
 export function completeMessage(count: number, hasRawSolves: boolean) {

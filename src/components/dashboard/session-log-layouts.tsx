@@ -3,16 +3,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Pencil } from "lucide-react"
 import type { Session } from "@/lib/types"
 import { EventBadge } from "@/components/shared/event-badge"
-import { formatDuration } from "@/lib/utils"
+import { formatDuration, formatEventTime } from "@/lib/utils"
 
 function formatAvg(avg: number | null): string {
   if (avg === null) return "--"
-  if (avg >= 60) {
-    const min = Math.floor(avg / 60)
-    const sec = (avg % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${avg.toFixed(2)}s`
+  return formatEventTime(avg)
 }
 
 function formatDate(dateStr: string): string {

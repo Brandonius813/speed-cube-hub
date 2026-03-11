@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { LeaderboardCategory } from "@/lib/leaderboard-types"
 import type { LeaderboardEntry } from "@/lib/types"
 import type { WcaLeaderboardEntry } from "@/lib/actions/sor-kinch"
+import { formatEventTime } from "@/lib/utils"
 
 export function getInitials(name: string): string {
   return name
@@ -18,12 +19,7 @@ export function getInitials(name: string): string {
 }
 
 export function formatTime(seconds: number): string {
-  if (seconds >= 60) {
-    const min = Math.floor(seconds / 60)
-    const sec = (seconds % 60).toFixed(2)
-    return `${min}:${sec.padStart(5, "0")}`
-  }
-  return `${seconds.toFixed(2)}s`
+  return formatEventTime(seconds)
 }
 
 export function formatStatValue(

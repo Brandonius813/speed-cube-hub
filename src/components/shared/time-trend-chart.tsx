@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import {
   ComposedChart,
   Bar,
@@ -14,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { Solve } from "@/lib/types"
-import { getEffectiveTime } from "@/lib/timer/averages"
+import { formatTimeMsCentiseconds, getEffectiveTime } from "@/lib/timer/averages"
 
 type DataPoint = {
   index: number
@@ -25,14 +25,7 @@ type DataPoint = {
 type ChartScope = "session" | "all"
 
 function formatTimeMs2(ms: number): string {
-  if (ms === Infinity) return "DNF"
-  const totalSeconds = ms / 1000
-  if (totalSeconds < 60) {
-    return totalSeconds.toFixed(2)
-  }
-  const min = Math.floor(totalSeconds / 60)
-  const sec = (totalSeconds % 60).toFixed(2).padStart(5, "0")
-  return `${min}:${sec}`
+  return formatTimeMsCentiseconds(ms)
 }
 
 function formatStatLabel(key: string): string {
@@ -141,10 +134,9 @@ export function TimeTrendChart({
   const line1Label = formatStatLabel(line1Stat)
   const line2Label = formatStatLabel(line2Stat)
 
-  const chartData = useMemo<DataPoint[]>(() => {
+  const chartData: DataPoint[] = (() => {
     if (solves.length === 0) return []
 
-    // Get effective times (null = DNF for chart purposes)
     const times = solves.map((s) => {
       const t = getEffectiveTime(s)
       return t === Infinity ? null : t
@@ -159,7 +151,7 @@ export function TimeTrendChart({
       line1: line1Values[i],
       line2: line2Values[i],
     }))
-  }, [line1Stat, line2Stat, solves])
+  })()
 
   if (solves.length === 0) {
     if (embedded) {

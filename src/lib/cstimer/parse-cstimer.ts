@@ -21,6 +21,10 @@ export type CsTimerParsedSession = {
 
 import type { RawImportSolve } from "@/lib/import/types"
 export type { RawImportSolve };
+import {
+  secondsToTruncatedMilliseconds,
+  truncateSecondsToCentiseconds,
+} from "@/lib/utils"
 
 type ParsedSolve = {
   time: number | null; // null = bare DNF with no recorded time
@@ -106,7 +110,7 @@ export function parseCsTimerCsv(text: string): {
   const rawSolves: RawImportSolve[] = solves.map((s) => {
     if (s.isDnf) {
       return {
-        time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+        time_ms: s.time != null ? secondsToTruncatedMilliseconds(s.time) : 0,
         penalty: "DNF",
         scramble: s.scramble,
         date: s.date,
@@ -114,11 +118,14 @@ export function parseCsTimerCsv(text: string): {
     }
     if (s.isPlus2) {
       // csTimer Time column includes the +2 penalty — subtract 2s to get base time
-      const baseMs = s.time != null ? Math.max(0, Math.round((s.time - 2) * 1000)) : 0;
+      const baseMs =
+        s.time != null
+          ? secondsToTruncatedMilliseconds(Math.max(0, s.time - 2))
+          : 0;
       return { time_ms: baseMs, penalty: "+2", scramble: s.scramble, date: s.date };
     }
     return {
-      time_ms: s.time != null ? Math.round(s.time * 1000) : 0,
+      time_ms: s.time != null ? secondsToTruncatedMilliseconds(s.time) : 0,
       penalty: null,
       scramble: s.scramble,
       date: s.date,
@@ -151,15 +158,14 @@ export function parseCsTimerCsv(text: string): {
     // Averages
     const avgTime =
       validTimes.length > 0
-        ? Math.round(
-            (validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length) *
-              100
-          ) / 100
+        ? truncateSecondsToCentiseconds(
+            validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length
+          )
         : null;
 
     const bestTime =
       validTimes.length > 0
-        ? Math.round(Math.min(...validTimes) * 100) / 100
+        ? truncateSecondsToCentiseconds(Math.min(...validTimes))
         : null;
 
     sessions.push({
@@ -213,13 +219,13 @@ function parseTimeValue(raw: string): number | null {
     if (isNaN(minutes) || isNaN(seconds)) return null;
     const total = minutes * 60 + seconds;
     if (total <= 0) return null;
-    return Math.round(total * 100) / 100;
+    return total;
   }
 
   const num = parseFloat(raw);
   if (isNaN(num) || num <= 0) return null;
 
-  return Math.round(num * 100) / 100;
+  return num;
 }
 
 /**
