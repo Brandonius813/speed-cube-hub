@@ -94,7 +94,6 @@ const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
 const LEGACY_TIMER_TEXT_SIZE_KEY = "timer-text-size"
 const TIMER_SCRAMBLE_TEXT_SIZE_KEY = "timer-scramble-text-size"
 const TIMER_READOUT_TEXT_SIZE_KEY = "timer-readout-text-size"
-const TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY = "timer-pane-scramble-text-size"
 const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
 
 type TimerUpdateMode = "realtime" | "seconds" | "solving"
@@ -489,18 +488,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
       )
     } catch {
       return "lg"
-    }
-  })
-  const [paneScrambleTextSize, setPaneScrambleTextSize] = useState<TimerPaneTextSize>(() => {
-    try {
-      return (
-        parseTextSize(localStorage.getItem(TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(TIMER_SCRAMBLE_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
-        "md"
-      )
-    } catch {
-      return "md"
     }
   })
   const [paneTimeTextSize, setPaneTimeTextSize] = useState<TimerPaneTextSize>(() => {
@@ -2344,7 +2331,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
       event,
       phase,
       scramble,
-      scramblePaneTextSize: paneScrambleTextSize,
       canShowCrossTrainer,
       chartSolvesSession: sessionChartSolves,
       chartSolvesAll: allChartSolves,
@@ -2355,7 +2341,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
       canShowCrossTrainer,
       event,
       phase,
-      paneScrambleTextSize,
       scramble,
       sessionChartSolves,
       statCols,
@@ -2883,37 +2868,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
                                   {isOpen ? "Open" : "Closed"}
                                 </span>
                               </button>
-                              {tool === "draw" && (
-                                <div className="px-3 pb-2 pt-1 space-y-1.5">
-                                  <span className="block text-[11px] font-medium text-foreground">
-                                    Pane Scramble
-                                  </span>
-                                  <div className="grid grid-cols-3 gap-1">
-                                    {TIMER_TEXT_SIZE_OPTIONS.map((option) => (
-                                      <button
-                                        key={`draw-size-${option.value}`}
-                                        className={cn(
-                                          "h-7 rounded border text-[11px] font-medium transition-colors",
-                                          paneScrambleTextSize === option.value
-                                            ? "border-primary bg-primary text-primary-foreground"
-                                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        )}
-                                        onClick={() => {
-                                          setPaneScrambleTextSize(option.value)
-                                          try {
-                                            localStorage.setItem(
-                                              TIMER_PANE_SCRAMBLE_TEXT_SIZE_KEY,
-                                              option.value
-                                            )
-                                          } catch {}
-                                        }}
-                                      >
-                                        {option.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                               {isOpen && openPane && (
                                 <div className="px-3 pb-2">
                                   <div className="grid grid-cols-4 gap-1">

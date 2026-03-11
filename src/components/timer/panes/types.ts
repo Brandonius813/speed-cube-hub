@@ -106,7 +106,6 @@ export type TimerPaneRenderContext = {
   event: string
   phase: TimerPhase
   scramble: string
-  scramblePaneTextSize: TimerPaneTextSize
   canShowCrossTrainer: boolean
   chartSolvesSession: StoredSolve[]
   chartSolvesAll: StoredSolve[]

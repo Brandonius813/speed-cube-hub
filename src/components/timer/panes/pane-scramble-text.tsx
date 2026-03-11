@@ -16,7 +16,7 @@ const SCRAMBLE_VALUE_SIZE_CLASSES: Record<TimerPaneTextSize, string> = {
 }
 
 export function PaneScrambleText({ context }: PaneContentProps) {
-  const textSize = context.scramblePaneTextSize
+  const textSize: TimerPaneTextSize = "xl"
 
   return (
     <div className="h-full rounded-md border border-border/70 bg-muted/20 p-3">
