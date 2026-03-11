@@ -153,6 +153,7 @@ App architecture:
 - Server actions in `src/lib/actions/*.ts`
 - Client Supabase usage for auth checks only
 - Service-role admin client must stay server-side only
+- Public profile compare route lives at `/profile/[handle]/compare` and stays opt-in; the base profile view remains the default experience
 
 Timer area:
 
