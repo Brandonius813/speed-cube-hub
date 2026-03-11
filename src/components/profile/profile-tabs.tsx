@@ -21,7 +21,7 @@ export function ProfileTabs({
   onTabChange,
 }: {
   activeTab: ProfileTab
-  onTabChange: (tab: ProfileTab) => void
+  onTabChange?: (tab: ProfileTab) => void
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -29,7 +29,7 @@ export function ProfileTabs({
 
   const setTab = useCallback(
     (tab: ProfileTab) => {
-      onTabChange(tab)
+      onTabChange?.(tab)
       const params = new URLSearchParams(searchParams.toString())
       if (tab === "overview") {
         params.delete("tab")
@@ -66,6 +66,7 @@ export function ProfileTabs({
 
   return (
     <div
+      data-onboarding-target="profile-tabs"
       className="flex w-full overflow-x-auto border-b border-border/50 scrollbar-none"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

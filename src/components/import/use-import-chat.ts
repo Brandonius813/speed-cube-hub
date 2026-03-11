@@ -43,6 +43,7 @@ import type {
 import { WCA_EVENTS, DEFAULT_SECONDS_PER_SOLVE } from "@/lib/constants"
 import { createSolveStore } from "@/lib/timer/solve-store"
 import { executeImport } from "@/lib/import/execute-import"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 
 const TYPING_DELAY = 400
 
@@ -449,6 +450,7 @@ export function useImportChat() {
     )
 
     if (result.success) {
+      await markOnboardingStepComplete("bulk_imported")
       setMessages((prev) => {
         const copy = [...prev]
         if (copy[copy.length - 1]?.action?.type === "importing") copy.pop()

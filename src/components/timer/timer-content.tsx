@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Info, Settings } from "lucide-react"
+import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
 import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
 import {
@@ -74,6 +76,7 @@ import type {
 } from "@/lib/timer/stats-worker-types"
 import { getProfile } from "@/lib/actions/profiles"
 import { getSessionDividerGroupsByTimerSession } from "@/lib/actions/timer"
+import { ONBOARDING_TOURS, parseOnboardingTour } from "@/lib/onboarding"
 import type { ShareCardData } from "@/components/share/share-card"
 import type { Solve as StoredSolve } from "@/lib/types"
 
@@ -425,6 +428,9 @@ type TimerContentProps = {
 }
 
 export function TimerContent({ viewer }: TimerContentProps) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [event, setEvent] = useState(() => {
     try {
       return localStorage.getItem("timer-event") ?? "333"
@@ -617,6 +623,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
     handle: "you",
     avatarUrl: null as string | null,
   })
+  const activeTour = parseOnboardingTour(searchParams.get("tour"))
+  const timerTour = activeTour === "timer-basics" ? activeTour : null
 
   useEffect(() => {
     const root = document.documentElement
@@ -876,6 +884,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
     [showAllStatsInList, solves, statCols, stats]
   )
   const panelSavedSolveCount = showAllStatsInList ? 0 : savedSolveCount
+
+  function clearTour() {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("tour")
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
 
   const groupDividers = useMemo(
     () => computeSessionDividers(solves, sessionGroups),
@@ -2650,6 +2665,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         >
           <div className="flex shrink-0 items-center gap-3 lg:w-72 xl:w-80 lg:border-r border-border lg:pl-4 lg:pr-6 xl:pr-7 lg:py-3">
             <select
+              data-onboarding-target="timer-event-select"
               className="bg-muted text-[13px] font-sans rounded px-2 py-1.5 border border-border text-foreground shrink-0"
               value={event}
               onChange={(eventSelect) => changeEvent(eventSelect.target.value)}
@@ -2672,6 +2688,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             {practiceType !== "Comp Sim" && (
               <div className="flex-1 min-w-0 flex items-center justify-center">
                 <button
+                  data-onboarding-target="timer-scramble"
                   className={cn(
                     "text-center font-mono font-normal text-foreground leading-snug hover:text-primary transition-colors cursor-pointer",
                     SCRAMBLE_TEXT_SIZE_CLASSES[scrambleTextSize]
@@ -2712,6 +2729,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
               )}
               <div className="relative" ref={settingsRef}>
                 <button
+                  data-onboarding-target="timer-settings"
                   className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
                   onClick={() =>
                     setSettingsOpen((value) => {
@@ -3230,7 +3248,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onRangeChange={handleRangeChange}
           />
 
-          <div className="fixed inset-y-0 left-0 right-0 lg:left-72 xl:left-80 flex flex-col items-center justify-center pointer-events-none z-10">
+          <div
+            data-onboarding-target="timer-readout"
+            className="fixed inset-y-0 left-0 right-0 lg:left-72 xl:left-80 flex flex-col items-center justify-center pointer-events-none z-10"
+          >
             {typing ? (
               <>
                 <div
@@ -3492,6 +3513,15 @@ export function TimerContent({ viewer }: TimerContentProps) {
           displayName={viewer?.displayName ?? "Cuber"}
           handle={viewer?.handle ?? null}
           onClose={() => setPbPhotoOpen(false)}
+        />
+      )}
+      {timerTour && (
+        <OnboardingTour
+          key={timerTour}
+          open
+          steps={ONBOARDING_TOURS[timerTour]}
+          onClose={clearTour}
+          onSkip={clearTour}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,7 +47,7 @@ export function MainCubes({
   const [event, setEvent] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [editMode, setEditMode] = useState(false)
+  const [manualEditMode, setManualEditMode] = useState(false)
 
   // History modal state
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -58,6 +58,8 @@ export function MainCubes({
   const [historyName, setHistoryName] = useState("")
   const [historySetup, setHistorySetup] = useState("")
   const [historyDate, setHistoryDate] = useState("")
+  const searchParams = useSearchParams()
+  const editMode = manualEditMode || searchParams.get("tour") === "main-cube"
 
 
   function getEventLabel(eventId: string): string {
@@ -313,6 +315,7 @@ export function MainCubes({
                     variant="outline"
                     size="sm"
                     onClick={openAdd}
+                    data-onboarding-target="main-cubes-add"
                     className="min-h-9 gap-1.5 border-border/50"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -322,7 +325,11 @@ export function MainCubes({
                 <Button
                   variant={editMode ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setEditMode(!editMode)}
+                  onClick={() => {
+                    if (searchParams.get("tour") === "main-cube") return
+                    setManualEditMode(!manualEditMode)
+                  }}
+                  data-onboarding-target={!editMode ? "main-cubes-add" : undefined}
                   className={`min-h-9 gap-1.5 ${editMode ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border-border/50"}`}
                 >
                   {editMode ? (

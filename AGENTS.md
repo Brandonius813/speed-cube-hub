@@ -154,6 +154,7 @@ App architecture:
 - Client Supabase usage for auth checks only
 - Service-role admin client must stay server-side only
 - Public profile compare route lives at `/profile/[handle]/compare` and stays opt-in; the base profile view remains the default experience
+- First-time auth landings default to `/profile`; new-user onboarding progress lives in the private `user_onboarding` table and the guided tours are launched from owner-only profile overview checklist links via `?tour=` route params (plus `/getting-started/feed` for the feed step)
 
 Timer area:
 

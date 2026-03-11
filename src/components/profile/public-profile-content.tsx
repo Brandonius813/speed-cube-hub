@@ -1,10 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ProfileSidebar } from "@/components/profile/profile-sidebar"
 import { ProfileTabs, parseTabParam } from "@/components/profile/profile-tabs"
-import type { ProfileTab } from "@/components/profile/profile-tabs"
 import { TabOverview } from "@/components/profile/tab-overview"
 import { TabPBs } from "@/components/profile/tab-pbs"
 import { TabStats } from "@/components/profile/tab-stats"
@@ -40,9 +38,7 @@ export function PublicProfileContent({
 }) {
   void isAdmin
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<ProfileTab>(
-    parseTabParam(searchParams.get("tab"))
-  )
+  const activeTab = parseTabParam(searchParams.get("tab"))
 
   const profileActions =
     !isOwner && isLoggedIn ? (
@@ -68,7 +64,7 @@ export function PublicProfileContent({
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       {/* Main content — tabs + active tab */}
       <div className="min-w-0">
-        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <ProfileTabs activeTab={activeTab} />
 
         <div className="mt-6">
           {activeTab === "overview" && (

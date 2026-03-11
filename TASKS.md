@@ -176,6 +176,9 @@
 ### Phase 29: Social Preview Foundation (T159)
 - ✅ T159: Social preview foundation (mixed feed, standalone posts, richer session/PB cards, clubs feed, unified discover tabs, favorites/mutes, preview seed + hosted preview reset flow)
 
+### Phase 30: New User Onboarding (T160)
+- ✅ T160: Checklist onboarding + guided tours
+
 ---
 
 ## Open / Remaining Items

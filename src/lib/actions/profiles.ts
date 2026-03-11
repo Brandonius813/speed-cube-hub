@@ -16,6 +16,7 @@ import type {
   SearchResults,
 } from "@/lib/types"
 import { WCA_EVENTS } from "@/lib/constants"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 
 export async function getProfile(): Promise<{
   profile: Profile | null
@@ -734,6 +735,10 @@ export async function updateProfileCubes(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  if (cubes.length > 0) {
+    await markOnboardingStepComplete("main_cube_added")
   }
 
   revalidatePath("/profile")

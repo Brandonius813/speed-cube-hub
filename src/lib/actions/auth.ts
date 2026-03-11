@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { generateUniqueHandle } from "@/lib/actions/profiles"
+import { ensureUserOnboarding } from "@/lib/actions/onboarding"
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string
@@ -84,6 +85,18 @@ export async function signup(formData: FormData) {
     return { error: "Account setup failed. Please try again." }
   }
 
+  try {
+    await ensureUserOnboarding(data.user.id)
+  } catch {
+    await admin.from("profiles").delete().eq("id", data.user.id)
+    try {
+      await admin.auth.admin.deleteUser(data.user.id)
+    } catch {
+      console.error("Failed to clean up auth account after onboarding setup failure:", data.user.id)
+    }
+    return { error: "Account setup failed. Please try again." }
+  }
+
   return { success: true }
 }
 
@@ -142,4 +155,3 @@ export async function getNavbarData(): Promise<NavbarData> {
     isAdmin: user.id === process.env.ADMIN_USER_ID,
   }
 }
-
