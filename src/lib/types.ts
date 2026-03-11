@@ -99,10 +99,11 @@ export type PostTag = {
 export type Post = {
   id: string;
   user_id: string;
+  club_id?: string | null;
   title: string | null;
   content: string;
   post_type: PostType;
-  visibility: "public";
+  visibility: "public" | "club";
   created_at: string;
   updated_at: string;
   profile: {
@@ -120,6 +121,9 @@ export type Post = {
 export type SessionFeedEntry = FeedItem & {
   entry_type: "session";
   entry_created_at: string;
+  best_ao5?: number | null;
+  best_ao12?: number | null;
+  best_ao25?: number | null;
   ranking_score?: number;
 };
 
@@ -203,6 +207,7 @@ export type Club = {
   name: string;
   description: string | null;
   avatar_url: string | null;
+  pinned_post_id?: string | null;
   created_by: string;
   visibility: "public" | "private";
   created_at: string;

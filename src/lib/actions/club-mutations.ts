@@ -9,9 +9,10 @@ import { createClubSchema, updateClubSchema, zodFirstError } from "@/lib/validat
 export async function createClub(
   name: string,
   description?: string,
+  avatarUrl?: string,
   visibility: "public" | "private" = "public"
 ): Promise<{ clubId?: string; error?: string }> {
-  const parsed = createClubSchema.safeParse({ name, description, visibility })
+  const parsed = createClubSchema.safeParse({ name, description, avatar_url: avatarUrl, visibility })
   if (!parsed.success) {
     return { error: zodFirstError(parsed.error) }
   }
@@ -30,6 +31,7 @@ export async function createClub(
     .insert({
       name: parsed.data.name,
       description: parsed.data.description?.trim() || null,
+      avatar_url: parsed.data.avatar_url?.trim() || null,
       visibility: parsed.data.visibility,
       created_by: user.id,
     })
@@ -140,7 +142,12 @@ export async function leaveClub(
  */
 export async function updateClub(
   clubId: string,
-  fields: { name?: string; description?: string; visibility?: "public" | "private" }
+  fields: {
+    name?: string
+    description?: string
+    avatar_url?: string
+    visibility?: "public" | "private"
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const {
@@ -174,6 +181,9 @@ export async function updateClub(
   if (parsed.data.description !== undefined) {
     updates.description = parsed.data.description?.trim() || null
   }
+  if (parsed.data.avatar_url !== undefined) {
+    updates.avatar_url = parsed.data.avatar_url?.trim() || null
+  }
   if (parsed.data.visibility !== undefined) {
     updates.visibility = parsed.data.visibility
   }
@@ -181,6 +191,101 @@ export async function updateClub(
   const { error } = await supabase
     .from("clubs")
     .update(updates)
+    .eq("id", clubId)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+async function getManageableClubRole(clubId: string, userId: string) {
+  const supabase = await createClient()
+
+  const { data: membership } = await supabase
+    .from("club_members")
+    .select("role")
+    .eq("club_id", clubId)
+    .eq("user_id", userId)
+    .single()
+
+  return {
+    supabase,
+    role: membership?.role ?? null,
+  }
+}
+
+export async function pinClubPost(
+  clubId: string,
+  postId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  const { role } = await getManageableClubRole(clubId, user.id)
+  if (!role || !["owner", "admin"].includes(role)) {
+    return { success: false, error: "Only owners and admins can pin posts" }
+  }
+
+  const { data: post } = await supabase
+    .from("posts")
+    .select("id, user_id")
+    .eq("id", postId)
+    .single()
+
+  if (!post) {
+    return { success: false, error: "Post not found" }
+  }
+
+  const { data: memberMatch } = await supabase
+    .from("club_members")
+    .select("user_id")
+    .eq("club_id", clubId)
+    .eq("user_id", post.user_id)
+    .single()
+
+  if (!memberMatch) {
+    return { success: false, error: "Only posts from club members can be pinned" }
+  }
+
+  const { error } = await supabase
+    .from("clubs")
+    .update({ pinned_post_id: postId })
+    .eq("id", clubId)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function unpinClubPost(
+  clubId: string
+): Promise<{ success: boolean; error?: string }> {
+  const {
+    data: { user },
+  } = await (await createClient()).auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  const { supabase, role } = await getManageableClubRole(clubId, user.id)
+  if (!role || !["owner", "admin"].includes(role)) {
+    return { success: false, error: "Only owners and admins can pin posts" }
+  }
+
+  const { error } = await supabase
+    .from("clubs")
+    .update({ pinned_post_id: null })
     .eq("id", clubId)
 
   if (error) {

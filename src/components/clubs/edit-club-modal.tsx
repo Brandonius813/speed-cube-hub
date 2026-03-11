@@ -25,6 +25,7 @@ export function EditClubModal({
   onOpenChange,
   clubName,
   clubDescription,
+  clubAvatarUrl,
   clubVisibility,
   onSave,
 }: {
@@ -32,11 +33,18 @@ export function EditClubModal({
   onOpenChange: (open: boolean) => void
   clubName: string
   clubDescription: string
+  clubAvatarUrl: string
   clubVisibility: "public" | "private"
-  onSave: (name: string, description: string, visibility: "public" | "private") => void
+  onSave: (
+    name: string,
+    description: string,
+    avatarUrl: string,
+    visibility: "public" | "private"
+  ) => void
 }) {
   const [name, setName] = useState(clubName)
   const [description, setDescription] = useState(clubDescription)
+  const [avatarUrl, setAvatarUrl] = useState(clubAvatarUrl)
   const [visibility, setVisibility] = useState<"public" | "private">(clubVisibility)
 
   // Reset form when modal opens with new data
@@ -44,6 +52,7 @@ export function EditClubModal({
     if (isOpen) {
       setName(clubName)
       setDescription(clubDescription)
+      setAvatarUrl(clubAvatarUrl)
       setVisibility(clubVisibility)
     }
     onOpenChange(isOpen)
@@ -52,7 +61,7 @@ export function EditClubModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    onSave(name, description, visibility)
+    onSave(name, description, avatarUrl, visibility)
   }
 
   return (
@@ -84,6 +93,17 @@ export function EditClubModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="edit-club-avatar-url">Club Icon URL</Label>
+            <Input
+              id="edit-club-avatar-url"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              placeholder="https://..."
+              maxLength={500}
             />
           </div>
 

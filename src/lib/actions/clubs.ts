@@ -1,8 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { getSessionLikeInfo } from "@/lib/actions/likes"
-import { getCommentCounts } from "@/lib/actions/comments"
+import { hydrateSessionFeedEntries } from "@/lib/actions/feed"
 import { loadPosts } from "@/lib/actions/posts"
 import {
   getSocialPreviewClub,
@@ -28,6 +27,7 @@ type ClubRow = {
   name: string
   description: string | null
   avatar_url: string | null
+  pinned_post_id?: string | null
   created_by: string
   visibility?: "public" | "private"
   created_at: string
@@ -92,6 +92,7 @@ export async function getClubs(query?: string): Promise<{
     name: c.name,
     description: c.description,
     avatar_url: c.avatar_url,
+    pinned_post_id: c.pinned_post_id ?? null,
     created_by: c.created_by,
     visibility: c.visibility ?? "public",
     created_at: c.created_at,
@@ -148,6 +149,7 @@ export async function getClub(clubId: string): Promise<{
     club: {
       id: club.id, name: club.name, description: club.description,
       avatar_url: club.avatar_url, created_by: club.created_by,
+      pinned_post_id: club.pinned_post_id ?? null,
       visibility: club.visibility ?? "public",
       created_at: club.created_at, member_count: count ?? 0,
       is_member: isMember, user_role: userRole,
@@ -212,7 +214,7 @@ export async function getClubFeed(clubId: string): Promise<{
   const memberIds = (memberData ?? []).map((m: { user_id: string }) => m.user_id)
   if (memberIds.length === 0) return { items: [], currentUserId: user?.id }
 
-  const [{ data, error }, posts] = await Promise.all([
+  const [{ data, error }, publicPosts, clubPosts, clubResult] = await Promise.all([
     supabase
       .from("sessions")
       .select(`*, profile:profiles(display_name, handle, avatar_url)`)
@@ -224,30 +226,32 @@ export async function getClubFeed(clubId: string): Promise<{
       userIds: memberIds,
       limit: 24,
     }),
+    loadPosts({
+      viewerId: user?.id ?? null,
+      clubId,
+      visibility: "club",
+      limit: 24,
+    }),
+    supabase
+      .from("clubs")
+      .select("pinned_post_id")
+      .eq("id", clubId)
+      .single(),
   ])
 
   if (error) return { items: [], error: error.message }
 
   const rawItems = data ?? []
-  const sessionIds = rawItems.map((s: { id: string }) => s.id)
-
-  const [likeInfo, commentCounts] = await Promise.all([
-    getSessionLikeInfo(sessionIds, user?.id ?? null),
-    getCommentCounts(sessionIds),
-  ])
-
-  const sessions: SessionFeedEntry[] = rawItems.map((s: Record<string, unknown>) => ({
-    ...(s as unknown as SessionFeedEntry),
-    entry_type: "session",
-    entry_created_at: s.created_at as string,
-    like_count: likeInfo.get(s.id as string)?.count ?? 0,
-    has_liked: likeInfo.get(s.id as string)?.hasLiked ?? false,
-    comment_count: commentCounts[s.id as string] ?? 0,
-  }))
+  const sessions: SessionFeedEntry[] = await hydrateSessionFeedEntries(
+    rawItems as Record<string, unknown>[],
+    user?.id ?? null
+  )
 
   const items: FeedEntry[] = [
     ...sessions,
-    ...posts.map((post) => ({
+    ...[...publicPosts, ...clubPosts]
+      .filter((post, index, array) => array.findIndex((candidate) => candidate.id === post.id) === index)
+      .map((post) => ({
       ...post,
       entry_type: "post" as const,
       entry_created_at: post.created_at,
@@ -255,6 +259,17 @@ export async function getClubFeed(clubId: string): Promise<{
   ]
     .sort((a, b) => Date.parse(b.entry_created_at) - Date.parse(a.entry_created_at))
     .slice(0, 24)
+
+  const pinnedPostId = clubResult.data?.pinned_post_id as string | null | undefined
+  if (pinnedPostId) {
+    const pinnedIndex = items.findIndex(
+      (item) => item.entry_type === "post" && item.id === pinnedPostId
+    )
+    if (pinnedIndex > 0) {
+      const [pinnedItem] = items.splice(pinnedIndex, 1)
+      items.unshift(pinnedItem)
+    }
+  }
 
   return { items, currentUserId: user?.id }
 }
@@ -501,6 +516,7 @@ export async function getUserClubs(userId: string): Promise<{
   const enriched: Club[] = (clubs ?? []).map((c: ClubRow) => ({
     id: c.id, name: c.name, description: c.description,
     avatar_url: c.avatar_url, created_by: c.created_by,
+    pinned_post_id: c.pinned_post_id ?? null,
     visibility: c.visibility ?? "public",
     created_at: c.created_at, member_count: memberCounts.get(c.id) ?? 0,
     is_member: true, user_role: roleMap.get(c.id) ?? null,

@@ -272,10 +272,11 @@ const previewPosts: Post[] = [
   {
     id: "preview-post-jules-text",
     user_id: "preview-jules",
+    club_id: "preview-club-daily-solvers",
     title: "Challenge check-in",
     content: "Finished day four of the community solve streak. The feed makes me want to keep going.",
     post_type: "text",
-    visibility: "public",
+    visibility: "club",
     created_at: daysAgo(0, 16),
     updated_at: daysAgo(0, 16),
     profile: {
@@ -349,6 +350,9 @@ const previewSessions: SessionFeedEntry[] = [
     like_count: 11,
     has_liked: false,
     comment_count: 1,
+    best_ao5: 10.54,
+    best_ao12: 11.12,
+    best_ao25: 11.78,
     entry_type: "session",
     entry_created_at: daysAgo(0, 21),
   },
@@ -375,6 +379,9 @@ const previewSessions: SessionFeedEntry[] = [
     like_count: 4,
     has_liked: false,
     comment_count: 0,
+    best_ao5: 13.94,
+    best_ao12: 14.42,
+    best_ao25: 15.07,
     entry_type: "session",
     entry_created_at: daysAgo(1, 15),
   },
@@ -401,6 +408,9 @@ const previewSessions: SessionFeedEntry[] = [
     like_count: 2,
     has_liked: false,
     comment_count: 0,
+    best_ao5: 13.02,
+    best_ao12: 14.28,
+    best_ao25: 15.33,
     entry_type: "session",
     entry_created_at: daysAgo(1, 12),
   },
@@ -420,7 +430,8 @@ const previewClubs: Club[] = [
     id: "preview-club-daily-solvers",
     name: "Daily Solvers",
     description: "Public club for consistent practice and rich session recaps.",
-    avatar_url: null,
+    avatar_url: "https://api.dicebear.com/9.x/shapes/svg?seed=daily-solvers-club",
+    pinned_post_id: "preview-post-lena-pb",
     created_by: "preview-brandon",
     visibility: "public",
     created_at: daysAgo(18, 13),
@@ -432,7 +443,8 @@ const previewClubs: Club[] = [
     id: "preview-club-bootcamp",
     name: "Brandon Bootcamp",
     description: "Private coaching pod with weekly accountability challenges.",
-    avatar_url: null,
+    avatar_url: "https://api.dicebear.com/9.x/shapes/svg?seed=bootcamp-club",
+    pinned_post_id: "preview-post-mateo-session",
     created_by: "preview-brandon",
     visibility: "private",
     created_at: daysAgo(12, 13),
@@ -625,14 +637,24 @@ export function getSocialPreviewFollowingUsers() {
   }))
 }
 
-export function getSocialPreviewFeed(mode: "following" | "explore") {
+export function getSocialPreviewFeed(mode: "following" | "explore" | "clubs") {
   const followedSet = new Set(socialPreviewState.followingIds)
   const mutedSet = new Set(socialPreviewState.mutedIds)
+  const joinedClubIds = previewClubs.filter((club) => club.is_member).map((club) => club.id)
+  const clubMemberIds = new Set(
+    joinedClubIds.flatMap((clubId) => (previewClubMembers[clubId] ?? []).map((member) => member.user_id))
+  )
 
   const items = allFeedEntries.filter((entry) => {
     if (mutedSet.has(entry.user_id)) return false
     if (mode === "following") {
       return entry.user_id === socialPreviewViewerId || followedSet.has(entry.user_id)
+    }
+    if (mode === "clubs") {
+      if (entry.entry_type === "post" && entry.visibility === "club") {
+        return joinedClubIds.includes(entry.club_id ?? "")
+      }
+      return clubMemberIds.has(entry.user_id)
     }
     return entry.user_id !== socialPreviewViewerId && !followedSet.has(entry.user_id)
   })
@@ -640,6 +662,9 @@ export function getSocialPreviewFeed(mode: "following" | "explore") {
   const highlights = previewChallenges.filter((challenge) => {
     if (mode === "explore") {
       return challenge.scope === "official"
+    }
+    if (mode === "clubs") {
+      return challenge.scope === "club" && joinedClubIds.includes(challenge.club_id ?? "")
     }
     return challenge.scope === "official" || challenge.has_joined
   })
@@ -729,7 +754,12 @@ export function getSocialPreviewClubMembers(clubId: string) {
 export function getSocialPreviewClubFeed(clubId: string) {
   const memberIds = new Set((previewClubMembers[clubId] ?? []).map((member) => member.user_id))
   return clone({
-    items: allFeedEntries.filter((entry) => memberIds.has(entry.user_id)),
+    items: allFeedEntries.filter((entry) => {
+      if (entry.entry_type === "post" && entry.visibility === "club") {
+        return entry.club_id === clubId
+      }
+      return memberIds.has(entry.user_id)
+    }),
     currentUserId: socialPreviewViewerId,
   })
 }
@@ -828,14 +858,21 @@ export function buildSocialPreviewPost({
   title,
   content,
   postType,
+  clubId,
   imageUrls,
   tags,
 }: {
   title: string
   content: string
   postType: PostType
+  clubId?: string | null
   imageUrls: string[]
-  tags: { tagType: PostTag["tag_type"]; label: string }[]
+  tags: {
+    tagType: PostTag["tag_type"]
+    label: string
+    referenceId?: string | null
+    metadata?: Record<string, unknown>
+  }[]
 }): Post {
   const createdAt = new Date().toISOString()
   const postId = crypto.randomUUID()
@@ -843,10 +880,11 @@ export function buildSocialPreviewPost({
   return {
     id: postId,
     user_id: socialPreviewViewerId,
+    club_id: clubId ?? null,
     title: title.trim() || null,
     content: content.trim(),
     post_type: postType,
-    visibility: "public",
+    visibility: clubId ? "club" : "public",
     created_at: createdAt,
     updated_at: createdAt,
     profile: {
@@ -867,7 +905,7 @@ export function buildSocialPreviewPost({
         created_at: createdAt,
       })),
     tags: tags.map((tag) =>
-      createPostTag(postId, tag.tagType, tag.label, createdAt)
+      createPostTag(postId, tag.tagType, tag.label, createdAt, tag.referenceId, tag.metadata)
     ),
     like_count: 0,
     has_liked: false,

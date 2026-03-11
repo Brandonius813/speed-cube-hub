@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { BarChart3, Box, ClipboardList, Rss, Timer, Trophy, User } from "lucide-react"
+import { BarChart3, Box, ClipboardList, Rss, Trophy, User, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -164,6 +164,10 @@ export function Navbar() {
             <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
               <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
               <span className={cn("hidden text-lg font-bold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
+            </Link>
+            <Link href="/clubs" className={navLinkClass("/clubs")} aria-label="Clubs">
+              <Users className={cn(navIconClass("/clubs"), "sm:hidden")} />
+              <span className={cn("hidden text-lg font-bold sm:inline", isActive("/clubs") && "border-b-2 border-primary pb-0.5")}>Clubs</span>
             </Link>
             <Link
               href="/profile?tab=stats"

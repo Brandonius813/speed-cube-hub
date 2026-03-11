@@ -362,12 +362,14 @@ async function seedClubs(users) {
       {
         name: `${previewPrefix} Daily Solvers`,
         description: "Public club for consistent daily practice and session recaps.",
+        avatar_url: "https://api.dicebear.com/9.x/shapes/svg?seed=daily-solvers-club",
         created_by: users[0].id,
         visibility: "public",
       },
       {
         name: `${previewPrefix} Brandon Bootcamp`,
         description: "Private coaching pod with weekly accountability challenges.",
+        avatar_url: "https://api.dicebear.com/9.x/shapes/svg?seed=bootcamp-club",
         created_by: users[0].id,
         visibility: "private",
       },
@@ -509,6 +511,15 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
       created_at: daysAgo(0, 17),
     },
     {
+      user_id: users[7].id,
+      club_id: clubs.publicClub.id,
+      title: `${previewPrefix} Challenge check-in`,
+      content: "Finished day four of the community solve streak. The feed makes me want to keep going.",
+      post_type: "text",
+      visibility: "club",
+      created_at: daysAgo(0, 16),
+    },
+    {
       user_id: users[6].id,
       title: `${previewPrefix} New puzzle day`,
       content: "Picked up a new magnetic Square-1 and I already know I'm going to lose hours to this thing.",
@@ -648,6 +659,18 @@ async function seedPosts(users, sessions, pbs, challenges, clubs) {
     });
     if (replyError) throw replyError;
   }
+
+  const { error: pinError } = await supabase
+    .from("clubs")
+    .update({ pinned_post_id: postByType[`${users[1].id}:pb`] })
+    .eq("id", clubs.publicClub.id);
+  if (pinError && pinError.code !== "PGRST204") throw pinError;
+
+  const { error: privatePinError } = await supabase
+    .from("clubs")
+    .update({ pinned_post_id: postByType[`${users[2].id}:session_recap`] })
+    .eq("id", clubs.privateClub.id);
+  if (privatePinError && privatePinError.code !== "PGRST204") throw privatePinError;
 }
 
 async function main() {

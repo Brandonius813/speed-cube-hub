@@ -6,11 +6,12 @@ import { getViewerSocialState } from "@/lib/actions/follows"
 import { getSessionLikeInfo } from "@/lib/actions/likes"
 import { loadPosts } from "@/lib/actions/posts"
 import { getSocialPreviewFeed, isSocialPreviewMode } from "@/lib/social-preview/mock-data"
-import type { Challenge, FeedEntry, SessionFeedEntry } from "@/lib/types"
+import { bestAoN } from "@/lib/timer/averages"
+import type { Challenge, FeedEntry, SessionFeedEntry, Solve } from "@/lib/types"
 
 const FEED_PAGE_SIZE = 20
 
-type FeedMode = "following" | "explore"
+type FeedMode = "following" | "explore" | "clubs"
 
 type FeedOptions = {
   cursor?: string | null
@@ -60,6 +61,60 @@ function rankEntry(
   return base + favoriteBoost + meaningfulSessionBoost(entry) + engagementBoost
 }
 
+function msToSeconds(value: number | null) {
+  return value === null ? null : Number((value / 1000).toFixed(2))
+}
+
+export async function hydrateSessionFeedEntries(
+  rows: Record<string, unknown>[],
+  viewerId: string | null
+): Promise<SessionFeedEntry[]> {
+  if (rows.length === 0) return []
+
+  const supabase = await createClient()
+  const sessionIds = rows.map((row) => row.id as string)
+  const timerSessionIds = rows
+    .map((row) => row.timer_session_id as string | null | undefined)
+    .filter((value): value is string => Boolean(value))
+
+  const [likeInfo, commentCounts, solvesResult] = await Promise.all([
+    getSessionLikeInfo(sessionIds, viewerId),
+    getCommentCounts(sessionIds),
+    timerSessionIds.length > 0
+      ? supabase
+          .from("solves")
+          .select("*")
+          .in("timer_session_id", timerSessionIds)
+          .order("solve_number", { ascending: true })
+      : Promise.resolve({ data: [] as Solve[] }),
+  ])
+
+  const solvesByTimerSessionId = new Map<string, Solve[]>()
+  for (const solve of solvesResult.data ?? []) {
+    const list = solvesByTimerSessionId.get(solve.timer_session_id) ?? []
+    list.push(solve as Solve)
+    solvesByTimerSessionId.set(solve.timer_session_id, list)
+  }
+
+  return rows.map((row) => {
+    const solves = row.timer_session_id
+      ? solvesByTimerSessionId.get(row.timer_session_id as string) ?? []
+      : []
+
+    return {
+      ...(row as unknown as SessionFeedEntry),
+      entry_type: "session" as const,
+      entry_created_at: row.created_at as string,
+      like_count: likeInfo.get(row.id as string)?.count ?? 0,
+      has_liked: likeInfo.get(row.id as string)?.hasLiked ?? false,
+      comment_count: commentCounts[row.id as string] ?? 0,
+      best_ao5: solves.length > 0 ? msToSeconds(bestAoN(solves, 5)) : null,
+      best_ao12: solves.length > 0 ? msToSeconds(bestAoN(solves, 12)) : null,
+      best_ao25: solves.length > 0 ? msToSeconds(bestAoN(solves, 25)) : null,
+    }
+  })
+}
+
 async function loadSessionEntries(options: {
   viewerId: string
   userIds?: string[]
@@ -100,20 +155,7 @@ async function loadSessionEntries(options: {
     return []
   }
 
-  const sessionIds = data.map((row) => row.id as string)
-  const [likeInfo, commentCounts] = await Promise.all([
-    getSessionLikeInfo(sessionIds, options.viewerId),
-    getCommentCounts(sessionIds),
-  ])
-
-  return data.map((row) => ({
-    ...(row as unknown as SessionFeedEntry),
-    entry_type: "session",
-    entry_created_at: row.created_at as string,
-    like_count: likeInfo.get(row.id as string)?.count ?? 0,
-    has_liked: likeInfo.get(row.id as string)?.hasLiked ?? false,
-    comment_count: commentCounts[row.id as string] ?? 0,
-  }))
+  return hydrateSessionFeedEntries(data as Record<string, unknown>[], options.viewerId)
 }
 
 async function loadFeedHighlights(options: {
@@ -124,7 +166,7 @@ async function loadFeedHighlights(options: {
   const today = new Date().toISOString().slice(0, 10)
 
   let clubIds: string[] = []
-  if (options.mode === "following") {
+  if (options.mode !== "explore") {
     const { data } = await supabase
       .from("club_members")
       .select("club_id")
@@ -137,7 +179,7 @@ async function loadFeedHighlights(options: {
     .select("*")
     .gte("end_date", today)
     .order("created_at", { ascending: false })
-    .limit(options.mode === "following" ? 4 : 3)
+    .limit(options.mode === "following" ? 4 : options.mode === "clubs" ? 4 : 3)
 
   if (options.mode === "following") {
     const filters = ["scope.eq.official"]
@@ -145,6 +187,11 @@ async function loadFeedHighlights(options: {
       filters.push(`club_id.in.(${clubIds.join(",")})`)
     }
     query = query.or(filters.join(","))
+  } else if (options.mode === "clubs") {
+    if (clubIds.length === 0) {
+      return []
+    }
+    query = query.in("club_id", clubIds).eq("scope", "club")
   } else {
     query = query.eq("scope", "official")
   }
@@ -212,7 +259,7 @@ async function loadFeedHighlights(options: {
       }
       return Date.parse(b.created_at) - Date.parse(a.created_at)
     })
-    .slice(0, options.mode === "following" ? 3 : 2)
+    .slice(0, options.mode === "following" ? 3 : options.mode === "clubs" ? 3 : 2)
 }
 
 export async function getFeed(
@@ -271,7 +318,7 @@ export async function getFeed(
       limit: FEED_PAGE_SIZE + 10,
     })
     postEntries = postEntries.filter((post) => allowedUserIds?.includes(post.user_id))
-  } else {
+  } else if (mode === "explore") {
     const excluded = new Set([...followingIds, ...mutedIds, user.id])
     sessionEntries = (await loadSessionEntries({
       viewerId: user.id,
@@ -279,6 +326,45 @@ export async function getFeed(
       limit: FEED_PAGE_SIZE + 18,
     })).filter((entry) => !excluded.has(entry.user_id))
     postEntries = postEntries.filter((post) => !excluded.has(post.user_id))
+  } else {
+    const { data: clubMemberships } = await supabase
+      .from("club_members")
+      .select("club_id")
+      .eq("user_id", user.id)
+
+    const clubIds = [...new Set((clubMemberships ?? []).map((row) => row.club_id as string))]
+    if (clubIds.length === 0) {
+      return { items: [], highlights, nextCursor: null, currentUserId: user.id }
+    }
+
+    const { data: clubMemberRows } = await supabase
+      .from("club_members")
+      .select("user_id")
+      .in("club_id", clubIds)
+
+    allowedUserIds = [...new Set((clubMemberRows ?? []).map((row) => row.user_id as string))]
+      .filter((id) => !mutedSet.has(id) || id === user.id)
+
+    sessionEntries = await loadSessionEntries({
+      viewerId: user.id,
+      userIds: allowedUserIds,
+      before: options.cursor ?? null,
+      limit: FEED_PAGE_SIZE + 10,
+    })
+
+    const clubOnlyPosts = await loadPosts({
+      viewerId: user.id,
+      limit: FEED_PAGE_SIZE + 10,
+      before: options.cursor ?? null,
+      visibility: "club",
+    })
+
+    const clubUserIds = allowedUserIds
+
+    postEntries = [
+      ...postEntries.filter((post) => clubUserIds.includes(post.user_id)),
+      ...clubOnlyPosts.filter((post) => clubIds.includes(post.club_id ?? "")),
+    ].filter((post, index, array) => array.findIndex((candidate) => candidate.id === post.id) === index)
   }
 
   const combined = [...sessionEntries, ...postEntries.map((post) => ({
