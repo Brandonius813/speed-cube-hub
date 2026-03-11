@@ -1,10 +1,11 @@
 "use client"
 
 import { forwardRef } from "react"
-import { Box, Trophy, Timer, User } from "lucide-react"
+import { BarChart3, Box, Trophy, Timer, User } from "lucide-react"
 import { getEventLabel } from "@/lib/constants"
+import { formatTimeMs, formatTimeMsCentiseconds } from "@/lib/timer/averages"
+import type { StatWindowSummary } from "@/lib/timer/stat-window-summary"
 import { formatSolveTime } from "@/lib/utils"
-import { formatTimeMs } from "@/lib/timer/averages"
 
 // ── Variant Data Types ──────────────────────────────────────────────
 
@@ -59,11 +60,24 @@ export type SolveCardData = {
   isPB?: boolean
 }
 
+export type AverageCardView = "times" | "distribution"
+
+export type AverageCardData = {
+  variant: "average"
+  event: string
+  summary: StatWindowSummary
+  completedAt: string
+  userName: string
+  handle: string
+  avatarUrl: string | null
+}
+
 export type ShareCardData =
   | PBCardData
   | SessionCardData
   | ProfileCardData
   | SolveCardData
+  | AverageCardData
 
 export type AspectRatio = "9:16" | "1:1"
 
@@ -71,6 +85,7 @@ type ShareCardProps = {
   data: ShareCardData
   aspectRatio: AspectRatio
   showScramble?: boolean
+  averageView?: AverageCardView
 }
 
 // ── Dimensions ──────────────────────────────────────────────────────
@@ -83,7 +98,7 @@ const DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
 // ── Main Component ──────────────────────────────────────────────────
 
 export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
-  function ShareCard({ data, aspectRatio, showScramble = true }, ref) {
+  function ShareCard({ data, aspectRatio, showScramble = true, averageView }, ref) {
     const { width, height } = DIMENSIONS[aspectRatio]
 
     return (
@@ -92,17 +107,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         style={{ width, height }}
         className="relative flex flex-col overflow-hidden bg-[#0A0A0F] text-white"
       >
-        {/* Background glow */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-0 h-48 w-72 -translate-x-1/2 rounded-full bg-indigo-600/20 blur-3xl" />
+          <div className="absolute bottom-[-6rem] right-[-5rem] h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
         </div>
 
-        {/* Content */}
         <div className="relative z-10 flex flex-1 flex-col p-6">
-          {/* Header */}
           <CardHeader data={data} />
 
-          {/* Body — variant specific */}
           <div className="flex flex-1 flex-col items-center justify-center gap-3">
             {data.variant === "pb" && <PBBody data={data} />}
             {data.variant === "session" && <SessionBody data={data} />}
@@ -111,6 +123,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             )}
             {data.variant === "solve" && (
               <SolveBody data={data} showScramble={showScramble} />
+            )}
+            {data.variant === "average" && (
+              <AverageBody
+                data={data}
+                aspectRatio={aspectRatio}
+                view={averageView ?? getDefaultAverageView(data.summary.windowSize)}
+              />
             )}
           </div>
         </div>
@@ -196,7 +215,6 @@ function SessionBody({ data }: { data: SessionCardData }) {
         {eventLabel} &middot; {data.practiceType}
       </p>
 
-      {/* Stats grid */}
       <div className="grid w-full max-w-[260px] grid-cols-2 gap-3 pt-2">
         <StatBox label="Solves" value={String(data.numSolves ?? 0)} />
         <StatBox
@@ -212,7 +230,7 @@ function SessionBody({ data }: { data: SessionCardData }) {
         <StatBox label="Duration" value={formatDuration(data.durationMinutes)} />
       </div>
 
-      <p className="text-xs text-zinc-500 pt-1">{data.sessionDate}</p>
+      <p className="pt-1 text-xs text-zinc-500">{data.sessionDate}</p>
     </>
   )
 }
@@ -228,7 +246,6 @@ function ProfileBody({
 }) {
   return (
     <>
-      {/* Large avatar */}
       {data.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -251,21 +268,19 @@ function ProfileBody({
         </p>
       )}
 
-      {/* Main events */}
       {data.mainEvents.length > 0 && (
         <div className="flex gap-2 pt-1">
-          {data.mainEvents.map((e) => (
+          {data.mainEvents.map((eventId) => (
             <span
-              key={e}
+              key={eventId}
               className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-300"
             >
-              {getEventLabel(e)}
+              {getEventLabel(eventId)}
             </span>
           ))}
         </div>
       )}
 
-      {/* Optional stats row — only if we have data and enough room */}
       {aspectRatio === "9:16" && (data.totalSolves || data.memberSince) && (
         <div className="flex gap-6 pt-2">
           {data.totalSolves !== undefined && (
@@ -327,6 +342,180 @@ function SolveBody({
   )
 }
 
+// ── Average Variant ─────────────────────────────────────────────────
+
+function AverageBody({
+  data,
+  aspectRatio,
+  view,
+}: {
+  data: AverageCardData
+  aspectRatio: AspectRatio
+  view: AverageCardView
+}) {
+  const eventLabel = getEventLabel(data.event)
+  const completedDate = new Date(data.completedAt).toLocaleDateString()
+
+  return (
+    <div className="flex h-full w-full flex-col justify-center gap-3">
+      <div className="text-center">
+        <p className="text-sm font-medium uppercase tracking-widest text-indigo-400">
+          {formatAverageLabel(data.summary.label)}
+        </p>
+        <p className="mt-1 text-xs text-zinc-400">
+          {eventLabel} &middot; {data.summary.windowSize} solves
+        </p>
+        <p className="mt-2 font-mono text-5xl font-bold leading-none text-white">
+          {data.summary.displayValue}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-400">
+          {data.summary.sigmaMs !== null && (
+            <span className="font-mono">σ {formatTimeMsCentiseconds(data.summary.sigmaMs)}</span>
+          )}
+          {data.summary.plus2Count > 0 && (
+            <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 font-mono text-yellow-200">
+              +2 {data.summary.plus2Count}
+            </span>
+          )}
+          {data.summary.dnfCount > 0 && (
+            <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 font-mono text-red-200">
+              DNF {data.summary.dnfCount}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {view === "distribution" ? (
+        <AverageDistribution data={data} aspectRatio={aspectRatio} />
+      ) : (
+        <AverageTimesGrid data={data} aspectRatio={aspectRatio} />
+      )}
+
+      <p className="pt-1 text-center text-xs text-zinc-500">{completedDate}</p>
+    </div>
+  )
+}
+
+function AverageTimesGrid({
+  data,
+  aspectRatio,
+}: {
+  data: AverageCardData
+  aspectRatio: AspectRatio
+}) {
+  const { summary } = data
+  const columns = getTimesGridColumns(summary.windowSize, aspectRatio)
+  const fontClass =
+    summary.windowSize >= 20
+      ? "text-[9px]"
+      : summary.windowSize >= 12
+        ? "text-[10px]"
+        : "text-[11px]"
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+          Times
+        </span>
+        {!summary.isMean && !summary.isSingle && (
+          <span className="text-[10px] text-zinc-500">Trimmed solves dimmed</span>
+        )}
+      </div>
+
+      <div
+        className="grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
+        {summary.solves.map((solve, index) => (
+          <div
+            key={solve.id}
+            className={
+              "rounded-lg border px-2 py-1.5 " +
+              (solve.isTrimmed
+                ? "border-zinc-700/60 bg-zinc-900/40 text-zinc-500"
+                : "border-white/10 bg-zinc-900/70 text-white")
+            }
+          >
+            <p className="font-mono text-[9px] tabular-nums text-zinc-500">
+              {index + 1}
+            </p>
+            <p className={`mt-0.5 font-mono font-semibold tabular-nums ${fontClass}`}>
+              {solve.isTrimmed ? `(${formatCompactTime(solve)})` : formatCompactTime(solve)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AverageDistribution({
+  data,
+  aspectRatio,
+}: {
+  data: AverageCardData
+  aspectRatio: AspectRatio
+}) {
+  const { summary } = data
+  const maxCount = Math.max(...summary.bins.map((bin) => bin.count), 1)
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <StatBox
+          label="Best"
+          value={summary.bestMs === null ? "—" : formatTimeMsCentiseconds(summary.bestMs)}
+          mono
+        />
+        <StatBox
+          label="Worst"
+          value={summary.worstMs === null ? "—" : formatTimeMsCentiseconds(summary.worstMs)}
+          mono
+        />
+        <StatBox
+          label="Included"
+          value={String(summary.windowSize - summary.dnfCount)}
+        />
+        <StatBox
+          label="Trimmed"
+          value={summary.isMean ? "0" : String(summary.trimmedIndices.length)}
+        />
+      </div>
+
+      <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+        <BarChart3 className="h-3.5 w-3.5" />
+        Distribution
+      </div>
+
+      <div className="space-y-1.5">
+        {summary.bins.map((bin) => (
+          <div key={`${bin.startMs}-${bin.endMs}`} className="grid grid-cols-[4.75rem_minmax(0,1fr)_2rem] items-center gap-2">
+            <span
+              className={
+                "truncate font-mono " +
+                (aspectRatio === "9:16" ? "text-[9px]" : "text-[10px]") +
+                " text-zinc-400"
+              }
+            >
+              {bin.label}
+            </span>
+            <div className="h-2 overflow-hidden rounded-full bg-zinc-900">
+              <div
+                className="h-full rounded-full bg-cyan-400"
+                style={{ width: `${Math.max(8, (bin.count / maxCount) * 100)}%` }}
+              />
+            </div>
+            <span className="text-right font-mono text-[10px] text-zinc-400">
+              {bin.count}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function StatBox({
@@ -340,9 +529,7 @@ function StatBox({
 }) {
   return (
     <div className="rounded-lg bg-zinc-900/80 px-3 py-2 text-center">
-      <p
-        className={`text-lg font-bold ${mono ? "font-mono" : ""}`}
-      >
+      <p className={`text-lg font-bold ${mono ? "font-mono" : ""}`}>
         {value}
       </p>
       <p className="text-xs text-zinc-500">{label}</p>
@@ -355,6 +542,31 @@ function formatPBType(pbType: string): string {
   const upper = pbType.toUpperCase()
   if (upper.startsWith("AO") || upper.startsWith("MO")) return upper
   return pbType
+}
+
+function formatAverageLabel(label: string): string {
+  if (label === "single") return "Single"
+  return label.toUpperCase()
+}
+
+function formatCompactTime(
+  solve: StatWindowSummary["solves"][number]
+): string {
+  if (solve.effectiveMs === null) return "DNF"
+  return solve.penalty === "+2"
+    ? `${formatTimeMsCentiseconds(solve.effectiveMs)}+`
+    : formatTimeMsCentiseconds(solve.effectiveMs)
+}
+
+function getDefaultAverageView(windowSize: number): AverageCardView {
+  return windowSize >= 25 ? "distribution" : "times"
+}
+
+function getTimesGridColumns(windowSize: number, aspectRatio: AspectRatio): number {
+  if (windowSize <= 5) return 1
+  if (windowSize <= 12) return 2
+  if (windowSize <= 20) return aspectRatio === "9:16" ? 2 : 3
+  return 5
 }
 
 function formatDuration(minutes: number): string {
