@@ -149,3 +149,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Reverted the inactive session CTA in `timer-content.tsx` to the prior single-button state: removed the explanatory line under the button, changed the idle label back to `Start Session`, and restored the saved-state copy to `Session saved! Start another`. Active session controls and Comp Sim behavior were left unchanged.
 **Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed.
+
+### 2026-03-11 02:25 PM EDT — Phone Web Protection
+
+**Task:** Block phones from desktop-style app routes while leaving public browse pages accessible
+**Status:** Added phone-only request gating in the shared Supabase proxy so iPhone/Android phone UAs are redirected to `/mobile-unsupported` before auth checks on blocked routes. Reused the existing protected-route/public-exception logic for app pages, added public tool routes (`/tools/*`, `/battle`) to the phone block list, excluded tablets/crawlers, and created a standalone blocker page with `Go Home` and `View Leaderboards` CTAs plus an optional `from` hint.
+**Files touched:** `src/lib/supabase/proxy.ts`, `src/app/mobile-unsupported/page.tsx`, `SPEED_CUBE_HUB_PRD.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/supabase/proxy.ts src/app/mobile-unsupported/page.tsx` passed. UA verification passed: iPhone requests to `/feed`, `/timer`, `/profile`, `/tools/scrambles`, and `/battle` redirect to `/mobile-unsupported`; iPad still follows normal web behavior; blocker screenshots at 390px and 375px showed no horizontal overflow.
