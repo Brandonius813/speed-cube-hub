@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import type { SolveDailyRollup } from "@/lib/types"
 
 export type DailySolveCount = {
   date: string
@@ -28,17 +29,18 @@ export async function getDailySolveCounts(
     return { data: [], error: "Not authenticated" }
   }
 
-  // Compute the start date (Pacific Time)
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - daysBack)
-  const startIso = startDate.toISOString()
+  const startDateKey = startDate.toLocaleDateString("en-CA", {
+    timeZone: "America/Los_Angeles",
+  })
 
   let query = supabase
-    .from("solves")
-    .select("solved_at")
+    .from("solve_daily_rollups")
+    .select("local_date, solve_count")
     .eq("user_id", user.id)
-    .gte("solved_at", startIso)
-    .order("solved_at", { ascending: true })
+    .gte("local_date", startDateKey)
+    .order("local_date", { ascending: true })
 
   if (eventId) {
     query = query.eq("event", eventId)
@@ -50,22 +52,8 @@ export async function getDailySolveCounts(
     return { data: [], error: error.message }
   }
 
-  // Group by Pacific date
-  const countsByDate = new Map<string, number>()
-  for (const row of data ?? []) {
-    // Convert UTC timestamp to Pacific date string
-    const date = new Date(row.solved_at)
-    const pacific = date.toLocaleDateString("en-CA", {
-      timeZone: "America/Los_Angeles",
-    }) // YYYY-MM-DD format
-    countsByDate.set(pacific, (countsByDate.get(pacific) ?? 0) + 1)
-  }
-
-  const result: DailySolveCount[] = []
-  for (const [date, count] of countsByDate) {
-    result.push({ date, count })
-  }
-  result.sort((a, b) => a.date.localeCompare(b.date))
+  const result = (((data as Array<{ local_date: string; solve_count: number }> | null) ?? []))
+    .map((row) => ({ date: row.local_date, count: row.solve_count }))
 
   return { data: result }
 }
@@ -93,21 +81,22 @@ export async function getSolvePeriodSummary(
     return { today: 0, thisWeek: 0, thisMonth: 0, thisYear: 0, total: 0, error: "Not authenticated" }
   }
 
-  // Get all solves for the current year (covers all periods)
   const now = new Date()
-  const yearStart = new Date(now.getFullYear(), 0, 1).toISOString()
+  const yearStart = new Date(now.getFullYear(), 0, 1).toLocaleDateString("en-CA", {
+    timeZone: "America/Los_Angeles",
+  })
 
-  let query = supabase
-    .from("solves")
-    .select("solved_at")
+  let rollupQuery = supabase
+    .from("solve_daily_rollups")
+    .select("local_date, solve_count")
     .eq("user_id", user.id)
-    .gte("solved_at", yearStart)
+    .gte("local_date", yearStart)
 
   if (eventId) {
-    query = query.eq("event", eventId)
+    rollupQuery = rollupQuery.eq("event", eventId)
   }
 
-  const { data, error } = await query
+  const { data, error } = await rollupQuery
 
   if (error) {
     return { today: 0, thisWeek: 0, thisMonth: 0, thisYear: 0, total: 0, error: error.message }
@@ -123,37 +112,38 @@ export async function getSolvePeriodSummary(
   const weekStartPacific = weekStartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" })
   const monthPacific = todayPacific.slice(0, 7) // YYYY-MM
 
+  const rollups = ((data as SolveDailyRollup[] | null) ?? [])
+
   let today = 0
   let thisWeek = 0
   let thisMonth = 0
-  const thisYear = data?.length ?? 0
+  let thisYear = 0
 
-  for (const row of data ?? []) {
-    const pacific = new Date(row.solved_at).toLocaleDateString("en-CA", {
-      timeZone: "America/Los_Angeles",
-    })
-    if (pacific === todayPacific) today++
-    if (pacific >= weekStartPacific) thisWeek++
-    if (pacific.startsWith(monthPacific)) thisMonth++
+  for (const row of rollups) {
+    thisYear += row.solve_count
+    if (row.local_date === todayPacific) today += row.solve_count
+    if (row.local_date >= weekStartPacific) thisWeek += row.solve_count
+    if (row.local_date.startsWith(monthPacific)) thisMonth += row.solve_count
   }
 
-  // Get total count (all time) with a separate count query
   let totalQuery = supabase
-    .from("solves")
-    .select("id", { count: "exact", head: true })
+    .from("event_summaries")
+    .select("solve_count")
     .eq("user_id", user.id)
 
   if (eventId) {
     totalQuery = totalQuery.eq("event", eventId)
   }
 
-  const { count } = await totalQuery
+  const { data: totals } = await totalQuery
+  const total = (((totals as Array<{ solve_count: number }> | null) ?? []))
+    .reduce((sum, row) => sum + row.solve_count, 0)
 
   return {
     today,
     thisWeek,
     thisMonth,
     thisYear,
-    total: count ?? thisYear,
+    total: total || thisYear,
   }
 }

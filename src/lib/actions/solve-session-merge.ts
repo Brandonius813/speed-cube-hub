@@ -3,6 +3,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { createSolveSession } from "@/lib/actions/solve-sessions"
 import type { SolveSession } from "@/lib/types"
+import {
+  refreshSolveSessionSummary,
+  refreshTimerEventAnalytics,
+} from "@/lib/actions/timer-analytics"
 
 /**
  * Merge two solve sessions: move all solves from source into target, then archive source.
@@ -58,6 +62,12 @@ export async function mergeSolveSessions(
     .update({ is_archived: true, updated_at: new Date().toISOString() })
     .eq("id", sourceId)
     .eq("user_id", user.id)
+
+  await Promise.all([
+    refreshSolveSessionSummary(sourceId),
+    refreshSolveSessionSummary(targetId),
+    refreshTimerEventAnalytics(source.event),
+  ])
 
   return { movedCount: count ?? 0 }
 }
@@ -118,6 +128,12 @@ export async function splitSolveSession(
   if (moveError) {
     return { newSession: result.data, movedCount: 0, error: moveError.message }
   }
+
+  await Promise.all([
+    refreshSolveSessionSummary(sessionId),
+    refreshSolveSessionSummary(result.data.id),
+    refreshTimerEventAnalytics(session.event),
+  ])
 
   return { newSession: result.data, movedCount: count ?? 0 }
 }

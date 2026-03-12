@@ -186,6 +186,9 @@
 ### Phase 32: Monetization (T163)
 - ✅ T163: AdSense manual rollout infrastructure + homepage/feed/leaderboards/profile placements
 
+### Phase 33: Timer Scalability Foundation (T164)
+- ✅ T164: Million-solve timer analytics + recent-history loading foundation
+
 ---
 
 ## Open / Remaining Items

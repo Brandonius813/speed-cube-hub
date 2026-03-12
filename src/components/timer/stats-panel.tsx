@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { BarChart3 } from "lucide-react"
 import {
   formatTimeMs,
@@ -17,11 +17,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
-import { DailySolveChart } from "@/components/timer/daily-solve-chart"
-import { SolveHeatmap } from "@/components/timer/solve-heatmap"
-import { CrossSessionStats } from "@/components/timer/cross-session-stats"
-import { getSolvesByEvent } from "@/lib/actions/timer"
-import type { Solve } from "@/lib/types"
+import { getEventAnalytics } from "@/lib/actions/timer-analytics"
+import type { Solve, TimerEventAnalytics } from "@/lib/types"
 
 export const DEFAULT_STAT_INDICATORS = "mo3 ao5 ao12 ao50 ao100"
 
@@ -108,35 +105,24 @@ export function StatsPanel({
   event,
   statIndicators = DEFAULT_STAT_INDICATORS,
   onStatClick,
-  sessionNames,
+  sessionNames: _sessionNames,
 }: StatsPanelProps) {
+  void _sessionNames
   const [showCharts, setShowCharts] = useState(false)
   const [chartScope, setChartScope] = useState<ChartScope>("session")
-  const [allTimeSolves, setAllTimeSolves] = useState<Solve[] | null>(null)
+  const [allTimeAnalytics, setAllTimeAnalytics] = useState<TimerEventAnalytics | null>(null)
+  const [allTimeEvent, setAllTimeEvent] = useState<string | null>(null)
   const [loadingAllTime, setLoadingAllTime] = useState(false)
 
   const fetchAllTime = useCallback(async () => {
     if (!event) return
     setLoadingAllTime(true)
-    const result = await getSolvesByEvent(event)
-    setAllTimeSolves(result.solves)
+    const result = await getEventAnalytics(event)
+    setAllTimeAnalytics(result.data)
+    setAllTimeEvent(event)
     setLoadingAllTime(false)
   }, [event])
-
-  // Fetch all-time solves when switching to "all" scope
-  useEffect(() => {
-    if (chartScope === "all" && allTimeSolves === null) {
-      fetchAllTime()
-    }
-  }, [chartScope, allTimeSolves, fetchAllTime])
-
-  // Reset all-time cache when event changes
-  useEffect(() => {
-    setAllTimeSolves(null)
-    setChartScope("session")
-  }, [event])
-
-  const chartSolves = chartScope === "session" ? solves : (allTimeSolves ?? [])
+  const scopedAllTimeAnalytics = allTimeEvent === event ? allTimeAnalytics : null
 
   // Build stat rows dynamically from user's configured indicators
   const indicators = parseIndicators(statIndicators)
@@ -283,7 +269,12 @@ export function StatsPanel({
               variant={chartScope === "all" ? "secondary" : "ghost"}
               size="sm"
               className="h-7 text-xs px-2"
-              onClick={() => setChartScope("all")}
+              onClick={() => {
+                setChartScope("all")
+                if (allTimeEvent !== event || scopedAllTimeAnalytics === null) {
+                  void fetchAllTime()
+                }
+              }}
             >
               All Time
             </Button>
@@ -294,17 +285,73 @@ export function StatsPanel({
               Loading solve data...
             </p>
           ) : (
-            <>
-              <TimeDistributionChart solves={chartSolves} />
-              <TimeTrendChart solves={chartSolves} />
-              {chartScope === "all" && (
-                <>
-                  <CrossSessionStats solves={chartSolves} sessionNames={sessionNames} />
-                  <SolveHeatmap solves={chartSolves} />
-                  <DailySolveChart solves={chartSolves} />
-                </>
-              )}
-            </>
+            chartScope === "session" ? (
+              <>
+                <TimeDistributionChart solves={solves} />
+                <TimeTrendChart solves={solves} />
+              </>
+            ) : scopedAllTimeAnalytics?.summary ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-card/70 p-2 text-xs font-mono tabular-nums">
+                  <div className="rounded-md bg-secondary/30 px-2 py-1.5">
+                    <div className="text-muted-foreground">All-time solves</div>
+                    <div className="text-sm text-foreground">{scopedAllTimeAnalytics.summary.solve_count.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-md bg-secondary/30 px-2 py-1.5">
+                    <div className="text-muted-foreground">Active days</div>
+                    <div className="text-sm text-foreground">{scopedAllTimeAnalytics.daily.length.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-md bg-secondary/30 px-2 py-1.5">
+                    <div className="text-muted-foreground">Best single</div>
+                    <div className="text-sm text-foreground">
+                      {scopedAllTimeAnalytics.summary.best_single_ms !== null
+                        ? formatTimeMs(scopedAllTimeAnalytics.summary.best_single_ms)
+                        : "—"}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-secondary/30 px-2 py-1.5">
+                    <div className="text-muted-foreground">Mean</div>
+                    <div className="text-sm text-foreground">
+                      {scopedAllTimeAnalytics.summary.mean_ms !== null
+                        ? formatTimeMs(scopedAllTimeAnalytics.summary.mean_ms)
+                        : "—"}
+                    </div>
+                  </div>
+                </div>
+                <TimeDistributionChart
+                  buckets={scopedAllTimeAnalytics.distribution.map((bucket, index, list) => {
+                    const cumulative = list
+                      .slice(0, index + 1)
+                      .reduce((sum, entry) => sum + entry.solve_count, 0)
+                    const total = scopedAllTimeAnalytics.summary?.solve_count ?? 0
+                    return {
+                      tickLabel: `${Math.round(bucket.range_start_ms / 1000)}s`,
+                      tooltipLabel:
+                        bucket.range_start_ms === bucket.range_end_ms
+                          ? `${(bucket.range_start_ms / 1000).toFixed(2)}s`
+                          : `${(bucket.range_start_ms / 1000).toFixed(2)}-${(bucket.range_end_ms / 1000).toFixed(2)}s`,
+                      count: bucket.solve_count,
+                      cumulative,
+                      percent: total > 0 ? (bucket.solve_count / total) * 100 : 0,
+                    }
+                  })}
+                />
+                <TimeTrendChart
+                  points={scopedAllTimeAnalytics.trend.map((point) => ({
+                    label: point.label,
+                    time: point.best_single_ms,
+                    line1: point.mean_ms,
+                    line2: point.best_single_ms,
+                  }))}
+                  line1Label="Mean"
+                  line2Label="Best"
+                />
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No all-time solve data available yet.
+              </p>
+            )
           )}
         </div>
       )}

@@ -310,6 +310,70 @@ export type Solve = {
   created_at: string;
 };
 
+export type SolveSessionSummary = {
+  solve_session_id: string;
+  user_id: string;
+  event: string;
+  solve_count: number;
+  dnf_count: number;
+  valid_solve_count: number;
+  total_effective_time_ms: number;
+  best_single_ms: number | null;
+  mean_ms: number | null;
+  first_solved_at: string | null;
+  last_solved_at: string | null;
+  updated_at: string;
+};
+
+export type EventSummary = {
+  user_id: string;
+  event: string;
+  solve_count: number;
+  dnf_count: number;
+  valid_solve_count: number;
+  total_effective_time_ms: number;
+  best_single_ms: number | null;
+  mean_ms: number | null;
+  first_solved_at: string | null;
+  last_solved_at: string | null;
+  updated_at: string;
+};
+
+export type SolveDailyRollup = {
+  user_id: string;
+  event: string;
+  local_date: string;
+  solve_count: number;
+  dnf_count: number;
+  valid_solve_count: number;
+  total_effective_time_ms: number;
+  best_single_ms: number | null;
+  mean_ms: number | null;
+  updated_at: string;
+};
+
+export type TimerAnalyticsDistributionBucket = {
+  bucket_index: number;
+  range_start_ms: number;
+  range_end_ms: number;
+  solve_count: number;
+};
+
+export type TimerAnalyticsTrendPoint = {
+  label: string;
+  local_date: string;
+  solve_count: number;
+  mean_ms: number | null;
+  best_single_ms: number | null;
+};
+
+export type TimerEventAnalytics = {
+  summary: EventSummary | null;
+  daily: SolveDailyRollup[];
+  trend: TimerAnalyticsTrendPoint[];
+  distribution: TimerAnalyticsDistributionBucket[];
+};
+
 export type Challenge = {
   id: string;
   title: string;

@@ -13,8 +13,8 @@ import { CubingIcon } from "@/components/shared/cubing-icon"
 import { WCA_EVENTS } from "@/lib/constants"
 import { TimeDistributionChart } from "@/components/shared/time-distribution-chart"
 import { TimeTrendChart } from "@/components/shared/time-trend-chart"
-import { getSolvesByEvent } from "@/lib/actions/timer"
-import type { Solve } from "@/lib/types"
+import { getEventAnalytics } from "@/lib/actions/timer-analytics"
+import type { TimerEventAnalytics } from "@/lib/types"
 
 /**
  * Solve Analytics section for the Practice Stats page.
@@ -28,16 +28,17 @@ export function SolveAnalytics({
   practicedEvents: string[]
 }) {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
-  const [solves, setSolves] = useState<Solve[]>([])
+  const [analytics, setAnalytics] = useState<TimerEventAnalytics | null>(null)
   const [isLoading, startTransition] = useTransition()
   const [eventOpen, setEventOpen] = useState(false)
 
   const handleSelectEvent = (eventId: string) => {
     setSelectedEvent(eventId)
+    setAnalytics(null)
     setEventOpen(false)
     startTransition(async () => {
-      const { solves: data } = await getSolvesByEvent(eventId)
-      setSolves(data)
+      const { data } = await getEventAnalytics(eventId)
+      setAnalytics(data)
     })
   }
 
@@ -115,7 +116,7 @@ export function SolveAnalytics({
             </p>
           )}
 
-          {selectedEvent && !isLoading && solves.length === 0 && (
+          {selectedEvent && !isLoading && !analytics?.summary?.solve_count && (
             <p className="text-sm text-muted-foreground">
               No timer solves found for {selectedLabel}. Use the built-in timer to start tracking!
             </p>
@@ -124,12 +125,38 @@ export function SolveAnalytics({
       </Card>
 
       {/* Charts — only show when we have data */}
-      {selectedEvent && !isLoading && solves.length > 0 && (
+      {selectedEvent && !isLoading && analytics?.summary?.solve_count ? (
         <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
-          <TimeDistributionChart solves={solves} />
-          <TimeTrendChart solves={solves} />
+          <TimeDistributionChart
+            buckets={analytics.distribution.map((bucket, index, list) => {
+              const cumulative = list
+                .slice(0, index + 1)
+                .reduce((sum, entry) => sum + entry.solve_count, 0)
+              const total = analytics.summary?.solve_count ?? 0
+              return {
+                tickLabel: `${Math.round(bucket.range_start_ms / 1000)}s`,
+                tooltipLabel:
+                  bucket.range_start_ms === bucket.range_end_ms
+                    ? `${(bucket.range_start_ms / 1000).toFixed(2)}s`
+                    : `${(bucket.range_start_ms / 1000).toFixed(2)}-${(bucket.range_end_ms / 1000).toFixed(2)}s`,
+                count: bucket.solve_count,
+                cumulative,
+                percent: total > 0 ? (bucket.solve_count / total) * 100 : 0,
+              }
+            })}
+          />
+          <TimeTrendChart
+            points={analytics.trend.map((point) => ({
+              label: point.label,
+              time: point.best_single_ms,
+              line1: point.mean_ms,
+              line2: point.best_single_ms,
+            }))}
+            line1Label="Mean"
+            line2Label="Best"
+          />
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

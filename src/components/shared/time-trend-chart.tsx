@@ -17,12 +17,19 @@ import type { Solve } from "@/lib/types"
 import { formatTimeMsCentiseconds, getEffectiveTime } from "@/lib/timer/averages"
 
 type DataPoint = {
-  index: number
+  index: number | string
   time: number | null
   line1: number | null
   line2: number | null
 }
 type ChartScope = "session" | "all"
+
+export type TrendChartPoint = {
+  label: string
+  time: number | null
+  line1: number | null
+  line2: number | null
+}
 
 function formatTimeMs2(ms: number): string {
   return formatTimeMsCentiseconds(ms)
@@ -89,7 +96,7 @@ function CustomTooltip({
 }: {
   active?: boolean
   payload?: Array<{ dataKey: string; value: number | null; color: string; name: string }>
-  label?: number
+  label?: number | string
 }) {
   if (active && payload && payload.length && label != null) {
     return (
@@ -116,25 +123,40 @@ function CustomTooltip({
 }
 
 export function TimeTrendChart({
-  solves,
+  solves = [],
+  points,
   statCols = ["ao5", "ao200"],
   scope,
   embedded = false,
   onScopeChange,
+  line1Label: customLine1Label,
+  line2Label: customLine2Label,
 }: {
-  solves: Solve[]
+  solves?: Solve[]
+  points?: TrendChartPoint[]
   statCols?: [string, string]
   scope?: ChartScope
   embedded?: boolean
   onScopeChange?: (scope: ChartScope) => void
+  line1Label?: string
+  line2Label?: string
 }) {
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set())
   const [line1Stat, line2Stat] = statCols
   const activeScope: ChartScope = scope === "all" ? "all" : "session"
-  const line1Label = formatStatLabel(line1Stat)
-  const line2Label = formatStatLabel(line2Stat)
+  const line1Label = customLine1Label ?? formatStatLabel(line1Stat)
+  const line2Label = customLine2Label ?? formatStatLabel(line2Stat)
 
   const chartData: DataPoint[] = (() => {
+    if (points) {
+      return points.map((point) => ({
+        index: point.label,
+        time: point.time,
+        line1: point.line1,
+        line2: point.line2,
+      }))
+    }
+
     if (solves.length === 0) return []
 
     const times = solves.map((s) => {
@@ -153,7 +175,7 @@ export function TimeTrendChart({
     }))
   })()
 
-  if (solves.length === 0) {
+  if (chartData.length === 0) {
     if (embedded) {
       return (
         <div className="flex h-full min-h-0 flex-col">

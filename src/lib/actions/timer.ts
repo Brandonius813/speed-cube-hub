@@ -7,6 +7,40 @@ import { createTimerSessionSchema, addSolveSchema, updateSolveSchema, zodFirstEr
 import type { TimerSession, Solve } from "@/lib/types"
 import type { SessionGroupMeta } from "@/lib/timer/session-dividers"
 import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
+import {
+  refreshSolveSessionSummary,
+  refreshTimerEventAnalytics,
+} from "@/lib/actions/timer-analytics"
+
+const TIMER_SESSION_SELECT_COLUMNS = [
+  "id",
+  "user_id",
+  "event",
+  "mode",
+  "status",
+  "started_at",
+  "ended_at",
+  "session_id",
+  "solve_session_id",
+  "created_at",
+].join(", ")
+
+const SOLVE_SELECT_COLUMNS = [
+  "id",
+  "timer_session_id",
+  "user_id",
+  "solve_number",
+  "time_ms",
+  "penalty",
+  "scramble",
+  "event",
+  "comp_sim_group",
+  "notes",
+  "phases",
+  "solve_session_id",
+  "solved_at",
+  "created_at",
+].join(", ")
 
 export async function createTimerSession(
   event: string,
@@ -38,14 +72,14 @@ export async function createTimerSession(
   const { data, error } = await supabase
     .from("timer_sessions")
     .insert(insertData)
-    .select()
+    .select(TIMER_SESSION_SELECT_COLUMNS)
     .single()
 
   if (error) {
     return { data: null, error: error.message }
   }
 
-  return { data: data as TimerSession }
+  return { data: data as unknown as TimerSession }
 }
 
 /**
@@ -70,7 +104,7 @@ export async function getActiveTimerSession(
   // Build query — prefer solve_session_id, fall back to event
   let query = supabase
     .from("timer_sessions")
-    .select("*")
+    .select(TIMER_SESSION_SELECT_COLUMNS)
     .eq("user_id", user.id)
     .eq("status", "active")
     .order("started_at", { ascending: false })
@@ -88,25 +122,29 @@ export async function getActiveTimerSession(
     return { data: null, error: sessionError.message }
   }
 
-  if (!session) {
+  const typedSession = session as unknown as TimerSession | null
+
+  if (!typedSession) {
     return { data: null }
   }
 
   // Fetch solves for this timer session
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("*")
-    .eq("timer_session_id", session.id)
+    .select(SOLVE_SELECT_COLUMNS)
+    .eq("timer_session_id", typedSession.id)
     .order("solve_number", { ascending: true })
 
   if (solvesError) {
     return { data: null, error: solvesError.message }
   }
 
+  const typedSolves = (solves as unknown as Solve[] | null) ?? []
+
   return {
     data: {
-      ...(session as TimerSession),
-      solves: (solves as Solve[]) || [],
+      ...typedSession,
+      solves: typedSolves,
     },
   }
 }
@@ -167,16 +205,20 @@ export async function addSolve(
   const { data: solve, error } = await supabase
     .from("solves")
     .insert(insertData)
-    .select()
+    .select(SOLVE_SELECT_COLUMNS)
     .single()
 
   if (error) {
     return { data: null, error: error.message }
   }
 
-  await markOnboardingStepComplete("first_timer_solve")
+  await Promise.all([
+    refreshTimerEventAnalytics(parsed.data.event),
+    data.solve_session_id ? refreshSolveSessionSummary(data.solve_session_id) : Promise.resolve({}),
+    markOnboardingStepComplete("first_timer_solve"),
+  ])
 
-  return { data: solve as Solve }
+  return { data: solve as unknown as Solve }
 }
 
 export async function updateSolve(
@@ -198,6 +240,22 @@ export async function updateSolve(
     return { error: "Not authenticated" }
   }
 
+  const shouldRefreshAnalytics = parsed.data.penalty !== undefined
+  let targetSolve: Pick<Solve, "event" | "solve_session_id"> | null = null
+  if (shouldRefreshAnalytics) {
+    const { data: existingSolve, error: existingError } = await supabase
+      .from("solves")
+      .select("event, solve_session_id")
+      .eq("id", solveId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (existingError) {
+      return { error: existingError.message }
+    }
+    targetSolve = (existingSolve as Pick<Solve, "event" | "solve_session_id"> | null) ?? null
+  }
+
   const updateData: Record<string, unknown> = {}
   if (parsed.data.penalty !== undefined) updateData.penalty = parsed.data.penalty
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes
@@ -210,6 +268,15 @@ export async function updateSolve(
 
   if (error) {
     return { error: error.message }
+  }
+
+  if (shouldRefreshAnalytics && targetSolve) {
+    await Promise.all([
+      refreshTimerEventAnalytics(targetSolve.event),
+      targetSolve.solve_session_id
+        ? refreshSolveSessionSummary(targetSolve.solve_session_id)
+        : Promise.resolve({}),
+    ])
   }
 
   return {}
@@ -236,6 +303,17 @@ export async function deleteSolve(
     return { error: "Not authenticated" }
   }
 
+  const { data: existingSolve, error: existingError } = await supabase
+    .from("solves")
+    .select("event, solve_session_id")
+    .eq("id", solveId)
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (existingError) {
+    return { error: existingError.message }
+  }
+
   const { data: deletedRows, error } = await supabase
     .from("solves")
     .delete()
@@ -248,6 +326,15 @@ export async function deleteSolve(
   }
 
   if ((deletedRows?.length ?? 0) > 0) {
+    const targetSolve = (existingSolve as Pick<Solve, "event" | "solve_session_id"> | null) ?? null
+    if (targetSolve) {
+      await Promise.all([
+        refreshTimerEventAnalytics(targetSolve.event),
+        targetSolve.solve_session_id
+          ? refreshSolveSessionSummary(targetSolve.solve_session_id)
+          : Promise.resolve({}),
+      ])
+    }
     return { deleted: true }
   }
 
@@ -293,6 +380,8 @@ export async function deleteSolve(
     return { error: fallbackDeleteError.message }
   }
 
+  await refreshTimerEventAnalytics(fallback.event)
+
   return { deleted: true }
 }
 
@@ -314,6 +403,16 @@ export async function deleteSolves(
     return { error: "Not authenticated" }
   }
 
+  const { data: affectedSolves, error: affectedError } = await supabase
+    .from("solves")
+    .select("event, solve_session_id")
+    .in("id", solveIds)
+    .eq("user_id", user.id)
+
+  if (affectedError) {
+    return { error: affectedError.message }
+  }
+
   const { error } = await supabase
     .from("solves")
     .delete()
@@ -323,6 +422,18 @@ export async function deleteSolves(
   if (error) {
     return { error: error.message }
   }
+
+  const events = new Set<string>()
+  const solveSessionIds = new Set<string>()
+  for (const row of ((affectedSolves as Array<Pick<Solve, "event" | "solve_session_id">> | null) ?? [])) {
+    events.add(row.event)
+    if (row.solve_session_id) solveSessionIds.add(row.solve_session_id)
+  }
+
+  await Promise.all([
+    ...Array.from(events).map((event) => refreshTimerEventAnalytics(event)),
+    ...Array.from(solveSessionIds).map((solveSessionId) => refreshSolveSessionSummary(solveSessionId)),
+  ])
 
   return {}
 }
@@ -350,7 +461,7 @@ export async function getSolvesBySession(
 
   let query = supabase
     .from("solves")
-    .select("*")
+    .select(SOLVE_SELECT_COLUMNS)
     .eq("user_id", user.id)
     .gte("solved_at", activeFrom)
     .order("solved_at", { ascending: true })
@@ -367,7 +478,7 @@ export async function getSolvesBySession(
     return { solves: [], error: error.message }
   }
 
-  return { solves: (data as Solve[]) || [] }
+  return { solves: ((data as unknown as Solve[] | null) ?? []) }
 }
 
 export async function getSolvesByEvent(
@@ -387,7 +498,7 @@ export async function getSolvesByEvent(
 
   const { data, error } = await supabase
     .from("solves")
-    .select("*")
+    .select(SOLVE_SELECT_COLUMNS)
     .eq("user_id", user.id)
     .eq("event", event)
     .order("solved_at", { ascending: true })
@@ -397,7 +508,7 @@ export async function getSolvesByEvent(
     return { solves: [], error: error.message }
   }
 
-  return { solves: (data as Solve[]) || [] }
+  return { solves: ((data as unknown as Solve[] | null) ?? []) }
 }
 
 type SessionDividerRow = {
@@ -638,6 +749,11 @@ export async function bulkImportSolves(
     })
   }
 
+  await Promise.all([
+    refreshTimerEventAnalytics(event),
+    refreshSolveSessionSummary(solveSessionId),
+  ])
+
   return { imported: totalInserted }
 }
 
@@ -657,7 +773,7 @@ export async function finalizeTimerSession(
   // Fetch the timer session
   const { data: timerSession, error: tsError } = await supabase
     .from("timer_sessions")
-    .select("*")
+    .select(TIMER_SESSION_SELECT_COLUMNS)
     .eq("id", timerSessionId)
     .eq("user_id", user.id)
     .single()
@@ -666,15 +782,17 @@ export async function finalizeTimerSession(
     return { error: "Timer session not found" }
   }
 
+  const typedTimerSession = timerSession as unknown as TimerSession
+
   // Prevent double finalization (e.g., from a double-click)
-  if (timerSession.status === "completed") {
+  if (typedTimerSession.status === "completed") {
     return {}
   }
 
   // Fetch all solves
   const { data: solves, error: solvesError } = await supabase
     .from("solves")
-    .select("*")
+    .select(SOLVE_SELECT_COLUMNS)
     .eq("timer_session_id", timerSessionId)
     .order("solve_number", { ascending: true })
 
@@ -682,7 +800,9 @@ export async function finalizeTimerSession(
     return { error: solvesError.message }
   }
 
-  if (!solves || solves.length === 0) {
+  const typedSolves = ((solves as unknown as Solve[] | null) ?? [])
+
+  if (typedSolves.length === 0) {
     // No solves — just mark as completed without creating a session
     await supabase
       .from("timer_sessions")
@@ -693,7 +813,7 @@ export async function finalizeTimerSession(
   }
 
   // Compute aggregates
-  const nonDnfSolves = solves.filter(
+  const nonDnfSolves = typedSolves.filter(
     (s: Solve) => s.penalty !== "DNF"
   )
 
@@ -702,8 +822,8 @@ export async function finalizeTimerSession(
     return s.time_ms
   })
 
-  const numSolves = solves.length
-  const numDnf = solves.filter((s: Solve) => s.penalty === "DNF").length
+  const numSolves = typedSolves.length
+  const numDnf = typedSolves.filter((s: Solve) => s.penalty === "DNF").length
   const bestTimeMs =
     effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
   const avgTimeMs =
@@ -713,8 +833,8 @@ export async function finalizeTimerSession(
       : null
 
   // Duration: time from first solve to last solve
-  const firstSolveAt = new Date(solves[0].solved_at).getTime()
-  const lastSolveAt = new Date(solves[solves.length - 1].solved_at).getTime()
+  const firstSolveAt = new Date(typedSolves[0].solved_at).getTime()
+  const lastSolveAt = new Date(typedSolves[typedSolves.length - 1].solved_at).getTime()
   const durationMinutes = Math.max(
     1,
     Math.round((lastSolveAt - firstSolveAt) / 60000)
@@ -732,15 +852,15 @@ export async function finalizeTimerSession(
   const sessionDate = getTodayPacific()
 
   const practiceType =
-    timerSession.mode === "comp_sim" ? "Comp Sim" : "Solves"
+    typedTimerSession.mode === "comp_sim" ? "Comp Sim" : "Solves"
 
   // Check if the solve session is tracked — untracked sessions skip the sessions row
   let isTracked = true
-  if (timerSession.solve_session_id) {
+  if (typedTimerSession.solve_session_id) {
     const { data: solveSession } = await supabase
       .from("solve_sessions")
       .select("is_tracked")
-      .eq("id", timerSession.solve_session_id)
+      .eq("id", typedTimerSession.solve_session_id)
       .single()
 
     if (solveSession) {
@@ -755,7 +875,7 @@ export async function finalizeTimerSession(
     const sessionInsert: Record<string, unknown> = {
       user_id: user.id,
       session_date: sessionDate,
-      event: timerSession.event,
+      event: typedTimerSession.event,
       practice_type: practiceType,
       num_solves: numSolves,
       num_dnf: numDnf,
@@ -766,8 +886,8 @@ export async function finalizeTimerSession(
       feed_visible: true,
       title: `${numSolves} solve${numSolves !== 1 ? "s" : ""} — Timer Session`,
     }
-    if (timerSession.solve_session_id) {
-      sessionInsert.solve_session_id = timerSession.solve_session_id
+    if (typedTimerSession.solve_session_id) {
+      sessionInsert.solve_session_id = typedTimerSession.solve_session_id
     }
 
     const { data: session, error: sessionError } = await supabase

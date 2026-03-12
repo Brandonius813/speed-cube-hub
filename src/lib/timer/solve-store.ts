@@ -1,6 +1,8 @@
 import type { Penalty, TimerSolve } from "@/lib/timer/stats"
 
-const DB_NAME = "speed-cube-hub-timer"
+// v2 intentionally uses a fresh DB name so older full-history event caches do not
+// get loaded back into memory on timer open.
+const DB_NAME = "speed-cube-hub-timer-v2"
 const DB_VERSION = 1
 const STORE_NAME = "solves"
 const INDEX_SESSION_ORDER = "by_session_order"
