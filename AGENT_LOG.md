@@ -183,3 +183,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Root-caused the silence to browser autoplay gating: the real ambient loop was being started only after async scramble generation, outside the original click gesture. Added an explicit audio-primer path that runs on the Comp Sim preview/start buttons so browsers unlock media playback before the sim initialization completes.
 **Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/components/timer/comp-sim-settings-panel.tsx`, `AGENT_LOG.md`
 **Checks:** `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/components/timer/comp-sim-settings-panel.tsx` passed. `npm exec tsc -- --noEmit --pretty false` passed. `npm exec vitest run src/lib/timer/comp-sim.test.ts` passed.
+
+### 2026-03-12 08:21 AM EDT — Comp Sim Audio Preview/Live Handoff Fix
+
+**Task:** Stop the Comp Sim setup screen from killing live round audio when it unmounts
+**Status:** Root-caused the remaining fade-out bug to a shared teardown path: the settings panel unmount called `stopSoundscapePreview()`, and that helper still routed through `stopAllNoise()`, which shut down the live ambient loop as soon as the scramble screen replaced the setup screen. Split the audio runtime into explicit `preview` vs `live` playback ownership so preview cleanup only stops preview-owned playback, while live rounds remain active until cancel/exit/round-complete. Added focused mocked-audio Vitest coverage to lock the handoff behavior in place.
+**Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/lib/timer/comp-sim-audio.test.ts`, `AGENT_LOG.md`
+**Checks:** `npm exec vitest run src/lib/timer/comp-sim-audio.test.ts src/lib/timer/comp-sim.test.ts` passed. `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/lib/timer/comp-sim-audio.test.ts` passed. `npm exec tsc -- --noEmit --pretty false` passed.

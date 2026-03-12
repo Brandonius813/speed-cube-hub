@@ -8,6 +8,8 @@ type StartNoiseOptions = {
   randomReactionsEnabled: boolean
 }
 
+type PlaybackMode = "idle" | "preview" | "live"
+
 const SILENT_AUDIO_DATA_URI =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
 
@@ -222,6 +224,7 @@ let previewReactionTimeout: ReturnType<typeof setTimeout> | null = null
 let previewStopTimeout: ReturnType<typeof setTimeout> | null = null
 let currentNoiseOptions: StartNoiseOptions | null = null
 let audioUnlocked = false
+let playbackMode: PlaybackMode = "idle"
 
 function clearReactionLoop() {
   if (reactionTimeout) clearTimeout(reactionTimeout)
@@ -287,6 +290,24 @@ function stopActiveOneShots() {
   activeOneShots = new Set()
 }
 
+function stopAmbientAudio() {
+  if (ambientAudio) {
+    try {
+      ambientAudio.pause()
+      ambientAudio.currentTime = 0
+    } catch {}
+  }
+  ambientAudio = null
+}
+
+function clearPlaybackState() {
+  clearReactionLoop()
+  stopAmbientAudio()
+  stopActiveOneShots()
+  currentNoiseOptions = null
+  playbackMode = "idle"
+}
+
 function playClip(src: string, volume: number) {
   const audio = createAudio(src, volume)
   if (!audio) return
@@ -336,38 +357,53 @@ export function playJudgeCue(
   playReactionPreset(preset, currentNoiseOptions?.intensity ?? 50)
 }
 
-export function startNoise(options: StartNoiseOptions): void {
+function beginPlayback(options: StartNoiseOptions, mode: PlaybackMode): void {
   clearPreviewTimers()
-  stopAllNoise()
+  clearPlaybackState()
   currentNoiseOptions = options
+  playbackMode = mode
 
   if (options.scene === "off") return
 
   const scene = AMBIENT_SCENES[options.scene]
-  ambientAudio = createAudio(
+  const nextAmbientAudio = createAudio(
     scene.src,
     scene.gain * (0.35 + clamp(options.intensity / 100, 0, 1) * 0.85),
     true
   )
+  ambientAudio = nextAmbientAudio
 
-  if (!ambientAudio) return
+  if (!nextAmbientAudio) return
 
-  void ambientAudio.play().catch(() => {
-    ambientAudio = null
+  void nextAmbientAudio.play().catch(() => {
+    if (ambientAudio === nextAmbientAudio) {
+      ambientAudio = null
+    }
+    if (playbackMode === mode) {
+      clearPlaybackState()
+    }
   })
 
-  scheduleReactionLoop()
+  if (mode === "live") {
+    scheduleReactionLoop()
+  }
+}
+
+export function startNoise(options: StartNoiseOptions): void {
+  beginPlayback(options, "live")
 }
 
 export function previewSoundscape(
   options: StartNoiseOptions,
   previewDurationMs = 4200
 ): void {
-  clearPreviewTimers()
-  startNoise({
-    ...options,
-    randomReactionsEnabled: false,
-  })
+  beginPlayback(
+    {
+      ...options,
+      randomReactionsEnabled: false,
+    },
+    "preview"
+  )
 
   if (options.scene !== "off" && options.randomReactionsEnabled) {
     previewReactionTimeout = setTimeout(() => {
@@ -377,25 +413,20 @@ export function previewSoundscape(
   }
 
   previewStopTimeout = setTimeout(() => {
-    stopAllNoise()
+    if (playbackMode === "preview") {
+      clearPlaybackState()
+    }
   }, previewDurationMs)
 }
 
 export function stopSoundscapePreview(): void {
   clearPreviewTimers()
-  stopAllNoise()
+  if (playbackMode === "preview") {
+    clearPlaybackState()
+  }
 }
 
 export function stopAllNoise(): void {
   clearPreviewTimers()
-  clearReactionLoop()
-  if (ambientAudio) {
-    try {
-      ambientAudio.pause()
-      ambientAudio.currentTime = 0
-    } catch {}
-  }
-  ambientAudio = null
-  stopActiveOneShots()
-  currentNoiseOptions = null
+  clearPlaybackState()
 }
