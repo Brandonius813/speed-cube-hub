@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Mic2, Play, Square, TimerReset, Volume2 } from "lucide-react"
-import { previewSoundscape, stopSoundscapePreview } from "@/lib/timer/comp-sim-audio"
+import {
+  previewSoundscape,
+  primeCompSimAudioPlayback,
+  stopSoundscapePreview,
+} from "@/lib/timer/comp-sim-audio"
 import { cn } from "@/lib/utils"
 import {
   COMP_SIM_SCENE_LABELS,
@@ -138,6 +142,8 @@ export function CompSimSettingsPanel({
   }
 
   function handlePreview(scene: CompSimScene) {
+    primeCompSimAudioPlayback()
+
     if (scene === "off") {
       stopSoundscapePreview()
       resetPreviewState()
@@ -428,7 +434,10 @@ export function CompSimSettingsPanel({
 
           {onStart && (
             <button
-              onClick={onStart}
+              onClick={() => {
+                primeCompSimAudioPlayback()
+                onStart()
+              }}
               className="min-h-14 w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 px-4 text-base font-bold text-slate-950 transition-transform hover:scale-[1.01]"
             >
               {startLabel}
