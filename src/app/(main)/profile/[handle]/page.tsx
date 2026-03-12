@@ -10,6 +10,7 @@ import { getFollowCounts, isFollowing } from "@/lib/actions/follows"
 import { getUserSorKinchStats } from "@/lib/actions/sor-kinch"
 import { getPBsByUserId } from "@/lib/actions/personal-bests"
 import { createClient } from "@/lib/supabase/server"
+import { ADSENSE_SLOT_IDS } from "@/lib/ads"
 import {
   parseTabParam,
   profileTabNeedsOfficialData,
@@ -82,7 +83,7 @@ export default async function PublicProfilePage({
           isAdmin={user?.id === process.env.ADMIN_USER_ID}
           sorKinchStats={sorKinchStats}
           totalPracticeMinutes={totalPracticeMinutes}
-          profileAdSlot={process.env.NEXT_PUBLIC_ADSENSE_PROFILE_SIDEBAR_SLOT ?? null}
+          profileAdSlot={ADSENSE_SLOT_IDS.profileSidebar}
         />
       </Suspense>
     </main>

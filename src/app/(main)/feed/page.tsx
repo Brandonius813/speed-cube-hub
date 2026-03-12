@@ -4,6 +4,7 @@ import { ScrollToTopOnMount } from "@/components/shared/scroll-to-top-on-mount"
 import { getUserClubs } from "@/lib/actions/clubs"
 import { getFeed } from "@/lib/actions/feed"
 import { getFollowing } from "@/lib/actions/follows"
+import { ADSENSE_SLOT_IDS } from "@/lib/ads"
 
 export default async function FeedPage() {
   const { items, highlights, nextCursor, currentUserId } = await getFeed({ mode: "following" })
@@ -22,7 +23,7 @@ export default async function FeedPage() {
             initialCursor={nextCursor}
             currentUserId={currentUserId ?? null}
             showAds={currentUserId !== process.env.ADMIN_USER_ID}
-            feedInlineSlot={process.env.NEXT_PUBLIC_ADSENSE_FEED_INLINE_SLOT ?? null}
+            feedInlineSlot={ADSENSE_SLOT_IDS.feedInline}
           />
         </div>
 

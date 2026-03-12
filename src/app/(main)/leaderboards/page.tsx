@@ -7,6 +7,7 @@ import {
   getWcaCountries,
 } from "@/lib/actions/sor-kinch"
 import type { WcaLeaderboardPage } from "@/lib/actions/sor-kinch"
+import { ADSENSE_SLOT_IDS } from "@/lib/ads"
 
 export const revalidate = 300
 
@@ -18,8 +19,7 @@ export default async function LeaderboardsPage() {
     getSorKinchLeaderboard("kinch", "single").catch((): WcaLeaderboardPage => ({ entries: [], totalCount: 0 })),
     getLatestWcaSyncTimestamp().catch(() => null),
   ])
-  const leaderboardsAdSlot =
-    process.env.NEXT_PUBLIC_ADSENSE_LEADERBOARDS_SIDEBAR_SLOT ?? null
+  const leaderboardsAdSlot = ADSENSE_SLOT_IDS.leaderboardsSidebar
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

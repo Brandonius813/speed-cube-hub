@@ -183,6 +183,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** `src/components/ads/ad-slot.tsx`, `public/ads.txt`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/components/feed/feed-content.tsx`, `src/app/(main)/leaderboards/page.tsx`, `src/app/(main)/profile/[handle]/page.tsx`, `src/components/profile/public-profile-content.tsx`, `src/app/(main)/privacy/page.tsx`, `.env.local.example`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/eslint src/components/ads/ad-slot.tsx src/app/layout.tsx src/app/page.tsx src/app/(main)/feed/page.tsx src/components/feed/feed-content.tsx src/app/(main)/leaderboards/page.tsx src/app/(main)/profile/[handle]/page.tsx src/components/profile/public-profile-content.tsx src/app/(main)/privacy/page.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed. `npm run build -- --webpack` passed. Note: the default Turbopack build still fails in this worktree because the shared `node_modules` symlink points outside the worktree root.
 
+### 2026-03-12 08:56 AM EDT — Wire Real AdSense Slot IDs
+
+**Task:** Replace placeholder/manual-env-only ad slots with the real AdSense unit IDs
+**Status:** Added a shared `src/lib/ads.ts` config with the real slot IDs provided from AdSense and switched the homepage, feed, leaderboards sidebar, and public profile placements to use those defaults directly. The env vars still work as optional overrides, but these four placements no longer depend on extra Vercel configuration just to render the correct units.
+**Files touched:** `src/lib/ads.ts`, `src/app/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/app/(main)/leaderboards/page.tsx`, `src/app/(main)/profile/[handle]/page.tsx`, `.env.local.example`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/lib/ads.ts src/app/page.tsx src/app/(main)/feed/page.tsx src/app/(main)/leaderboards/page.tsx src/app/(main)/profile/[handle]/page.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed. `npm run build -- --webpack` passed.
+
 ### 2026-03-12 08:38 AM EDT — Comp Sim False DNF Fix
 
 **Task:** Stop Comp Sim from issuing an immediate DNF when releasing into the solve

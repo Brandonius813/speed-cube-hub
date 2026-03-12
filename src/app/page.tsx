@@ -5,13 +5,14 @@ import { SocialProof } from "@/components/landing/social-proof"
 import { AdSlot } from "@/components/ads/ad-slot"
 import { Navbar } from "@/components/shared/navbar"
 import { getGlobalStats } from "@/lib/actions/stats"
+import { ADSENSE_SLOT_IDS } from "@/lib/ads"
 
 // Regenerate every 5 minutes — stats don't need to be real-time
 export const revalidate = 300
 
 export default async function Home() {
   const stats = await getGlobalStats()
-  const homeAdSlot = process.env.NEXT_PUBLIC_ADSENSE_HOME_INLINE_SLOT ?? null
+  const homeAdSlot = ADSENSE_SLOT_IDS.homeInline
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
