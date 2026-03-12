@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Compass, Shield, Sparkles, Users } from "lucide-react"
+import { AdSlot } from "@/components/ads/ad-slot"
 import { ChallengeCard } from "@/components/challenges/challenge-card"
 import { FeedComposer } from "@/components/feed/feed-composer"
 import { FeedEntryCard } from "@/components/feed/feed-entry-card"
@@ -26,11 +27,15 @@ export function FeedContent({
   initialHighlights,
   initialCursor,
   currentUserId,
+  showAds,
+  feedInlineSlot,
 }: {
   initialItems: FeedEntry[]
   initialHighlights: Challenge[]
   initialCursor: string | null
   currentUserId: string | null
+  showAds: boolean
+  feedInlineSlot: string | null
 }) {
   const [items, setItems] = useState(initialItems)
   const [highlights, setHighlights] = useState(initialHighlights)
@@ -42,6 +47,10 @@ export function FeedContent({
   const searchParams = useSearchParams()
   const activeTour = parseOnboardingTour(searchParams.get("tour"))
   const feedTour = activeTour === "feed" ? activeTour : null
+
+  function shouldRenderFeedAd(index: number) {
+    return showAds && !!feedInlineSlot && index >= 2 && (index - 2) % 8 === 0
+  }
 
   function clearTour() {
     const params = new URLSearchParams(searchParams.toString())
@@ -239,12 +248,20 @@ export function FeedContent({
         ) : null}
 
         {items.map((item, index) => (
-          <div
-            key={`${item.entry_type}-${item.id}`}
-            data-onboarding-target={index === 0 ? "feed-highlight" : undefined}
-          >
-            <FeedEntryCard entry={item} currentUserId={currentUserId} />
-          </div>
+          <Fragment key={`${item.entry_type}-${item.id}`}>
+            <div
+              data-onboarding-target={index === 0 ? "feed-highlight" : undefined}
+            >
+              <FeedEntryCard entry={item} currentUserId={currentUserId} />
+            </div>
+            {shouldRenderFeedAd(index) ? (
+              <AdSlot
+                slotId={feedInlineSlot}
+                className="mt-1"
+                minHeight={250}
+              />
+            ) : null}
+          </Fragment>
         ))}
 
         {cursor ? (

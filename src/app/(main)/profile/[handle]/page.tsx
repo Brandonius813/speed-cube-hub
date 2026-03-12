@@ -82,6 +82,7 @@ export default async function PublicProfilePage({
           isAdmin={user?.id === process.env.ADMIN_USER_ID}
           sorKinchStats={sorKinchStats}
           totalPracticeMinutes={totalPracticeMinutes}
+          profileAdSlot={process.env.NEXT_PUBLIC_ADSENSE_PROFILE_SIDEBAR_SLOT ?? null}
         />
       </Suspense>
     </main>

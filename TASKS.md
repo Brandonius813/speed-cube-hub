@@ -183,6 +183,9 @@
 ### Phase 31: Comp Sim Upgrade (T161)
 - ✅ T161: Comp Sim round limits/cutoffs, real audio pack + previews, true result tracking, and Stats-tab Comp Sim sub-view
 
+### Phase 32: Monetization (T163)
+- ✅ T163: AdSense manual rollout infrastructure + homepage/feed/leaderboards/profile placements
+
 ---
 
 ## Open / Remaining Items

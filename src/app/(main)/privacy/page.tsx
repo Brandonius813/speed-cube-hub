@@ -10,7 +10,7 @@ export default function PrivacyPolicyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="mb-8 text-3xl font-bold">Privacy Policy</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Last updated: February 24, 2026
+        Last updated: March 12, 2026
       </p>
 
       <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
@@ -83,14 +83,36 @@ export default function PrivacyPolicyPage() {
           </h2>
           <p>
             We use cookies to maintain your authentication session and remember
-            your preferences. These are essential for the service to function and
-            are not used for advertising or tracking across other websites.
+            your preferences. We may also allow advertising partners, including
+            Google AdSense, to use cookies or similar technologies to measure ad
+            performance, limit repeated ads, and, where permitted, personalize ads.
+            Essential cookies are required for the service to function, while
+            advertising choices are handled through the consent tools we show in
+            regions where they are required.
           </p>
         </section>
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-foreground">
-            6. Your Rights
+            6. Advertising and Privacy Choices
+          </h2>
+          <p>
+            We use Google AdSense to display ads on parts of the Service. Google
+            may collect device, browser, and ad interaction data to serve and
+            measure ads according to its policies. Where required by law, we ask
+            for consent before using personalized advertising features.
+          </p>
+          <p className="mt-2">
+            You may be able to manage advertising and privacy choices through our
+            consent message, your browser settings, or Google&apos;s ad settings.
+            Some privacy choices may reduce ad personalization but will not remove
+            all ads from the Service.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
+            7. Your Rights
           </h2>
           <p>You may at any time:</p>
           <ul className="ml-4 mt-1 list-disc space-y-1">
@@ -105,7 +127,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-foreground">
-            7. Children&apos;s Privacy
+            8. Children&apos;s Privacy
           </h2>
           <p>
             Speed Cube Hub is not directed at children under the age of 13. We
@@ -117,7 +139,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-foreground">
-            8. Changes to This Policy
+            9. Changes to This Policy
           </h2>
           <p>
             We may update this Privacy Policy from time to time. Any changes
@@ -129,7 +151,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-foreground">
-            9. Contact Us
+            10. Contact Us
           </h2>
           <p>
             If you have any questions about this Privacy Policy, please reach

@@ -21,6 +21,8 @@ export default async function FeedPage() {
             initialHighlights={highlights}
             initialCursor={nextCursor}
             currentUserId={currentUserId ?? null}
+            showAds={currentUserId !== process.env.ADMIN_USER_ID}
+            feedInlineSlot={process.env.NEXT_PUBLIC_ADSENSE_FEED_INLINE_SLOT ?? null}
           />
         </div>
 
