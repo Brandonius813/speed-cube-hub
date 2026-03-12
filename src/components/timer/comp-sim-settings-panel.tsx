@@ -415,18 +415,10 @@ export function CompSimSettingsPanel({
             <div className="space-y-3">
               <ToggleRow
                 label="Random Crowd Reactions"
-                description="Uses 20 rotating cheers, applause bursts, and shout cues."
+                description="Uses rotating cheers, applause bursts, and shout cues."
                 enabled={config.randomReactionsEnabled}
                 onToggle={() =>
                   update({ randomReactionsEnabled: !config.randomReactionsEnabled })
-                }
-              />
-              <ToggleRow
-                label="Judge / MC Calls"
-                description="Phase-boundary calls only, never during active timing."
-                enabled={config.judgeCuesEnabled}
-                onToggle={() =>
-                  update({ judgeCuesEnabled: !config.judgeCuesEnabled })
                 }
               />
             </div>

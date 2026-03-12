@@ -1,6 +1,6 @@
 import type { CompSimScene } from "@/lib/timer/comp-sim-round"
 
-type ReactionCategory = "applause" | "cheer" | "burst" | "shout" | "judge"
+type ReactionCategory = "applause" | "cheer" | "burst" | "shout"
 
 type StartNoiseOptions = {
   scene: CompSimScene
@@ -179,47 +179,9 @@ export const COMP_SIM_REACTION_LIBRARY: ReactionPreset[] = [
     src: "/audio/comp-sim/reactions/gasp-male-astonished.mp3",
     gain: 0.34,
   },
-  {
-    id: "judge_female_mic_countdown",
-    label: "Female mic countdown",
-    category: "judge",
-    src: "/audio/comp-sim/judge/female-mic-countdown.mp3",
-    gain: 0.38,
-  },
-  {
-    id: "judge_sport_start",
-    label: "Sport start bleeps",
-    category: "judge",
-    src: "/audio/comp-sim/judge/sport-start-bleeps.mp3",
-    gain: 0.32,
-  },
-  {
-    id: "judge_male_deep_countdown",
-    label: "Male deep countdown",
-    category: "judge",
-    src: "/audio/comp-sim/judge/male-deep-countdown.mp3",
-    gain: 0.38,
-  },
 ]
 
-const RANDOM_REACTIONS = COMP_SIM_REACTION_LIBRARY.filter(
-  (reaction) => reaction.category !== "judge"
-)
-
-const JUDGE_CUE_PRESETS = {
-  covered: COMP_SIM_REACTION_LIBRARY.find(
-    (reaction) => reaction.id === "judge_female_mic_countdown"
-  )!,
-  inspect: COMP_SIM_REACTION_LIBRARY.find(
-    (reaction) => reaction.id === "judge_male_deep_countdown"
-  )!,
-  time_to_solve: COMP_SIM_REACTION_LIBRARY.find(
-    (reaction) => reaction.id === "judge_sport_start"
-  )!,
-  next_attempt: COMP_SIM_REACTION_LIBRARY.find(
-    (reaction) => reaction.id === "judge_male_deep_countdown"
-  )!,
-}
+const RANDOM_REACTIONS = COMP_SIM_REACTION_LIBRARY
 
 let ambientAudio: HTMLAudioElement | null = null
 let activeOneShots = new Set<HTMLAudioElement>()
@@ -352,23 +314,6 @@ function scheduleReactionLoop() {
     })
     scheduleReactionLoop()
   }, nextDelay)
-}
-
-export function playJudgeCue(
-  kind: "ready" | "covered" | "inspect" | "time_to_solve" | "next_attempt"
-): void {
-  const preset =
-    kind === "ready"
-      ? JUDGE_CUE_PRESETS.covered
-      : kind === "covered"
-        ? JUDGE_CUE_PRESETS.covered
-        : kind === "inspect"
-          ? JUDGE_CUE_PRESETS.inspect
-          : kind === "time_to_solve"
-            ? JUDGE_CUE_PRESETS.time_to_solve
-            : JUDGE_CUE_PRESETS.next_attempt
-
-  playReactionPreset(preset, currentNoiseOptions?.intensity ?? 50)
 }
 
 function beginPlayback(options: StartNoiseOptions, mode: PlaybackMode): void {
