@@ -1,7 +1,7 @@
 "use client"
 
-import Link from "next/link"
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
 import { StatsCards } from "@/components/dashboard/stats-cards"
@@ -12,8 +12,18 @@ import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
 import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
-import { computeSessionStats } from "@/lib/utils"
+import { TabCompSim } from "@/components/profile/tab-comp-sim"
 import type { Session } from "@/lib/types"
+import { computeSessionStats } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+
+type StatsSubview = "general" | "comp-sim"
+
+function parseStatsSubviewParam(raw: string | null, fallbackTab: string | null): StatsSubview {
+  if (raw === "comp-sim") return "comp-sim"
+  if (fallbackTab === "comp-sim") return "comp-sim"
+  return "general"
+}
 
 export function TabStats({
   sessions,
@@ -22,7 +32,91 @@ export function TabStats({
   sessions: Session[]
   isOwner: boolean
 }) {
-  // Filter state
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const initialSubview = parseStatsSubviewParam(
+    searchParams.get("stats_view"),
+    searchParams.get("tab")
+  )
+  const [activeSubview, setActiveSubview] = useState<StatsSubview>(initialSubview)
+
+  useEffect(() => {
+    setActiveSubview(
+      parseStatsSubviewParam(searchParams.get("stats_view"), searchParams.get("tab"))
+    )
+  }, [searchParams])
+
+  const compSimSessionCount = useMemo(
+    () => sessions.filter((session) => session.practice_type === "Comp Sim").length,
+    [sessions]
+  )
+
+  function setSubview(next: StatsSubview) {
+    setActiveSubview(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", "stats")
+    if (next === "comp-sim") {
+      params.set("stats_view", "comp-sim")
+    } else {
+      params.delete("stats_view")
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex w-full rounded-2xl border border-border/60 bg-card/80 p-1 sm:w-auto">
+          <button
+            onClick={() => setSubview("general")}
+            className={cn(
+              "min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold transition-colors sm:flex-none",
+              activeSubview === "general"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            General Stats
+          </button>
+          <button
+            onClick={() => setSubview("comp-sim")}
+            className={cn(
+              "min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold transition-colors sm:flex-none",
+              activeSubview === "comp-sim"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Comp Sim Results
+          </button>
+        </div>
+
+        {activeSubview === "comp-sim" && (
+          <p className="text-sm text-muted-foreground">
+            {compSimSessionCount} saved round{compSimSessionCount !== 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
+
+      {activeSubview === "general" ? (
+        <GeneralStatsContent sessions={sessions} isOwner={isOwner} onOpenCompSim={() => setSubview("comp-sim")} />
+      ) : (
+        <TabCompSim sessions={sessions} />
+      )}
+    </div>
+  )
+}
+
+function GeneralStatsContent({
+  sessions,
+  isOwner,
+  onOpenCompSim,
+}: {
+  sessions: Session[]
+  isOwner: boolean
+  onOpenCompSim: () => void
+}) {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
   const [selectedPracticeTypes, setSelectedPracticeTypes] = useState<string[]>([])
   const [selectedRange, setSelectedRange] = useState<DateRange>("all")
@@ -34,7 +128,6 @@ export function TabStats({
     return Array.from(types).sort()
   }, [sessions])
 
-  // Derive practiced events for solve analytics (only for owner)
   const practicedEvents = useMemo(() => {
     const events = new Set<string>()
     for (const s of sessions) events.add(s.event)
@@ -102,7 +195,7 @@ export function TabStats({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <DashboardFilters
         selectedEvents={selectedEvents}
         selectedRange={selectedRange}
@@ -116,13 +209,11 @@ export function TabStats({
         onClearFilters={handleClearFilters}
       />
 
-      {/* Stats Cards (session count + total practice time) */}
       <StatsCards
         stats={{ ...filteredStats, sessionsThisWeek: filteredSessions.length }}
         selectedRange={selectedRange}
       />
 
-      {/* Charts grid: Time by Event + Event Pie */}
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
         <TimeByEventChart sessions={filteredSessions} />
         <EventPieChart sessions={filteredSessions} />
@@ -132,13 +223,12 @@ export function TabStats({
       <DailySolvesChart sessions={filteredSessions} />
       <EventBreakdownTable sessions={filteredSessions} />
 
-      {/* Solve Analytics (timer solve-level charts) — owner only */}
       {isOwner && <SolveAnalytics practicedEvents={practicedEvents} />}
 
       {compSimSessions.length > 0 && (
-        <Link
-          href="?tab=comp-sim"
-          className="block rounded-3xl border border-cyan-400/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(217,70,239,0.14))] p-5 transition-transform hover:scale-[1.01]"
+        <button
+          onClick={onOpenCompSim}
+          className="block w-full rounded-3xl border border-cyan-400/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(217,70,239,0.14))] p-5 text-left transition-transform hover:scale-[1.01]"
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
             Comp Sim Preview
@@ -147,12 +237,12 @@ export function TabStats({
             {compSimSessions.length} dedicated round{compSimSessions.length !== 1 ? "s" : ""} saved
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Open the Comp Sim tab for separate round history, result trends, cutoff stats, and comp-vs-practice comparison.
+            Switch to the Comp Sim Results sub-tab for separate round history, trends, and comp-vs-practice comparison.
           </p>
-        </Link>
+        </button>
       )}
 
       <SessionLog sessions={filteredSessions} readOnly={!isOwner} />
-    </div>
+    </>
   )
 }

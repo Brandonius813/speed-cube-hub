@@ -4,12 +4,11 @@ import { useRef, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-export type ProfileTab = "pbs" | "stats" | "comp-sim" | "overview" | "cubes" | "official"
+export type ProfileTab = "pbs" | "stats" | "overview" | "cubes" | "official"
 
 const TABS: { id: ProfileTab; label: string }[] = [
   { id: "pbs", label: "PBs" },
   { id: "stats", label: "Stats" },
-  { id: "comp-sim", label: "Comp Sim" },
   { id: "overview", label: "Overview" },
   { id: "cubes", label: "Main Puzzles" },
   { id: "official", label: "Official Results" },
@@ -95,7 +94,8 @@ export function ProfileTabs({
 
 /** Parse the ?tab= param from the URL. Defaults to "overview" if missing/invalid. */
 export function parseTabParam(tab: string | null | undefined): ProfileTab {
-  const valid: ProfileTab[] = ["pbs", "stats", "comp-sim", "overview", "cubes", "official"]
+  if (tab === "comp-sim") return "stats"
+  const valid: ProfileTab[] = ["pbs", "stats", "overview", "cubes", "official"]
   if (tab && valid.includes(tab as ProfileTab)) return tab as ProfileTab
   return "overview"
 }
