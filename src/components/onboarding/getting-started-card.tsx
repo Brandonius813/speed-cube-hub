@@ -78,7 +78,15 @@ export function GettingStartedCard({
                     {done ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
                     ) : (
-                      <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() => handleManualComplete(item.step)}
+                        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+                        aria-label={`Mark ${item.label} done`}
+                      >
+                        <Circle className="h-4 w-4" />
+                      </button>
                     )}
                     <p className="font-medium text-foreground">{item.label}</p>
                   </div>
@@ -97,16 +105,6 @@ export function GettingStartedCard({
                     >
                       <Link href={item.href}>{item.cta}</Link>
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={isSaving}
-                      onClick={() => handleManualComplete(item.step)}
-                      className="min-h-11 border-border/60"
-                    >
-                      {isSaving ? "Saving..." : "Mark Done"}
-                    </Button>
                   </div>
                 )}
               </div>
@@ -120,7 +118,7 @@ export function GettingStartedCard({
               ? "Replay the tour without resetting your progress."
               : onboarding.dismissed_at
               ? "Auto-launch is off. You can resume the tour any time from here."
-              : "You can skip tours when they open, and if you already did something elsewhere you can mark it done here."}
+              : "You can skip tours when they open, and if you already did something elsewhere you can tap the checklist circle to mark it done."}
           </p>
 
           <Button
