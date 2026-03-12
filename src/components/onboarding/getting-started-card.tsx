@@ -1,14 +1,17 @@
 "use client"
 
+import { useOptimistic, useState, useTransition } from "react"
 import Link from "next/link"
 import { CheckCircle2, Circle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 import {
   getOnboardingCompletedCount,
   hasCompletedOnboarding,
   isOnboardingStepComplete,
   ONBOARDING_CHECKLIST,
+  type OnboardingStepId,
 } from "@/lib/onboarding"
 import type { UserOnboarding } from "@/lib/types"
 
@@ -19,8 +22,25 @@ export function GettingStartedCard({
   onboarding: UserOnboarding
   onReplay: () => void | Promise<void>
 }) {
-  const completedCount = getOnboardingCompletedCount(onboarding)
-  const completed = hasCompletedOnboarding(onboarding)
+  const [isPending, startTransition] = useTransition()
+  const [pendingStep, setPendingStep] = useState<OnboardingStepId | null>(null)
+  const [optimisticOnboarding, setOptimisticOnboarding] = useOptimistic(
+    onboarding,
+    (_, nextOnboarding: UserOnboarding) => nextOnboarding
+  )
+  const completedCount = getOnboardingCompletedCount(optimisticOnboarding)
+  const completed = hasCompletedOnboarding(optimisticOnboarding)
+
+  function handleManualComplete(step: OnboardingStepId) {
+    setPendingStep(step)
+    startTransition(async () => {
+      const result = await markOnboardingStepComplete(step)
+      if (result.success && result.onboarding) {
+        setOptimisticOnboarding(result.onboarding)
+      }
+      setPendingStep(null)
+    })
+  }
 
   return (
     <Card className={completed ? "border-primary/40 bg-primary/5" : "border-border/50 bg-card"}>
@@ -45,7 +65,8 @@ export function GettingStartedCard({
       <CardContent className="space-y-4">
         <div className="space-y-3">
           {ONBOARDING_CHECKLIST.map((item) => {
-            const done = isOnboardingStepComplete(onboarding, item.step)
+            const done = isOnboardingStepComplete(optimisticOnboarding, item.step)
+            const isSaving = isPending && pendingStep === item.step
 
             return (
               <div
@@ -67,13 +88,26 @@ export function GettingStartedCard({
                 {done ? (
                   <span className="text-sm font-medium text-green-400">Done</span>
                 ) : (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="min-h-11 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Link href={item.href}>{item.cta}</Link>
-                  </Button>
+                  <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                    <Button
+                      asChild
+                      size="sm"
+                      disabled={isSaving}
+                      className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Link href={item.href}>{item.cta}</Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isSaving}
+                      onClick={() => handleManualComplete(item.step)}
+                      className="min-h-11 border-border/60"
+                    >
+                      {isSaving ? "Saving..." : "Mark Done"}
+                    </Button>
+                  </div>
                 )}
               </div>
             )
@@ -86,7 +120,7 @@ export function GettingStartedCard({
               ? "Replay the tour without resetting your progress."
               : onboarding.dismissed_at
               ? "Auto-launch is off. You can resume the tour any time from here."
-              : "You can skip tours when they open, and this checklist will stay here."}
+              : "You can skip tours when they open, and if you already did something elsewhere you can mark it done here."}
           </p>
 
           <Button
