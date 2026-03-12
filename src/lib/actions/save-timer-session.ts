@@ -4,6 +4,7 @@ import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
+import type { CompSimEndedReason, CompSimFormat, CompSimScene } from "@/lib/timer/comp-sim-round"
 
 export async function saveTimerSession(data: {
   event: string
@@ -22,7 +23,18 @@ export async function saveTimerSession(data: {
   notes: string | null
   feed_visible: boolean
   session_start_ms: number // timestamp when session started (Date.now())
-}): Promise<{ error?: string }> {
+  comp_sim?: {
+    format: CompSimFormat
+    result_seconds: number | null
+    scene: CompSimScene
+    intensity: number
+    time_limit_seconds: number | null
+    cutoff_attempt: 1 | 2 | null
+    cutoff_seconds: number | null
+    ended_reason: CompSimEndedReason
+    cutoff_met: boolean | null
+  } | null
+}): Promise<{ error?: string; sessionId?: string }> {
   if (data.solves.length === 0) {
     return { error: "No solves to save." }
   }
@@ -125,6 +137,15 @@ export async function saveTimerSession(data: {
       feed_visible: data.feed_visible,
       timer_session_id: timerSession.id,
       solve_session_id: solveSession.id,
+      comp_sim_format: data.comp_sim?.format ?? null,
+      comp_sim_result_seconds: data.comp_sim?.result_seconds ?? null,
+      comp_sim_scene: data.comp_sim?.scene ?? null,
+      comp_sim_intensity: data.comp_sim?.intensity ?? null,
+      comp_sim_time_limit_seconds: data.comp_sim?.time_limit_seconds ?? null,
+      comp_sim_cutoff_attempt: data.comp_sim?.cutoff_attempt ?? null,
+      comp_sim_cutoff_seconds: data.comp_sim?.cutoff_seconds ?? null,
+      comp_sim_ended_reason: data.comp_sim?.ended_reason ?? null,
+      comp_sim_cutoff_met: data.comp_sim?.cutoff_met ?? null,
     })
     .select("id")
     .single()
@@ -141,5 +162,5 @@ export async function saveTimerSession(data: {
       .eq("id", timerSession.id)
   }
 
-  return {}
+  return { sessionId: session?.id }
 }

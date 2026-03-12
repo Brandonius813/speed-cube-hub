@@ -1,3 +1,9 @@
+import type {
+  CompSimEndedReason,
+  CompSimFormat,
+  CompSimScene,
+} from "@/lib/timer/comp-sim-round";
+
 export type ProfileCube = {
   name: string;
   setup: string;
@@ -58,6 +64,15 @@ export type Session = {
   feed_visible?: boolean;
   timer_session_id?: string | null;
   solve_session_id?: string | null;
+  comp_sim_format?: CompSimFormat | null;
+  comp_sim_result_seconds?: number | null;
+  comp_sim_scene?: CompSimScene | null;
+  comp_sim_intensity?: number | null;
+  comp_sim_time_limit_seconds?: number | null;
+  comp_sim_cutoff_attempt?: 1 | 2 | null;
+  comp_sim_cutoff_seconds?: number | null;
+  comp_sim_ended_reason?: CompSimEndedReason | null;
+  comp_sim_cutoff_met?: boolean | null;
   created_at: string;
 };
 

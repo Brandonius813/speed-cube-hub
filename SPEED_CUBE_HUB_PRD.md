@@ -163,18 +163,19 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Fix dashboard — deduplicate session fetches + add limits (T50)
 - [ ] Replace select("*") with explicit column lists (T51) — **Reverted 3x.** Requires a live Supabase DB schema audit first (`SELECT column_name FROM information_schema.columns WHERE table_name = '...'`) because many columns were added via SQL editor and don't match the TypeScript types. Do not re-attempt without verifying every column name against the live database.
 
-### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
+### Profile Rework — 6-Tab Layout with Sidebar (Phase 11 + Comp Sim Expansion)
 
-Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
+Rework the profile page from a flat vertical stack into a swipeable tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
 
 - [x] Schema: `main_events text[]` (up to 3 main events, replaces single `main_event`)
 - [x] Server action: `getPBsByUserId` (public PB fetch for any user)
 - [x] SessionLog `readOnly` prop (for public profile Stats tab)
 - [x] Profile sidebar component (Skool-style card: avatar, name, main events, bio, meta, stats, follow, social links)
 - [x] Profile tabs component (tab bar + swipe detection + URL integration)
-- [x] 5 tab content components:
+- [x] 6 tab content components:
   - **PBs** — read-only PB grid for visitors, full CRUD for owner, PB progression chart
   - **Stats** — practice heatmap, streak, charts, session log
+  - **Comp Sim** — dedicated round history, KPI cards, result trend, event/format/outcome filters, and comp-vs-practice comparison
   - **Overview** (default) — profile header (mobile), stat cards, practice streak, recent activity
   - **Cubes** — main cubes grid (existing component)
   - **Official** — WCA results (lazy-loaded), allrounding, upcoming competitions
@@ -202,7 +203,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
 - [x] Running averages: Ao5, Ao12, Ao50, Ao100, BPA, WPA, best single, best Ao5, best Ao12, session mean
 - [x] WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
-- [x] Competition simulation mode: solves grouped in Ao5 sets (trimmed mean)
+- [x] Competition simulation mode: dedicated hero launch panel on `/timer`, `Single`/`Mo3`/`Ao5` round formats, cumulative time limits, cutoff after solve 1 or 2, crowd-scene mixer (5 ambiences + 20 reaction variants), richer live event shell, and dedicated Comp Sim profile tracking separate from normal sessions
 - [x] Typing input mode (stackmat-style digit entry)
 - [x] Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
 - [x] Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useMemo } from "react"
 import { DashboardFilters } from "@/components/dashboard/filters"
 import type { DateRange, CustomDateRange } from "@/components/dashboard/filters"
@@ -11,7 +12,6 @@ import { TimeByEventChart } from "@/components/dashboard/time-by-event-chart"
 import { EventBreakdownTable } from "@/components/dashboard/event-breakdown-table"
 import { SessionLog } from "@/components/dashboard/session-log"
 import { SolveAnalytics } from "@/components/dashboard/solve-analytics"
-import { CompSimAnalytics } from "@/components/dashboard/comp-sim-analytics"
 import { computeSessionStats } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
@@ -136,7 +136,20 @@ export function TabStats({
       {isOwner && <SolveAnalytics practicedEvents={practicedEvents} />}
 
       {compSimSessions.length > 0 && (
-        <CompSimAnalytics sessions={compSimSessions} />
+        <Link
+          href="?tab=comp-sim"
+          className="block rounded-3xl border border-cyan-400/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(217,70,239,0.14))] p-5 transition-transform hover:scale-[1.01]"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
+            Comp Sim Preview
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">
+            {compSimSessions.length} dedicated round{compSimSessions.length !== 1 ? "s" : ""} saved
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Open the Comp Sim tab for separate round history, result trends, cutoff stats, and comp-vs-practice comparison.
+          </p>
+        </Link>
       )}
 
       <SessionLog sessions={filteredSessions} readOnly={!isOwner} />
