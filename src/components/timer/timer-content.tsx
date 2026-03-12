@@ -3214,14 +3214,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
         </div>
 
         {practiceType !== "Comp Sim" && (
-          <CompSimHero
-            config={compSimConfig}
-            onConfigChange={updateCompSimConfig}
-            onStart={() => changePracticeType("Comp Sim", { autoStart: true })}
-          />
-        )}
-
-        {practiceType !== "Comp Sim" && (
           <span
             className={cn(
                 "absolute top-full left-1/2 -translate-x-1/2 mt-2 text-xs font-mono transition-all duration-200 z-20 pointer-events-none",
@@ -3241,6 +3233,14 @@ export function TimerContent({ viewer }: TimerContentProps) {
           </div>
         )}
       </div>
+
+      {practiceType !== "Comp Sim" && (
+        <CompSimHero
+          config={compSimConfig}
+          onConfigChange={updateCompSimConfig}
+          onStart={() => changePracticeType("Comp Sim", { autoStart: true })}
+        />
+      )}
 
       {practiceType !== "Comp Sim" && (
         <>
