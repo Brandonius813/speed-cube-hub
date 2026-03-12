@@ -8,6 +8,9 @@ type StartNoiseOptions = {
   randomReactionsEnabled: boolean
 }
 
+const SILENT_AUDIO_DATA_URI =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+
 type ReactionPreset = {
   id: string
   label: string
@@ -218,6 +221,7 @@ let reactionTimeout: ReturnType<typeof setTimeout> | null = null
 let previewReactionTimeout: ReturnType<typeof setTimeout> | null = null
 let previewStopTimeout: ReturnType<typeof setTimeout> | null = null
 let currentNoiseOptions: StartNoiseOptions | null = null
+let audioUnlocked = false
 
 function clearReactionLoop() {
   if (reactionTimeout) clearTimeout(reactionTimeout)
@@ -242,6 +246,22 @@ function createAudio(src: string, volume: number, loop = false): HTMLAudioElemen
   audio.loop = loop
   audio.volume = clamp(volume, 0, 1)
   return audio
+}
+
+export function primeCompSimAudioPlayback(): void {
+  if (typeof window === "undefined" || audioUnlocked) return
+
+  const primer = new Audio(SILENT_AUDIO_DATA_URI)
+  primer.volume = 0
+  void primer.play()
+    .then(() => {
+      audioUnlocked = true
+      primer.pause()
+      primer.currentTime = 0
+    })
+    .catch(() => {
+      // Browser still requires a later user gesture; previews/start buttons retry this.
+    })
 }
 
 function trackOneShot(audio: HTMLAudioElement) {

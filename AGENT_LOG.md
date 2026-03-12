@@ -176,3 +176,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Replaced the procedural Web Audio crowd generator with a real Mixkit-sourced audio pack under `public/audio/comp-sim`, including 5 ambient scene loops, 17 crowd reaction one-shots, and 3 judge/cue clips. The Comp Sim setup preview buttons now audition actual assets, in-round ambient playback uses real loop files, and random reactions/judge cues use layered audio clips instead of browser speech synthesis. Added a source manifest documenting each shipped file, its Mixkit title/ID, source page, asset URL, and license reference. Also updated project tracking text so Comp Sim is described as living under the Stats tab instead of a separate top-level profile tab.
 **Files touched:** `public/audio/comp-sim/*`, `src/lib/timer/comp-sim-audio.ts`, `docs/comp-sim-audio-sources.md`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
 **Checks:** `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/components/timer/comp-sim-settings-panel.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/use-comp-sim.ts` passed after linking the worktree to the existing `node_modules`. `npm exec tsc -- --noEmit --pretty false` passed. `npm exec vitest run src/lib/timer/comp-sim.test.ts` passed.
+
+### 2026-03-12 07:54 AM EDT — Comp Sim Audio Autoplay Fix
+
+**Task:** Fix real Comp Sim audio not starting when a round begins
+**Status:** Root-caused the silence to browser autoplay gating: the real ambient loop was being started only after async scramble generation, outside the original click gesture. Added an explicit audio-primer path that runs on the Comp Sim preview/start buttons so browsers unlock media playback before the sim initialization completes.
+**Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/components/timer/comp-sim-settings-panel.tsx`, `AGENT_LOG.md`
+**Checks:** `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/components/timer/comp-sim-settings-panel.tsx` passed. `npm exec tsc -- --noEmit --pretty false` passed. `npm exec vitest run src/lib/timer/comp-sim.test.ts` passed.
