@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
+import { AdSlot } from "@/components/ads/ad-slot"
 import { ProfileSidebar } from "@/components/profile/profile-sidebar"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { CompareProfileButton } from "@/components/profile/compare-profile-button"
@@ -64,6 +65,7 @@ export function PublicProfileContent({
   pbs = [],
   sorKinchStats,
   totalPracticeMinutes = 0,
+  profileAdSlot = null,
 }: {
   profile: Profile
   sessions: Session[]
@@ -76,10 +78,11 @@ export function PublicProfileContent({
   pbs?: PBRecord[]
   sorKinchStats?: UserSorKinchStats | null
   totalPracticeMinutes?: number
+  profileAdSlot?: string | null
 }) {
-  void isAdmin
   const searchParams = useSearchParams()
   const activeTab = parseTabParam(searchParams.get("tab"))
+  const showAds = !isAdmin && !!profileAdSlot
 
   const profileActions =
     !isOwner && isLoggedIn ? (
@@ -101,6 +104,15 @@ export function PublicProfileContent({
       {/* Main content — tabs + active tab */}
       <div className="min-w-0">
         <ProfileTabs activeTab={activeTab} />
+        {showAds ? (
+          <div className="mt-4 lg:hidden">
+            <AdSlot
+              slotId={profileAdSlot}
+              minHeight={250}
+              showOnDesktop={false}
+            />
+          </div>
+        ) : null}
 
         <div className="mt-6">
           {activeTab === "overview" && (
@@ -138,14 +150,23 @@ export function PublicProfileContent({
       </div>
 
       {/* Desktop sidebar */}
-      <ProfileSidebar
-        profile={profile}
-        isOwner={isOwner}
-        followerCount={followerCount}
-        followingCount={followingCount}
-        totalPracticeMinutes={totalPracticeMinutes}
-        followButton={profileActions}
-      />
+      <div className="hidden lg:flex lg:flex-col lg:gap-4">
+        <ProfileSidebar
+          profile={profile}
+          isOwner={isOwner}
+          followerCount={followerCount}
+          followingCount={followingCount}
+          totalPracticeMinutes={totalPracticeMinutes}
+          followButton={profileActions}
+        />
+        {showAds ? (
+          <AdSlot
+            slotId={profileAdSlot}
+            minHeight={600}
+            showOnMobile={false}
+          />
+        ) : null}
+      </div>
     </div>
   )
 }

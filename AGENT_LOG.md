@@ -176,6 +176,20 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** `src/lib/timer/comp-sim-round.ts`, `src/lib/timer/comp-sim-audio.ts`, `src/components/timer/comp-sim-settings-panel.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-hero.tsx`, `src/components/timer/comp-sim-screens.tsx`, `AGENT_LOG.md`
 **Checks:** `npm exec vitest run src/lib/timer/comp-sim-audio.test.ts src/lib/timer/comp-sim.test.ts` passed. `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/lib/timer/comp-sim-audio.test.ts src/components/timer/comp-sim-settings-panel.tsx src/components/timer/comp-sim-overlay.tsx src/lib/timer/comp-sim-round.ts src/components/timer/comp-sim-hero.tsx src/components/timer/comp-sim-screens.tsx` passed. `npm exec tsc -- --noEmit --pretty false` passed.
 
+### 2026-03-12 08:53 AM EDT — Manual AdSense Rollout
+
+**Task:** Restore AdSense support with conservative manual placements on high-traffic pages
+**Status:** Re-added the global AdSense account script in the root layout, published `public/ads.txt`, and introduced a reusable client-side `AdSlot` component wired to the existing publisher ID. Added env-driven manual placements for the homepage, feed, leaderboards desktop sidebar, and public profile (desktop sidebar plus mobile inline after tabs), while skipping timer/auth/admin/onboarding surfaces and suppressing ads for the admin account on the already-dynamic feed/profile pages. Updated the privacy policy to reflect advertising cookies and Google AdSense usage, and documented the required slot env vars in `.env.local.example`.
+**Files touched:** `src/components/ads/ad-slot.tsx`, `public/ads.txt`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/components/feed/feed-content.tsx`, `src/app/(main)/leaderboards/page.tsx`, `src/app/(main)/profile/[handle]/page.tsx`, `src/components/profile/public-profile-content.tsx`, `src/app/(main)/privacy/page.tsx`, `.env.local.example`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/components/ads/ad-slot.tsx src/app/layout.tsx src/app/page.tsx src/app/(main)/feed/page.tsx src/components/feed/feed-content.tsx src/app/(main)/leaderboards/page.tsx src/app/(main)/profile/[handle]/page.tsx src/components/profile/public-profile-content.tsx src/app/(main)/privacy/page.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed. `npm run build -- --webpack` passed. Note: the default Turbopack build still fails in this worktree because the shared `node_modules` symlink points outside the worktree root.
+
+### 2026-03-12 08:56 AM EDT — Wire Real AdSense Slot IDs
+
+**Task:** Replace placeholder/manual-env-only ad slots with the real AdSense unit IDs
+**Status:** Added a shared `src/lib/ads.ts` config with the real slot IDs provided from AdSense and switched the homepage, feed, leaderboards sidebar, and public profile placements to use those defaults directly. The env vars still work as optional overrides, but these four placements no longer depend on extra Vercel configuration just to render the correct units.
+**Files touched:** `src/lib/ads.ts`, `src/app/page.tsx`, `src/app/(main)/feed/page.tsx`, `src/app/(main)/leaderboards/page.tsx`, `src/app/(main)/profile/[handle]/page.tsx`, `.env.local.example`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/eslint src/lib/ads.ts src/app/page.tsx src/app/(main)/feed/page.tsx src/app/(main)/leaderboards/page.tsx src/app/(main)/profile/[handle]/page.tsx` passed. `./node_modules/.bin/tsc --noEmit` passed. `npm run build -- --webpack` passed.
+
 ### 2026-03-12 08:38 AM EDT — Comp Sim False DNF Fix
 
 **Task:** Stop Comp Sim from issuing an immediate DNF when releasing into the solve
