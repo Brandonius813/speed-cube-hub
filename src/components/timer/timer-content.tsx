@@ -11,6 +11,7 @@ import {
   formatTimeMsCentiseconds,
   truncateMsToCentiseconds,
 } from "@/lib/timer/averages"
+import { resolveInputTimestamp } from "@/lib/timer/input-timestamp"
 import {
   getTimerReadoutColor,
   parseTimerTextSize,
@@ -1619,7 +1620,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (eventKey.code === "Space") {
         eventKey.preventDefault()
         if (eventKey.repeat || typing) return
-        handlePress()
+        handlePress(eventKey.timeStamp)
         return
       }
       if (typing) return
@@ -1653,7 +1654,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         }
       }
 
-      if (!typing && phaseRef.current === "running") stopTimer()
+      if (!typing && phaseRef.current === "running") stopTimer(eventKey.timeStamp)
     }
 
     const up = (eventKey: KeyboardEvent) => {
@@ -1662,7 +1663,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (eventKey.code !== "Space" || typing) return
       eventKey.preventDefault()
       heldRef.current = false
-      releaseHold()
+      releaseHold(eventKey.timeStamp)
     }
     window.addEventListener("keydown", dn)
     window.addEventListener("keyup", up)
@@ -1901,15 +1902,16 @@ export function TimerContent({ viewer }: TimerContentProps) {
     sessionSolveStartIndexRef.current = 0
   }
 
-  function startTimer() {
+  function startTimer(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
-    startRef.current = performance.now()
+    startRef.current = resolveInputTimestamp(inputTimestamp)
     dispatchEngine({ type: "START_RUNNING" })
   }
 
-  function stopTimer() {
+  function stopTimer(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
-    const ms = truncateMsToCentiseconds(performance.now() - startRef.current)
+    const stoppedAt = resolveInputTimestamp(inputTimestamp)
+    const ms = truncateMsToCentiseconds(Math.max(0, stoppedAt - startRef.current))
     dispatchEngine({ type: "STOP_SOLVE" })
     addSolve(ms, null)
   }
@@ -1926,7 +1928,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }, HOLD_MS)
   }
 
-  function releaseHold() {
+  function releaseHold(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
     if (holdTimeoutRef.current) {
       clearTimeout(holdTimeoutRef.current)
@@ -1948,7 +1950,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           addSolve(0, "DNF")
           dispatchEngine({ type: "INSPECTION_DONE" })
         } else {
-          startTimer()
+          startTimer(inputTimestamp)
         }
       } else {
         dispatchEngine({ type: "CANCEL_HOLD", backTo: "inspecting" })
@@ -1962,10 +1964,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
 
     if (phaseRef.current !== "ready") return
-    startTimer()
+    startTimer(inputTimestamp)
   }
 
-  function handlePress() {
+  function handlePress(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
     const currentPhase = phaseRef.current
     if (sessionPausedRef.current && currentPhase !== "running") {
@@ -1973,7 +1975,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return
     }
     if (currentPhase === "running") {
-      stopTimer()
+      stopTimer(inputTimestamp)
       return
     }
 
