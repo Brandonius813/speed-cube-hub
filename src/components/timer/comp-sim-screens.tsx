@@ -73,7 +73,7 @@ export function ScrambleScreen({ compSim }: { compSim: CompSimApi }) {
 
       <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-background/70 px-5 py-6">
         <p className="mb-3 text-sm text-muted-foreground">
-          Scramble your cube, cover it, and wait for the judge cue.
+          Scramble your cube, cover it, and wait for the round to continue.
         </p>
         <p className="font-mono text-xl leading-relaxed text-foreground sm:text-2xl">
           {scramble}
@@ -105,7 +105,7 @@ export function WaitingScreen({
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
       </div>
       <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-        Judge Delay
+        Waiting Period
       </p>
       <h2 className="mt-2 text-3xl font-bold text-foreground">Attempt {solveIndex + 1} of {total}</h2>
       <p className="mt-2 text-sm text-muted-foreground">

@@ -23,10 +23,9 @@ export function CompSimHero({ config, onConfigChange, onStart }: Props) {
     config.scene === "off"
       ? "Silent room"
       : `${getCompSimSceneLabel(config.scene)} at ${config.intensity}%`
-  const atmosphereSummary = [
-    config.randomReactionsEnabled ? "Random reactions on" : "Random reactions off",
-    config.judgeCuesEnabled ? "Judge calls on" : "Judge calls off",
-  ].join(" • ")
+  const atmosphereSummary = config.randomReactionsEnabled
+    ? "Random reactions on"
+    : "Random reactions off"
 
   return (
     <div

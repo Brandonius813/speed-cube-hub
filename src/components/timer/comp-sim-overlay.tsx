@@ -24,7 +24,6 @@ import {
   getEffectiveTime,
   type CompSimRoundConfig,
 } from "@/lib/timer/comp-sim-round"
-import { playJudgeCue } from "@/lib/timer/comp-sim-audio"
 
 type Props = {
   event: string
@@ -89,7 +88,6 @@ export function CompSimOverlay({
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
   const holdingRef = useRef(false)
   const holdStartRef = useRef(0)
-  const prevPhaseRef = useRef(phase)
   const handledStartSignalRef = useRef(0)
   const [holdReady, setHoldReady] = useState(false)
   const [isHolding, setIsHolding] = useState(false)
@@ -114,25 +112,6 @@ export function CompSimOverlay({
   useEffect(() => {
     return () => onBusyChange?.(false)
   }, [onBusyChange])
-
-  useEffect(() => {
-    if (!snapshot.roundConfig.judgeCuesEnabled) {
-      prevPhaseRef.current = phase
-      return
-    }
-
-    const previousPhase = prevPhaseRef.current
-    if (previousPhase !== phase) {
-      if (phase === "waiting") {
-        playJudgeCue("covered")
-      } else if (phase === "solve_cue") {
-        playJudgeCue("time_to_solve")
-      } else if (phase === "scramble_shown" && snapshot.solveIndex > 0) {
-        playJudgeCue("next_attempt")
-      }
-    }
-    prevPhaseRef.current = phase
-  }, [phase, snapshot.roundConfig.judgeCuesEnabled, snapshot.solveIndex])
 
   useEffect(() => {
     if (!startSignal || startSignal === handledStartSignalRef.current) return

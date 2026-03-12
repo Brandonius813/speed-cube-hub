@@ -28,7 +28,6 @@ export type CompSimRoundConfig = {
   scene: CompSimScene
   intensity: number
   randomReactionsEnabled: boolean
-  judgeCuesEnabled: boolean
   waitTimeRangeMs: CompSimWaitTimeRange
   cumulativeTimeLimitMs: number | null
   cutoff: CompSimCutoffRule | null
@@ -78,7 +77,6 @@ export const DEFAULT_COMP_SIM_ROUND_CONFIG: CompSimRoundConfig = {
   scene: "regional_floor",
   intensity: 55,
   randomReactionsEnabled: true,
-  judgeCuesEnabled: true,
   waitTimeRangeMs: {
     minMs: 30_000,
     maxMs: 150_000,
@@ -135,8 +133,6 @@ export function normalizeCompSimConfig(
     ),
     randomReactionsEnabled:
       config?.randomReactionsEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.randomReactionsEnabled,
-    judgeCuesEnabled:
-      config?.judgeCuesEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.judgeCuesEnabled,
     waitTimeRangeMs: {
       minMs: waitMin,
       maxMs: waitMax,
