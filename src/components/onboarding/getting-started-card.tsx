@@ -31,6 +31,10 @@ export function GettingStartedCard({
   const completedCount = getOnboardingCompletedCount(optimisticOnboarding)
   const completed = hasCompletedOnboarding(optimisticOnboarding)
 
+  if (completed) {
+    return null
+  }
+
   function handleManualComplete(step: OnboardingStepId) {
     setPendingStep(step)
     startTransition(async () => {
