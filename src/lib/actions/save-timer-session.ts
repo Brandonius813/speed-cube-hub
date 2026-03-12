@@ -1,5 +1,6 @@
 "use server"
 
+import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 import { msToTruncatedSeconds } from "@/lib/timer/averages"
 import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
@@ -160,6 +161,13 @@ export async function saveTimerSession(data: {
       .from("timer_sessions")
       .update({ session_id: session.id })
       .eq("id", timerSession.id)
+  }
+
+  if (data.practice_type === "Comp Sim") {
+    await Promise.all([
+      markOnboardingStepComplete("first_timer_solve"),
+      markOnboardingStepComplete("comp_sim_tried"),
+    ])
   }
 
   return { sessionId: session?.id }

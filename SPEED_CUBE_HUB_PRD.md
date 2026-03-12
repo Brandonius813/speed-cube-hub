@@ -136,7 +136,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [x] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join, progress calculated from real sessions)
-- [x] New-user onboarding checklist + guided tours (first-time users land on `/profile`, see an owner-only checklist on profile overview, and launch page-specific spotlight tours for profile, cubes, bulk import, timer, feed, and clubs that only complete on real successful actions)
+- [x] New-user onboarding checklist + guided tours (first-time users land on `/profile`, see an owner-only checklist on profile overview, and launch page-specific spotlight tours for profile, cubes, bulk import, timer, Comp Sim, feed, and clubs that only complete on real successful actions)
 - [ ] Badges & Credentials — REMOVED (v1 was stripped out; to be redesigned)
 
 ### Social Wave 4 — Community & Discovery

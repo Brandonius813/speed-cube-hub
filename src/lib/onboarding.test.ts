@@ -17,6 +17,7 @@ function buildOnboarding(overrides: Partial<UserOnboarding> = {}): UserOnboardin
     main_cube_added_at: null,
     bulk_imported_at: null,
     first_timer_solve_at: null,
+    comp_sim_tried_at: null,
     feed_visited_at: null,
     clubs_searched_at: null,
     dismissed_at: null,
@@ -42,6 +43,7 @@ describe("onboarding helpers", () => {
       "main_cube_added",
       "bulk_imported",
       "first_timer_solve",
+      "comp_sim_tried",
       "feed_visited",
       "clubs_searched",
     ]
@@ -51,6 +53,7 @@ describe("onboarding helpers", () => {
         main_cube_added: "main_cube_added_at",
         bulk_imported: "bulk_imported_at",
         first_timer_solve: "first_timer_solve_at",
+        comp_sim_tried: "comp_sim_tried_at",
         feed_visited: "feed_visited_at",
         clubs_searched: "clubs_searched_at",
       }
@@ -77,6 +80,7 @@ describe("onboarding helpers", () => {
 
   it("parses supported tours only", () => {
     expect(parseOnboardingTour("overview")).toBe("overview")
+    expect(parseOnboardingTour("comp-sim")).toBe("comp-sim")
     expect(parseOnboardingTour("wat")).toBeNull()
   })
 
