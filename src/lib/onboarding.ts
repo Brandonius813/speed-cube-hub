@@ -5,6 +5,7 @@ export const ONBOARDING_STEP_IDS = [
   "main_cube_added",
   "bulk_imported",
   "first_timer_solve",
+  "comp_sim_tried",
   "feed_visited",
   "clubs_searched",
 ] as const
@@ -16,6 +17,7 @@ export const ONBOARDING_TOUR_IDS = [
   "main-cube",
   "bulk-import",
   "timer-basics",
+  "comp-sim",
   "clubs-search",
   "feed",
 ] as const
@@ -41,6 +43,7 @@ const STEP_TO_COLUMN: Record<OnboardingStepId, keyof UserOnboarding> = {
   main_cube_added: "main_cube_added_at",
   bulk_imported: "bulk_imported_at",
   first_timer_solve: "first_timer_solve_at",
+  comp_sim_tried: "comp_sim_tried_at",
   feed_visited: "feed_visited_at",
   clubs_searched: "clubs_searched_at",
 }
@@ -73,6 +76,13 @@ export const ONBOARDING_CHECKLIST: OnboardingChecklistItem[] = [
     description: "See the built-in timer and save your first solve.",
     href: "/timer?tour=timer-basics",
     cta: "Open Timer",
+  },
+  {
+    step: "comp_sim_tried",
+    label: "Do a Comp Sim",
+    description: "Run one competition-style round with pressure and separate tracking.",
+    href: "/timer?tour=comp-sim",
+    cta: "Try Comp Sim",
   },
   {
     step: "feed_visited",
@@ -142,6 +152,23 @@ export const ONBOARDING_TOURS: Record<OnboardingTourId, OnboardingTourStep[]> = 
       target: "timer-readout",
       title: "Do one solve here",
       body: "This is the main timer area. Start and stop here, then save your first solve.",
+    },
+  ],
+  "comp-sim": [
+    {
+      target: "comp-sim-hero",
+      title: "This is Comp Sim",
+      body: "Comp Sim runs a full competition-style round without mixing it into your normal timer sessions.",
+    },
+    {
+      target: "comp-sim-customize",
+      title: "Adjust the pressure",
+      body: "Keep the defaults or open the full setup to change format, cutoff, time limit, and crowd scene.",
+    },
+    {
+      target: "comp-sim-start",
+      title: "Run one saved round",
+      body: "Start one round here. When it finishes and saves successfully, this checklist item marks itself complete.",
     },
   ],
   "clubs-search": [

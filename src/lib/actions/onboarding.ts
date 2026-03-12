@@ -17,6 +17,7 @@ const USER_ONBOARDING_SELECT = [
   "main_cube_added_at",
   "bulk_imported_at",
   "first_timer_solve_at",
+  "comp_sim_tried_at",
   "feed_visited_at",
   "clubs_searched_at",
   "dismissed_at",
@@ -30,6 +31,7 @@ const STEP_TO_COLUMN: Record<OnboardingStepId, keyof UserOnboarding> = {
   main_cube_added: "main_cube_added_at",
   bulk_imported: "bulk_imported_at",
   first_timer_solve: "first_timer_solve_at",
+  comp_sim_tried: "comp_sim_tried_at",
   feed_visited: "feed_visited_at",
   clubs_searched: "clubs_searched_at",
 }

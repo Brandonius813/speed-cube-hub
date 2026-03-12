@@ -434,6 +434,7 @@ export function CompSimSettingsPanel({
 
           {onStart && (
             <button
+              data-onboarding-target="comp-sim-start"
               onClick={() => {
                 primeCompSimAudioPlayback()
                 onStart()

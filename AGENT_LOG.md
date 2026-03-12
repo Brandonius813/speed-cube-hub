@@ -6,41 +6,6 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 
 **HARD LIMIT: 20 entries max.** When adding a new entry, count the `### ` headings. If there are more than 20, delete the oldest entries from the TOP until there are exactly 20. Old entries are preserved in git history — do not hesitate to delete them. This file must never exceed ~200 lines.
 
-### 2026-03-11 PT — Move Pane Scramble Size Control
-
-**Task:** Move the pane scramble size setting so it lives with the related tool controls instead of the general timer section
-**Status:** Removed the `Pane Scramble` size control from the top timer settings block and rendered the same size buttons directly under the `Draw Scramble` tool row in the `Tools` section. This keeps the control in the same menu, but places it where users expect pane-specific settings to live.
-**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
-
-### 2026-03-11 PT — Rename Settings Label To Scramble Size
-
-**Task:** Rename the top timer settings `Text Size` label to `Scramble Size`
-**Status:** Updated the timer settings menu label from `Text Size` to `Scramble Size` in `timer-content.tsx` without changing the underlying setting behavior.
-**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
-
-### 2026-03-11 PT — Reformat Timer Summary Footer
-
-**Task:** Make the timer solve-list summary footer cleaner and keep the labels on single lines
-**Status:** Replaced the three-column footer summary in `solve-list-panel.tsx` with a centered three-line stack: `count`, `session mean`, and `all-time mean`. The count line now uses current-session solves over total solves so it reads in the `x/y` style the user asked for.
-**Files touched:** `src/components/timer/solve-list-panel.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/solve-list-panel.tsx` passed.
-
-### 2026-03-11 PT — Make Pane Scramble Setting Affect Draw Pane
-
-**Task:** Fix the `Pane Scramble` size setting so it visibly changes the `Draw Scramble` tool it sits under
-**Status:** Wired the draw pane through the existing scramble size setting by letting `ScrambleImage` accept a size variant and having `PaneDraw` pass the saved scramble-pane size into it. The `Default`, `Large`, and `XL` options now scale the rendered scramble image instead of appearing to do nothing.
-**Files touched:** `src/components/timer/panes/pane-draw.tsx`, `src/components/timer/scramble-image.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/panes/pane-draw.tsx src/components/timer/scramble-image.tsx` passed.
-
-### 2026-03-11 PT — Remove Timer Shortcuts Menu Section
-
-**Task:** Remove the `Shortcuts` section from the timer settings menu
-**Status:** Deleted the unused shortcuts list from `timer-content.tsx` and removed the no-longer-needed shortcut label constant. The settings menu now flows straight from the size controls into the `Tools` section.
-**Files touched:** `src/components/timer/timer-content.tsx`, `AGENT_LOG.md`
-**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx` passed.
-
 ### 2026-03-11 PT — Split Scramble And Timer Size Settings
 
 **Task:** Separate the shared scramble/timer size control into independent settings
@@ -183,3 +148,9 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Root-caused the silence to browser autoplay gating: the real ambient loop was being started only after async scramble generation, outside the original click gesture. Added an explicit audio-primer path that runs on the Comp Sim preview/start buttons so browsers unlock media playback before the sim initialization completes.
 **Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/components/timer/comp-sim-settings-panel.tsx`, `AGENT_LOG.md`
 **Checks:** `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/components/timer/comp-sim-settings-panel.tsx` passed. `npm exec tsc -- --noEmit --pretty false` passed. `npm exec vitest run src/lib/timer/comp-sim.test.ts` passed.
+### 2026-03-12 08:14 AM EDT — Comp Sim Onboarding Checklist Step
+
+**Task:** Add Competition Simulator to the new-user onboarding checklist flow
+**Status:** Added a seventh onboarding step and dedicated `comp-sim` spotlight tour so the profile checklist can send users straight into the Comp Sim timer experience. The timer now auto-switches into Comp Sim mode when opened from that onboarding link, the Comp Sim hero exposes stable onboarding targets for the tour, and successful Comp Sim session saves now mark both the regular first-timer step and the new Comp Sim step complete. Added migration `032_add_comp_sim_onboarding_step.sql` to persist/backfill the new onboarding timestamp from existing Comp Sim sessions and keep fully completed rows finished.
+**Files touched:** `src/lib/onboarding.ts`, `src/lib/actions/onboarding.ts`, `src/lib/actions/save-timer-session.ts`, `src/lib/types.ts`, `src/lib/onboarding.test.ts`, `src/components/timer/timer-content.tsx`, `src/components/timer/comp-sim-hero.tsx`, `src/components/timer/comp-sim-settings-panel.tsx`, `supabase/migrations/032_add_comp_sim_onboarding_step.sql`, `SPEED_CUBE_HUB_PRD.md`, `TASKS.md`, `AGENT_LOG.md`
+**Checks:** `./node_modules/.bin/tsc --noEmit` passed. `./node_modules/.bin/eslint src/lib/onboarding.ts src/lib/actions/onboarding.ts src/lib/actions/save-timer-session.ts src/lib/onboarding.test.ts src/lib/types.ts src/components/timer/timer-content.tsx src/components/timer/comp-sim-hero.tsx src/components/timer/comp-sim-settings-panel.tsx` passed. `./node_modules/.bin/vitest run src/lib/onboarding.test.ts` passed.

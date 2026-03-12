@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Info, Settings } from "lucide-react"
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
@@ -691,7 +691,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
     avatarUrl: null as string | null,
   })
   const activeTour = parseOnboardingTour(searchParams.get("tour"))
-  const timerTour = activeTour === "timer-basics" ? activeTour : null
+  const timerTour =
+    activeTour === "timer-basics"
+      ? activeTour
+      : activeTour === "comp-sim" && practiceType === "Comp Sim"
+        ? activeTour
+        : null
+  const handledCompSimTourRef = useRef(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -2172,6 +2178,23 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
     enterCompSim({ autoStart: options.autoStart })
   }
+
+  const syncCompSimTourMode = useEffectEvent(() => {
+    if (practiceTypeRef.current !== "Comp Sim") {
+      changePracticeType("Comp Sim")
+    }
+  })
+
+  useEffect(() => {
+    if (activeTour !== "comp-sim") {
+      handledCompSimTourRef.current = false
+      return
+    }
+
+    if (handledCompSimTourRef.current) return
+    handledCompSimTourRef.current = true
+    syncCompSimTourMode()
+  }, [activeTour])
 
   function handleCompSimExit() {
     setCompSimEntryGuard(null)

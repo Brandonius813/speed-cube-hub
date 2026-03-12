@@ -342,6 +342,7 @@ export type UserOnboarding = {
   main_cube_added_at: string | null;
   bulk_imported_at: string | null;
   first_timer_solve_at: string | null;
+  comp_sim_tried_at: string | null;
   feed_visited_at: string | null;
   clubs_searched_at: string | null;
   dismissed_at: string | null;
