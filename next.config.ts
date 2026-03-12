@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "3mb",
     },
+    optimizePackageImports: ["date-fns", "lucide-react", "recharts"],
   },
   async headers() {
     const securityHeaders = [

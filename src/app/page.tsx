@@ -1,8 +1,8 @@
-import { Navbar } from "@/components/shared/navbar"
+import { Footer } from "@/components/shared/footer"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
 import { SocialProof } from "@/components/landing/social-proof"
-import { Footer } from "@/components/shared/footer"
+import { Navbar } from "@/components/shared/navbar"
 import { getGlobalStats } from "@/lib/actions/stats"
 
 // Regenerate every 5 minutes — stats don't need to be real-time

@@ -1,25 +1,6 @@
-import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Box, MessageSquarePlus } from "lucide-react"
-
-const FeedbackModal = dynamic(
-  () =>
-    import("@/components/shared/feedback-modal").then(
-      (module) => module.FeedbackModal
-    ),
-  {
-    loading: () => (
-      <button
-        type="button"
-        disabled
-        className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <MessageSquarePlus className="h-4 w-4" />
-        Send Feedback
-      </button>
-    ),
-  }
-)
+import { Box } from "lucide-react"
+import { FeedbackButton } from "@/components/shared/feedback-button"
 
 export function Footer() {
   return (
@@ -39,7 +20,7 @@ export function Footer() {
 
           {/* Feedback */}
           <div>
-            <FeedbackModal />
+            <FeedbackButton />
           </div>
 
           {/* Links */}

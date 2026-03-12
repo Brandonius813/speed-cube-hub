@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -32,8 +31,13 @@ const CATEGORIES = [
 
 type Category = (typeof CATEGORIES)[number]["value"]
 
-export function FeedbackModal() {
-  const [open, setOpen] = useState(false)
+export function FeedbackModal({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const [category, setCategory] = useState<Category>("general")
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -59,7 +63,7 @@ export function FeedbackModal() {
 
     setSubmitted(true)
     setTimeout(() => {
-      setOpen(false)
+      onOpenChange(false)
       // Reset after close animation
       setTimeout(() => {
         setSubmitted(false)
@@ -70,7 +74,7 @@ export function FeedbackModal() {
   }
 
   function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen)
+    onOpenChange(nextOpen)
     if (!nextOpen) {
       // Reset on close
       setTimeout(() => {
@@ -84,12 +88,6 @@ export function FeedbackModal() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <button className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-          <MessageSquarePlus className="h-4 w-4" />
-          Send Feedback
-        </button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         {submitted ? (
           <div className="flex flex-col items-center gap-3 py-6">

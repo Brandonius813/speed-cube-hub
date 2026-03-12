@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito, JetBrains_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import "./globals.css";
@@ -56,7 +55,6 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
         </ThemeProvider>
-        <Analytics />
         <SpeedInsights />
       </body>
     </html>
