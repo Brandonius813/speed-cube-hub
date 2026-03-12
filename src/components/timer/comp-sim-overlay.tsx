@@ -300,9 +300,10 @@ export function CompSimOverlay({
     snapshot.solves.length > 0
       ? formatTimeMsCentiseconds(getEffectiveTime(snapshot.solves[snapshot.solves.length - 1]))
       : null
+  const phaseAllowsScroll = phase === "idle" || phase === "sim_complete"
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(217,70,239,0.14),transparent_35%),linear-gradient(180deg,rgba(4,10,22,0.96),rgba(8,10,16,1))]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(217,70,239,0.14),transparent_35%),linear-gradient(180deg,rgba(4,10,22,0.96),rgba(8,10,16,1))]">
       <div className="border-b border-border/60 bg-black/20 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -355,7 +356,14 @@ export function CompSimOverlay({
         )}
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+      <div
+        className={cn(
+          "flex flex-1 px-4 py-8 sm:px-6",
+          phaseAllowsScroll
+            ? "min-h-0 items-start justify-center overflow-y-auto overscroll-contain"
+            : "items-center justify-center overflow-hidden"
+        )}
+      >
         {phase === "idle" && <IdleScreen compSim={compSim} />}
         {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
         {phase === "waiting" && (
