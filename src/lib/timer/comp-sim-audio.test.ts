@@ -58,6 +58,7 @@ describe("comp sim audio handoff", () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     vi.useRealTimers()
   })
@@ -139,5 +140,44 @@ describe("comp sim audio handoff", () => {
     audio.stopAllNoise()
 
     expect(liveAmbient?.pauseCalls).toBe(1)
+  })
+
+  it("waits at least six minutes before a live random reaction fires", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const audio = await loadAudioModule()
+
+    audio.startNoise({
+      scene: "championship_hall",
+      intensity: 90,
+      randomReactionsEnabled: true,
+    })
+
+    expect(MockAudio.instances).toHaveLength(1)
+
+    vi.advanceTimersByTime(6 * 60 * 1000 - 1)
+    expect(MockAudio.instances).toHaveLength(1)
+
+    vi.advanceTimersByTime(1)
+    expect(MockAudio.instances).toHaveLength(2)
+  })
+
+  it("makes live random reactions much louder than the ambient bed", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const audio = await loadAudioModule()
+
+    audio.startNoise({
+      scene: "championship_hall",
+      intensity: 100,
+      randomReactionsEnabled: true,
+    })
+
+    const ambient = MockAudio.instances[0]
+    expect(ambient?.volume).toBeCloseTo(0.456, 2)
+
+    vi.advanceTimersByTime(6 * 60 * 1000)
+
+    const reaction = MockAudio.instances[1]
+    expect(reaction?.volume).toBeCloseTo(0.724, 2)
+    expect((reaction?.volume ?? 0) / (ambient?.volume ?? 1)).toBeGreaterThan(1.5)
   })
 })

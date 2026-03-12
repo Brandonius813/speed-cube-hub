@@ -10,6 +10,10 @@ type StartNoiseOptions = {
 
 type PlaybackMode = "idle" | "preview" | "live"
 
+const LIVE_REACTION_DELAY_MIN_MS = 6 * 60 * 1000
+const LIVE_REACTION_DELAY_MAX_MS = 7 * 60 * 1000
+const LIVE_REACTION_VOLUME_MULTIPLIER = 1.85
+
 const SILENT_AUDIO_DATA_URI =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
 
@@ -317,9 +321,17 @@ function playClip(src: string, volume: number) {
   })
 }
 
-function playReactionPreset(preset: ReactionPreset, intensity: number) {
+function playReactionPreset(
+  preset: ReactionPreset,
+  intensity: number,
+  options?: { volumeMultiplier?: number }
+) {
   const normalizedIntensity = clamp(intensity / 100, 0, 1)
-  playClip(preset.src, preset.gain * (0.45 + normalizedIntensity * 0.7))
+  const multiplier = options?.volumeMultiplier ?? 1
+  playClip(
+    preset.src,
+    preset.gain * (0.45 + normalizedIntensity * 0.7) * multiplier
+  )
 }
 
 function scheduleReactionLoop() {
@@ -330,14 +342,16 @@ function scheduleReactionLoop() {
   }
 
   const { intensity } = currentNoiseOptions
-  const baseDelay = Math.max(1800, 7200 - intensity * 38)
-  const jitter = Math.random() * 2000
+  const delayWindow = LIVE_REACTION_DELAY_MAX_MS - LIVE_REACTION_DELAY_MIN_MS
+  const nextDelay = LIVE_REACTION_DELAY_MIN_MS + Math.random() * delayWindow
 
   reactionTimeout = setTimeout(() => {
     const preset = RANDOM_REACTIONS[Math.floor(Math.random() * RANDOM_REACTIONS.length)]
-    playReactionPreset(preset, intensity)
+    playReactionPreset(preset, intensity, {
+      volumeMultiplier: LIVE_REACTION_VOLUME_MULTIPLIER,
+    })
     scheduleReactionLoop()
-  }, baseDelay + jitter)
+  }, nextDelay)
 }
 
 export function playJudgeCue(

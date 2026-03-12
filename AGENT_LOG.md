@@ -161,3 +161,10 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Status:** Root-caused the remaining fade-out bug to a shared teardown path: the settings panel unmount called `stopSoundscapePreview()`, and that helper still routed through `stopAllNoise()`, which shut down the live ambient loop as soon as the scramble screen replaced the setup screen. Split the audio runtime into explicit `preview` vs `live` playback ownership so preview cleanup only stops preview-owned playback, while live rounds remain active until cancel/exit/round-complete. Added focused mocked-audio Vitest coverage to lock the handoff behavior in place.
 **Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/lib/timer/comp-sim-audio.test.ts`, `AGENT_LOG.md`
 **Checks:** `npm exec vitest run src/lib/timer/comp-sim-audio.test.ts src/lib/timer/comp-sim.test.ts` passed. `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/lib/timer/comp-sim-audio.test.ts` passed. `npm exec tsc -- --noEmit --pretty false` passed.
+
+### 2026-03-12 08:26 AM EDT — Comp Sim Reaction Cadence Tuning
+
+**Task:** Make live Comp Sim crowd reactions rare and much more disruptive when they happen
+**Status:** Tuned the live crowd-reaction loop so random cheering now fires roughly once every 6-7 minutes instead of every few seconds, which keeps the room mostly ambient. Increased the live random-reaction mix level substantially so the rare applause/cheer bursts feel like a genuine record reaction you have to solve through, while leaving the judge cues and ambient bed behavior unchanged. Added mocked-audio tests to lock in the new minimum cadence and louder reaction-vs-ambient balance.
+**Files touched:** `src/lib/timer/comp-sim-audio.ts`, `src/lib/timer/comp-sim-audio.test.ts`, `AGENT_LOG.md`
+**Checks:** `npm exec vitest run src/lib/timer/comp-sim-audio.test.ts src/lib/timer/comp-sim.test.ts` passed. `npm exec eslint -- src/lib/timer/comp-sim-audio.ts src/lib/timer/comp-sim-audio.test.ts` passed. `npm exec tsc -- --noEmit --pretty false` passed.
