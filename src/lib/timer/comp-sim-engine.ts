@@ -43,6 +43,7 @@ export type CompSimEvent =
   | { type: "CUE_DONE" }
   | { type: "READY_START" }
   | { type: "SOLVE_START" }
+  | { type: "INSPECTION_DNF"; scramble: string }
   | { type: "SOLVE_COMPLETE"; time_ms: number; penalty: "+2" | "DNF" | null; scramble: string }
   | { type: "ADVANCE_NEXT" }
   | { type: "CANCEL_SIM" }
@@ -94,6 +95,38 @@ function shouldEndForCutoff(
   }
 }
 
+function resolveCompletedSolve(
+  state: CompSimSnapshot,
+  solve: CompSimSolve
+): CompSimSnapshot {
+  const solves = [...state.solves, solve]
+  const officialElapsedMs = state.officialElapsedMs + getOfficialElapsedTime(solve)
+  const cutoffCheck = shouldEndForCutoff(solves, state.roundConfig.cutoff)
+  const isSolveLimitReached =
+    state.roundConfig.cumulativeTimeLimitMs != null &&
+    officialElapsedMs >= state.roundConfig.cumulativeTimeLimitMs
+  const didFinishAllSolves = solves.length >= state.roundConfig.plannedSolveCount
+  const endedReason =
+    cutoffCheck.endedReason ??
+    (didFinishAllSolves
+      ? "completed"
+      : isSolveLimitReached
+        ? "time_limit_reached"
+        : null)
+
+  return {
+    ...state,
+    phase: endedReason ? "sim_complete" : "solve_recorded",
+    solves,
+    endedReason,
+    cutoffMet:
+      cutoffCheck.cutoffMet === null ? state.cutoffMet : cutoffCheck.cutoffMet,
+    checkpointResultMs:
+      cutoffCheck.checkpointResultMs ?? state.checkpointResultMs,
+    officialElapsedMs,
+  }
+}
+
 function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
   switch (event.type) {
     case "START_SIM":
@@ -137,39 +170,22 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
         ? { ...state, phase: "solving" }
         : state
 
+    case "INSPECTION_DNF":
+      return state.phase === "inspecting"
+        ? resolveCompletedSolve(state, {
+            time_ms: 0,
+            penalty: "DNF",
+            scramble: event.scramble,
+          })
+        : state
+
     case "SOLVE_COMPLETE": {
       if (state.phase !== "solving") return state
-      const solve: CompSimSolve = {
+      return resolveCompletedSolve(state, {
         time_ms: event.time_ms,
         penalty: event.penalty,
         scramble: event.scramble,
-      }
-      const solves = [...state.solves, solve]
-      const officialElapsedMs = state.officialElapsedMs + getOfficialElapsedTime(solve)
-      const cutoffCheck = shouldEndForCutoff(solves, state.roundConfig.cutoff)
-      const isSolveLimitReached =
-        state.roundConfig.cumulativeTimeLimitMs != null &&
-        officialElapsedMs >= state.roundConfig.cumulativeTimeLimitMs
-      const didFinishAllSolves = solves.length >= state.roundConfig.plannedSolveCount
-      const endedReason =
-        cutoffCheck.endedReason ??
-        (didFinishAllSolves
-          ? "completed"
-          : isSolveLimitReached
-            ? "time_limit_reached"
-            : null)
-
-      return {
-        ...state,
-        phase: endedReason ? "sim_complete" : "solve_recorded",
-        solves,
-        endedReason,
-        cutoffMet:
-          cutoffCheck.cutoffMet === null ? state.cutoffMet : cutoffCheck.cutoffMet,
-        checkpointResultMs:
-          cutoffCheck.checkpointResultMs ?? state.checkpointResultMs,
-        officialElapsedMs,
-      }
+      })
     }
 
     case "ADVANCE_NEXT":

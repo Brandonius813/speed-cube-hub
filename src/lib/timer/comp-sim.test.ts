@@ -41,6 +41,29 @@ describe("computeCompSimRoundResult", () => {
 })
 
 describe("createCompSimEngine", () => {
+  it("records an inspection timeout DNF without forcing a fake solving phase", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: normalizeCompSimConfig({
+        format: "mo3",
+      }),
+    })
+    engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+    engine.dispatch({ type: "WAIT_COMPLETE" })
+    engine.dispatch({ type: "CUE_DONE" })
+    engine.dispatch({ type: "READY_START" })
+    engine.dispatch({ type: "INSPECTION_DNF", scramble: "A" })
+
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("solve_recorded")
+    expect(snapshot.solves).toEqual([
+      { time_ms: 0, penalty: "DNF", scramble: "A" },
+    ])
+  })
+
   it("stops the round when solve 1 misses cutoff", () => {
     const engine = createCompSimEngine()
     engine.dispatch({
@@ -125,5 +148,28 @@ describe("createCompSimEngine", () => {
     expect(snapshot.phase).toBe("sim_complete")
     expect(snapshot.endedReason).toBe("cutoff_failed")
     expect(snapshot.checkpointResultMs).toBe(10900)
+  })
+
+  it("lets an inspection DNF fail cutoff immediately when solve 1 must make cutoff", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: normalizeCompSimConfig({
+        format: "mo3",
+        cutoff: { attempt: 1, cutoffMs: 9000 },
+      }),
+    })
+    engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+    engine.dispatch({ type: "WAIT_COMPLETE" })
+    engine.dispatch({ type: "CUE_DONE" })
+    engine.dispatch({ type: "READY_START" })
+    engine.dispatch({ type: "INSPECTION_DNF", scramble: "A" })
+
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("sim_complete")
+    expect(snapshot.endedReason).toBe("cutoff_failed")
+    expect(snapshot.cutoffMet).toBe(false)
   })
 })

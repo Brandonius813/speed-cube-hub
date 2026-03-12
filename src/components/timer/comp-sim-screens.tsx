@@ -1,9 +1,15 @@
 "use client"
 
-import type { ComponentType, RefObject } from "react"
+import type { ComponentType } from "react"
 import { Flag, Mic2, TimerReset, Volume2 } from "lucide-react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
+import {
+  TIMER_READOUT_SIZE_CLASSES,
+  TimerReadout,
+  type TimerTextSize,
+  type TimerUpdateMode,
+} from "@/components/timer/shared-timer-surface"
 import type { CompSimApi } from "@/components/timer/use-comp-sim"
 import { CompSimSettingsPanel } from "@/components/timer/comp-sim-settings-panel"
 import {
@@ -139,19 +145,48 @@ export function CueScreen({ warning }: { warning?: string | null }) {
   )
 }
 
-export function ReadyScreen({
-  holdReady,
-  holding,
+export function AttemptTimerScreen({
+  formatLabel,
+  inspectionEnabled,
+  timerPhase,
+  inInspectionHold,
+  inspectionSecondsLeft,
+  startMs,
+  timeColor,
+  timerUpdateMode,
+  timerReadoutTextSize,
   onPointerDown,
   onPointerUp,
-  formatLabel,
+  warning,
 }: {
-  holdReady: boolean
-  holding: boolean
+  formatLabel: string
+  inspectionEnabled: boolean
+  timerPhase: "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
+  inInspectionHold: boolean
+  inspectionSecondsLeft: number
+  startMs: number
+  timeColor: string
+  timerUpdateMode: TimerUpdateMode
+  timerReadoutTextSize: TimerTextSize
   onPointerDown: () => void
   onPointerUp: () => void
-  formatLabel: string
+  warning?: string | null
 }) {
+  const title =
+    timerPhase === "running"
+      ? "Solve Live"
+      : timerPhase === "inspecting" || inInspectionHold
+      ? "Inspection"
+      : `${formatLabel} Round`
+  const prompt =
+    timerPhase === "running"
+      ? "Press spacebar or tap to stop"
+      : timerPhase === "inspecting" || inInspectionHold
+      ? "Hold and release just like the normal timer to start your solve"
+      : inspectionEnabled
+      ? "Use the normal timer hold-to-start flow to begin inspection"
+      : "Use the normal timer hold-to-start flow to begin your solve"
+
   return (
     <div
       className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
@@ -160,100 +195,22 @@ export function ReadyScreen({
       onPointerCancel={onPointerUp}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-        {formatLabel} Round
+        {title}
       </p>
-      <div
+      <TimerReadout
         className={cn(
-          "mx-auto mt-5 flex h-28 w-28 items-center justify-center rounded-full transition-colors",
-          holdReady ? "bg-emerald-400/25" : holding ? "bg-red-500/20" : "bg-cyan-500/18"
+          "mt-4 font-mono font-light tabular-nums transition-colors duration-75",
+          TIMER_READOUT_SIZE_CLASSES[timerReadoutTextSize],
+          timeColor
         )}
-      >
-        <div
-          className={cn(
-            "h-16 w-16 rounded-full transition-colors",
-            holdReady ? "bg-emerald-300" : holding ? "bg-red-400" : "bg-cyan-300"
-          )}
-        />
-      </div>
-      <h2 className={cn("mt-6 text-4xl font-black", holdReady ? "text-emerald-200" : holding ? "text-red-300" : "text-cyan-100")}>
-        Ready
-      </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {holdReady
-          ? "Release to begin inspection"
-          : holding
-            ? "Keep holding..."
-            : "Hold spacebar or touch to begin inspection"}
-      </p>
-    </div>
-  )
-}
-
-export function InspectionScreen({
-  secondsLeft,
-  holdReady,
-  holding,
-  onPointerDown,
-  onPointerUp,
-}: {
-  secondsLeft: number
-  holdReady: boolean
-  holding: boolean
-  onPointerDown: () => void
-  onPointerUp: () => void
-}) {
-  const display = Math.max(0, secondsLeft)
-  const urgent = secondsLeft <= 3
-  const warning = secondsLeft <= 7
-
-  return (
-    <div
-      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-        Inspection
-      </p>
-      <p
-        className={cn(
-          "mt-4 font-mono text-[6rem] font-black leading-none tabular-nums transition-colors sm:text-[7rem]",
-          holdReady ? "text-emerald-300" : holding ? "text-red-300" : urgent ? "text-red-300" : warning ? "text-amber-300" : "text-foreground"
-        )}
-      >
-        {display}
-      </p>
-      <p className="mt-3 text-sm text-muted-foreground">
-        {holdReady ? "Release to start your solve" : holding ? "Keep holding..." : "Hold spacebar or touch to start"}
-      </p>
-    </div>
-  )
-}
-
-export function SolvingScreen({
-  displayRef,
-  onPointerDown,
-  warning,
-}: {
-  displayRef: RefObject<HTMLDivElement | null>
-  onPointerDown: () => void
-  warning?: string | null
-}) {
-  return (
-    <div
-      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
-      onPointerDown={onPointerDown}
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-        Solve Live
-      </p>
-      <div
-        ref={displayRef}
-        className="mt-4 font-mono text-[5.25rem] font-black leading-none tabular-nums text-foreground sm:text-[6.5rem]"
-      >
-        0.00
-      </div>
-      <p className="mt-3 text-sm text-muted-foreground">Press spacebar or tap to stop</p>
+        phase={timerPhase}
+        startMs={startMs}
+        last={null}
+        inInspectionHold={inInspectionHold}
+        inspectionSecondsLeft={inspectionSecondsLeft}
+        timerUpdateMode={timerUpdateMode}
+      />
+      <p className="mt-3 text-sm text-muted-foreground">{prompt}</p>
       {warning && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           {warning}

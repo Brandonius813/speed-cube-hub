@@ -1,22 +1,25 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
-import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
+import { type InspectionVoiceGender } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
 import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import {
+  AttemptTimerScreen,
   CueScreen,
   IdleScreen,
-  InspectionScreen,
-  ReadyScreen,
   ResultsScreen,
   ScrambleScreen,
   SolveRecordedScreen,
-  SolvingScreen,
   WaitingScreen,
 } from "@/components/timer/comp-sim-screens"
+import {
+  type TimerTextSize,
+  type TimerUpdateMode,
+} from "@/components/timer/shared-timer-surface"
+import { useSharedTimerController } from "@/components/timer/use-shared-timer-controller"
 import {
   formatCompSimConstraintSummary,
   getCompSimFormatLabel,
@@ -29,35 +32,21 @@ type Props = {
   event: string
   config: CompSimRoundConfig
   startSignal: number
+  inspectionEnabled: boolean
   inspectionVoiceEnabled: boolean
   inspectionVoiceGender: InspectionVoiceGender
+  timerUpdateMode: TimerUpdateMode
+  timerReadoutTextSize: TimerTextSize
   onExit: () => void
   onConfigChange?: (config: CompSimRoundConfig) => void
   onBusyChange?: (busy: boolean) => void
 }
 
-const HOLD_MS = 550
-
-export function shouldAutoSubmitInspectionDnf(
-  inspectionState: "idle" | "inspecting" | "overtime" | "done",
-  phase: string,
-  manualInspectionFinishPending: boolean
-): boolean {
-  return (
-    inspectionState === "done" &&
-    phase === "inspecting" &&
-    !manualInspectionFinishPending
-  )
-}
-
-export function shouldStartFreshInspection(
-  previousPhase: string | null,
-  nextPhase: string
-): boolean {
-  return previousPhase !== "inspecting" && nextPhase === "inspecting"
-}
-
-function formatPressureWarning(config: CompSimRoundConfig, officialElapsedMs: number, solveCount: number): string | null {
+function formatPressureWarning(
+  config: CompSimRoundConfig,
+  officialElapsedMs: number,
+  solveCount: number
+): string | null {
   if (config.cumulativeTimeLimitMs != null) {
     const remaining = config.cumulativeTimeLimitMs - officialElapsedMs
     if (remaining > 0 && remaining <= 15000) {
@@ -81,8 +70,11 @@ export function CompSimOverlay({
   event,
   config,
   startSignal,
+  inspectionEnabled,
   inspectionVoiceEnabled,
   inspectionVoiceGender,
+  timerUpdateMode,
+  timerReadoutTextSize,
   onExit,
   onConfigChange,
   onBusyChange,
@@ -91,40 +83,41 @@ export function CompSimOverlay({
   const { snapshot, roundResult } = compSim
   const { phase } = snapshot
   const wakeLockEnabled = phase !== "idle" && phase !== "sim_complete"
+  const handledStartSignalRef = useRef(0)
 
   useScreenWakeLock({
     enabled: wakeLockEnabled,
     context: "comp_sim",
   })
 
-  const inspection = useInspection({
-    voice: inspectionVoiceEnabled,
-    voiceGender: inspectionVoiceGender,
-  })
-  const displayRef = useRef<HTMLDivElement>(null)
-  const timerStartRef = useRef(0)
-  const rafRef = useRef(0)
-  const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
-  const manualInspectionFinishRef = useRef(false)
-  const holdingRef = useRef(false)
-  const holdStartRef = useRef(0)
-  const handledStartSignalRef = useRef(0)
-  const previousPhaseRef = useRef<string | null>(phase)
-  const [holdReady, setHoldReady] = useState(false)
-  const [isHolding, setIsHolding] = useState(false)
-
   const progressBars = useMemo(
     () => Array.from({ length: snapshot.roundConfig.plannedSolveCount }, (_, index) => index),
     [snapshot.roundConfig.plannedSolveCount]
   )
   const pressureWarning = useMemo(
-    () => formatPressureWarning(snapshot.roundConfig, snapshot.officialElapsedMs, snapshot.solves.length),
+    () =>
+      formatPressureWarning(
+        snapshot.roundConfig,
+        snapshot.officialElapsedMs,
+        snapshot.solves.length
+      ),
     [snapshot.roundConfig, snapshot.officialElapsedMs, snapshot.solves.length]
   )
   const statusChips = useMemo(
     () => formatCompSimConstraintSummary(snapshot.roundConfig),
     [snapshot.roundConfig]
   )
+
+  const timerController = useSharedTimerController({
+    enabled: phase === "ready" || phase === "inspecting" || phase === "solving",
+    inspectionEnabled,
+    inspectionVoiceEnabled,
+    inspectionVoiceGender,
+    onInspectionStart: compSim.beginInspection,
+    onInspectionDnf: compSim.submitInspectionDnf,
+    onSolveStart: compSim.startSolve,
+    onSolveComplete: compSim.handleSolveComplete,
+  })
 
   useEffect(() => {
     onBusyChange?.(phase !== "idle")
@@ -142,190 +135,10 @@ export function CompSimOverlay({
     }
   }, [compSim, phase, startSignal])
 
-  useEffect(() => {
-    if (phase !== "solving") {
-      cancelAnimationFrame(rafRef.current)
-      return
-    }
-    timerStartRef.current = Date.now()
-    const tick = () => {
-      if (displayRef.current) {
-        displayRef.current.textContent = formatTimeMsCentiseconds(
-          Date.now() - timerStartRef.current
-        )
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [phase])
-
-  useEffect(() => {
-    if (shouldStartFreshInspection(previousPhaseRef.current, phase)) {
-      manualInspectionFinishRef.current = false
-      inspection.startInspection()
-    }
-    previousPhaseRef.current = phase
-  }, [phase, inspection])
-
-  const submitInspectionDnf = useCallback(() => {
-    inspectionPenaltyRef.current = "DNF"
-    compSim.startSolve()
-    setTimeout(() => compSim.handleSolveComplete(0, "DNF"), 50)
-  }, [compSim])
-
-  useEffect(() => {
-    if (
-      shouldAutoSubmitInspectionDnf(
-        inspection.state,
-        phase,
-        manualInspectionFinishRef.current
-      )
-    ) {
-      submitInspectionDnf()
-    }
-  }, [inspection.state, phase, submitInspectionDnf])
-
-  useEffect(() => {
-    if (phase !== "inspecting") {
-      manualInspectionFinishRef.current = false
-    }
-  }, [phase])
-
-  useEffect(() => {
-    if (phase !== "ready" && phase !== "inspecting" && phase !== "solving") {
-      holdingRef.current = false
-      return
-    }
-
-    const onKeyDown = (eventKey: KeyboardEvent) => {
-      if (eventKey.code !== "Space" || eventKey.repeat) return
-      eventKey.preventDefault()
-      eventKey.stopPropagation()
-
-      if (phase === "solving") {
-        cancelAnimationFrame(rafRef.current)
-        const elapsed = Date.now() - timerStartRef.current
-        const penalty = inspectionPenaltyRef.current
-        inspectionPenaltyRef.current = null
-        compSim.handleSolveComplete(elapsed, penalty)
-        return
-      }
-
-      holdingRef.current = true
-      setIsHolding(true)
-      holdStartRef.current = Date.now()
-      setHoldReady(false)
-    }
-
-    const onKeyUp = (eventKey: KeyboardEvent) => {
-      if (eventKey.code !== "Space") return
-      eventKey.preventDefault()
-      eventKey.stopPropagation()
-
-      if ((phase === "ready" || phase === "inspecting") && holdingRef.current) {
-        const held = Date.now() - holdStartRef.current
-        holdingRef.current = false
-        setIsHolding(false)
-        setHoldReady(false)
-
-        if (held >= HOLD_MS) {
-          if (phase === "ready") {
-            compSim.beginInspection()
-          } else {
-            manualInspectionFinishRef.current = true
-            const penalty = inspection.finishInspection()
-            if (penalty === "DNF") {
-              submitInspectionDnf()
-              return
-            }
-            inspectionPenaltyRef.current = penalty
-            compSim.startSolve()
-          }
-        }
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown, { capture: true })
-    window.addEventListener("keyup", onKeyUp, { capture: true })
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, { capture: true })
-      window.removeEventListener("keyup", onKeyUp, { capture: true })
-    }
-  }, [phase, inspection, compSim, submitInspectionDnf])
-
-  useEffect(() => {
-    if (phase !== "ready" && phase !== "inspecting") return
-    const interval = setInterval(() => {
-      if (holdingRef.current && Date.now() - holdStartRef.current >= HOLD_MS) {
-        setHoldReady(true)
-      }
-    }, 50)
-    return () => clearInterval(interval)
-  }, [phase])
-
-  const handlePointerDown = useCallback(() => {
-    if (phase === "solving") {
-      cancelAnimationFrame(rafRef.current)
-      const elapsed = Date.now() - timerStartRef.current
-      const penalty = inspectionPenaltyRef.current
-      inspectionPenaltyRef.current = null
-      compSim.handleSolveComplete(elapsed, penalty)
-      return
-    }
-
-    if (phase === "ready" || phase === "inspecting") {
-      holdingRef.current = true
-      setIsHolding(true)
-      holdStartRef.current = Date.now()
-      setHoldReady(false)
-    }
-  }, [phase, compSim])
-
-  const handlePointerUp = useCallback(() => {
-    if ((phase === "ready" || phase === "inspecting") && holdingRef.current) {
-      const held = Date.now() - holdStartRef.current
-      holdingRef.current = false
-      setIsHolding(false)
-      setHoldReady(false)
-      if (held >= HOLD_MS) {
-        if (phase === "ready") {
-          compSim.beginInspection()
-        } else {
-          manualInspectionFinishRef.current = true
-          const penalty = inspection.finishInspection()
-          if (penalty === "DNF") {
-            submitInspectionDnf()
-            return
-          }
-          inspectionPenaltyRef.current = penalty
-          compSim.startSolve()
-        }
-      }
-    }
-  }, [phase, inspection, compSim, submitInspectionDnf])
-
-  useEffect(() => {
-    if (phase === "idle" || phase === "sim_complete") return
-    const suppress = (eventKey: KeyboardEvent) => {
-      if (eventKey.code === "Space") {
-        eventKey.stopPropagation()
-        eventKey.preventDefault()
-      }
-    }
-    window.addEventListener("keydown", suppress, { capture: true })
-    window.addEventListener("keyup", suppress, { capture: true })
-    return () => {
-      window.removeEventListener("keydown", suppress, { capture: true })
-      window.removeEventListener("keyup", suppress, { capture: true })
-    }
-  }, [phase])
-
   const handleExit = useCallback(() => {
-    inspection.cancelInspection()
     compSim.cancelSim()
     onExit()
-  }, [compSim, inspection, onExit])
+  }, [compSim, onExit])
 
   const currentSolveDisplay =
     snapshot.solves.length > 0
@@ -358,10 +171,20 @@ export function CompSimOverlay({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <MiniMetric label="Attempt" value={`${Math.min(snapshot.solveIndex + 1, snapshot.roundConfig.plannedSolveCount)}/${snapshot.roundConfig.plannedSolveCount}`} />
+            <MiniMetric
+              label="Attempt"
+              value={`${Math.min(snapshot.solveIndex + 1, snapshot.roundConfig.plannedSolveCount)}/${snapshot.roundConfig.plannedSolveCount}`}
+            />
             <MiniMetric label="Elapsed" value={formatTimeMsCentiseconds(snapshot.officialElapsedMs)} />
             <MiniMetric label="Last" value={currentSolveDisplay ?? "—"} />
-            <MiniMetric label="Status" value={snapshot.endedReason ? snapshot.endedReason.replace(/_/g, " ") : phase.replace(/_/g, " ")} />
+            <MiniMetric
+              label="Status"
+              value={
+                snapshot.endedReason
+                  ? snapshot.endedReason.replace(/_/g, " ")
+                  : phase.replace(/_/g, " ")
+              }
+            />
           </div>
         </div>
 
@@ -414,28 +237,19 @@ export function CompSimOverlay({
           />
         )}
         {phase === "solve_cue" && <CueScreen warning={pressureWarning} />}
-        {phase === "ready" && (
-          <ReadyScreen
-            holdReady={holdReady}
-            holding={isHolding}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
+        {(phase === "ready" || phase === "inspecting" || phase === "solving") && (
+          <AttemptTimerScreen
             formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
-          />
-        )}
-        {phase === "inspecting" && (
-          <InspectionScreen
-            secondsLeft={inspection.secondsLeft}
-            holdReady={holdReady}
-            holding={isHolding}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-          />
-        )}
-        {phase === "solving" && (
-          <SolvingScreen
-            displayRef={displayRef}
-            onPointerDown={handlePointerDown}
+            inspectionEnabled={inspectionEnabled}
+            timerPhase={timerController.phase}
+            inInspectionHold={timerController.inInspectionHold}
+            inspectionSecondsLeft={timerController.inspectionSecondsLeft}
+            startMs={timerController.startMs}
+            timeColor={timerController.timeColor}
+            timerUpdateMode={timerUpdateMode}
+            timerReadoutTextSize={timerReadoutTextSize}
+            onPointerDown={timerController.handlePointerDown}
+            onPointerUp={timerController.handlePointerUp}
             warning={pressureWarning}
           />
         )}

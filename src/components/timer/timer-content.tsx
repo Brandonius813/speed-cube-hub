@@ -12,6 +12,16 @@ import {
   truncateMsToCentiseconds,
 } from "@/lib/timer/averages"
 import {
+  getTimerReadoutColor,
+  parseTimerTextSize,
+  TIMER_READOUT_SIZE_CLASSES,
+  TIMER_READOUT_TEXT_SIZE_KEY,
+  TimerReadout,
+  type SharedTimerLastSolve,
+  type TimerTextSize,
+  type TimerUpdateMode,
+} from "@/components/timer/shared-timer-surface"
+import {
   type Penalty,
   type TimerSolve as Solve,
   bestStat,
@@ -154,11 +164,7 @@ const COMP_SIM_GAN_IGNORED_MSG = "GAN input ignored during Comp Sim. Use the Com
 const COMP_SIM_CONFIG_KEY = "timer-comp-sim-config"
 const LEGACY_TIMER_TEXT_SIZE_KEY = "timer-text-size"
 const TIMER_SCRAMBLE_TEXT_SIZE_KEY = "timer-scramble-text-size"
-const TIMER_READOUT_TEXT_SIZE_KEY = "timer-readout-text-size"
 const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
-
-type TimerUpdateMode = "realtime" | "seconds" | "solving"
-type TimerTextSize = "md" | "lg" | "xl"
 type CompSimEntryGuard =
   | "gan_connected"
   | "gan_connected_empty_session"
@@ -180,12 +186,6 @@ const TIMER_TEXT_SIZE_OPTIONS: Array<{ value: TimerTextSize; label: string }> = 
   { value: "xl", label: "XL" },
 ]
 
-const TIMER_READOUT_SIZE_CLASSES: Record<TimerTextSize, string> = {
-  md: "text-[clamp(4.5rem,18vw,12rem)] leading-none",
-  lg: "text-[clamp(5.25rem,21vw,14rem)] leading-none",
-  xl: "text-[clamp(6rem,24vw,16rem)] leading-none",
-}
-
 const TYPING_INPUT_SIZE_CLASSES: Record<TimerTextSize, string> = {
   md: "text-[clamp(4.5rem,18vw,12rem)]",
   lg: "text-[clamp(5rem,20vw,13rem)]",
@@ -196,10 +196,6 @@ const SCRAMBLE_TEXT_SIZE_CLASSES: Record<TimerTextSize, string> = {
   md: "text-lg sm:text-xl 2xl:text-[1.45rem]",
   lg: "text-xl sm:text-2xl 2xl:text-[1.65rem]",
   xl: "text-[1.4rem] sm:text-[1.75rem] 2xl:text-[1.9rem]",
-}
-
-function parseTextSize(raw: string | null): TimerTextSize | null {
-  return raw === "md" || raw === "lg" || raw === "xl" ? raw : null
 }
 
 function getStatWindowSize(statKey: string): number | null {
@@ -351,14 +347,6 @@ function backfillGroupsFromMetadata(
   }
 
   return { solves: patched, changed }
-}
-
-function fmtWholeSeconds(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
-  if (totalSeconds < 60) return String(totalSeconds)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
 function parseTime(raw: string): number | null {
@@ -540,8 +528,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [scrambleTextSize, setScrambleTextSize] = useState<TimerTextSize>(() => {
     try {
       return (
-        parseTextSize(localStorage.getItem(TIMER_SCRAMBLE_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(TIMER_SCRAMBLE_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
         "lg"
       )
     } catch {
@@ -551,8 +539,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [timerReadoutTextSize, setTimerReadoutTextSize] = useState<TimerTextSize>(() => {
     try {
       return (
-        parseTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
         "lg"
       )
     } catch {
@@ -562,9 +550,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [paneTimeTextSize, setPaneTimeTextSize] = useState<TimerPaneTextSize>(() => {
     try {
       return (
-        parseTextSize(localStorage.getItem(TIMER_PANE_TIME_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
-        parseTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(TIMER_PANE_TIME_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(TIMER_READOUT_TEXT_SIZE_KEY)) ??
+        parseTimerTextSize(localStorage.getItem(LEGACY_TIMER_TEXT_SIZE_KEY)) ??
         "lg"
       )
     } catch {
@@ -2638,23 +2626,19 @@ export function TimerContent({ viewer }: TimerContentProps) {
     ]
   )
 
-  const timeColor =
-    phase === "holding"
-      ? "text-red-400"
-      : phase === "ready"
-      ? "text-green-400"
-      : phase === "inspecting" && engineSnapshot.btArmed
-      ? "text-green-400"
-      : phase === "inspecting" && engineSnapshot.btHandsOnMat
-      ? "text-red-400"
-      : phase === "inspecting" && insp.secondsLeft <= 3
-      ? "text-red-400"
-      : phase === "inspecting" && insp.secondsLeft <= 7
-      ? "text-yellow-400"
-      : "text-foreground"
+  const timeColor = getTimerReadoutColor({
+    phase,
+    inInspectionHold: inInspHold,
+    inspectionSecondsLeft: insp.secondsLeft,
+    btArmed: engineSnapshot.btArmed,
+    btHandsOnMat: engineSnapshot.btHandsOnMat,
+  })
 
   const parsedTypeTime = useMemo(() => parseTime(typeVal), [typeVal])
   const last = solves[solves.length - 1]
+  const lastDisplaySolve: SharedTimerLastSolve = last
+    ? { timeMs: last.time_ms, penalty: last.penalty }
+    : null
   shortcutSolveRef.current = detailSolve ?? selectedSolve ?? last ?? null
   const lastSinglePb = useMemo(() => getLastSinglePbCandidate(solves), [solves])
   const scrambleNavBtn =
@@ -3339,8 +3323,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
           event={event}
           config={compSimConfig}
           startSignal={compSimStartSignal}
+          inspectionEnabled={inspOn}
           inspectionVoiceEnabled={inspVoiceOn}
           inspectionVoiceGender={inspVoiceGender}
+          timerUpdateMode={timerUpdateMode}
+          timerReadoutTextSize={timerReadoutTextSize}
           onConfigChange={updateCompSimConfig}
           onExit={handleCompSimExit}
           onBusyChange={setCompSimBusy}
@@ -3437,9 +3424,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
                 )}
                 phase={phase}
                 startMs={startRef.current}
-                last={last}
-                inInspHold={inInspHold}
-                inspSecondsLeft={insp.secondsLeft}
+                last={lastDisplaySolve}
+                inInspectionHold={inInspHold}
+                inspectionSecondsLeft={insp.secondsLeft}
                 timerUpdateMode={timerUpdateMode}
                 btReset={engineSnapshot.btReset}
                 onStall={(deltaMs) => {
@@ -3661,91 +3648,4 @@ export function TimerContent({ viewer }: TimerContentProps) {
       )}
     </div>
   )
-}
-
-function TimerReadout({
-  className,
-  phase,
-  startMs,
-  last,
-  inInspHold,
-  inspSecondsLeft,
-  timerUpdateMode,
-  btReset,
-  onStall,
-}: {
-  className: string
-  phase: TimerPhase
-  startMs: number
-  last: Solve | undefined
-  inInspHold: boolean
-  inspSecondsLeft: number
-  timerUpdateMode: TimerUpdateMode
-  btReset: boolean
-  onStall: (deltaMs: number) => void
-}) {
-  const [runningDisplay, setRunningDisplay] = useState("0.00")
-  const lastFrameRef = useRef<number | null>(null)
-  const lastStallRef = useRef(0)
-
-  useEffect(() => {
-    if (phase !== "running") {
-      lastFrameRef.current = null
-      return
-    }
-
-    if (timerUpdateMode === "solving") {
-      lastFrameRef.current = null
-      return
-    }
-
-    let raf = 0
-    let active = true
-    const tick = (ts: number) => {
-      if (!active) return
-      if (lastFrameRef.current !== null) {
-        const delta = ts - lastFrameRef.current
-        if (delta > 250 && ts - lastStallRef.current > 1000) {
-          lastStallRef.current = ts
-          onStall(Math.round(delta * 100) / 100)
-        }
-      }
-      lastFrameRef.current = ts
-      const elapsed = ts - startMs
-      setRunningDisplay(
-        timerUpdateMode === "seconds"
-          ? fmtWholeSeconds(elapsed)
-          : formatTimeMsCentiseconds(elapsed)
-      )
-      if (!active) return
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => {
-      active = false
-      cancelAnimationFrame(raf)
-    }
-  }, [onStall, phase, startMs, timerUpdateMode])
-
-  const display = useMemo(() => {
-    if (phase === "running") {
-      if (timerUpdateMode === "solving") return "solving"
-      if (lastFrameRef.current === null) {
-        return timerUpdateMode === "seconds" ? "0" : "0.00"
-      }
-      return runningDisplay
-    }
-    if (phase === "inspecting" || inInspHold) {
-      return String(Math.max(0, 15 - inspSecondsLeft))
-    }
-    if (phase === "ready") return "0.00"
-    if (phase === "idle" && btReset) return "0.00"
-    if (!last) return "0.00"
-    if (last.penalty === "DNF") return "DNF"
-    return formatTimeMsCentiseconds(
-      last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms
-    )
-  }, [btReset, inInspHold, inspSecondsLeft, last, phase, runningDisplay, timerUpdateMode])
-
-  return <div className={className}>{display}</div>
 }

@@ -37,6 +37,7 @@ export type CompSimApi = {
   confirmCubeCovered: () => void
   beginInspection: () => void
   startSolve: () => void
+  submitInspectionDnf: () => void
   handleSolveComplete: (time_ms: number, penalty: "+2" | "DNF" | null) => void
   cancelSim: () => void
   applyRoundConfig: (config: CompSimRoundConfig) => void
@@ -249,14 +250,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     setIsSaving(false)
   }, [])
 
-  const handleSolveComplete = useCallback((time_ms: number, penalty: "+2" | "DNF" | null) => {
-    const engine = engineRef.current
-    const current = engine.getSnapshot()
-    const scramble = current.scrambles[current.solveIndex] ?? ""
-
-    engine.dispatch({ type: "SOLVE_COMPLETE", time_ms, penalty, scramble })
-
-    const next = engine.getSnapshot()
+  const resolvePostSolveSnapshot = useCallback((next: CompSimSnapshot) => {
     if (next.phase === "sim_complete") {
       stopAllNoise()
       void doAutoSave(next)
@@ -265,10 +259,28 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
 
     if (next.phase === "solve_recorded") {
       advanceTimeoutRef.current = setTimeout(() => {
-        engine.dispatch({ type: "ADVANCE_NEXT" })
+        engineRef.current.dispatch({ type: "ADVANCE_NEXT" })
       }, 1600)
     }
   }, [doAutoSave])
+
+  const handleSolveComplete = useCallback((time_ms: number, penalty: "+2" | "DNF" | null) => {
+    const engine = engineRef.current
+    const current = engine.getSnapshot()
+    const scramble = current.scrambles[current.solveIndex] ?? ""
+
+    engine.dispatch({ type: "SOLVE_COMPLETE", time_ms, penalty, scramble })
+    resolvePostSolveSnapshot(engine.getSnapshot())
+  }, [resolvePostSolveSnapshot])
+
+  const submitInspectionDnf = useCallback(() => {
+    const engine = engineRef.current
+    const current = engine.getSnapshot()
+    const scramble = current.scrambles[current.solveIndex] ?? ""
+
+    engine.dispatch({ type: "INSPECTION_DNF", scramble })
+    resolvePostSolveSnapshot(engine.getSnapshot())
+  }, [resolvePostSolveSnapshot])
 
   const cancelSim = useCallback(() => {
     clearAllTimeouts()
@@ -313,6 +325,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     confirmCubeCovered,
     beginInspection,
     startSolve,
+    submitInspectionDnf,
     handleSolveComplete,
     cancelSim,
     applyRoundConfig,
