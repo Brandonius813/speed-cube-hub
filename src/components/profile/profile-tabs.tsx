@@ -3,8 +3,7 @@
 import { useRef, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
-
-export type ProfileTab = "pbs" | "stats" | "overview" | "cubes" | "official"
+import type { ProfileTab } from "@/lib/profile-tabs"
 
 const TABS: { id: ProfileTab; label: string }[] = [
   { id: "pbs", label: "PBs" },
@@ -90,12 +89,4 @@ export function ProfileTabs({
       ))}
     </div>
   )
-}
-
-/** Parse the ?tab= param from the URL. Defaults to "overview" if missing/invalid. */
-export function parseTabParam(tab: string | null | undefined): ProfileTab {
-  if (tab === "comp-sim") return "stats"
-  const valid: ProfileTab[] = ["pbs", "stats", "overview", "cubes", "official"]
-  if (tab && valid.includes(tab as ProfileTab)) return tab as ProfileTab
-  return "overview"
 }

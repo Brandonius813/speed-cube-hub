@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Info, Settings } from "lucide-react"
@@ -30,7 +31,6 @@ import {
 } from "@/components/timer/use-bluetooth-timer"
 import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import { isBleSupported } from "@/lib/timer/bluetooth"
-import { EndSessionModal } from "@/components/timer/end-session-modal"
 import {
   createTimerEngine,
   type TimerEvent,
@@ -50,10 +50,6 @@ import {
 } from "@/lib/timer/session-dividers"
 import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
-import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
-import { CompSimEntryDialog } from "@/components/timer/comp-sim-entry-dialog"
-import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
-import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import {
   PANE_REGISTRY,
   PANE_TOOL_OPTIONS,
@@ -66,8 +62,6 @@ import {
   type PaneToolId,
   type TimerPaneTextSize,
 } from "@/components/timer/panes/types"
-import { ShareModal } from "@/components/share/share-modal"
-import { PbPhotoModeOverlay } from "@/components/timer/pb-photo-mode-overlay"
 import { getLastSinglePbCandidate } from "@/lib/timer/pb-share"
 import type {
   StatsSummary,
@@ -84,6 +78,62 @@ import {
   normalizeCompSimConfig,
   type CompSimRoundConfig,
 } from "@/lib/timer/comp-sim-round"
+
+const EndSessionModal = dynamic(
+  () =>
+    import("@/components/timer/end-session-modal").then(
+      (module) => module.EndSessionModal
+    ),
+  { loading: () => null }
+)
+
+const CompSimOverlay = dynamic(
+  () =>
+    import("@/components/timer/comp-sim-overlay").then(
+      (module) => module.CompSimOverlay
+    ),
+  { loading: () => null }
+)
+
+const CompSimEntryDialog = dynamic(
+  () =>
+    import("@/components/timer/comp-sim-entry-dialog").then(
+      (module) => module.CompSimEntryDialog
+    ),
+  { loading: () => null }
+)
+
+const SolveDetailModal = dynamic(
+  () =>
+    import("@/components/timer/solve-detail-modal").then(
+      (module) => module.SolveDetailModal
+    ),
+  { loading: () => null }
+)
+
+const StatDetailModal = dynamic(
+  () =>
+    import("@/components/timer/stat-detail-modal").then(
+      (module) => module.StatDetailModal
+    ),
+  { loading: () => null }
+)
+
+const ShareModal = dynamic(
+  () =>
+    import("@/components/share/share-modal").then(
+      (module) => module.ShareModal
+    ),
+  { loading: () => null }
+)
+
+const PbPhotoModeOverlay = dynamic(
+  () =>
+    import("@/components/timer/pb-photo-mode-overlay").then(
+      (module) => module.PbPhotoModeOverlay
+    ),
+  { loading: () => null }
+)
 
 const HOLD_MS = 550
 const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]

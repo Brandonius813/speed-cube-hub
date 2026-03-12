@@ -22,6 +22,56 @@ export async function getSessionsByUserId(
   ));
 }
 
+async function sumPracticeMinutesForUser(userId: string): Promise<number> {
+  const supabase = await createClient();
+  let totalMinutes = 0;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("duration_minutes")
+      .eq("user_id", userId)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error || !data || data.length === 0) break;
+
+    for (const row of data) {
+      totalMinutes += row.duration_minutes ?? 0;
+    }
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return totalMinutes;
+}
+
+export async function getTotalPracticeMinutes(): Promise<{
+  totalMinutes: number
+  error?: string
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { totalMinutes: 0, error: "Not authenticated" };
+  }
+
+  return { totalMinutes: await sumPracticeMinutesForUser(user.id) };
+}
+
+export async function getTotalPracticeMinutesByUserId(
+  userId: string
+): Promise<{
+  totalMinutes: number
+  error?: string
+}> {
+  return { totalMinutes: await sumPracticeMinutesForUser(userId) };
+}
+
 export async function createSession(data: {
   session_date: string;
   event: string;

@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,15 +9,46 @@ import { WCA_EVENTS } from "@/lib/constants"
 import { getCurrentPBs } from "@/lib/actions/personal-bests"
 import { updatePBDisplayTypes } from "@/lib/actions/profiles"
 import { CubingIcon } from "@/components/shared/cubing-icon"
-import { LogPBModal } from "@/components/pbs/log-pb-modal"
-import { ImportPBsModal } from "@/components/pbs/import-pbs-modal"
-import { PBSettingsModal } from "@/components/pbs/pb-settings-modal"
-import {
-  EventDetailModal,
-  getDefaultDisplayTypes,
-} from "@/components/profile/event-detail-modal"
 import type { Profile, PBRecord } from "@/lib/types"
 import { formatEventTime } from "@/lib/utils"
+
+const LogPBModal = dynamic(
+  () => import("@/components/pbs/log-pb-modal").then((module) => module.LogPBModal),
+  { loading: () => null }
+)
+
+const ImportPBsModal = dynamic(
+  () =>
+    import("@/components/pbs/import-pbs-modal").then(
+      (module) => module.ImportPBsModal
+    ),
+  { loading: () => null }
+)
+
+const PBSettingsModal = dynamic(
+  () =>
+    import("@/components/pbs/pb-settings-modal").then(
+      (module) => module.PBSettingsModal
+    ),
+  { loading: () => null }
+)
+
+const EventDetailModal = dynamic(
+  () =>
+    import("@/components/profile/event-detail-modal").then(
+      (module) => module.EventDetailModal
+    ),
+  { loading: () => null }
+)
+
+function getDefaultDisplayTypes(eventId: string): string[] {
+  if (["333bf", "444bf", "555bf", "333fm"].includes(eventId)) {
+    return ["Single", "Mo3"]
+  }
+  if (eventId === "333mbf") return ["Single"]
+  if (["666", "777"].includes(eventId)) return ["Single", "Mo3"]
+  return ["Single", "Ao5"]
+}
 
 function getEventLabel(eventId: string): string {
   return WCA_EVENTS.find((e) => e.id === eventId)?.label || eventId

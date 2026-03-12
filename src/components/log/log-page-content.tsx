@@ -1,10 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Upload } from "lucide-react";
 import { SessionForm } from "./session-form";
-import { ImportContent } from "@/components/import/import-content";
+
+const ImportContent = dynamic(
+  () =>
+    import("@/components/import/import-content").then(
+      (module) => module.ImportContent
+    ),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-border/50 bg-card/20 p-8 text-center text-sm text-muted-foreground">
+        Loading import assistant...
+      </div>
+    ),
+  }
+);
 
 type Mode = "single" | "import";
 

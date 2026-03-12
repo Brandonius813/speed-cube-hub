@@ -1,12 +1,26 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ClipboardList, MessageSquare } from "lucide-react"
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
 import { Button } from "@/components/ui/button"
 import { SessionForm } from "@/components/log/session-form"
-import { ImportContent } from "@/components/import/import-content"
 import { ONBOARDING_TOURS, parseOnboardingTour } from "@/lib/onboarding"
+
+const ImportContent = dynamic(
+  () =>
+    import("@/components/import/import-content").then(
+      (module) => module.ImportContent
+    ),
+  {
+    loading: () => (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Loading import assistant...
+      </div>
+    ),
+  }
+)
 
 type ImportTab = "manual" | "chat"
 
