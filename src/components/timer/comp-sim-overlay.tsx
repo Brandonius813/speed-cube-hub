@@ -50,6 +50,13 @@ export function shouldAutoSubmitInspectionDnf(
   )
 }
 
+export function shouldStartFreshInspection(
+  previousPhase: string | null,
+  nextPhase: string
+): boolean {
+  return previousPhase !== "inspecting" && nextPhase === "inspecting"
+}
+
 function formatPressureWarning(config: CompSimRoundConfig, officialElapsedMs: number, solveCount: number): string | null {
   if (config.cumulativeTimeLimitMs != null) {
     const remaining = config.cumulativeTimeLimitMs - officialElapsedMs
@@ -102,6 +109,7 @@ export function CompSimOverlay({
   const holdingRef = useRef(false)
   const holdStartRef = useRef(0)
   const handledStartSignalRef = useRef(0)
+  const previousPhaseRef = useRef<string | null>(phase)
   const [holdReady, setHoldReady] = useState(false)
   const [isHolding, setIsHolding] = useState(false)
 
@@ -153,10 +161,11 @@ export function CompSimOverlay({
   }, [phase])
 
   useEffect(() => {
-    if (phase === "inspecting" && inspection.state === "idle") {
+    if (shouldStartFreshInspection(previousPhaseRef.current, phase)) {
       manualInspectionFinishRef.current = false
       inspection.startInspection()
     }
+    previousPhaseRef.current = phase
   }, [phase, inspection])
 
   const submitInspectionDnf = useCallback(() => {
@@ -313,9 +322,10 @@ export function CompSimOverlay({
   }, [phase])
 
   const handleExit = useCallback(() => {
+    inspection.cancelInspection()
     compSim.cancelSim()
     onExit()
-  }, [compSim, onExit])
+  }, [compSim, inspection, onExit])
 
   const currentSolveDisplay =
     snapshot.solves.length > 0
