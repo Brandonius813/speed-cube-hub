@@ -11,6 +11,7 @@ import {
   CueScreen,
   IdleScreen,
   ResultsScreen,
+  RoundSheet,
   ScrambleScreen,
   SolveRecordedScreen,
   WaitingScreen,
@@ -144,7 +145,8 @@ export function CompSimOverlay({
     snapshot.solves.length > 0
       ? formatTimeMsCentiseconds(getEffectiveTime(snapshot.solves[snapshot.solves.length - 1]))
       : null
-  const phaseAllowsScroll = phase === "idle" || phase === "sim_complete"
+  const showRoundSheet = snapshot.solves.length > 0 && phase !== "sim_complete"
+  const phaseAllowsScroll = phase === "idle" || phase === "sim_complete" || showRoundSheet
   const handleRoundConfigChange = useCallback(
     (nextConfig: CompSimRoundConfig) => {
       compSim.applyRoundConfig(nextConfig)
@@ -152,6 +154,45 @@ export function CompSimOverlay({
     },
     [compSim, onConfigChange]
   )
+
+  useEffect(() => {
+    if (phase !== "solve_recorded" || snapshot.solves.length === 0) return
+
+    const latestIndex = snapshot.solves.length - 1
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      if (
+        event.target instanceof HTMLElement &&
+        (event.target.tagName === "INPUT" ||
+          event.target.tagName === "TEXTAREA" ||
+          event.target.isContentEditable)
+      ) {
+        return
+      }
+
+      if (event.key === "+" || (event.key === "=" && event.shiftKey) || event.code === "NumpadAdd") {
+        event.preventDefault()
+        const currentPenalty = snapshot.solves[latestIndex]?.penalty
+        compSim.updateSolvePenalty(latestIndex, currentPenalty === "+2" ? null : "+2")
+        return
+      }
+
+      if (key === "d") {
+        event.preventDefault()
+        const currentPenalty = snapshot.solves[latestIndex]?.penalty
+        compSim.updateSolvePenalty(latestIndex, currentPenalty === "DNF" ? null : "DNF")
+        return
+      }
+
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault()
+        compSim.advanceToNextAttempt()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [compSim, phase, snapshot.solves])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(217,70,239,0.14),transparent_35%),linear-gradient(180deg,rgba(4,10,22,0.96),rgba(8,10,16,1))]">
@@ -225,43 +266,62 @@ export function CompSimOverlay({
             : "items-center justify-center overflow-hidden"
         )}
       >
-        {phase === "idle" && (
-          <IdleScreen compSim={compSim} onConfigChange={handleRoundConfigChange} />
-        )}
-        {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
-        {phase === "waiting" && (
-          <WaitingScreen
-            solveIndex={snapshot.solveIndex}
-            total={snapshot.roundConfig.plannedSolveCount}
-            warning={pressureWarning}
-          />
-        )}
-        {phase === "solve_cue" && <CueScreen warning={pressureWarning} />}
-        {(phase === "ready" || phase === "inspecting" || phase === "solving") && (
-          <AttemptTimerScreen
-            formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
-            inspectionEnabled={inspectionEnabled}
-            timerPhase={timerController.phase}
-            inInspectionHold={timerController.inInspectionHold}
-            inspectionSecondsLeft={timerController.inspectionSecondsLeft}
-            startMs={timerController.startMs}
-            timeColor={timerController.timeColor}
-            timerUpdateMode={timerUpdateMode}
-            timerReadoutTextSize={timerReadoutTextSize}
-            onPointerDown={timerController.handlePointerDown}
-            onPointerUp={timerController.handlePointerUp}
-            warning={pressureWarning}
-          />
-        )}
-        {phase === "solve_recorded" && (
-          <SolveRecordedScreen
-            solves={snapshot.solves}
-            formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
-            timerReadoutTextSize={timerReadoutTextSize}
-          />
-        )}
-        {phase === "sim_complete" && (
+        {phase === "sim_complete" ? (
           <ResultsScreen compSim={compSim} roundResult={roundResult} onExit={handleExit} />
+        ) : (
+          <div
+            className={cn(
+              "flex w-full flex-col items-center gap-5",
+              showRoundSheet && "xl:grid xl:max-w-6xl xl:grid-cols-[minmax(0,1.1fr)_360px] xl:items-start"
+            )}
+          >
+            <div className="flex w-full justify-center">
+              {phase === "idle" && (
+                <IdleScreen compSim={compSim} onConfigChange={handleRoundConfigChange} />
+              )}
+              {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
+              {phase === "waiting" && (
+                <WaitingScreen
+                  solveIndex={snapshot.solveIndex}
+                  total={snapshot.roundConfig.plannedSolveCount}
+                  warning={pressureWarning}
+                />
+              )}
+              {phase === "solve_cue" && <CueScreen warning={pressureWarning} />}
+              {(phase === "ready" || phase === "inspecting" || phase === "solving") && (
+                <AttemptTimerScreen
+                  formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
+                  inspectionEnabled={inspectionEnabled}
+                  timerPhase={timerController.phase}
+                  inInspectionHold={timerController.inInspectionHold}
+                  inspectionSecondsLeft={timerController.inspectionSecondsLeft}
+                  startMs={timerController.startMs}
+                  timeColor={timerController.timeColor}
+                  timerUpdateMode={timerUpdateMode}
+                  timerReadoutTextSize={timerReadoutTextSize}
+                  onPointerDown={timerController.handlePointerDown}
+                  onPointerUp={timerController.handlePointerUp}
+                  warning={pressureWarning}
+                />
+              )}
+              {phase === "solve_recorded" && (
+                <SolveRecordedScreen
+                  snapshot={snapshot}
+                  timerReadoutTextSize={timerReadoutTextSize}
+                  onPenaltyChange={compSim.updateSolvePenalty}
+                  onContinue={compSim.advanceToNextAttempt}
+                />
+              )}
+            </div>
+
+            {showRoundSheet && (
+              <RoundSheet
+                snapshot={snapshot}
+                editable
+                onPenaltyChange={compSim.updateSolvePenalty}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

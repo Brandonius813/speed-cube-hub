@@ -83,7 +83,7 @@ describe("createCompSimEngine", () => {
     engine.dispatch({ type: "SOLVE_COMPLETE", time_ms: 10000, penalty: null, scramble: "A" })
 
     const snapshot = engine.getSnapshot()
-    expect(snapshot.phase).toBe("sim_complete")
+    expect(snapshot.phase).toBe("solve_recorded")
     expect(snapshot.endedReason).toBe("cutoff_failed")
     expect(snapshot.cutoffMet).toBe(false)
   })
@@ -114,7 +114,7 @@ describe("createCompSimEngine", () => {
     engine.dispatch({ type: "SOLVE_COMPLETE", time_ms: 7200, penalty: null, scramble: "B" })
 
     const snapshot = engine.getSnapshot()
-    expect(snapshot.phase).toBe("sim_complete")
+    expect(snapshot.phase).toBe("solve_recorded")
     expect(snapshot.endedReason).toBe("time_limit_reached")
     expect(snapshot.officialElapsedMs).toBe(15200)
   })
@@ -145,7 +145,7 @@ describe("createCompSimEngine", () => {
     runSolve(11800, "B")
 
     const snapshot = engine.getSnapshot()
-    expect(snapshot.phase).toBe("sim_complete")
+    expect(snapshot.phase).toBe("solve_recorded")
     expect(snapshot.endedReason).toBe("cutoff_failed")
     expect(snapshot.checkpointResultMs).toBe(10900)
   })
@@ -168,8 +168,45 @@ describe("createCompSimEngine", () => {
     engine.dispatch({ type: "INSPECTION_DNF", scramble: "A" })
 
     const snapshot = engine.getSnapshot()
-    expect(snapshot.phase).toBe("sim_complete")
+    expect(snapshot.phase).toBe("solve_recorded")
     expect(snapshot.endedReason).toBe("cutoff_failed")
     expect(snapshot.cutoffMet).toBe(false)
+  })
+
+  it("recomputes and truncates later solves when a retroactive penalty makes cutoff fail earlier", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: normalizeCompSimConfig({
+        format: "mo3",
+        cutoff: { attempt: 1, cutoffMs: 9000 },
+      }),
+    })
+
+    const runSolve = (time_ms: number, scramble: string) => {
+      engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+      engine.dispatch({ type: "WAIT_COMPLETE" })
+      engine.dispatch({ type: "CUE_DONE" })
+      engine.dispatch({ type: "READY_START" })
+      engine.dispatch({ type: "SOLVE_START" })
+      engine.dispatch({ type: "SOLVE_COMPLETE", time_ms, penalty: null, scramble })
+    }
+
+    runSolve(8000, "A")
+    engine.dispatch({ type: "ADVANCE_NEXT" })
+    runSolve(7200, "B")
+
+    engine.dispatch({ type: "UPDATE_SOLVE_PENALTY", solveIndex: 0, penalty: "+2" })
+
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("solve_recorded")
+    expect(snapshot.endedReason).toBe("cutoff_failed")
+    expect(snapshot.cutoffMet).toBe(false)
+    expect(snapshot.solves).toEqual([
+      { time_ms: 8000, penalty: "+2", scramble: "A" },
+    ])
+    expect(snapshot.solveIndex).toBe(1)
   })
 })

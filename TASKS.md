@@ -181,7 +181,7 @@
 - ✅ T162: Add Comp Sim step to onboarding checklist flow
 
 ### Phase 31: Comp Sim Upgrade (T161)
-- ✅ T161: Comp Sim round limits/cutoffs, real audio pack + previews, true result tracking, and Stats-tab Comp Sim sub-view
+- ✅ T161: Comp Sim limits/cutoffs, real audio, penalty review + live round sheet, solve-4 BPA/WPA cues, true result tracking, and cleaned-up Stats-tab Comp Sim filters
 
 ### Phase 32: Monetization (T163)
 - ✅ T163: AdSense manual rollout infrastructure + homepage/feed/leaderboards/profile placements

@@ -39,6 +39,8 @@ export type CompSimApi = {
   startSolve: () => void
   submitInspectionDnf: () => void
   handleSolveComplete: (time_ms: number, penalty: "+2" | "DNF" | null) => void
+  updateSolvePenalty: (solveIndex: number, penalty: "+2" | "DNF" | null) => void
+  advanceToNextAttempt: () => void
   cancelSim: () => void
   applyRoundConfig: (config: CompSimRoundConfig) => void
   isActive: boolean
@@ -63,7 +65,6 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
 
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const workerRef = useRef<Worker | null>(null)
 
   useEffect(() => {
@@ -84,10 +85,8 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
   const clearAllTimeouts = useCallback(() => {
     if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current)
     if (cueTimeoutRef.current) clearTimeout(cueTimeoutRef.current)
-    if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current)
     waitTimeoutRef.current = null
     cueTimeoutRef.current = null
-    advanceTimeoutRef.current = null
   }, [])
 
   useEffect(() => {
@@ -254,13 +253,6 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     if (next.phase === "sim_complete") {
       stopAllNoise()
       void doAutoSave(next)
-      return
-    }
-
-    if (next.phase === "solve_recorded") {
-      advanceTimeoutRef.current = setTimeout(() => {
-        engineRef.current.dispatch({ type: "ADVANCE_NEXT" })
-      }, 1600)
     }
   }, [doAutoSave])
 
@@ -279,6 +271,17 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     const scramble = current.scrambles[current.solveIndex] ?? ""
 
     engine.dispatch({ type: "INSPECTION_DNF", scramble })
+    resolvePostSolveSnapshot(engine.getSnapshot())
+  }, [resolvePostSolveSnapshot])
+
+  const updateSolvePenalty = useCallback((solveIndex: number, penalty: "+2" | "DNF" | null) => {
+    const engine = engineRef.current
+    engine.dispatch({ type: "UPDATE_SOLVE_PENALTY", solveIndex, penalty })
+  }, [])
+
+  const advanceToNextAttempt = useCallback(() => {
+    const engine = engineRef.current
+    engine.dispatch({ type: "ADVANCE_NEXT" })
     resolvePostSolveSnapshot(engine.getSnapshot())
   }, [resolvePostSolveSnapshot])
 
@@ -327,6 +330,8 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     startSolve,
     submitInspectionDnf,
     handleSolveComplete,
+    updateSolvePenalty,
+    advanceToNextAttempt,
     cancelSim,
     applyRoundConfig,
     isActive: snapshot.phase !== "idle",
