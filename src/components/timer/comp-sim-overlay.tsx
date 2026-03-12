@@ -38,6 +38,18 @@ type Props = {
 
 const HOLD_MS = 550
 
+export function shouldAutoSubmitInspectionDnf(
+  inspectionState: "idle" | "inspecting" | "overtime" | "done",
+  phase: string,
+  manualInspectionFinishPending: boolean
+): boolean {
+  return (
+    inspectionState === "done" &&
+    phase === "inspecting" &&
+    !manualInspectionFinishPending
+  )
+}
+
 function formatPressureWarning(config: CompSimRoundConfig, officialElapsedMs: number, solveCount: number): string | null {
   if (config.cumulativeTimeLimitMs != null) {
     const remaining = config.cumulativeTimeLimitMs - officialElapsedMs
@@ -86,6 +98,7 @@ export function CompSimOverlay({
   const timerStartRef = useRef(0)
   const rafRef = useRef(0)
   const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
+  const manualInspectionFinishRef = useRef(false)
   const holdingRef = useRef(false)
   const holdStartRef = useRef(0)
   const handledStartSignalRef = useRef(0)
@@ -141,17 +154,34 @@ export function CompSimOverlay({
 
   useEffect(() => {
     if (phase === "inspecting" && inspection.state === "idle") {
+      manualInspectionFinishRef.current = false
       inspection.startInspection()
     }
   }, [phase, inspection])
 
+  const submitInspectionDnf = useCallback(() => {
+    inspectionPenaltyRef.current = "DNF"
+    compSim.startSolve()
+    setTimeout(() => compSim.handleSolveComplete(0, "DNF"), 50)
+  }, [compSim])
+
   useEffect(() => {
-    if (inspection.state === "done" && phase === "inspecting") {
-      inspectionPenaltyRef.current = "DNF"
-      compSim.startSolve()
-      setTimeout(() => compSim.handleSolveComplete(0, "DNF"), 50)
+    if (
+      shouldAutoSubmitInspectionDnf(
+        inspection.state,
+        phase,
+        manualInspectionFinishRef.current
+      )
+    ) {
+      submitInspectionDnf()
     }
-  }, [inspection.state, phase, compSim])
+  }, [inspection.state, phase, submitInspectionDnf])
+
+  useEffect(() => {
+    if (phase !== "inspecting") {
+      manualInspectionFinishRef.current = false
+    }
+  }, [phase])
 
   useEffect(() => {
     if (phase !== "ready" && phase !== "inspecting" && phase !== "solving") {
@@ -194,7 +224,12 @@ export function CompSimOverlay({
           if (phase === "ready") {
             compSim.beginInspection()
           } else {
+            manualInspectionFinishRef.current = true
             const penalty = inspection.finishInspection()
+            if (penalty === "DNF") {
+              submitInspectionDnf()
+              return
+            }
             inspectionPenaltyRef.current = penalty
             compSim.startSolve()
           }
@@ -208,7 +243,7 @@ export function CompSimOverlay({
       window.removeEventListener("keydown", onKeyDown, { capture: true })
       window.removeEventListener("keyup", onKeyUp, { capture: true })
     }
-  }, [phase, inspection, compSim])
+  }, [phase, inspection, compSim, submitInspectionDnf])
 
   useEffect(() => {
     if (phase !== "ready" && phase !== "inspecting") return
@@ -248,13 +283,18 @@ export function CompSimOverlay({
         if (phase === "ready") {
           compSim.beginInspection()
         } else {
+          manualInspectionFinishRef.current = true
           const penalty = inspection.finishInspection()
+          if (penalty === "DNF") {
+            submitInspectionDnf()
+            return
+          }
           inspectionPenaltyRef.current = penalty
           compSim.startSolve()
         }
       }
     }
-  }, [phase, inspection, compSim])
+  }, [phase, inspection, compSim, submitInspectionDnf])
 
   useEffect(() => {
     if (phase === "idle" || phase === "sim_complete") return
