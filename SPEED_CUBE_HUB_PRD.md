@@ -203,7 +203,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
 - [x] Running averages: Ao5, Ao12, Ao50, Ao100, BPA, WPA, best single, best Ao5, best Ao12, session mean
 - [x] WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
-- [x] Competition simulation mode: dedicated hero launch panel on `/timer`, `Single`/`Mo3`/`Ao5` round formats, cumulative time limits, cutoff after solve 1 or 2, crowd-scene mixer (5 ambiences + 20 reaction variants), richer live event shell, and dedicated Comp Sim profile tracking separate from normal sessions
+- [x] Competition simulation mode: Comp Sim mode entry from the timer practice-type selector, `Mo3`/`Ao5` round formats, cumulative time limits, cutoff after solve 1 or 2, configurable wait-range bounds, real crowd-scene audio pack (5 ambiences + 20 reaction/judge clips) with setup previews, richer live event shell, and Comp Sim profile tracking nested under the Stats tab
 - [x] Typing input mode (stackmat-style digit entry)
 - [x] Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
 - [x] Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop
