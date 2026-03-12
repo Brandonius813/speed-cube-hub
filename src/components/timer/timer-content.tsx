@@ -52,7 +52,6 @@ import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import { CompSimOverlay } from "@/components/timer/comp-sim-overlay"
 import { CompSimEntryDialog } from "@/components/timer/comp-sim-entry-dialog"
-import { CompSimHero } from "@/components/timer/comp-sim-hero"
 import { SolveDetailModal } from "@/components/timer/solve-detail-modal"
 import { StatDetailModal } from "@/components/timer/stat-detail-modal"
 import {
@@ -625,7 +624,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [compSimEntryGuard, setCompSimEntryGuard] = useState<CompSimEntryGuard | null>(null)
   const [compSimBusy, setCompSimBusy] = useState(false)
-  const [compSimConfig, setCompSimConfig] = useState<CompSimRoundConfig>(() => {
+  const [compSimConfig] = useState<CompSimRoundConfig>(() => {
     try {
       const raw = localStorage.getItem(COMP_SIM_CONFIG_KEY)
       if (!raw) return DEFAULT_COMP_SIM_ROUND_CONFIG
@@ -2043,10 +2042,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
     } catch {}
   }
 
-  function updateCompSimConfig(nextConfig: CompSimRoundConfig) {
-    setCompSimConfig(normalizeCompSimConfig(nextConfig))
-  }
-
   function triggerCompSimStart() {
     setCompSimStartSignal((value) => value + 1)
   }
@@ -3233,14 +3228,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
           </div>
         )}
       </div>
-
-      {practiceType !== "Comp Sim" && (
-        <CompSimHero
-          config={compSimConfig}
-          onConfigChange={updateCompSimConfig}
-          onStart={() => changePracticeType("Comp Sim", { autoStart: true })}
-        />
-      )}
 
       {practiceType !== "Comp Sim" && (
         <>
