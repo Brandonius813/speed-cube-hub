@@ -257,6 +257,7 @@ export function CompSimOverlay({
           <SolveRecordedScreen
             solves={snapshot.solves}
             formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
+            timerReadoutTextSize={timerReadoutTextSize}
           />
         )}
         {phase === "sim_complete" && (

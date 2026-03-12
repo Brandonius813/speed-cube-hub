@@ -5,8 +5,10 @@ import { Flag, Mic2, TimerReset, Volume2 } from "lucide-react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import {
+  getTimerReadoutColor,
   TIMER_READOUT_SIZE_CLASSES,
   TimerReadout,
+  type SharedTimerLastSolve,
   type TimerTextSize,
   type TimerUpdateMode,
 } from "@/components/timer/shared-timer-surface"
@@ -223,24 +225,42 @@ export function AttemptTimerScreen({
 export function SolveRecordedScreen({
   solves,
   formatLabel,
+  timerReadoutTextSize,
 }: {
   solves: CompSimSolve[]
   formatLabel: string
+  timerReadoutTextSize: TimerTextSize
 }) {
   const last = solves[solves.length - 1]
   if (!last) return null
 
-  const display =
-    last.penalty === "DNF" ? "DNF" : fmtTime(getEffectiveTime(last))
+  const lastDisplaySolve: SharedTimerLastSolve = {
+    timeMs: last.time_ms,
+    penalty: last.penalty,
+  }
 
   return (
     <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
         {formatLabel} Attempt Saved
       </p>
-      <p className={cn("mt-4 font-mono text-[5rem] font-black leading-none tabular-nums sm:text-[6rem]", last.penalty === "DNF" ? "text-red-300" : "text-foreground")}>
-        {display}
-      </p>
+      <TimerReadout
+        className={cn(
+          "mt-4 font-mono font-light tabular-nums transition-colors duration-75",
+          TIMER_READOUT_SIZE_CLASSES[timerReadoutTextSize],
+          getTimerReadoutColor({
+            phase: "stopped",
+            inInspectionHold: false,
+            inspectionSecondsLeft: 15,
+          })
+        )}
+        phase="stopped"
+        startMs={0}
+        last={lastDisplaySolve}
+        inInspectionHold={false}
+        inspectionSecondsLeft={15}
+        timerUpdateMode="realtime"
+      />
       {last.penalty === "+2" && <p className="mt-2 text-sm font-semibold text-amber-300">+2 penalty applied</p>}
       <p className="mt-3 text-sm text-muted-foreground">Resetting for the next attempt…</p>
     </div>

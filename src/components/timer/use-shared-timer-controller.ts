@@ -42,7 +42,13 @@ export function useSharedTimerController({
 }: SharedTimerControllerOptions) {
   const [engine] = useState(() => createTimerEngine({ phase: "idle", scrambleReady: true }))
   const [engineSnapshot, setEngineSnapshot] = useState(() => engine.getSnapshot())
-  const inspection = useInspection({
+  const {
+    secondsLeft: inspectionSecondsLeft,
+    state: inspectionState,
+    startInspection,
+    cancelInspection,
+    finishInspection,
+  } = useInspection({
     voice: inspectionVoiceEnabled,
     voiceGender: inspectionVoiceGender,
   })
@@ -119,14 +125,14 @@ export function useSharedTimerController({
       tapToInspectRef.current = false
       engine.dispatch({ type: "START_INSPECTION" })
       onInspectionStart?.()
-      inspection.startInspection()
+      startInspection()
       return
     }
 
     if (inspectionHoldRef.current) {
       syncInspectionHold(false)
       if (phaseRef.current === "ready") {
-        const penalty = inspection.finishInspection()
+        const penalty = finishInspection()
         if (penalty === "DNF") {
           completeInspectionDnf()
           return
@@ -146,7 +152,7 @@ export function useSharedTimerController({
 
     if (phaseRef.current !== "ready") return
     startTimer()
-  }, [clearHoldTimeout, completeInspectionDnf, engine, inspection, onInspectionStart, startTimer, syncInspectionHold])
+  }, [clearHoldTimeout, completeInspectionDnf, engine, finishInspection, onInspectionStart, startInspection, startTimer, syncInspectionHold])
 
   const handlePress = useCallback(() => {
     const currentPhase = phaseRef.current
@@ -219,34 +225,34 @@ export function useSharedTimerController({
 
   useEffect(() => {
     if (!enabled) return
-    if (inspection.state === "done" && (phaseRef.current === "inspecting" || inspectionHoldRef.current)) {
+    if (inspectionState === "done" && (phaseRef.current === "inspecting" || inspectionHoldRef.current)) {
       const timeoutId = window.setTimeout(() => {
         completeInspectionDnf()
       }, 0)
       return () => clearTimeout(timeoutId)
     }
-  }, [completeInspectionDnf, enabled, inspection.state])
+  }, [completeInspectionDnf, enabled, inspectionState])
 
   useEffect(() => {
     if (!enabled) return
     return () => {
       clearHoldTimeout()
-      inspection.cancelInspection()
+      cancelInspection()
       heldRef.current = false
       tapToInspectRef.current = false
       syncInspectionHold(false)
     }
-  }, [clearHoldTimeout, enabled, inspection, syncInspectionHold])
+  }, [cancelInspection, clearHoldTimeout, enabled, syncInspectionHold])
 
   return {
     phase: engineSnapshot.phase,
     inInspectionHold,
-    inspectionSecondsLeft: inspection.secondsLeft,
+    inspectionSecondsLeft,
     startMs,
     timeColor: getTimerReadoutColor({
       phase: engineSnapshot.phase,
       inInspectionHold,
-      inspectionSecondsLeft: inspection.secondsLeft,
+      inspectionSecondsLeft,
     }),
     handlePointerDown,
     handlePointerUp,
