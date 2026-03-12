@@ -1,72 +1,84 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { saveTimerSession } from "@/lib/actions/save-timer-session"
+import { getCompSimBenchmarks } from "@/lib/actions/sessions"
 import {
   createCompSimEngine,
-  computeAo5,
+  DEFAULT_COMP_SIM_SNAPSHOT,
   type CompSimEngine,
+  type CompSimRoundConfig,
   type CompSimSnapshot,
-  type BackgroundNoise,
 } from "@/lib/timer/comp-sim-engine"
 import {
-  playTimeToSolveCue,
-  startNoise,
-  stopAllNoise,
-} from "@/lib/timer/comp-sim-audio"
-import { saveTimerSession } from "@/lib/actions/save-timer-session"
+  computeCompSimRoundResult,
+  getPlannedSolveCount,
+  normalizeCompSimConfig,
+} from "@/lib/timer/comp-sim-round"
+import { startNoise, stopAllNoise } from "@/lib/timer/comp-sim-audio"
+import { msToTruncatedSeconds } from "@/lib/timer/averages"
 
 type ScrambleWorkerRequest = { requestId: number; eventId: string }
 type ScrambleWorkerResponse = { requestId: number; eventId: string; scramble: string | null }
 
 type UseCompSimOptions = {
   event: string
+  config: CompSimRoundConfig
+}
+
+type CompSimBenchmarks = {
+  previousCompSimResultSeconds: number | null
+  normalBaselineSeconds: number | null
 }
 
 export type CompSimApi = {
   snapshot: CompSimSnapshot
   startSim: () => void
   confirmCubeCovered: () => void
-  /** Transition from ready → inspecting (user presses spacebar/taps to begin inspection) */
   beginInspection: () => void
-  /** Transition from inspecting → solving (user released spacebar after hold) */
   startSolve: () => void
   handleSolveComplete: (time_ms: number, penalty: "+2" | "DNF" | null) => void
   cancelSim: () => void
-  setBackgroundNoise: (noise: BackgroundNoise) => void
-  /** True when comp sim is in any phase other than idle */
+  applyRoundConfig: (config: CompSimRoundConfig) => void
   isActive: boolean
-  /** Current attempt number across the session */
   attemptNumber: number
-  /** Ao5 result for the completed sim (only valid when phase === "sim_complete") */
-  ao5Result: ReturnType<typeof computeAo5> | null
-  /** Whether we're saving the result */
+  roundResult: ReturnType<typeof computeCompSimRoundResult> | null
   isSaving: boolean
-  /** Go again — start a new attempt */
   goAgain: () => void
-  /** Done — exit comp sim results screen */
   done: () => void
+  benchmarks: CompSimBenchmarks | null
 }
 
-export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
+export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
   const engineRef = useRef<CompSimEngine>(createCompSimEngine())
-  const [snapshot, setSnapshot] = useState<CompSimSnapshot>(() => engineRef.current.getSnapshot())
+  const [snapshot, setSnapshot] = useState<CompSimSnapshot>(DEFAULT_COMP_SIM_SNAPSHOT)
   const [isSaving, setIsSaving] = useState(false)
+  const [benchmarks, setBenchmarks] = useState<CompSimBenchmarks | null>(null)
+  const [attemptNumber, setAttemptNumber] = useState(0)
   const attemptRef = useRef(0)
   const simStartedAtRef = useRef<number | null>(null)
   const eventRef = useRef(event)
-  eventRef.current = event
+  const configRef = useRef(normalizeCompSimConfig(config))
 
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const workerRef = useRef<Worker | null>(null)
-  const scramblesRef = useRef<string[]>([])
 
-  // Subscribe to engine changes
   useEffect(() => {
-    const unsub = engineRef.current.subscribe(setSnapshot)
-    return unsub
+    const unsubscribe = engineRef.current.subscribe(setSnapshot)
+    return unsubscribe
   }, [])
+
+  useEffect(() => {
+    eventRef.current = event
+  }, [event])
+
+  useEffect(() => {
+    const nextConfig = normalizeCompSimConfig(config)
+    configRef.current = nextConfig
+    engineRef.current.dispatch({ type: "SET_CONFIG", roundConfig: nextConfig })
+  }, [config])
 
   const clearAllTimeouts = useCallback(() => {
     if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current)
@@ -77,7 +89,6 @@ export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
     advanceTimeoutRef.current = null
   }, [])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearAllTimeouts()
@@ -87,38 +98,32 @@ export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
     }
   }, [clearAllTimeouts])
 
-  // Generate 5 scrambles via a temporary worker
-  const generateScrambles = useCallback((eventId: string): Promise<string[]> => {
+  const generateScrambles = useCallback((eventId: string, count: number): Promise<string[]> => {
     return new Promise((resolve) => {
       try {
-        const worker = new Worker(
-          new URL("../../lib/timer/scramble-worker.ts", import.meta.url)
-        )
+        const worker = new Worker(new URL("../../lib/timer/scramble-worker.ts", import.meta.url))
         workerRef.current = worker
         const scrambles: string[] = []
         let nextId = 1
 
-        worker.onmessage = (e: MessageEvent<ScrambleWorkerResponse>) => {
-          if (e.data.scramble) {
-            scrambles.push(e.data.scramble)
-          } else {
-            // Fallback: use a placeholder scramble
-            scrambles.push("R U R' U' R' F R2 U' R' U' R U R' F'")
-          }
-          if (scrambles.length >= 5) {
+        worker.onmessage = (message: MessageEvent<ScrambleWorkerResponse>) => {
+          scrambles.push(
+            message.data.scramble ??
+              "R U R' U' R' F R2 U' R' U' R U R' F'"
+          )
+          if (scrambles.length >= count) {
             worker.terminate()
             workerRef.current = null
             resolve(scrambles)
-          } else {
-            nextId++
-            const req: ScrambleWorkerRequest = { requestId: nextId, eventId }
-            worker.postMessage(req)
+            return
           }
+          nextId += 1
+          const request: ScrambleWorkerRequest = { requestId: nextId, eventId }
+          worker.postMessage(request)
         }
 
         worker.onerror = () => {
-          // Fill remaining with fallback scrambles
-          while (scrambles.length < 5) {
+          while (scrambles.length < count) {
             scrambles.push("R U R' U' R' F R2 U' R' U' R U R' F'")
           }
           worker.terminate()
@@ -126,115 +131,139 @@ export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
           resolve(scrambles)
         }
 
-        // Request first scramble
-        const req: ScrambleWorkerRequest = { requestId: nextId, eventId }
-        worker.postMessage(req)
+        const request: ScrambleWorkerRequest = { requestId: nextId, eventId }
+        worker.postMessage(request)
       } catch {
-        // Worker creation failed — use fallback scrambles
-        const fallback = Array(5).fill("R U R' U' R' F R2 U' R' U' R U R' F'")
-        resolve(fallback)
+        resolve(Array(count).fill("R U R' U' R' F R2 U' R' U' R U R' F'"))
       }
     })
   }, [])
 
-  // Start a new sim
   const startSim = useCallback(async () => {
     const engine = engineRef.current
-    const snap = engine.getSnapshot()
-    if (snap.phase !== "idle" && snap.phase !== "sim_complete") return
+    const current = engine.getSnapshot()
+    if (current.phase !== "idle" && current.phase !== "sim_complete") return
 
-    // Start noise immediately (before await) so it runs in the user-gesture
-    // call stack — browsers block autoplay if the gesture context is lost.
-    const noise = snap.backgroundNoise
-    if (noise !== "none") startNoise(noise)
-
+    clearAllTimeouts()
+    setBenchmarks(null)
     simStartedAtRef.current = Date.now()
-    attemptRef.current++
-    const scrambles = await generateScrambles(eventRef.current)
-    scramblesRef.current = scrambles
+    attemptRef.current += 1
+    setAttemptNumber(attemptRef.current)
+
+    const roundConfig = normalizeCompSimConfig(configRef.current)
+    const scrambles = await generateScrambles(
+      eventRef.current,
+      getPlannedSolveCount(roundConfig.format)
+    )
+
+    if (roundConfig.scene !== "off") {
+      startNoise({
+        scene: roundConfig.scene,
+        intensity: roundConfig.intensity,
+        randomReactionsEnabled: roundConfig.randomReactionsEnabled,
+      })
+    }
 
     engine.dispatch({
       type: "START_SIM",
       scrambles,
       groupNumber: attemptRef.current,
+      roundConfig,
     })
-  }, [generateScrambles])
+  }, [clearAllTimeouts, generateScrambles])
 
-  // Confirm cube is under cover → start random wait
   const confirmCubeCovered = useCallback(() => {
     const engine = engineRef.current
     engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
-
     const snap = engine.getSnapshot()
     waitTimeoutRef.current = setTimeout(() => {
       engine.dispatch({ type: "WAIT_COMPLETE" })
-
-      // Play "Time to solve" cue
-      playTimeToSolveCue()
-
-      // Auto-transition to inspection after 1.5s cue display
       cueTimeoutRef.current = setTimeout(() => {
         engine.dispatch({ type: "CUE_DONE" })
       }, 1500)
     }, snap.waitDurationMs)
   }, [])
 
-  // Transition from ready → inspecting (user manually starts inspection)
   const beginInspection = useCallback(() => {
     engineRef.current.dispatch({ type: "READY_START" })
   }, [])
 
-  // Transition from inspecting → solving
   const startSolve = useCallback(() => {
     engineRef.current.dispatch({ type: "SOLVE_START" })
   }, [])
 
-  // Handle solve completion
   const doAutoSave = useCallback(async (snap: CompSimSnapshot) => {
+    const result = computeCompSimRoundResult(snap.roundConfig.format, snap.solves)
     setIsSaving(true)
     try {
       const simStartedAt = simStartedAtRef.current ?? Date.now()
-      const solves = snap.solves.map((s, i) => ({
-        time_ms: s.time_ms,
-        penalty: s.penalty,
-        scramble: s.scramble,
-        comp_sim_group: snap.groupNumber,
-        solve_number: i + 1,
-      }))
-
-      await saveTimerSession({
+      const saveResult = await saveTimerSession({
         event: eventRef.current,
-        solves,
+        solves: snap.solves.map((solve) => ({
+          time_ms: solve.time_ms,
+          penalty: solve.penalty,
+          scramble: solve.scramble,
+          comp_sim_group: snap.groupNumber,
+        })),
         duration_minutes: (Date.now() - simStartedAt) / 1000 / 60,
         practice_type: "Comp Sim",
-        title: `Comp Sim Ao5 #${snap.groupNumber}`,
+        title: `Comp Sim ${snap.roundConfig.format.toUpperCase()} #${snap.groupNumber}`,
         notes: null,
         feed_visible: true,
         session_start_ms: simStartedAt,
+        comp_sim: {
+          format: snap.roundConfig.format,
+          result_seconds:
+            result.resultMs == null ? null : msToTruncatedSeconds(result.resultMs),
+          scene: snap.roundConfig.scene,
+          intensity: snap.roundConfig.intensity,
+          time_limit_seconds:
+            snap.roundConfig.cumulativeTimeLimitMs == null
+              ? null
+              : msToTruncatedSeconds(snap.roundConfig.cumulativeTimeLimitMs),
+          cutoff_attempt: snap.roundConfig.cutoff?.attempt ?? null,
+          cutoff_seconds:
+            snap.roundConfig.cutoff == null
+              ? null
+              : msToTruncatedSeconds(snap.roundConfig.cutoff.cutoffMs),
+          ended_reason: snap.endedReason ?? "completed",
+          cutoff_met: snap.cutoffMet,
+        },
       })
+
+      if (saveResult.sessionId) {
+        const reference = await getCompSimBenchmarks(eventRef.current, saveResult.sessionId)
+        if (!reference.error) {
+          setBenchmarks({
+            previousCompSimResultSeconds: reference.previousCompSimResultSeconds,
+            normalBaselineSeconds: reference.normalBaselineSeconds,
+          })
+        }
+      }
     } catch {
-      // Save failed silently — user can see in profile
+      // Save failures are non-blocking for the timer flow.
     }
     setIsSaving(false)
   }, [])
 
   const handleSolveComplete = useCallback((time_ms: number, penalty: "+2" | "DNF" | null) => {
     const engine = engineRef.current
-    const snap = engine.getSnapshot()
-    const scramble = snap.scrambles[snap.solveIndex] ?? ""
+    const current = engine.getSnapshot()
+    const scramble = current.scrambles[current.solveIndex] ?? ""
 
     engine.dispatch({ type: "SOLVE_COMPLETE", time_ms, penalty, scramble })
 
-    const nextSnap = engine.getSnapshot()
-    if (nextSnap.phase === "sim_complete") {
-      // Auto-save
+    const next = engine.getSnapshot()
+    if (next.phase === "sim_complete") {
       stopAllNoise()
-      doAutoSave(nextSnap)
-    } else if (nextSnap.phase === "solve_recorded") {
-      // Auto-advance to next scramble after 2s
+      void doAutoSave(next)
+      return
+    }
+
+    if (next.phase === "solve_recorded") {
       advanceTimeoutRef.current = setTimeout(() => {
         engine.dispatch({ type: "ADVANCE_NEXT" })
-      }, 2000)
+      }, 1600)
     }
   }, [doAutoSave])
 
@@ -244,34 +273,36 @@ export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
     workerRef.current?.terminate()
     workerRef.current = null
     simStartedAtRef.current = null
+    setBenchmarks(null)
     engineRef.current.dispatch({ type: "CANCEL_SIM" })
     attemptRef.current = 0
+    setAttemptNumber(0)
   }, [clearAllTimeouts])
 
-  const setBackgroundNoise = useCallback((noise: BackgroundNoise) => {
-    engineRef.current.dispatch({ type: "SET_NOISE", noise })
-    const snap = engineRef.current.getSnapshot()
-    // If sim is active, switch noise immediately
-    if (snap.phase !== "idle" && snap.phase !== "sim_complete") {
-      startNoise(noise)
-    }
+  const applyRoundConfig = useCallback((nextConfig: CompSimRoundConfig) => {
+    const normalized = normalizeCompSimConfig(nextConfig)
+    configRef.current = normalized
+    engineRef.current.dispatch({ type: "SET_CONFIG", roundConfig: normalized })
   }, [])
 
   const goAgain = useCallback(() => {
     engineRef.current.dispatch({ type: "RESET" })
-    startSim()
+    void startSim()
   }, [startSim])
 
   const done = useCallback(() => {
     stopAllNoise()
     simStartedAtRef.current = null
+    setBenchmarks(null)
     engineRef.current.dispatch({ type: "RESET" })
     attemptRef.current = 0
+    setAttemptNumber(0)
   }, [])
 
-  const ao5Result = snapshot.phase === "sim_complete"
-    ? computeAo5(snapshot.solves)
-    : null
+  const roundResult =
+    snapshot.phase === "sim_complete"
+      ? computeCompSimRoundResult(snapshot.roundConfig.format, snapshot.solves)
+      : null
 
   return {
     snapshot,
@@ -281,12 +312,13 @@ export function useCompSim({ event }: UseCompSimOptions): CompSimApi {
     startSolve,
     handleSolveComplete,
     cancelSim,
-    setBackgroundNoise,
+    applyRoundConfig,
     isActive: snapshot.phase !== "idle",
-    attemptNumber: attemptRef.current,
-    ao5Result,
+    attemptNumber,
+    roundResult,
     isSaving,
     goAgain,
     done,
+    benchmarks,
   }
 }

@@ -88,13 +88,13 @@
 - ✅ T55: PB type fix — add Ao5 for 6x6/7x7
 - ✅ T56: Time distribution + time trend charts
 
-### Phase 11: Profile Rework — 5-Tab Layout (T57–T63)
+### Phase 11: Profile Rework — 6-Tab Layout (T57–T63)
 - ✅ T57: Schema change — main_events (up to 3)
 - ✅ T58: Server action — getPBsByUserId
 - ✅ T59: SessionLog readOnly prop
 - ✅ T60: Profile sidebar component
 - ✅ T61: Profile tabs component
-- ✅ T62: Tab content components (5 tabs)
+- ✅ T62: Tab content components (6 tabs including Comp Sim)
 - ✅ T63: Rewrite profile content components
 
 ### Phase 12: Performance Optimization (T64–T82)
@@ -178,6 +178,9 @@
 
 ### Phase 30: New User Onboarding (T160)
 - ✅ T160: Checklist onboarding + guided tours
+
+### Phase 31: Comp Sim Upgrade (T161)
+- ✅ T161: Comp Sim hero launch, crowd mixer, round limits/cutoffs, true result tracking, and dedicated profile tab
 
 ---
 

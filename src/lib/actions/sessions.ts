@@ -113,6 +113,84 @@ export async function getSessions(filters?: {
   });
 }
 
+export async function getCompSimBenchmarks(
+  event: string,
+  excludeSessionId?: string
+): Promise<{
+  previousCompSimResultSeconds: number | null
+  normalBaselineSeconds: number | null
+  error?: string
+}> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      previousCompSimResultSeconds: null,
+      normalBaselineSeconds: null,
+      error: "Not authenticated",
+    };
+  }
+
+  let compSimQuery = supabase
+    .from("sessions")
+    .select("id, comp_sim_result_seconds")
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .eq("practice_type", "Comp Sim")
+    .not("comp_sim_result_seconds", "is", null)
+    .order("session_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (excludeSessionId) {
+    compSimQuery = compSimQuery.neq("id", excludeSessionId);
+  }
+
+  const { data: compSimRows, error: compSimError } = await compSimQuery;
+  if (compSimError) {
+    return {
+      previousCompSimResultSeconds: null,
+      normalBaselineSeconds: null,
+      error: compSimError.message,
+    };
+  }
+
+  const { data: normalRows, error: normalError } = await supabase
+    .from("sessions")
+    .select("avg_time")
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .eq("practice_type", "Solves")
+    .not("avg_time", "is", null)
+    .order("session_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (normalError) {
+    return {
+      previousCompSimResultSeconds: (compSimRows?.[0]?.comp_sim_result_seconds as number | null) ?? null,
+      normalBaselineSeconds: null,
+      error: normalError.message,
+    };
+  }
+
+  const baselineValues = (normalRows ?? [])
+    .map((row: { avg_time: number | null }) => row.avg_time)
+    .filter((value: number | null): value is number => value !== null);
+
+  return {
+      previousCompSimResultSeconds: (compSimRows?.[0]?.comp_sim_result_seconds as number | null) ?? null,
+      normalBaselineSeconds:
+      baselineValues.length > 0
+        ? baselineValues.reduce((sum: number, value: number) => sum + value, 0) / baselineValues.length
+        : null,
+  };
+}
+
 export async function createSessionsBulk(
   sessions: Array<{
     session_date: string;

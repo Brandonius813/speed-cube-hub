@@ -1,73 +1,48 @@
 "use client"
 
-import { Volume2, VolumeX } from "lucide-react"
+import type { ComponentType, RefObject } from "react"
+import { Flag, Mic2, TimerReset, Volume2 } from "lucide-react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import type { CompSimApi } from "@/components/timer/use-comp-sim"
-import type { BackgroundNoise, Ao5Result, CompSimSolve } from "@/lib/timer/comp-sim-engine"
+import { CompSimSettingsPanel } from "@/components/timer/comp-sim-settings-panel"
+import {
+  formatCompSimConstraintSummary,
+  getCompSimEndedReasonLabel,
+  getCompSimFormatLabel,
+  getCompSimSceneLabel,
+  getEffectiveTime,
+  type CompSimRoundResult,
+  type CompSimSolve,
+} from "@/lib/timer/comp-sim-round"
 
 function fmtTime(ms: number): string {
   return formatTimeMsCentiseconds(ms)
 }
 
-const NOISE_OPTIONS: { value: BackgroundNoise; label: string }[] = [
-  { value: "none", label: "None" },
-  { value: "brown", label: "Brown Noise" },
-  { value: "crowd", label: "Crowd" },
-]
+function fmtSeconds(seconds: number): string {
+  return formatTimeMsCentiseconds(Math.round(seconds * 1000))
+}
+
+function describeDelta(currentSeconds: number | null, referenceSeconds: number | null, label: string): string {
+  if (currentSeconds == null || referenceSeconds == null) return `No ${label.toLowerCase()} yet`
+  const delta = currentSeconds - referenceSeconds
+  if (Math.abs(delta) < 0.01) return `Matched ${label.toLowerCase()}`
+  const direction = delta < 0 ? "faster" : "slower"
+  return `${fmtSeconds(Math.abs(delta))} ${direction} than ${label.toLowerCase()}`
+}
 
 export function IdleScreen({ compSim }: { compSim: CompSimApi }) {
-  const { snapshot } = compSim
   return (
-    <div className="flex flex-col items-center gap-8 max-w-sm w-full">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Competition Simulator</h2>
-        <p className="text-sm text-muted-foreground">
-          Simulates a WCA competition average of 5.
-          You&apos;ll scramble, wait, then solve — just like the real thing.
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Each Ao5 auto-saves. You do not need to start a normal practice session first.
-        </p>
-      </div>
-
-      {/* Noise selector */}
-      <div className="w-full">
-        <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-2 block">
-          Background Noise
-        </label>
-        <div className="flex gap-2">
-          {NOISE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => compSim.setBackgroundNoise(opt.value)}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors",
-                snapshot.backgroundNoise === opt.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
-              )}
-            >
-              {opt.value === "none" ? (
-                <span className="flex items-center justify-center gap-1.5">
-                  <VolumeX className="h-3.5 w-3.5" /> {opt.label}
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-1.5">
-                  <Volume2 className="h-3.5 w-3.5" /> {opt.label}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={compSim.startSim}
-        className="w-full py-4 rounded-xl bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/90 transition-colors min-h-14"
-      >
-        Start Comp Sim
-      </button>
+    <div className="w-full max-w-5xl">
+      <CompSimSettingsPanel
+        config={compSim.snapshot.roundConfig}
+        onChange={compSim.applyRoundConfig}
+        onStart={compSim.startSim}
+        title="Build the exact pressure you want"
+        description="Choose a round format, add cutoff pressure, cap your cumulative time, then dial in the room. Every attempt saves into dedicated Comp Sim tracking on your profile."
+        startLabel="Start This Round"
+      />
     </div>
   )
 }
@@ -75,52 +50,84 @@ export function IdleScreen({ compSim }: { compSim: CompSimApi }) {
 export function ScrambleScreen({ compSim }: { compSim: CompSimApi }) {
   const { snapshot } = compSim
   const scramble = snapshot.scrambles[snapshot.solveIndex] ?? "Loading..."
+  const total = snapshot.roundConfig.plannedSolveCount
+  const summaries = formatCompSimConstraintSummary(snapshot.roundConfig)
+
   return (
-    <div className="flex flex-col items-center gap-8 max-w-lg w-full">
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-          Solve {snapshot.solveIndex + 1} of 5
-        </p>
-        <p className="text-sm text-muted-foreground">Scramble your cube, then place it under the cover</p>
+    <div className="w-full max-w-4xl rounded-[2rem] border border-border/70 bg-card/85 p-6 shadow-2xl">
+      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        <span>Solve {snapshot.solveIndex + 1} of {total}</span>
+        {summaries.map((summary) => (
+          <span key={summary} className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[10px] text-cyan-100">
+            {summary}
+          </span>
+        ))}
       </div>
 
-      <p className="font-mono text-lg sm:text-xl text-center leading-relaxed px-2">
-        {scramble}
-      </p>
+      <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-background/70 px-5 py-6">
+        <p className="mb-3 text-sm text-muted-foreground">
+          Scramble your cube, cover it, and wait for the judge cue.
+        </p>
+        <p className="font-mono text-xl leading-relaxed text-foreground sm:text-2xl">
+          {scramble}
+        </p>
+      </div>
 
       <button
         onClick={compSim.confirmCubeCovered}
-        className="w-full max-w-xs py-4 rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-colors min-h-14"
+        className="mt-5 min-h-14 w-full rounded-2xl bg-cyan-500 px-4 text-base font-bold text-slate-950 transition-colors hover:bg-cyan-400"
       >
-        Cube is Under Cover
+        Cube Is Covered
       </button>
     </div>
   )
 }
 
-export function WaitingScreen({ solveIndex }: { solveIndex: number }) {
+export function WaitingScreen({
+  solveIndex,
+  total,
+  warning,
+}: {
+  solveIndex: number
+  total: number
+  warning?: string | null
+}) {
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-2xl font-medium text-muted-foreground">
-        Waiting for solve {solveIndex + 1}
+    <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+      </div>
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        Judge Delay
       </p>
-      <p className="text-xs text-muted-foreground/60">
-        Stay focused — the judge will call you soon
+      <h2 className="mt-2 text-3xl font-bold text-foreground">Attempt {solveIndex + 1} of {total}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Stay settled and wait for the call to start inspection.
       </p>
+      {warning && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {warning}
+        </div>
+      )}
     </div>
   )
 }
 
-export function CueScreen() {
+export function CueScreen({ warning }: { warning?: string | null }) {
   return (
-    <div className="flex flex-col items-center gap-4 animate-pulse">
-      <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full bg-green-500/40" />
+    <div className="w-full max-w-xl rounded-[2rem] border border-emerald-400/40 bg-emerald-500/10 p-8 text-center shadow-2xl">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-400/20">
+        <Flag className="h-10 w-10 text-emerald-200" />
       </div>
-      <p className="text-3xl font-bold text-green-400">
-        Time to Solve!
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+        Judge Cue
       </p>
+      <h2 className="mt-2 text-4xl font-black text-emerald-50">Time To Solve</h2>
+      {warning && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {warning}
+        </div>
+      )}
     </div>
   )
 }
@@ -130,40 +137,45 @@ export function ReadyScreen({
   holding,
   onPointerDown,
   onPointerUp,
+  formatLabel,
 }: {
   holdReady: boolean
   holding: boolean
   onPointerDown: () => void
   onPointerUp: () => void
+  formatLabel: string
 }) {
   return (
     <div
-      className="flex flex-col items-center gap-6 w-full cursor-pointer select-none"
+      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        {formatLabel} Round
+      </p>
       <div
         className={cn(
-          "w-20 h-20 rounded-full flex items-center justify-center transition-colors",
-          holdReady ? "bg-green-500/30" : holding ? "bg-red-500/20" : "bg-green-500/20"
+          "mx-auto mt-5 flex h-28 w-28 items-center justify-center rounded-full transition-colors",
+          holdReady ? "bg-emerald-400/25" : holding ? "bg-red-500/20" : "bg-cyan-500/18"
         )}
       >
         <div
           className={cn(
-            "w-12 h-12 rounded-full transition-colors",
-            holdReady ? "bg-green-400" : holding ? "bg-red-400" : "bg-green-500"
+            "h-16 w-16 rounded-full transition-colors",
+            holdReady ? "bg-emerald-300" : holding ? "bg-red-400" : "bg-cyan-300"
           )}
         />
       </div>
-      <p className={cn("text-3xl font-bold", holdReady ? "text-green-400" : holding ? "text-red-400" : "text-green-400")}>
+      <h2 className={cn("mt-6 text-4xl font-black", holdReady ? "text-emerald-200" : holding ? "text-red-300" : "text-cyan-100")}>
         Ready
-      </p>
-      <p className="text-sm text-muted-foreground">
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
         {holdReady
           ? "Release to begin inspection"
           : holding
-            ? "Hold..."
+            ? "Keep holding..."
             : "Hold spacebar or touch to begin inspection"}
       </p>
     </div>
@@ -189,28 +201,23 @@ export function InspectionScreen({
 
   return (
     <div
-      className="flex flex-col items-center gap-6 w-full cursor-pointer select-none"
+      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
     >
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
         Inspection
       </p>
       <p
         className={cn(
-          "font-mono text-8xl sm:text-9xl font-bold tabular-nums transition-colors",
-          holdReady ? "text-green-400" : holding ? "text-red-400" :
-          urgent ? "text-red-400" : warning ? "text-yellow-400" : "text-foreground"
+          "mt-4 font-mono text-[6rem] font-black leading-none tabular-nums transition-colors sm:text-[7rem]",
+          holdReady ? "text-emerald-300" : holding ? "text-red-300" : urgent ? "text-red-300" : warning ? "text-amber-300" : "text-foreground"
         )}
       >
         {display}
       </p>
-      <p className="text-sm text-muted-foreground">
-        {holdReady
-          ? "Release to start!"
-          : holding
-            ? "Hold..."
-            : "Hold spacebar to start"}
+      <p className="mt-3 text-sm text-muted-foreground">
+        {holdReady ? "Release to start your solve" : holding ? "Keep holding..." : "Hold spacebar or touch to start"}
       </p>
     </div>
   )
@@ -219,131 +226,239 @@ export function InspectionScreen({
 export function SolvingScreen({
   displayRef,
   onPointerDown,
+  warning,
 }: {
-  displayRef: React.RefObject<HTMLDivElement | null>
+  displayRef: RefObject<HTMLDivElement | null>
   onPointerDown: () => void
+  warning?: string | null
 }) {
   return (
     <div
-      className="flex flex-col items-center gap-4 w-full cursor-pointer select-none"
+      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
       onPointerDown={onPointerDown}
     >
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        Solve Live
+      </p>
       <div
         ref={displayRef}
-        className="font-mono text-7xl sm:text-8xl font-bold tabular-nums text-foreground"
+        className="mt-4 font-mono text-[5.25rem] font-black leading-none tabular-nums text-foreground sm:text-[6.5rem]"
       >
         0.00
       </div>
-      <p className="text-xs text-muted-foreground">
-        Press spacebar or tap to stop
-      </p>
+      <p className="mt-3 text-sm text-muted-foreground">Press spacebar or tap to stop</p>
+      {warning && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {warning}
+        </div>
+      )}
     </div>
   )
 }
 
-export function SolveRecordedScreen({ solves }: { solves: CompSimSolve[] }) {
+export function SolveRecordedScreen({
+  solves,
+  formatLabel,
+}: {
+  solves: CompSimSolve[]
+  formatLabel: string
+}) {
   const last = solves[solves.length - 1]
   if (!last) return null
-  const display = last.penalty === "DNF"
-    ? "DNF"
-    : fmtTime(last.penalty === "+2" ? last.time_ms + 2000 : last.time_ms)
+
+  const display =
+    last.penalty === "DNF" ? "DNF" : fmtTime(getEffectiveTime(last))
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="font-mono text-6xl sm:text-7xl font-bold tabular-nums text-foreground">
+    <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        {formatLabel} Attempt Saved
+      </p>
+      <p className={cn("mt-4 font-mono text-[5rem] font-black leading-none tabular-nums sm:text-[6rem]", last.penalty === "DNF" ? "text-red-300" : "text-foreground")}>
         {display}
       </p>
-      {last.penalty === "+2" && (
-        <span className="text-sm text-yellow-400 font-medium">+2 penalty</span>
-      )}
-      <p className="text-xs text-muted-foreground animate-pulse">
-        Next solve coming up...
-      </p>
+      {last.penalty === "+2" && <p className="mt-2 text-sm font-semibold text-amber-300">+2 penalty applied</p>}
+      <p className="mt-3 text-sm text-muted-foreground">Resetting for the next attempt…</p>
     </div>
   )
 }
 
 export function ResultsScreen({
   compSim,
-  ao5Result,
+  roundResult,
   onExit,
 }: {
   compSim: CompSimApi
-  ao5Result: Ao5Result | null
+  roundResult: CompSimRoundResult | null
   onExit: () => void
 }) {
-  if (!ao5Result) return null
+  if (!roundResult) return null
+
+  const { snapshot, benchmarks } = compSim
+  const currentSeconds =
+    roundResult.resultMs == null ? null : roundResult.resultMs / 1000
+  const sceneLabel = getCompSimSceneLabel(snapshot.roundConfig.scene)
+  const formatLabel = getCompSimFormatLabel(snapshot.roundConfig.format)
+  const endedReasonLabel = getCompSimEndedReasonLabel(snapshot.endedReason ?? "completed")
+  const constraintSummary = formatCompSimConstraintSummary(snapshot.roundConfig).join(" • ")
 
   return (
-    <div className="flex flex-col items-center gap-8 max-w-md w-full">
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-          {compSim.isSaving ? "Saving..." : "Saved!"}
-        </p>
-        <h2 className="text-2xl font-bold mb-1">
-          Ao5: <span className="font-mono">{ao5Result.isDnf ? "DNF" : fmtTime(ao5Result.trimmedMeanMs!)}</span>
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Attempt #{compSim.attemptNumber}
-        </p>
+    <div className="w-full max-w-4xl rounded-[2rem] border border-border/70 bg-card/90 p-6 shadow-2xl">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+            {compSim.isSaving ? "Saving…" : "Saved"}
+          </p>
+          <h2 className="mt-2 text-3xl font-black text-foreground">
+            {formatLabel} Result:{" "}
+            <span className="font-mono">
+              {roundResult.isDnf ? "DNF" : roundResult.resultMs != null ? fmtTime(roundResult.resultMs) : "No Result"}
+            </span>
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Attempt #{compSim.attemptNumber} • {constraintSummary}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 text-right">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Ended
+          </p>
+          <p className="mt-1 text-lg font-bold text-foreground">{endedReasonLabel}</p>
+        </div>
       </div>
 
-      {/* Individual times */}
-      <div className="w-full space-y-2">
-        {compSim.snapshot.solves.map((solve, i) => {
-          const effective = solve.penalty === "DNF"
-            ? Infinity
-            : solve.penalty === "+2"
-              ? solve.time_ms + 2000
-              : solve.time_ms
-          const isBest = i === ao5Result.bestIdx
-          const isWorst = i === ao5Result.worstIdx
-          const display = solve.penalty === "DNF"
-            ? "DNF"
-            : fmtTime(effective)
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ResultPill icon={TimerReset} label="Scene" value={sceneLabel} />
+        <ResultPill
+          icon={Flag}
+          label="Cutoff"
+          value={
+            snapshot.roundConfig.cutoff
+              ? snapshot.cutoffMet === true
+                ? "Made cutoff"
+                : snapshot.cutoffMet === false
+                  ? "Missed cutoff"
+                  : "Pending"
+              : "None"
+          }
+        />
+        <ResultPill
+          icon={Volume2}
+          label="Time Limit"
+          value={
+            snapshot.roundConfig.cumulativeTimeLimitMs == null
+              ? "None"
+              : snapshot.endedReason === "time_limit_reached"
+                ? "Reached"
+                : "Stayed under"
+          }
+        />
+        <ResultPill
+          icon={Mic2}
+          label="Intensity"
+          value={`${snapshot.roundConfig.intensity}%`}
+        />
+      </div>
 
-          return (
-            <div
-              key={i}
-              className={cn(
-                "flex items-center justify-between px-4 py-3 rounded-lg",
-                "bg-muted/50 border border-border"
-              )}
-            >
-              <span className="text-sm text-muted-foreground">Solve {i + 1}</span>
-              <span className={cn(
-                "font-mono text-lg font-medium tabular-nums",
-                solve.penalty === "DNF" && "text-red-400",
-                solve.penalty === "+2" && "text-yellow-400"
-              )}>
-                {(isBest || isWorst) ? `(${display})` : display}
-                {solve.penalty === "+2" && "+"}
-              </span>
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Attempt Breakdown
+          </p>
+          <div className="mt-3 space-y-2">
+            {snapshot.solves.map((solve, index) => {
+              const effective = getEffectiveTime(solve)
+              const display = solve.penalty === "DNF" ? "DNF" : fmtTime(effective)
+              const dropped =
+                (roundResult.bestIdx != null && index === roundResult.bestIdx) ||
+                (roundResult.worstIdx != null && index === roundResult.worstIdx)
+              return (
+                <div
+                  key={`${index}-${solve.scramble}`}
+                  className="flex items-center justify-between rounded-xl border border-border/50 bg-card/80 px-3 py-3"
+                >
+                  <span className="text-sm text-muted-foreground">Solve {index + 1}</span>
+                  <span
+                    className={cn(
+                      "font-mono text-lg font-semibold",
+                      solve.penalty === "DNF" && "text-red-300",
+                      solve.penalty === "+2" && "text-amber-300",
+                      dropped && snapshot.roundConfig.format === "ao5" && "opacity-60"
+                    )}
+                  >
+                    {snapshot.roundConfig.format === "ao5" && dropped ? `(${display})` : display}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Comparison
+          </p>
+          <div className="mt-3 space-y-3 text-sm">
+            <div className="rounded-xl border border-border/50 bg-card/80 px-3 py-3">
+              <p className="text-muted-foreground">Previous Comp Sim</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {benchmarks?.previousCompSimResultSeconds != null
+                  ? fmtSeconds(benchmarks.previousCompSimResultSeconds)
+                  : "No prior result"}
+              </p>
+              <p className="mt-1 text-xs text-cyan-200">
+                {describeDelta(currentSeconds, benchmarks?.previousCompSimResultSeconds ?? null, "Previous Comp Sim")}
+              </p>
             </div>
-          )
-        })}
+            <div className="rounded-xl border border-border/50 bg-card/80 px-3 py-3">
+              <p className="text-muted-foreground">Recent Normal Practice</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {benchmarks?.normalBaselineSeconds != null
+                  ? fmtSeconds(benchmarks.normalBaselineSeconds)
+                  : "No baseline yet"}
+              </p>
+              <p className="mt-1 text-xs text-cyan-200">
+                {describeDelta(currentSeconds, benchmarks?.normalBaselineSeconds ?? null, "Practice Baseline")}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Trimmed mean display line */}
-      <p className="font-mono text-sm text-muted-foreground text-center">
-        {ao5Result.display}
-      </p>
-
-      {/* Actions */}
-      <div className="flex gap-3 w-full">
+      <div className="mt-6 flex gap-3">
         <button
           onClick={compSim.goAgain}
-          className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors min-h-12"
+          className="min-h-12 flex-1 rounded-2xl bg-cyan-500 px-4 font-bold text-slate-950 transition-colors hover:bg-cyan-400"
         >
-          Go Again
+          Run It Again
         </button>
         <button
           onClick={onExit}
-          className="flex-1 py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground font-medium transition-colors min-h-12"
+          className="min-h-12 flex-1 rounded-2xl border border-border bg-background px-4 font-semibold text-foreground transition-colors hover:bg-muted"
         >
           Done
         </button>
       </div>
+    </div>
+  )
+}
+
+function ResultPill({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <span>{label}</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
 }

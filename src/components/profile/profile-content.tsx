@@ -9,6 +9,7 @@ import { ProfileTabs, parseTabParam } from "@/components/profile/profile-tabs"
 import { TabOverview } from "@/components/profile/tab-overview"
 import { TabPBs } from "@/components/profile/tab-pbs"
 import { TabStats } from "@/components/profile/tab-stats"
+import { TabCompSim } from "@/components/profile/tab-comp-sim"
 import { TabCubes } from "@/components/profile/tab-cubes"
 import { TabOfficial } from "@/components/profile/tab-official"
 import {
@@ -203,6 +204,7 @@ export function ProfileContent({
             {activeTab === "stats" && (
               <TabStats sessions={sessions} isOwner />
             )}
+            {activeTab === "comp-sim" && <TabCompSim sessions={sessions} />}
             {activeTab === "cubes" && (
               <TabCubes cubes={profile.cubes ?? []} cubeHistory={profile.cube_history ?? []} isOwner />
             )}
