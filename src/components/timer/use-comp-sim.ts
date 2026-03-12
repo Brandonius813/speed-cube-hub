@@ -151,11 +151,9 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     setAttemptNumber(attemptRef.current)
 
     const roundConfig = normalizeCompSimConfig(configRef.current)
-    const scrambles = await generateScrambles(
-      eventRef.current,
-      getPlannedSolveCount(roundConfig.format)
-    )
 
+    // Start the actual ambience inside the original click/tap gesture so
+    // Chrome does not classify it as late autoplay after scramble generation.
     if (roundConfig.scene !== "off") {
       startNoise({
         scene: roundConfig.scene,
@@ -163,6 +161,11 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
         randomReactionsEnabled: roundConfig.randomReactionsEnabled,
       })
     }
+
+    const scrambles = await generateScrambles(
+      eventRef.current,
+      getPlannedSolveCount(roundConfig.format)
+    )
 
     engine.dispatch({
       type: "START_SIM",
