@@ -180,7 +180,7 @@
 - ✅ T160: Checklist onboarding + guided tours
 
 ### Phase 31: Comp Sim Upgrade (T161)
-- ✅ T161: Comp Sim hero launch, crowd mixer, round limits/cutoffs, true result tracking, and dedicated profile tab
+- ✅ T161: Comp Sim round limits/cutoffs, real audio pack + previews, true result tracking, and Stats-tab Comp Sim sub-view
 
 ---
 
