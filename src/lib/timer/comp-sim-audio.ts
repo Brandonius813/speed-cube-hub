@@ -81,6 +81,8 @@ let ambientGain: GainNode | null = null
 let ambientLowpass: BiquadFilterNode | null = null
 let ambientHighpass: BiquadFilterNode | null = null
 let reactionTimeout: ReturnType<typeof setTimeout> | null = null
+let previewReactionTimeout: ReturnType<typeof setTimeout> | null = null
+let previewStopTimeout: ReturnType<typeof setTimeout> | null = null
 let currentNoiseOptions: StartNoiseOptions | null = null
 
 function createAmbientBuffer(ctx: AudioContext, config: SceneConfig): AudioBuffer {
@@ -119,6 +121,13 @@ function ensureAmbientContext(): AudioContext | null {
 function clearReactionLoop() {
   if (reactionTimeout) clearTimeout(reactionTimeout)
   reactionTimeout = null
+}
+
+function clearPreviewTimers() {
+  if (previewReactionTimeout) clearTimeout(previewReactionTimeout)
+  if (previewStopTimeout) clearTimeout(previewStopTimeout)
+  previewReactionTimeout = null
+  previewStopTimeout = null
 }
 
 function speakPhrase(phrase: string, volume = 0.9) {
@@ -212,6 +221,7 @@ export function playJudgeCue(kind: "ready" | "covered" | "inspect" | "time_to_so
 }
 
 export function startNoise(options: StartNoiseOptions): void {
+  clearPreviewTimers()
   stopAllNoise()
   currentNoiseOptions = options
 
@@ -249,7 +259,35 @@ export function startNoise(options: StartNoiseOptions): void {
   scheduleReactionLoop()
 }
 
+export function previewSoundscape(
+  options: StartNoiseOptions,
+  previewDurationMs = 4200
+): void {
+  clearPreviewTimers()
+  startNoise({
+    ...options,
+    randomReactionsEnabled: false,
+  })
+
+  if (options.scene !== "off" && options.randomReactionsEnabled) {
+    previewReactionTimeout = setTimeout(() => {
+      const preset = RANDOM_REACTIONS[Math.floor(Math.random() * RANDOM_REACTIONS.length)]
+      playReactionPreset(preset, options.intensity)
+    }, 900)
+  }
+
+  previewStopTimeout = setTimeout(() => {
+    stopAllNoise()
+  }, previewDurationMs)
+}
+
+export function stopSoundscapePreview(): void {
+  clearPreviewTimers()
+  stopAllNoise()
+}
+
 export function stopAllNoise(): void {
+  clearPreviewTimers()
   clearReactionLoop()
   try {
     ambientSource?.stop()

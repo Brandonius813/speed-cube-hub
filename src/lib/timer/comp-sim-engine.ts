@@ -7,6 +7,7 @@ import {
   type CompSimRoundConfig,
   type CompSimScene,
   type CompSimSolve,
+  type CompSimWaitTimeRange,
 } from "@/lib/timer/comp-sim-round"
 
 export type CompSimPhase =
@@ -65,8 +66,9 @@ const DEFAULT: CompSimSnapshot = {
 
 export const DEFAULT_COMP_SIM_SNAPSHOT: CompSimSnapshot = { ...DEFAULT }
 
-function randomWait(): number {
-  return 30_000 + Math.random() * 120_000
+function randomWait(range: CompSimWaitTimeRange): number {
+  if (range.maxMs <= range.minMs) return range.minMs
+  return Math.round(range.minMs + Math.random() * (range.maxMs - range.minMs))
 }
 
 function shouldEndForCutoff(
@@ -112,7 +114,7 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
 
     case "CONFIRM_CUBE_COVERED": {
       if (state.phase !== "scramble_shown") return state
-      const wait = randomWait()
+      const wait = randomWait(state.roundConfig.waitTimeRangeMs)
       return {
         ...state,
         phase: "waiting",

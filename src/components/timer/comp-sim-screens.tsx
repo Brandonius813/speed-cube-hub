@@ -12,6 +12,7 @@ import {
   getCompSimFormatLabel,
   getCompSimSceneLabel,
   getEffectiveTime,
+  type CompSimRoundConfig,
   type CompSimRoundResult,
   type CompSimSolve,
 } from "@/lib/timer/comp-sim-round"
@@ -32,12 +33,18 @@ function describeDelta(currentSeconds: number | null, referenceSeconds: number |
   return `${fmtSeconds(Math.abs(delta))} ${direction} than ${label.toLowerCase()}`
 }
 
-export function IdleScreen({ compSim }: { compSim: CompSimApi }) {
+export function IdleScreen({
+  compSim,
+  onConfigChange,
+}: {
+  compSim: CompSimApi
+  onConfigChange: (config: CompSimRoundConfig) => void
+}) {
   return (
     <div className="w-full max-w-5xl">
       <CompSimSettingsPanel
         config={compSim.snapshot.roundConfig}
-        onChange={compSim.applyRoundConfig}
+        onChange={onConfigChange}
         onStart={compSim.startSim}
         title="Build the exact pressure you want"
         description="Choose a round format, add cutoff pressure, cap your cumulative time, then dial in the room. Every attempt saves into dedicated Comp Sim tracking on your profile."

@@ -17,6 +17,11 @@ export type CompSimCutoffRule = {
   cutoffMs: number
 }
 
+export type CompSimWaitTimeRange = {
+  minMs: number
+  maxMs: number
+}
+
 export type CompSimRoundConfig = {
   format: CompSimFormat
   plannedSolveCount: number
@@ -24,6 +29,7 @@ export type CompSimRoundConfig = {
   intensity: number
   randomReactionsEnabled: boolean
   judgeCuesEnabled: boolean
+  waitTimeRangeMs: CompSimWaitTimeRange
   cumulativeTimeLimitMs: number | null
   cutoff: CompSimCutoffRule | null
 }
@@ -73,6 +79,10 @@ export const DEFAULT_COMP_SIM_ROUND_CONFIG: CompSimRoundConfig = {
   intensity: 55,
   randomReactionsEnabled: true,
   judgeCuesEnabled: true,
+  waitTimeRangeMs: {
+    minMs: 30_000,
+    maxMs: 150_000,
+  },
   cumulativeTimeLimitMs: null,
   cutoff: null,
 }
@@ -96,7 +106,10 @@ export function normalizeCompSimIntensity(value: number): number {
 export function normalizeCompSimConfig(
   config: Partial<CompSimRoundConfig> | null | undefined
 ): CompSimRoundConfig {
-  const format = config?.format ?? DEFAULT_COMP_SIM_ROUND_CONFIG.format
+  const format =
+    config?.format == null || config.format === "single"
+      ? DEFAULT_COMP_SIM_ROUND_CONFIG.format
+      : config.format
   const plannedSolveCount = getPlannedSolveCount(format)
   const cutoff =
     format === "single" || !config?.cutoff
@@ -105,6 +118,13 @@ export function normalizeCompSimConfig(
           attempt: (config.cutoff.attempt === 2 ? 2 : 1) as 1 | 2,
           cutoffMs: Math.max(1, Math.round(config.cutoff.cutoffMs)),
         }
+
+  const rawWaitMin =
+    config?.waitTimeRangeMs?.minMs ?? DEFAULT_COMP_SIM_ROUND_CONFIG.waitTimeRangeMs.minMs
+  const rawWaitMax =
+    config?.waitTimeRangeMs?.maxMs ?? DEFAULT_COMP_SIM_ROUND_CONFIG.waitTimeRangeMs.maxMs
+  const waitMin = Math.max(5_000, Math.round(Math.min(rawWaitMin, rawWaitMax)))
+  const waitMax = Math.max(5_000, Math.round(Math.max(rawWaitMin, rawWaitMax)))
 
   return {
     format,
@@ -117,6 +137,10 @@ export function normalizeCompSimConfig(
       config?.randomReactionsEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.randomReactionsEnabled,
     judgeCuesEnabled:
       config?.judgeCuesEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.judgeCuesEnabled,
+    waitTimeRangeMs: {
+      minMs: waitMin,
+      maxMs: waitMax,
+    },
     cumulativeTimeLimitMs:
       config?.cumulativeTimeLimitMs == null
         ? null
@@ -355,6 +379,9 @@ export function formatCompSimTimeInput(ms: number | null): string {
 
 export function formatCompSimConstraintSummary(config: CompSimRoundConfig): string[] {
   const pieces = [getCompSimFormatLabel(config.format)]
+  pieces.push(
+    `Wait ${fmtMs(config.waitTimeRangeMs.minMs)}-${fmtMs(config.waitTimeRangeMs.maxMs)}`
+  )
   if (config.cumulativeTimeLimitMs != null) {
     pieces.push(`Time limit ${fmtMs(config.cumulativeTimeLimitMs)}`)
   }

@@ -624,7 +624,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [compSimEntryGuard, setCompSimEntryGuard] = useState<CompSimEntryGuard | null>(null)
   const [compSimBusy, setCompSimBusy] = useState(false)
-  const [compSimConfig] = useState<CompSimRoundConfig>(() => {
+  const [compSimConfig, setCompSimConfig] = useState<CompSimRoundConfig>(() => {
     try {
       const raw = localStorage.getItem(COMP_SIM_CONFIG_KEY)
       if (!raw) return DEFAULT_COMP_SIM_ROUND_CONFIG
@@ -2042,6 +2042,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     } catch {}
   }
 
+  function updateCompSimConfig(nextConfig: CompSimRoundConfig) {
+    setCompSimConfig(normalizeCompSimConfig(nextConfig))
+  }
+
   function triggerCompSimStart() {
     setCompSimStartSignal((value) => value + 1)
   }
@@ -3264,6 +3268,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           startSignal={compSimStartSignal}
           inspectionVoiceEnabled={inspVoiceOn}
           inspectionVoiceGender={inspVoiceGender}
+          onConfigChange={updateCompSimConfig}
           onExit={handleCompSimExit}
           onBusyChange={setCompSimBusy}
         />

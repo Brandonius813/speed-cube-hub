@@ -33,6 +33,7 @@ type Props = {
   inspectionVoiceEnabled: boolean
   inspectionVoiceGender: InspectionVoiceGender
   onExit: () => void
+  onConfigChange?: (config: CompSimRoundConfig) => void
   onBusyChange?: (busy: boolean) => void
 }
 
@@ -65,6 +66,7 @@ export function CompSimOverlay({
   inspectionVoiceEnabled,
   inspectionVoiceGender,
   onExit,
+  onConfigChange,
   onBusyChange,
 }: Props) {
   const compSim = useCompSim({ event, config })
@@ -301,6 +303,13 @@ export function CompSimOverlay({
       ? formatTimeMsCentiseconds(getEffectiveTime(snapshot.solves[snapshot.solves.length - 1]))
       : null
   const phaseAllowsScroll = phase === "idle" || phase === "sim_complete"
+  const handleRoundConfigChange = useCallback(
+    (nextConfig: CompSimRoundConfig) => {
+      compSim.applyRoundConfig(nextConfig)
+      onConfigChange?.(nextConfig)
+    },
+    [compSim, onConfigChange]
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(217,70,239,0.14),transparent_35%),linear-gradient(180deg,rgba(4,10,22,0.96),rgba(8,10,16,1))]">
@@ -364,7 +373,9 @@ export function CompSimOverlay({
             : "items-center justify-center overflow-hidden"
         )}
       >
-        {phase === "idle" && <IdleScreen compSim={compSim} />}
+        {phase === "idle" && (
+          <IdleScreen compSim={compSim} onConfigChange={handleRoundConfigChange} />
+        )}
         {phase === "scramble_shown" && <ScrambleScreen compSim={compSim} />}
         {phase === "waiting" && (
           <WaitingScreen
