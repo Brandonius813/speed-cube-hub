@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
+import { Check, ChevronsUpDown, X } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -17,7 +18,28 @@ import {
   getCompSimEndedReasonLabel,
   getCompSimSceneLabel,
 } from "@/lib/timer/comp-sim-round"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { Session } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 type TrendPoint = {
   index: number
@@ -30,6 +52,7 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
   const [eventFilter, setEventFilter] = useState("all")
   const [formatFilter, setFormatFilter] = useState("all")
   const [endedFilter, setEndedFilter] = useState("all")
+  const [eventOpen, setEventOpen] = useState(false)
 
   const compSimSessions = useMemo(
     () =>
@@ -184,44 +207,66 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-border/60 bg-card/90 p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
-              Dedicated Comp Sim Tracking
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-foreground">
-              Round pressure, separate from normal sessions
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-foreground sm:text-2xl">
+              Comp Sim Results
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Filter by event, format, and ending reason to review how simulated rounds are trending over time.
+            <p className="text-sm text-muted-foreground">
+              {filtered.length} visible round{filtered.length !== 1 ? "s" : ""} · {compSimSessions.length} total saved
             </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <FilterSelect label="Event" value={eventFilter} onChange={setEventFilter}>
-              <option value="all">All events</option>
-              {eventOptions.map((event) => (
-                <option key={event} value={event}>
-                  {event}
-                </option>
-              ))}
-            </FilterSelect>
-            <FilterSelect label="Format" value={formatFilter} onChange={setFormatFilter}>
-              <option value="all">All formats</option>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_170px_190px_auto]">
+            <EventFilter
+              open={eventOpen}
+              onOpenChange={setEventOpen}
+              value={eventFilter}
+              options={eventOptions}
+              onChange={setEventFilter}
+            />
+            <LabeledSelect
+              label="Format"
+              value={formatFilter}
+              onChange={setFormatFilter}
+            >
+              <SelectItem value="all">All formats</SelectItem>
               {formatOptions.map((format) => (
-                <option key={format} value={format}>
+                <SelectItem key={format} value={format}>
                   {COMP_SIM_FORMAT_LABELS[format]}
-                </option>
+                </SelectItem>
               ))}
-            </FilterSelect>
-            <FilterSelect label="Ended" value={endedFilter} onChange={setEndedFilter}>
-              <option value="all">All outcomes</option>
+            </LabeledSelect>
+            <LabeledSelect
+              label="Outcome"
+              value={endedFilter}
+              onChange={setEndedFilter}
+            >
+              <SelectItem value="all">All outcomes</SelectItem>
               {endedOptions.map((ended) => (
-                <option key={ended} value={ended}>
+                <SelectItem key={ended} value={ended}>
                   {getCompSimEndedReasonLabel(ended)}
-                </option>
+                </SelectItem>
               ))}
-            </FilterSelect>
+            </LabeledSelect>
+
+            {(eventFilter !== "all" || formatFilter !== "all" || endedFilter !== "all") && (
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-11 w-full justify-center gap-2 xl:w-auto"
+                  onClick={() => {
+                    setEventFilter("all")
+                    setFormatFilter("all")
+                    setEndedFilter("all")
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                  Clear filters
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -321,9 +366,7 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Attempt History
             </p>
-            <h3 className="mt-2 text-lg font-semibold text-foreground">
-              Separate from normal session history
-            </h3>
+            <h3 className="mt-2 text-lg font-semibold text-foreground">Saved rounds</h3>
           </div>
           <p className="text-sm text-muted-foreground">{filtered.length} round{filtered.length !== 1 ? "s" : ""}</p>
         </div>
@@ -395,7 +438,74 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
   )
 }
 
-function FilterSelect({
+function EventFilter({
+  open,
+  onOpenChange,
+  value,
+  options,
+  onChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="space-y-1.5 text-sm">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        Event
+      </span>
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="min-h-11 w-full justify-between border-border/60 bg-background/70 px-3 text-left text-sm"
+          >
+            <span className="truncate">{value === "all" ? "All events" : value}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search events..." />
+            <CommandList>
+              <CommandEmpty>No matching event.</CommandEmpty>
+              <CommandItem
+                value="all-events"
+                onSelect={() => {
+                  onChange("all")
+                  onOpenChange(false)
+                }}
+              >
+                <Check className={cn("h-4 w-4", value === "all" ? "opacity-100" : "opacity-0")} />
+                All events
+              </CommandItem>
+              {options.map((event) => (
+                <CommandItem
+                  key={event}
+                  value={event}
+                  onSelect={() => {
+                    onChange(event)
+                    onOpenChange(false)
+                  }}
+                >
+                  <Check className={cn("h-4 w-4", value === event ? "opacity-100" : "opacity-0")} />
+                  {event}
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </label>
+  )
+}
+
+function LabeledSelect({
   label,
   value,
   onChange,
@@ -407,17 +517,18 @@ function FilterSelect({
   children: ReactNode
 }) {
   return (
-    <label className="text-sm">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+    <label className="space-y-1.5 text-sm">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none"
-      >
-        {children}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="min-h-11 w-full border-border/60 bg-background/70 px-3 text-sm">
+          <SelectValue placeholder="Select" />
+        </SelectTrigger>
+        <SelectContent className="border-border bg-card">
+          {children}
+        </SelectContent>
+      </Select>
     </label>
   )
 }

@@ -45,6 +45,7 @@ export type CompSimEvent =
   | { type: "SOLVE_START" }
   | { type: "INSPECTION_DNF"; scramble: string }
   | { type: "SOLVE_COMPLETE"; time_ms: number; penalty: "+2" | "DNF" | null; scramble: string }
+  | { type: "UPDATE_SOLVE_PENALTY"; solveIndex: number; penalty: "+2" | "DNF" | null }
   | { type: "ADVANCE_NEXT" }
   | { type: "CANCEL_SIM" }
   | { type: "SET_CONFIG"; roundConfig: CompSimRoundConfig }
@@ -66,6 +67,14 @@ const DEFAULT: CompSimSnapshot = {
 }
 
 export const DEFAULT_COMP_SIM_SNAPSHOT: CompSimSnapshot = { ...DEFAULT }
+
+type CompSimProgress = {
+  solves: CompSimSolve[]
+  endedReason: CompSimEndedReason | null
+  cutoffMet: boolean | null
+  checkpointResultMs: number | null
+  officialElapsedMs: number
+}
 
 function randomWait(range: CompSimWaitTimeRange): number {
   if (range.maxMs <= range.minMs) return range.minMs
@@ -95,36 +104,75 @@ function shouldEndForCutoff(
   }
 }
 
+function evaluateProgress(
+  roundConfig: CompSimRoundConfig,
+  solves: CompSimSolve[]
+): CompSimProgress {
+  const truncated: CompSimSolve[] = []
+  let endedReason: CompSimEndedReason | null = null
+  let cutoffMet: boolean | null = null
+  let checkpointResultMs: number | null = null
+  let officialElapsedMs = 0
+
+  for (const solve of solves) {
+    if (truncated.length >= roundConfig.plannedSolveCount) break
+    truncated.push(solve)
+    officialElapsedMs += getOfficialElapsedTime(solve)
+
+    const cutoffCheck = shouldEndForCutoff(truncated, roundConfig.cutoff)
+    const isSolveLimitReached =
+      roundConfig.cumulativeTimeLimitMs != null &&
+      officialElapsedMs >= roundConfig.cumulativeTimeLimitMs
+    const didFinishAllSolves = truncated.length >= roundConfig.plannedSolveCount
+
+    if (cutoffCheck.cutoffMet !== null) cutoffMet = cutoffCheck.cutoffMet
+    if (cutoffCheck.checkpointResultMs != null) {
+      checkpointResultMs = cutoffCheck.checkpointResultMs
+    }
+
+    endedReason =
+      cutoffCheck.endedReason ??
+      (didFinishAllSolves
+        ? "completed"
+        : isSolveLimitReached
+          ? "time_limit_reached"
+          : null)
+
+    if (endedReason) break
+  }
+
+  return {
+    solves: truncated,
+    endedReason,
+    cutoffMet,
+    checkpointResultMs,
+    officialElapsedMs,
+  }
+}
+
+function applyProgress(
+  state: CompSimSnapshot,
+  progress: CompSimProgress,
+  phase: CompSimPhase
+): CompSimSnapshot {
+  return {
+    ...state,
+    phase,
+    solveIndex: progress.solves.length,
+    solves: progress.solves,
+    endedReason: progress.endedReason,
+    cutoffMet: progress.cutoffMet,
+    checkpointResultMs: progress.checkpointResultMs,
+    officialElapsedMs: progress.officialElapsedMs,
+  }
+}
+
 function resolveCompletedSolve(
   state: CompSimSnapshot,
   solve: CompSimSolve
 ): CompSimSnapshot {
-  const solves = [...state.solves, solve]
-  const officialElapsedMs = state.officialElapsedMs + getOfficialElapsedTime(solve)
-  const cutoffCheck = shouldEndForCutoff(solves, state.roundConfig.cutoff)
-  const isSolveLimitReached =
-    state.roundConfig.cumulativeTimeLimitMs != null &&
-    officialElapsedMs >= state.roundConfig.cumulativeTimeLimitMs
-  const didFinishAllSolves = solves.length >= state.roundConfig.plannedSolveCount
-  const endedReason =
-    cutoffCheck.endedReason ??
-    (didFinishAllSolves
-      ? "completed"
-      : isSolveLimitReached
-        ? "time_limit_reached"
-        : null)
-
-  return {
-    ...state,
-    phase: endedReason ? "sim_complete" : "solve_recorded",
-    solves,
-    endedReason,
-    cutoffMet:
-      cutoffCheck.cutoffMet === null ? state.cutoffMet : cutoffCheck.cutoffMet,
-    checkpointResultMs:
-      cutoffCheck.checkpointResultMs ?? state.checkpointResultMs,
-    officialElapsedMs,
-  }
+  const progress = evaluateProgress(state.roundConfig, [...state.solves, solve])
+  return applyProgress(state, progress, "solve_recorded")
 }
 
 function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
@@ -188,12 +236,33 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
       })
     }
 
+    case "UPDATE_SOLVE_PENALTY": {
+      if (state.solveIndex <= event.solveIndex || event.solveIndex < 0) return state
+      const nextSolves = state.solves.map((solve, index) =>
+        index === event.solveIndex ? { ...solve, penalty: event.penalty } : solve
+      )
+      const progress = evaluateProgress(state.roundConfig, nextSolves)
+      const nextPhase =
+        progress.endedReason != null
+          ? "solve_recorded"
+          : state.phase === "solve_recorded" || state.phase === "sim_complete"
+            ? "solve_recorded"
+            : state.phase
+      return applyProgress(state, progress, nextPhase)
+    }
+
     case "ADVANCE_NEXT":
       if (state.phase !== "solve_recorded") return state
+      if (state.endedReason) {
+        return {
+          ...state,
+          phase: "sim_complete",
+        }
+      }
       return {
         ...state,
         phase: "scramble_shown",
-        solveIndex: state.solveIndex + 1,
+        solveIndex: state.solves.length,
       }
 
     case "CANCEL_SIM":
