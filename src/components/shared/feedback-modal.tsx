@@ -48,29 +48,29 @@ export function FeedbackModal({
     setError(null)
     setSubmitting(true)
 
-    const result = await submitFeedback(
-      category,
-      message,
-      window.location.href
-    )
+    try {
+      const result = await submitFeedback(category, message, window.location.href)
 
-    setSubmitting(false)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
 
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-
-    setSubmitted(true)
-    setTimeout(() => {
-      onOpenChange(false)
-      // Reset after close animation
+      setSubmitted(true)
       setTimeout(() => {
-        setSubmitted(false)
-        setCategory("general")
-        setMessage("")
-      }, 200)
-    }, 1500)
+        onOpenChange(false)
+        // Reset after close animation
+        setTimeout(() => {
+          setSubmitted(false)
+          setCategory("general")
+          setMessage("")
+        }, 200)
+      }, 1500)
+    } catch {
+      setError("Could not send feedback right now. Please try again in a moment.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -142,7 +142,9 @@ export function FeedbackModal({
                 </p>
               </div>
               {error && (
-                <p className="text-sm text-destructive">{error}</p>
+                <p className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
               )}
             </div>
             <DialogFooter>
