@@ -16,6 +16,11 @@ import {
 import { CalendarDays, Check } from "lucide-react";
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants";
 import { createSession } from "@/lib/actions/sessions";
+import {
+  GUARDED_NUMBER_INPUT_CLASSNAME,
+  preventGuardedNumberInputKey,
+  preventGuardedNumberInputWheel,
+} from "@/lib/forms/guard-number-input";
 import { parseDuration, parseSolveTime, getTodayPacific } from "@/lib/utils";
 
 const CUSTOM_VALUE = "__custom__";
@@ -212,7 +217,9 @@ export function SessionForm() {
                 placeholder={solveBased ? "50" : "0"}
                 min={0}
                 required={solveBased}
-                className="min-h-11 border-border bg-secondary/50 text-foreground"
+                onKeyDown={preventGuardedNumberInputKey}
+                onWheel={preventGuardedNumberInputWheel}
+                className={`min-h-11 border-border bg-secondary/50 text-foreground ${GUARDED_NUMBER_INPUT_CLASSNAME}`}
               />
             </div>
 
@@ -230,7 +237,9 @@ export function SessionForm() {
                   type="number"
                   placeholder="0"
                   min={0}
-                  className="min-h-11 border-border bg-secondary/50 text-foreground"
+                  onKeyDown={preventGuardedNumberInputKey}
+                  onWheel={preventGuardedNumberInputWheel}
+                  className={`min-h-11 border-border bg-secondary/50 text-foreground ${GUARDED_NUMBER_INPUT_CLASSNAME}`}
                 />
               </div>
             )}
