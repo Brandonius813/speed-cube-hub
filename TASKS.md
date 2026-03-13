@@ -187,7 +187,7 @@
 - ✅ T163: AdSense manual rollout infrastructure + homepage/feed/leaderboards/profile placements
 
 ### Phase 33: Timer Scalability Foundation (T164)
-- ✅ T164: Million-solve timer analytics + recent-history loading foundation
+- ✅ T164: Million-solve timer analytics, paged timer history, and aggregated all-time timer panes
 
 ---
 

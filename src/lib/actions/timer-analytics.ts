@@ -70,7 +70,7 @@ const DAILY_ROLLUP_SELECT_COLUMNS = [
   "updated_at",
 ].join(", ")
 
-type SolveWindowCursor = {
+export type SolveWindowCursor = {
   solvedAt: string
   id: string
 }
@@ -292,6 +292,49 @@ export async function listSolveSessionWindow(params: {
   }
 }
 
+export async function listEventSolveWindow(params: {
+  event: string
+  limit?: number
+  cursor?: SolveWindowCursor
+}): Promise<{ solves: Solve[]; nextCursor: SolveWindowCursor | null; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { solves: [], nextCursor: null, error: "Not authenticated" }
+  }
+
+  const limit = Math.min(Math.max(params.limit ?? 200, 1), 1000)
+  let query = supabase
+    .from("solves")
+    .select(SOLVE_SELECT_COLUMNS)
+    .eq("user_id", user.id)
+    .eq("event", params.event)
+    .order("solved_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit)
+
+  if (params.cursor) {
+    query = query.or(buildCursorFilter(params.cursor))
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    return { solves: [], nextCursor: null, error: error.message }
+  }
+
+  const newestFirst = (data as unknown as Solve[] | null) ?? []
+  const last = newestFirst[newestFirst.length - 1] ?? null
+
+  return {
+    solves: newestFirst.reverse(),
+    nextCursor: last ? { solvedAt: last.solved_at, id: last.id } : null,
+  }
+}
+
 export async function getSolveDetailWindow(params: {
   solveId: string
   statKey?: string
@@ -348,6 +391,32 @@ export async function getSolveDetailWindow(params: {
     solve: targetSolve,
     solves: (((data as unknown as Solve[] | null) ?? []).reverse()),
   }
+}
+
+export async function getEventSolveById(
+  solveId: string
+): Promise<{ solve: Solve | null; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { solve: null, error: "Not authenticated" }
+  }
+
+  const { data, error } = await supabase
+    .from("solves")
+    .select(SOLVE_SELECT_COLUMNS)
+    .eq("user_id", user.id)
+    .eq("id", solveId)
+    .maybeSingle()
+
+  if (error) {
+    return { solve: null, error: error.message }
+  }
+
+  return { solve: (data as unknown as Solve | null) ?? null }
 }
 
 export async function getEventAnalytics(event: string): Promise<{

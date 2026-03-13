@@ -6,11 +6,13 @@ import type { PaneContentProps, TimerPaneScope } from "@/components/timer/panes/
 export function PaneTimeDistribution({ pane, context, updatePaneOptions }: PaneContentProps) {
   const scope: TimerPaneScope = pane.options?.scope === "all" ? "all" : "session"
   const solves = scope === "all" ? context.chartSolvesAll : context.chartSolvesSession
+  const buckets = scope === "all" ? context.chartDistributionAll : undefined
 
   return (
     <div className="h-full min-h-0">
       <TimeDistributionChart
         solves={solves}
+        buckets={buckets}
         scope={scope}
         embedded
         onScopeChange={(nextScope) =>

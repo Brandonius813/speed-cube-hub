@@ -1,5 +1,7 @@
 import type { TimerPhase } from "@/lib/timer/engine"
 import type { Solve as StoredSolve } from "@/lib/types"
+import type { DistributionChartBucket } from "@/components/shared/time-distribution-chart"
+import type { TrendChartPoint } from "@/components/shared/time-trend-chart"
 
 export type PaneToolId =
   | "scramble_text"
@@ -109,6 +111,8 @@ export type TimerPaneRenderContext = {
   canShowCrossTrainer: boolean
   chartSolvesSession: StoredSolve[]
   chartSolvesAll: StoredSolve[]
+  chartDistributionAll: DistributionChartBucket[]
+  chartTrendAll: TrendChartPoint[]
   statCols: [string, string]
 }
 

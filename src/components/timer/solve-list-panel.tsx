@@ -60,7 +60,8 @@ type CurrentSessionLabel = {
 
 interface SolveListPanelProps {
   rows: SolveListRow[]
-  totalCount: number
+  loadedCount: number
+  totalSolveCount: number
   rangeStart: number
   rangeEnd: number
   scrollResetKey: string
@@ -79,6 +80,8 @@ interface SolveListPanelProps {
   currentSolveCount?: number
   showAllStats?: boolean
   textSize?: SolveListTextSize
+  hasOlderSolves?: boolean
+  isLoadingOlderSolves?: boolean
   onSetSelectedId: (id: string | null) => void
   onOpenSolveDetail: (id: string) => void
   onOpenStatDetail: (id: string, metric: SolveListStatMetric) => void
@@ -88,6 +91,7 @@ interface SolveListPanelProps {
   onShareSolve?: (solve: Solve) => void
   onUpdateStatCol: (idx: 0 | 1, key: string) => void
   onRangeChange: (next: { start: number; end: number }) => void
+  onLoadOlderSolves?: () => void
 }
 
 const DIVIDER_GAP = 24
@@ -180,7 +184,8 @@ function findRowForOffset(
 
 const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps>(function SolveListPanel({
   rows,
-  totalCount,
+  loadedCount,
+  totalSolveCount,
   rangeStart,
   rangeEnd,
   scrollResetKey,
@@ -199,6 +204,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   currentSolveCount,
   showAllStats = false,
   textSize = "md",
+  hasOlderSolves = false,
+  isLoadingOlderSolves = false,
   onSetSelectedId,
   onOpenSolveDetail,
   onOpenStatDetail,
@@ -208,6 +215,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   onShareSolve,
   onUpdateStatCol,
   onRangeChange,
+  onLoadOlderSolves,
 }, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -230,8 +238,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
     [rowHeight, sortedBoundaries]
   )
   const totalHeight = useMemo(
-    () => getPrefixHeight(totalCount),
-    [getPrefixHeight, totalCount]
+    () => getPrefixHeight(loadedCount),
+    [getPrefixHeight, loadedCount]
   )
 
   const emitRange = useCallback(() => {
@@ -240,20 +248,20 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
     const viewHeight = el.clientHeight
     const firstVisible = findRowForOffset(
       el.scrollTop,
-      totalCount,
+      loadedCount,
       getPrefixHeight
     )
     const lastVisible = findRowForOffset(
       el.scrollTop + viewHeight,
-      totalCount,
+      loadedCount,
       getPrefixHeight
     )
     const start = Math.max(0, firstVisible - OVERSCAN)
-    const end = Math.min(totalCount, lastVisible + 1 + OVERSCAN)
+    const end = Math.min(loadedCount, lastVisible + 1 + OVERSCAN)
     if (start === rangeRef.current.start && end === rangeRef.current.end) return
     rangeRef.current = { start, end }
     onRangeChange({ start, end })
-  }, [frozen, getPrefixHeight, onRangeChange, totalCount])
+  }, [frozen, getPrefixHeight, loadedCount, onRangeChange])
 
   useImperativeHandle(ref, () => ({
     preserveScrollPosition() {
@@ -270,7 +278,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
 
   useEffect(() => {
     emitRange()
-  }, [emitRange, totalCount, totalHeight])
+  }, [emitRange, loadedCount, totalHeight])
 
   useLayoutEffect(() => {
     const el = listRef.current
@@ -278,7 +286,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
     el.scrollTop = pendingScrollTopRef.current
     pendingScrollTopRef.current = null
     emitRange()
-  }, [emitRange, rows, totalCount])
+  }, [emitRange, loadedCount, rows])
 
   useEffect(() => {
     const el = listRef.current
@@ -296,7 +304,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = latestSolve
-  const countDisplay = `${currentSolveCount ?? totalCount}/${totalCount}`
+  const countDisplay = `${currentSolveCount ?? totalSolveCount}/${totalSolveCount}`
   const closeSessionStats = useCallback(() => setOpenSessionStats(null), [])
   const openStatsForDivider = useCallback(
     (label: DividerLabel | null) => {
@@ -588,6 +596,20 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             {bottomSpacer > 0 && (
               <tr>
                 <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
+              </tr>
+            )}
+            {hasOlderSolves && (
+              <tr>
+                <td colSpan={4} className="px-3 py-3">
+                  <button
+                    type="button"
+                    className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => onLoadOlderSolves?.()}
+                    disabled={isLoadingOlderSolves}
+                  >
+                    {isLoadingOlderSolves ? "Loading older solves..." : "Load older solves"}
+                  </button>
+                </td>
               </tr>
             )}
           </tbody>
