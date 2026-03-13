@@ -1,6 +1,7 @@
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 
 export type CompSimFormat = "single" | "mo3" | "ao5"
+export type CompSimStartFlow = "manual_local" | "stationary_auto_call"
 
 export type CompSimScene =
   | "off"
@@ -28,6 +29,9 @@ export type CompSimRoundConfig = {
   scene: CompSimScene
   intensity: number
   randomReactionsEnabled: boolean
+  startFlow: CompSimStartFlow
+  inspectionCallEnabled: boolean
+  readyCountdownEnabled: boolean
   waitTimeRangeMs: CompSimWaitTimeRange
   cumulativeTimeLimitMs: number | null
   cutoff: CompSimCutoffRule | null
@@ -77,6 +81,9 @@ export const DEFAULT_COMP_SIM_ROUND_CONFIG: CompSimRoundConfig = {
   scene: "regional_floor",
   intensity: 55,
   randomReactionsEnabled: true,
+  startFlow: "manual_local",
+  inspectionCallEnabled: true,
+  readyCountdownEnabled: true,
   waitTimeRangeMs: {
     minMs: 30_000,
     maxMs: 150_000,
@@ -133,6 +140,11 @@ export function normalizeCompSimConfig(
     ),
     randomReactionsEnabled:
       config?.randomReactionsEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.randomReactionsEnabled,
+    startFlow: config?.startFlow ?? DEFAULT_COMP_SIM_ROUND_CONFIG.startFlow,
+    inspectionCallEnabled:
+      config?.inspectionCallEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.inspectionCallEnabled,
+    readyCountdownEnabled:
+      config?.readyCountdownEnabled ?? DEFAULT_COMP_SIM_ROUND_CONFIG.readyCountdownEnabled,
     waitTimeRangeMs: {
       minMs: waitMin,
       maxMs: waitMax,
@@ -147,6 +159,15 @@ export function normalizeCompSimConfig(
 
 export function getCompSimFormatLabel(format: CompSimFormat): string {
   return COMP_SIM_FORMAT_LABELS[format]
+}
+
+export function getCompSimStartFlowLabel(startFlow: CompSimStartFlow): string {
+  switch (startFlow) {
+    case "manual_local":
+      return "Manual Local"
+    case "stationary_auto_call":
+      return "Stationary Call"
+  }
 }
 
 export function getCompSimSceneLabel(scene: CompSimScene): string {
@@ -375,9 +396,13 @@ export function formatCompSimTimeInput(ms: number | null): string {
 
 export function formatCompSimConstraintSummary(config: CompSimRoundConfig): string[] {
   const pieces = [getCompSimFormatLabel(config.format)]
+  pieces.push(getCompSimStartFlowLabel(config.startFlow))
   pieces.push(
     `Wait ${fmtMs(config.waitTimeRangeMs.minMs)}-${fmtMs(config.waitTimeRangeMs.maxMs)}`
   )
+  if (config.readyCountdownEnabled) {
+    pieces.push("60s ready window")
+  }
   if (config.cumulativeTimeLimitMs != null) {
     pieces.push(`Time limit ${fmtMs(config.cumulativeTimeLimitMs)}`)
   }

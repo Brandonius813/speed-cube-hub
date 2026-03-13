@@ -5,6 +5,13 @@ import {
   normalizeCompSimConfig,
 } from "@/lib/timer/comp-sim-round"
 
+function defaultRoundConfig(overrides: Parameters<typeof normalizeCompSimConfig>[0] = null) {
+  return normalizeCompSimConfig({
+    startFlow: "stationary_auto_call",
+    ...(overrides ?? {}),
+  })
+}
+
 describe("computeCompSimRoundResult", () => {
   it("computes a single result", () => {
     const result = computeCompSimRoundResult("single", [
@@ -47,7 +54,7 @@ describe("createCompSimEngine", () => {
       type: "START_SIM",
       scrambles: ["A", "B", "C"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "mo3",
       }),
     })
@@ -64,13 +71,86 @@ describe("createCompSimEngine", () => {
     ])
   })
 
+  it("requires an explicit sit-down step for manual-local flow", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: defaultRoundConfig({
+        format: "mo3",
+        startFlow: "manual_local",
+        readyCountdownEnabled: true,
+      }),
+    })
+    engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+    engine.dispatch({ type: "WAIT_COMPLETE" })
+    engine.dispatch({ type: "CUE_DONE" })
+
+    let snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("ready")
+    expect(snapshot.sitDownRequired).toBe(true)
+    expect(snapshot.readyWindowStartedAtMs).toBeNull()
+
+    engine.dispatch({ type: "SIT_DOWN" })
+    snapshot = engine.getSnapshot()
+    expect(snapshot.sitDownRequired).toBe(false)
+    expect(snapshot.readyWindowStartedAtMs).not.toBeNull()
+  })
+
+  it("auto-enters the ready window for stationary call flow", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: defaultRoundConfig({
+        format: "mo3",
+        startFlow: "stationary_auto_call",
+        readyCountdownEnabled: true,
+      }),
+    })
+    engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+    engine.dispatch({ type: "WAIT_COMPLETE" })
+    engine.dispatch({ type: "CUE_DONE" })
+
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("ready")
+    expect(snapshot.sitDownRequired).toBe(false)
+    expect(snapshot.readyWindowStartedAtMs).not.toBeNull()
+  })
+
+  it("marks the ready window as expired without auto-DNFing the attempt", () => {
+    const engine = createCompSimEngine()
+    engine.dispatch({
+      type: "START_SIM",
+      scrambles: ["A", "B", "C"],
+      groupNumber: 1,
+      roundConfig: defaultRoundConfig({
+        format: "mo3",
+        startFlow: "stationary_auto_call",
+        readyCountdownEnabled: true,
+      }),
+    })
+    engine.dispatch({ type: "CONFIRM_CUBE_COVERED" })
+    engine.dispatch({ type: "WAIT_COMPLETE" })
+    engine.dispatch({ type: "CUE_DONE" })
+    engine.dispatch({ type: "READY_WINDOW_EXPIRED" })
+
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.phase).toBe("ready")
+    expect(snapshot.readyWindowExpired).toBe(true)
+    expect(snapshot.solves).toEqual([])
+    expect(snapshot.endedReason).toBeNull()
+  })
+
   it("stops the round when solve 1 misses cutoff", () => {
     const engine = createCompSimEngine()
     engine.dispatch({
       type: "START_SIM",
       scrambles: ["A", "B", "C"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "mo3",
         cutoff: { attempt: 1, cutoffMs: 9000 },
       }),
@@ -94,7 +174,7 @@ describe("createCompSimEngine", () => {
       type: "START_SIM",
       scrambles: ["A", "B", "C"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "mo3",
         cumulativeTimeLimitMs: 15000,
       }),
@@ -125,7 +205,7 @@ describe("createCompSimEngine", () => {
       type: "START_SIM",
       scrambles: ["A", "B", "C", "D", "E"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "ao5",
         cutoff: { attempt: 2, cutoffMs: 10800 },
       }),
@@ -156,7 +236,7 @@ describe("createCompSimEngine", () => {
       type: "START_SIM",
       scrambles: ["A", "B", "C"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "mo3",
         cutoff: { attempt: 1, cutoffMs: 9000 },
       }),
@@ -179,7 +259,7 @@ describe("createCompSimEngine", () => {
       type: "START_SIM",
       scrambles: ["A", "B", "C"],
       groupNumber: 1,
-      roundConfig: normalizeCompSimConfig({
+      roundConfig: defaultRoundConfig({
         format: "mo3",
         cutoff: { attempt: 1, cutoffMs: 9000 },
       }),

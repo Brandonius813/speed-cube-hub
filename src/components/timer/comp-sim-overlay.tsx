@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender } from "@/lib/timer/inspection"
@@ -10,6 +10,7 @@ import {
   AttemptTimerScreen,
   CueScreen,
   IdleScreen,
+  ReadyWindowScreen,
   ResultsScreen,
   RoundSheet,
   ScrambleScreen,
@@ -85,6 +86,7 @@ export function CompSimOverlay({
   const { phase } = snapshot
   const wakeLockEnabled = phase !== "idle" && phase !== "sim_complete"
   const handledStartSignalRef = useRef(0)
+  const [readyWindowNow, setReadyWindowNow] = useState(() => Date.now())
 
   useScreenWakeLock({
     enabled: wakeLockEnabled,
@@ -110,7 +112,10 @@ export function CompSimOverlay({
   )
 
   const timerController = useSharedTimerController({
-    enabled: phase === "ready" || phase === "inspecting" || phase === "solving",
+    enabled:
+      (phase === "ready" && !snapshot.sitDownRequired) ||
+      phase === "inspecting" ||
+      phase === "solving",
     inspectionEnabled,
     inspectionVoiceEnabled,
     inspectionVoiceGender,
@@ -136,6 +141,18 @@ export function CompSimOverlay({
     }
   }, [compSim, phase, startSignal])
 
+  useEffect(() => {
+    if (phase !== "ready" || snapshot.sitDownRequired || snapshot.readyWindowDeadlineMs == null) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      setReadyWindowNow(Date.now())
+    }, 250)
+
+    return () => window.clearInterval(interval)
+  }, [phase, snapshot.readyWindowDeadlineMs, snapshot.sitDownRequired])
+
   const handleExit = useCallback(() => {
     compSim.cancelSim()
     onExit()
@@ -147,6 +164,19 @@ export function CompSimOverlay({
       : null
   const showRoundSheet = snapshot.solves.length > 0 && phase !== "sim_complete"
   const phaseAllowsScroll = phase === "idle" || phase === "sim_complete" || showRoundSheet
+  const readyWindowMsLeft =
+    snapshot.readyWindowDeadlineMs == null
+      ? null
+      : Math.max(0, snapshot.readyWindowDeadlineMs - readyWindowNow)
+  const readyWindowLabel =
+    phase === "ready" &&
+    !snapshot.sitDownRequired &&
+    snapshot.roundConfig.readyCountdownEnabled &&
+    readyWindowMsLeft != null
+      ? `${Math.floor(Math.ceil(readyWindowMsLeft / 1000) / 60)}:${String(
+          Math.ceil(readyWindowMsLeft / 1000) % 60
+        ).padStart(2, "0")}`
+      : null
   const handleRoundConfigChange = useCallback(
     (nextConfig: CompSimRoundConfig) => {
       compSim.applyRoundConfig(nextConfig)
@@ -288,7 +318,20 @@ export function CompSimOverlay({
                 />
               )}
               {phase === "solve_cue" && <CueScreen warning={pressureWarning} />}
-              {(phase === "ready" || phase === "inspecting" || phase === "solving") && (
+              {phase === "ready" && snapshot.sitDownRequired && (
+                <ReadyWindowScreen
+                  sitDownRequired={true}
+                  readyCountdownEnabled={snapshot.roundConfig.readyCountdownEnabled}
+                  readyWindowMsLeft={readyWindowMsLeft}
+                  readyWindowExpired={snapshot.readyWindowExpired}
+                  onSitDown={compSim.sitDown}
+                  onPointerDown={timerController.handlePointerDown}
+                  onPointerUp={timerController.handlePointerUp}
+                />
+              )}
+              {(phase === "inspecting" ||
+                phase === "solving" ||
+                (phase === "ready" && !snapshot.sitDownRequired)) && (
                 <AttemptTimerScreen
                   formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
                   inspectionEnabled={inspectionEnabled}
@@ -302,6 +345,8 @@ export function CompSimOverlay({
                   onPointerDown={timerController.handlePointerDown}
                   onPointerUp={timerController.handlePointerUp}
                   warning={pressureWarning}
+                  readyWindowLabel={readyWindowLabel}
+                  readyWindowExpired={snapshot.readyWindowExpired}
                 />
               )}
               {phase === "solve_recorded" && (

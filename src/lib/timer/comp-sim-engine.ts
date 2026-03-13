@@ -34,6 +34,10 @@ export type CompSimSnapshot = {
   cutoffMet: boolean | null
   checkpointResultMs: number | null
   officialElapsedMs: number
+  sitDownRequired: boolean
+  readyWindowStartedAtMs: number | null
+  readyWindowDeadlineMs: number | null
+  readyWindowExpired: boolean
 }
 
 export type CompSimEvent =
@@ -41,6 +45,8 @@ export type CompSimEvent =
   | { type: "CONFIRM_CUBE_COVERED" }
   | { type: "WAIT_COMPLETE" }
   | { type: "CUE_DONE" }
+  | { type: "SIT_DOWN" }
+  | { type: "READY_WINDOW_EXPIRED" }
   | { type: "READY_START" }
   | { type: "SOLVE_START" }
   | { type: "INSPECTION_DNF"; scramble: string }
@@ -64,6 +70,10 @@ const DEFAULT: CompSimSnapshot = {
   cutoffMet: null,
   checkpointResultMs: null,
   officialElapsedMs: 0,
+  sitDownRequired: false,
+  readyWindowStartedAtMs: null,
+  readyWindowDeadlineMs: null,
+  readyWindowExpired: false,
 }
 
 export const DEFAULT_COMP_SIM_SNAPSHOT: CompSimSnapshot = { ...DEFAULT }
@@ -164,6 +174,24 @@ function applyProgress(
     cutoffMet: progress.cutoffMet,
     checkpointResultMs: progress.checkpointResultMs,
     officialElapsedMs: progress.officialElapsedMs,
+    sitDownRequired: false,
+    readyWindowStartedAtMs: null,
+    readyWindowDeadlineMs: null,
+    readyWindowExpired: false,
+  }
+}
+
+function startReadyWindow(state: CompSimSnapshot): Pick<
+  CompSimSnapshot,
+  "sitDownRequired" | "readyWindowStartedAtMs" | "readyWindowDeadlineMs" | "readyWindowExpired"
+> {
+  const now = Date.now()
+  const readyWindowStartedAtMs = state.roundConfig.readyCountdownEnabled ? now : null
+  return {
+    sitDownRequired: false,
+    readyWindowStartedAtMs,
+    readyWindowDeadlineMs: readyWindowStartedAtMs == null ? null : now + 60_000,
+    readyWindowExpired: false,
   }
 }
 
@@ -191,6 +219,10 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
         cutoffMet: null,
         checkpointResultMs: null,
         officialElapsedMs: 0,
+        sitDownRequired: false,
+        readyWindowStartedAtMs: null,
+        readyWindowDeadlineMs: null,
+        readyWindowExpired: false,
       }
 
     case "CONFIRM_CUBE_COVERED": {
@@ -208,10 +240,46 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
       return state.phase === "waiting" ? { ...state, phase: "solve_cue" } : state
 
     case "CUE_DONE":
-      return state.phase === "solve_cue" ? { ...state, phase: "ready" } : state
+      if (state.phase !== "solve_cue") return state
+      if (state.roundConfig.startFlow === "stationary_auto_call") {
+        return {
+          ...state,
+          phase: "ready",
+          ...startReadyWindow(state),
+        }
+      }
+      return {
+        ...state,
+        phase: "ready",
+        sitDownRequired: true,
+        readyWindowStartedAtMs: null,
+        readyWindowDeadlineMs: null,
+        readyWindowExpired: false,
+      }
+
+    case "SIT_DOWN":
+      return state.phase === "ready" && state.sitDownRequired
+        ? {
+            ...state,
+            ...startReadyWindow(state),
+          }
+        : state
+
+    case "READY_WINDOW_EXPIRED":
+      return state.phase === "ready" &&
+        !state.sitDownRequired &&
+        state.readyWindowStartedAtMs != null &&
+        !state.readyWindowExpired
+        ? {
+            ...state,
+            readyWindowExpired: true,
+          }
+        : state
 
     case "READY_START":
-      return state.phase === "ready" ? { ...state, phase: "inspecting" } : state
+      return state.phase === "ready" && !state.sitDownRequired
+        ? { ...state, phase: "inspecting" }
+        : state
 
     case "SOLVE_START":
       return state.phase === "inspecting" || state.phase === "solve_cue"
@@ -263,6 +331,10 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
         ...state,
         phase: "scramble_shown",
         solveIndex: state.solves.length,
+        sitDownRequired: false,
+        readyWindowStartedAtMs: null,
+        readyWindowDeadlineMs: null,
+        readyWindowExpired: false,
       }
 
     case "CANCEL_SIM":

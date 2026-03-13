@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils"
 import {
   COMP_SIM_SCENE_LABELS,
   formatCompSimTimeInput,
+  getCompSimStartFlowLabel,
   normalizeCompSimConfig,
   parseCompSimTimeInput,
   type CompSimRoundConfig,
   type CompSimScene,
+  type CompSimStartFlow,
 } from "@/lib/timer/comp-sim-round"
 
 type Props = {
@@ -31,6 +33,8 @@ const FORMAT_OPTIONS = [
   { value: "mo3", label: "Mo3" },
   { value: "ao5", label: "Ao5" },
 ] as const
+
+const START_FLOW_OPTIONS: CompSimStartFlow[] = ["manual_local", "stationary_auto_call"]
 
 const SCENE_OPTIONS = Object.entries(COMP_SIM_SCENE_LABELS) as Array<
   [CompSimScene, string]
@@ -206,6 +210,32 @@ export function CompSimSettingsPanel({
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-background/70 p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+              <TimerReset className="h-4 w-4 text-emerald-300" />
+              Start Style
+            </div>
+            <div className="grid gap-2">
+              {START_FLOW_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => update({ startFlow: option })}
+                  className={cn(
+                    "min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors",
+                    config.startFlow === option
+                      ? "border-emerald-400/70 bg-emerald-500/15 text-emerald-100"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {getCompSimStartFlowLabel(option)}
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Manual Local waits for you to sit down. Stationary Call moves straight into the ready window after the call.
+            </p>
           </section>
 
           <section className="rounded-2xl border border-border/60 bg-background/70 p-4">
@@ -419,6 +449,22 @@ export function CompSimSettingsPanel({
                 enabled={config.randomReactionsEnabled}
                 onToggle={() =>
                   update({ randomReactionsEnabled: !config.randomReactionsEnabled })
+                }
+              />
+              <ToggleRow
+                label="Call To Inspection"
+                description="Plays a short inspection-call cue when the runner/judge calls you over."
+                enabled={config.inspectionCallEnabled}
+                onToggle={() =>
+                  update({ inspectionCallEnabled: !config.inspectionCallEnabled })
+                }
+              />
+              <ToggleRow
+                label="60s Ready Countdown"
+                description="Starts an optional 60-second ready window once you sit down."
+                enabled={config.readyCountdownEnabled}
+                onToggle={() =>
+                  update({ readyCountdownEnabled: !config.readyCountdownEnabled })
                 }
               />
             </div>

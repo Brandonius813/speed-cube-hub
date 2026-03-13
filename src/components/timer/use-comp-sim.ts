@@ -15,7 +15,7 @@ import {
   getPlannedSolveCount,
   normalizeCompSimConfig,
 } from "@/lib/timer/comp-sim-round"
-import { startNoise, stopAllNoise } from "@/lib/timer/comp-sim-audio"
+import { playInspectionCall, startNoise, stopAllNoise } from "@/lib/timer/comp-sim-audio"
 import { msToTruncatedSeconds } from "@/lib/timer/averages"
 
 type ScrambleWorkerRequest = { requestId: number; eventId: string }
@@ -35,6 +35,7 @@ export type CompSimApi = {
   snapshot: CompSimSnapshot
   startSim: () => void
   confirmCubeCovered: () => void
+  sitDown: () => void
   beginInspection: () => void
   startSolve: () => void
   submitInspectionDnf: () => void
@@ -65,6 +66,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
 
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const readyWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const workerRef = useRef<Worker | null>(null)
 
   useEffect(() => {
@@ -85,8 +87,10 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
   const clearAllTimeouts = useCallback(() => {
     if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current)
     if (cueTimeoutRef.current) clearTimeout(cueTimeoutRef.current)
+    if (readyWindowTimeoutRef.current) clearTimeout(readyWindowTimeoutRef.current)
     waitTimeoutRef.current = null
     cueTimeoutRef.current = null
+    readyWindowTimeoutRef.current = null
   }, [])
 
   useEffect(() => {
@@ -181,10 +185,17 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     const snap = engine.getSnapshot()
     waitTimeoutRef.current = setTimeout(() => {
       engine.dispatch({ type: "WAIT_COMPLETE" })
+      if (snap.roundConfig.inspectionCallEnabled) {
+        playInspectionCall()
+      }
       cueTimeoutRef.current = setTimeout(() => {
         engine.dispatch({ type: "CUE_DONE" })
       }, 1500)
     }, snap.waitDurationMs)
+  }, [])
+
+  const sitDown = useCallback(() => {
+    engineRef.current.dispatch({ type: "SIT_DOWN" })
   }, [])
 
   const beginInspection = useCallback(() => {
@@ -322,10 +333,49 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
       ? computeCompSimRoundResult(snapshot.roundConfig.format, snapshot.solves)
       : null
 
+  useEffect(() => {
+    if (
+      snapshot.phase !== "ready" ||
+      snapshot.sitDownRequired ||
+      snapshot.readyWindowDeadlineMs == null ||
+      snapshot.readyWindowExpired
+    ) {
+      if (readyWindowTimeoutRef.current) {
+        clearTimeout(readyWindowTimeoutRef.current)
+        readyWindowTimeoutRef.current = null
+      }
+      return
+    }
+
+    const remainingMs = snapshot.readyWindowDeadlineMs - Date.now()
+    if (remainingMs <= 0) {
+      engineRef.current.dispatch({ type: "READY_WINDOW_EXPIRED" })
+      return
+    }
+
+    readyWindowTimeoutRef.current = setTimeout(() => {
+      engineRef.current.dispatch({ type: "READY_WINDOW_EXPIRED" })
+      readyWindowTimeoutRef.current = null
+    }, remainingMs)
+
+    return () => {
+      if (readyWindowTimeoutRef.current) {
+        clearTimeout(readyWindowTimeoutRef.current)
+        readyWindowTimeoutRef.current = null
+      }
+    }
+  }, [
+    snapshot.phase,
+    snapshot.readyWindowDeadlineMs,
+    snapshot.readyWindowExpired,
+    snapshot.sitDownRequired,
+  ])
+
   return {
     snapshot,
     startSim,
     confirmCubeCovered,
+    sitDown,
     beginInspection,
     startSolve,
     submitInspectionDnf,

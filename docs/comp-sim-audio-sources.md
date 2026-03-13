@@ -1,6 +1,6 @@
 # Comp Sim Audio Sources
 
-All current Comp Sim audio assets in `public/audio/comp-sim` are sourced from Mixkit Free Sound Effects and processed into shorter normalized MP3s for in-app playback.
+All current Comp Sim audio assets in `public/audio/comp-sim` are sourced from Mixkit Free Sound Effects and processed into normalized MP3s for in-app playback. The ambient scene files now preserve materially longer beds so loop points are much less obvious during live Comp Sim rounds.
 
 - License reference: https://mixkit.co/license/
 - Source host: https://mixkit.co/free-sound-effects/
@@ -11,10 +11,10 @@ All current Comp Sim audio assets in `public/audio/comp-sim` are sourced from Mi
 | Output file | Source title | Mixkit ID | Source page | Asset URL |
 | --- | --- | --- | --- | --- |
 | `public/audio/comp-sim/ambient/quiet-local.mp3` | Restaurant crowd talking ambience | 444 | https://mixkit.co/free-sound-effects/download/444/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/444/444.wav |
-| `public/audio/comp-sim/ambient/school-gym.mp3` | Shopping center crowd | 377 | https://mixkit.co/free-sound-effects/download/377/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/377/377.wav |
+| `public/audio/comp-sim/ambient/school-gym.mp3` | People indoors ambience | 2981 | https://mixkit.co/free-sound-effects/download/2981/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/2981/2981.wav |
 | `public/audio/comp-sim/ambient/regional-floor.mp3` | Busy crowd at airport terminal estation | 1573 | https://mixkit.co/free-sound-effects/download/1573/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/1573/1573.wav |
-| `public/audio/comp-sim/ambient/finals-stage.mp3` | Applause ambience loop | 513 | https://mixkit.co/free-sound-effects/download/513/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/513/513.wav |
-| `public/audio/comp-sim/ambient/championship-hall.mp3` | Crowd at the stadium | 2111 | https://mixkit.co/free-sound-effects/download/2111/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/2111/2111.wav |
+| `public/audio/comp-sim/ambient/finals-stage.mp3` | Cinematic room tone | 3080 | https://mixkit.co/free-sound-effects/download/3080/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/3080/3080.wav |
+| `public/audio/comp-sim/ambient/championship-hall.mp3` | Dark cinematic room tone | 3081 | https://mixkit.co/free-sound-effects/download/3081/?context=item+grid | https://assets.mixkit.co/active_storage/sfx/3081/3081.wav |
 
 ## Reactions
 

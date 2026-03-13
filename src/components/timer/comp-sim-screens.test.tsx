@@ -1,13 +1,30 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
-import { RoundSheet, SolveRecordedScreen } from "@/components/timer/comp-sim-screens"
+import {
+  ReadyWindowScreen,
+  RoundSheet,
+  SolveRecordedScreen,
+} from "@/components/timer/comp-sim-screens"
 import { normalizeCompSimConfig } from "@/lib/timer/comp-sim-round"
+
+const baseSnapshot = {
+  waitDurationMs: 0,
+  waitStartMs: 0,
+  endedReason: null,
+  cutoffMet: null,
+  checkpointResultMs: null,
+  sitDownRequired: false,
+  readyWindowStartedAtMs: null,
+  readyWindowDeadlineMs: null,
+  readyWindowExpired: false,
+} as const
 
 describe("SolveRecordedScreen", () => {
   it("keeps the shared light-weight timer styling for the recorded solve", () => {
     const markup = renderToStaticMarkup(
       <SolveRecordedScreen
         snapshot={{
+          ...baseSnapshot,
           phase: "solve_recorded",
           solveIndex: 1,
           solves: [
@@ -15,12 +32,7 @@ describe("SolveRecordedScreen", () => {
           ],
           scrambles: ["R U R'"],
           groupNumber: 1,
-          waitDurationMs: 0,
-          waitStartMs: 0,
           roundConfig: normalizeCompSimConfig({ format: "ao5" }),
-          endedReason: null,
-          cutoffMet: null,
-          checkpointResultMs: null,
           officialElapsedMs: 9876,
         }}
         timerReadoutTextSize="md"
@@ -40,6 +52,7 @@ describe("RoundSheet", () => {
     const markup = renderToStaticMarkup(
       <RoundSheet
         snapshot={{
+          ...baseSnapshot,
           phase: "solve_recorded",
           solveIndex: 4,
           solves: [
@@ -50,12 +63,7 @@ describe("RoundSheet", () => {
           ],
           scrambles: ["A", "B", "C", "D", "E"],
           groupNumber: 1,
-          waitDurationMs: 0,
-          waitStartMs: 0,
           roundConfig: normalizeCompSimConfig({ format: "ao5" }),
-          endedReason: null,
-          cutoffMet: null,
-          checkpointResultMs: null,
           officialElapsedMs: 40300,
         }}
         editable
@@ -66,5 +74,24 @@ describe("RoundSheet", () => {
     expect(markup).toContain("Solve 5 Pressure")
     expect(markup).toContain("BPA (ao5)")
     expect(markup).toContain("WPA (ao5)")
+  })
+})
+
+describe("ReadyWindowScreen", () => {
+  it("shows the manual sit-down CTA before the ready window starts", () => {
+    const markup = renderToStaticMarkup(
+      <ReadyWindowScreen
+        sitDownRequired={true}
+        readyCountdownEnabled={true}
+        readyWindowMsLeft={null}
+        readyWindowExpired={false}
+        onSitDown={() => {}}
+        onPointerDown={() => {}}
+        onPointerUp={() => {}}
+      />
+    )
+
+    expect(markup).toContain("Sit Down / I&#x27;m Ready")
+    expect(markup).toContain("Take Your Station")
   })
 })

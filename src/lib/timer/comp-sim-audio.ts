@@ -31,6 +31,13 @@ type ScenePreset = {
   gain: number
 }
 
+type CuePreset = {
+  id: string
+  label: string
+  src: string
+  gain: number
+}
+
 const AMBIENT_SCENES: Record<Exclude<CompSimScene, "off">, ScenePreset> = {
   quiet_local: {
     label: "Quiet Local",
@@ -182,6 +189,26 @@ export const COMP_SIM_REACTION_LIBRARY: ReactionPreset[] = [
 ]
 
 const RANDOM_REACTIONS = COMP_SIM_REACTION_LIBRARY
+const INSPECTION_CALL_CUES: CuePreset[] = [
+  {
+    id: "female_mic_countdown",
+    label: "Female mic countdown",
+    src: "/audio/comp-sim/judge/female-mic-countdown.mp3",
+    gain: 0.72,
+  },
+  {
+    id: "male_deep_countdown",
+    label: "Male deep countdown",
+    src: "/audio/comp-sim/judge/male-deep-countdown.mp3",
+    gain: 0.74,
+  },
+  {
+    id: "sport_start_bleeps",
+    label: "Sport start bleeps",
+    src: "/audio/comp-sim/judge/sport-start-bleeps.mp3",
+    gain: 0.68,
+  },
+]
 
 let ambientAudio: HTMLAudioElement | null = null
 let activeOneShots = new Set<HTMLAudioElement>()
@@ -296,6 +323,10 @@ function playReactionPreset(
   )
 }
 
+function playCuePreset(preset: CuePreset) {
+  playClip(preset.src, preset.gain)
+}
+
 function scheduleReactionLoop() {
   clearReactionLoop()
 
@@ -376,6 +407,11 @@ export function previewSoundscape(
       clearPlaybackState()
     }
   }, previewDurationMs)
+}
+
+export function playInspectionCall(): void {
+  const preset = INSPECTION_CALL_CUES[Math.floor(Math.random() * INSPECTION_CALL_CUES.length)]
+  playCuePreset(preset)
 }
 
 export function stopSoundscapePreview(): void {
