@@ -185,6 +185,7 @@
 
 ### Phase 32: Monetization (T163)
 - ✅ T163: AdSense manual rollout infrastructure + homepage/feed/leaderboards/profile placements
+- ✅ T164: AdSense crawl hardening (`/ads.txt`, `/robots.txt`, `/sitemap.xml`) for Google verification
 
 ### Phase 33: Timer Scalability Foundation (T164)
 - ✅ T164: Million-solve timer analytics, paged timer history, and aggregated all-time timer panes
@@ -201,6 +202,7 @@ These items are tracked in the PRD under "Remaining Security Items (Manual)" and
 - 🏗️ In Progress — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart` (branch: `task/activate-profile-components`, worktree: `../speed-cube-hub-agent-profile`)
 - 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
 - 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
+- 🔲 Manual follow-up — Make `https://speedcubehub.com/ads.txt` return `200` directly at the apex host in Vercel/domain settings instead of redirecting to `www`
 
 ## Native Platform Program (Planning Complete)
 

@@ -30,6 +30,7 @@ Tools for coaches to assign homework, review student practice data, and store co
 - **Freemium:** Almost all features free. Paid tier unlocks premium features.
 - **Ads** on the free tier. Paid subscription removes ads.
 - Manual AdSense placements are live on the homepage, feed, leaderboards sidebar (desktop only), and public profiles. Timer, auth, admin, and onboarding flows stay ad-free.
+- AdSense crawl helpers are live at `/ads.txt`, `/robots.txt`, and `/sitemap.xml`. If AdSense still warns on the apex domain, the remaining fix is the Vercel/domain redirect behavior for `https://speedcubehub.com/ads.txt`.
 - **Coach seat pricing:** Coaches (or cubing.gg) pay per coach seat to use the coaching tools.
 - **Potential cubing.gg partnership:** Per-coach-seat licensing, or deeper integration where Speed Cube Hub becomes part of the cubing.gg ecosystem.
 

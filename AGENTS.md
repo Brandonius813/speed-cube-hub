@@ -150,6 +150,7 @@ App architecture:
 - Next.js App Router
 - `page.tsx` server component fetches data
 - `*-content.tsx` client component handles interaction
+- Crawl-helper routes live at `/ads.txt`, `/robots.txt`, and `/sitemap.xml`; keep them public and plain-text/XML so AdSense and search crawlers can verify the site without auth
 - Server actions in `src/lib/actions/*.ts`
 - Client Supabase usage for auth checks only
 - Service-role admin client must stay server-side only
