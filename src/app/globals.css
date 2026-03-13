@@ -136,3 +136,16 @@
     cursor: pointer;
   }
 }
+
+@layer utilities {
+  .guarded-number-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  .guarded-number-input::-webkit-outer-spin-button,
+  .guarded-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
