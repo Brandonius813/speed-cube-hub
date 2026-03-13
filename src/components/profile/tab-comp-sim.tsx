@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Check, ChevronsUpDown, X } from "lucide-react"
 import {
   CartesianGrid,
@@ -18,6 +19,7 @@ import {
   getCompSimEndedReasonLabel,
   getCompSimSceneLabel,
 } from "@/lib/timer/comp-sim-round"
+import { EditSessionModal } from "@/components/dashboard/edit-session-modal"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -48,11 +50,19 @@ type TrendPoint = {
   label: string
 }
 
-export function TabCompSim({ sessions }: { sessions: Session[] }) {
+export function TabCompSim({
+  sessions,
+  isOwner = false,
+}: {
+  sessions: Session[]
+  isOwner?: boolean
+}) {
+  const router = useRouter()
   const [eventFilter, setEventFilter] = useState("all")
   const [formatFilter, setFormatFilter] = useState("all")
   const [endedFilter, setEndedFilter] = useState("all")
   const [eventOpen, setEventOpen] = useState(false)
+  const [editingSession, setEditingSession] = useState<Session | null>(null)
 
   const compSimSessions = useMemo(
     () =>
@@ -205,7 +215,8 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <div className="rounded-3xl border border-border/60 bg-card/90 p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-2">
@@ -411,6 +422,19 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
                         ? "DNF"
                         : "No Result"}
                   </p>
+                  {isOwner && (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10"
+                        onClick={() => setEditingSession(session)}
+                      >
+                        Edit / Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -434,7 +458,22 @@ export function TabCompSim({ sessions }: { sessions: Session[] }) {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+
+      {isOwner && editingSession && (
+        <EditSessionModal
+          open={!!editingSession}
+          onOpenChange={(open) => {
+            if (!open) setEditingSession(null)
+          }}
+          session={editingSession}
+          onSaved={() => {
+            setEditingSession(null)
+            router.refresh()
+          }}
+        />
+      )}
+    </>
   )
 }
 

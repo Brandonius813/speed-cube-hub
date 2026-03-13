@@ -102,7 +102,7 @@ export function TabStats({
       {activeSubview === "general" ? (
         <GeneralStatsContent sessions={sessions} isOwner={isOwner} onOpenCompSim={() => setSubview("comp-sim")} />
       ) : (
-        <TabCompSim sessions={sessions} />
+        <TabCompSim sessions={sessions} isOwner={isOwner} />
       )}
     </div>
   )
