@@ -180,4 +180,23 @@ describe("comp sim audio handoff", () => {
     expect(reaction?.volume).toBeCloseTo(0.724, 2)
     expect((reaction?.volume ?? 0) / (ambient?.volume ?? 1)).toBeGreaterThan(1.5)
   })
+
+  it("plays an inspection call cue without stopping the live ambient bed", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const audio = await loadAudioModule()
+
+    audio.startNoise({
+      scene: "regional_floor",
+      intensity: 70,
+      randomReactionsEnabled: false,
+    })
+
+    const ambient = MockAudio.instances[0]
+    audio.playInspectionCall()
+
+    const cue = MockAudio.instances[1]
+    expect(ambient?.pauseCalls).toBe(0)
+    expect(cue?.src).toContain("/audio/comp-sim/judge/")
+    expect(cue?.playCalls).toBe(1)
+  })
 })

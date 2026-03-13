@@ -182,12 +182,87 @@ export function CueScreen({ warning }: { warning?: string | null }) {
         <Flag className="h-10 w-10 text-emerald-200" />
       </div>
       <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-        Judge Cue
+        Inspection Call
       </p>
-      <h2 className="mt-2 text-4xl font-black text-emerald-50">Time To Solve</h2>
+      <h2 className="mt-2 text-4xl font-black text-emerald-50">Competitor To The Station</h2>
+      <p className="mt-3 text-sm text-emerald-100/80">
+        The call is out. Get settled and be ready to start inspection.
+      </p>
       {warning && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           {warning}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatReadyWindowMs(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, "0")}`
+}
+
+export function ReadyWindowScreen({
+  sitDownRequired,
+  readyCountdownEnabled,
+  readyWindowMsLeft,
+  readyWindowExpired,
+  onSitDown,
+  onPointerDown,
+  onPointerUp,
+}: {
+  sitDownRequired: boolean
+  readyCountdownEnabled: boolean
+  readyWindowMsLeft: number | null
+  readyWindowExpired: boolean
+  onSitDown: () => void
+  onPointerDown: (timestamp?: number) => void
+  onPointerUp: (timestamp?: number) => void
+}) {
+  if (sitDownRequired) {
+    return (
+      <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+          Sit Down
+        </p>
+        <h2 className="mt-2 text-4xl font-black text-foreground">Take Your Station</h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Local-style flow: when you are seated and ready, start the optional ready window.
+        </p>
+        <button
+          onClick={onSitDown}
+          className="mt-6 min-h-12 w-full rounded-2xl bg-cyan-500 px-4 font-bold text-slate-950 transition-colors hover:bg-cyan-400"
+        >
+          Sit Down / I&apos;m Ready
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
+      onPointerDown={(eventPointer) => onPointerDown(eventPointer.timeStamp)}
+      onPointerUp={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
+      onPointerCancel={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        Ready Window
+      </p>
+      <h2 className="mt-2 text-4xl font-black text-foreground">Begin Inspection When Ready</h2>
+      {readyCountdownEnabled && (
+        <p className="mt-5 font-mono text-6xl font-light tabular-nums text-cyan-100">
+          {formatReadyWindowMs(readyWindowMsLeft ?? 0)}
+        </p>
+      )}
+      <p className="mt-3 text-sm text-muted-foreground">
+        Use the normal timer hold-to-start flow to begin inspection.
+      </p>
+      {readyWindowExpired && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          You missed the 60-second ready window. This is warning-only and the attempt can still continue.
         </div>
       )}
     </div>
@@ -207,6 +282,8 @@ export function AttemptTimerScreen({
   onPointerDown,
   onPointerUp,
   warning,
+  readyWindowLabel,
+  readyWindowExpired,
 }: {
   formatLabel: string
   inspectionEnabled: boolean
@@ -220,6 +297,8 @@ export function AttemptTimerScreen({
   onPointerDown: (timestamp?: number) => void
   onPointerUp: (timestamp?: number) => void
   warning?: string | null
+  readyWindowLabel?: string | null
+  readyWindowExpired?: boolean
 }) {
   const title =
     timerPhase === "running"
@@ -259,7 +338,17 @@ export function AttemptTimerScreen({
         inspectionSecondsLeft={inspectionSecondsLeft}
         timerUpdateMode={timerUpdateMode}
       />
+      {readyWindowLabel && timerPhase === "ready" && !inInspectionHold && (
+        <p className="mt-4 font-mono text-3xl font-light tabular-nums text-cyan-100">
+          {readyWindowLabel}
+        </p>
+      )}
       <p className="mt-3 text-sm text-muted-foreground">{prompt}</p>
+      {readyWindowExpired && timerPhase === "ready" && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          You missed the 60-second ready window. Warning only: you can still continue this attempt.
+        </div>
+      )}
       {warning && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           {warning}
