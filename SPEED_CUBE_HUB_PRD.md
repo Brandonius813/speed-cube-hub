@@ -307,6 +307,15 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Comp Sim / GAN flow hardening: Comp Sim is now an exclusive mode with guarded entry, clearer copy, standalone auto-save timing, and ignored GAN input while the simulator is active
 - [x] Shared solve-import review for timer exports: csTimer, CubeTime, and future raw-solve parsers now use the same pre-import summary cards and suspicious-solve review flow (best single, current/best Ao5, Ao12, Ao100, plus outlier toggles)
 
+**Phase 33 — Timer Scalability Foundation — T164:**
+- [x] Added timer analytics summary/rollup tables (`event_summaries`, `solve_session_summaries`, `solve_daily_rollups`) plus a histogram RPC so all-time timer/profile/dashboard charts no longer require raw solve downloads
+- [x] `saveTimerSession`, timer imports, manual solve updates/deletes, and solve-session merge/split now refresh the affected timer analytics summaries after solve mutations
+- [x] Timer daily stats now read from daily rollups/event summaries instead of selecting raw solve timestamps and grouping them in JavaScript
+- [x] Dashboard/profile/timer all-time solve analytics now use aggregated server payloads (distribution buckets + date buckets) instead of `getSolvesByEvent()`
+- [x] Timer local solve cache moved to a fresh v2 IndexedDB store and cross-device sync now hydrates only a recent event window instead of mirroring the entire event history on first load
+- [x] Timer open now loads only a recent saved-history window plus the active unsaved block, older saved solves page in on demand, and exact solve/stat detail windows fetch from the server instead of requiring full event hydration
+- [x] Timer all-time pane charts now use aggregated server trend/distribution data in all-time mode instead of rendering from the loaded client window
+
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events

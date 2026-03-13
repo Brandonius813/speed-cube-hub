@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/server"
 import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 import type { CompSimEndedReason, CompSimFormat, CompSimScene } from "@/lib/timer/comp-sim-round"
+import {
+  refreshSolveSessionSummary,
+  refreshTimerEventAnalytics,
+} from "@/lib/actions/timer-analytics"
 
 export async function saveTimerSession(data: {
   event: string
@@ -165,8 +169,15 @@ export async function saveTimerSession(data: {
 
   if (data.practice_type === "Comp Sim") {
     await Promise.all([
+      refreshTimerEventAnalytics(data.event),
+      refreshSolveSessionSummary(solveSession.id),
       markOnboardingStepComplete("first_timer_solve"),
       markOnboardingStepComplete("comp_sim_tried"),
+    ])
+  } else {
+    await Promise.all([
+      refreshTimerEventAnalytics(data.event),
+      refreshSolveSessionSummary(solveSession.id),
     ])
   }
 

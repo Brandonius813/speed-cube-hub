@@ -2,6 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import type { ImportedSolveChunkRow } from "@/lib/import/chunk-import"
+import {
+  refreshSolveSessionSummary,
+  refreshTimerEventAnalytics,
+} from "@/lib/actions/timer-analytics"
 
 export async function createImportedTimerSession(
   solveSessionId: string,
@@ -111,6 +115,11 @@ export async function appendImportedSolveChunk(
 
     totalInserted += batch.length
   }
+
+  await Promise.all([
+    refreshTimerEventAnalytics(timerSession.event),
+    refreshSolveSessionSummary(timerSession.solve_session_id),
+  ])
 
   return { imported: totalInserted }
 }

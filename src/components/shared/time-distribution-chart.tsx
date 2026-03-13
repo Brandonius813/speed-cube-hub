@@ -25,6 +25,8 @@ type HistogramBucket = {
   percent: number
 }
 
+export type DistributionChartBucket = HistogramBucket
+
 const TARGET_BIN_COUNT = 12
 
 function getIntervalDecimals(bucketSize: number): number {
@@ -201,12 +203,14 @@ function CustomTooltip({
 }
 
 export function TimeDistributionChart({
-  solves,
+  solves = [],
+  buckets,
   scope,
   embedded = false,
   onScopeChange,
 }: {
-  solves: Solve[]
+  solves?: Solve[]
+  buckets?: DistributionChartBucket[]
   scope?: ChartScope
   embedded?: boolean
   onScopeChange?: (scope: ChartScope) => void
@@ -215,13 +219,16 @@ export function TimeDistributionChart({
   const activeScope: ChartScope = scope === "all" ? "all" : "session"
 
   const chartData = useMemo(() => {
+    if (buckets) {
+      return buckets
+    }
     const times = solves
       .map(getEffectiveTime)
       .filter((t) => t !== Infinity)
       .map((t) => t / 1000)
 
     return buildHistogram(times)
-  }, [solves])
+  }, [buckets, solves])
 
   if (chartData.length === 0) {
     if (embedded) {

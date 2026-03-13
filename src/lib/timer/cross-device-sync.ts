@@ -13,10 +13,10 @@
 import type { TimerSolve } from "@/lib/timer/stats"
 import type { SolveStore } from "@/lib/timer/solve-store"
 import type { Solve } from "@/lib/types"
-import { getSolveCountByEvent, getSolvesByEvent } from "@/lib/actions/timer"
+import { getSolveCountByEvent } from "@/lib/actions/timer"
+import { listRecentEventSolves } from "@/lib/actions/timer-analytics"
 
-// Supabase PostgREST max-rows is typically 1000, so page at that size.
-const PAGE_SIZE = 1000
+const RECENT_SYNC_LIMIT = 500
 
 function dateGroupFromSolvedAt(solvedAt: string): string | null {
   const day = solvedAt.slice(0, 10)
@@ -111,29 +111,14 @@ export async function syncSolvesFromDb(
       return null
     }
 
-    // Fetch DB solves in paginated chunks.
-    const allDbSolves: Solve[] = []
-    let offset = 0
-    let hasMore = true
+    const { solves: allDbSolves, error: fetchError } = await listRecentEventSolves({
+      event,
+      limit: RECENT_SYNC_LIMIT,
+      offset: 0,
+    })
 
-    while (hasMore) {
-      const { solves: page, error: fetchError } = await getSolvesByEvent(
-        event,
-        PAGE_SIZE,
-        offset
-      )
-
-      if (fetchError || page.length === 0) {
-        hasMore = false
-        break
-      }
-
-      allDbSolves.push(...page)
-      offset += page.length
-
-      if (page.length < PAGE_SIZE) {
-        hasMore = false
-      }
+    if (fetchError) {
+      return null
     }
 
     // Imported datasets can contain one timer_session_id spanning many days.
