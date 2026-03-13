@@ -33,7 +33,12 @@ import {
 import { Trash2 } from "lucide-react"
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants"
 import { updateSession, deleteSession } from "@/lib/actions/sessions"
-import { parseDuration, formatDuration, parseSolveTime, formatSolveTime } from "@/lib/utils"
+import {
+  GUARDED_NUMBER_INPUT_CLASSNAME,
+  preventGuardedNumberInputKey,
+  preventGuardedNumberInputWheel,
+} from "@/lib/forms/guard-number-input"
+import { parseDuration, parseSolveTime, formatSolveTime } from "@/lib/utils"
 import type { Session } from "@/lib/types"
 
 const CUSTOM_VALUE = "__custom__"
@@ -253,7 +258,9 @@ export function EditSessionModal({
                 type="number"
                 defaultValue={session.num_solves ?? ""}
                 min={0}
-                className="min-h-11 border-border bg-secondary/50"
+                onKeyDown={preventGuardedNumberInputKey}
+                onWheel={preventGuardedNumberInputWheel}
+                className={`min-h-11 border-border bg-secondary/50 ${GUARDED_NUMBER_INPUT_CLASSNAME}`}
               />
             </div>
 
@@ -270,7 +277,9 @@ export function EditSessionModal({
                 type="number"
                 defaultValue={session.num_dnf ?? ""}
                 min={0}
-                className="min-h-11 border-border bg-secondary/50"
+                onKeyDown={preventGuardedNumberInputKey}
+                onWheel={preventGuardedNumberInputWheel}
+                className={`min-h-11 border-border bg-secondary/50 ${GUARDED_NUMBER_INPUT_CLASSNAME}`}
               />
             </div>
 
