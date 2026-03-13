@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateSquare1Scramble } from "@/lib/timer/square1"
+import { enforceRequestRateLimit } from "@/lib/rate-limit"
 
 // Valid WCA event IDs (duplicated to avoid importing client-side constants)
 const VALID_EVENTS = new Set([
@@ -30,6 +31,16 @@ const CUBING_EVENT_MAP: Record<string, string> = {
 }
 
 export async function GET(request: NextRequest) {
+  const limitedResponse = await enforceRequestRateLimit(request, {
+    routeKey: "api_scramble",
+    limit: 240,
+    windowMs: 60_000,
+  })
+
+  if (limitedResponse) {
+    return limitedResponse
+  }
+
   const event = request.nextUrl.searchParams.get("event")
 
   if (!event || !VALID_EVENTS.has(event)) {

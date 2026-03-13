@@ -1,5 +1,6 @@
 import { ImageResponse } from "@vercel/og"
 import { type NextRequest } from "next/server"
+import { enforceRequestRateLimit } from "@/lib/rate-limit"
 
 export const runtime = "edge"
 
@@ -40,6 +41,16 @@ function formatTime(seconds: number, eventId?: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  const limitedResponse = await enforceRequestRateLimit(request, {
+    routeKey: "api_og",
+    limit: 60,
+    windowMs: 60_000,
+  })
+
+  if (limitedResponse) {
+    return limitedResponse
+  }
+
   const { searchParams } = request.nextUrl
 
   const type = (searchParams.get("type") || "session").slice(0, 10)

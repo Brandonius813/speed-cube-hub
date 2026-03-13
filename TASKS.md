@@ -193,6 +193,9 @@
 ### Phase 34: Timer Session Duration Correction (T165)
 - ✅ T165: Editable timer session duration in the finish modal and saved-session popup
 
+### Phase 35: Pre-Launch Hardening (T166)
+- ✅ T166: Server-render navbar auth state, unify nav styling, add footer Discord link, and rate-limit `/api/scramble` + `/api/og`
+
 ---
 
 ## Open / Remaining Items
@@ -200,7 +203,6 @@
 These items are tracked in the PRD under "Remaining Security Items (Manual)" and incomplete roadmap checkboxes. Current parallel layout is pre-claimed below.
 
 - 🏗️ In Progress — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart` (branch: `task/activate-profile-components`, worktree: `../speed-cube-hub-agent-profile`)
-- 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
 - 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
 - 🔲 Manual follow-up — Make `https://speedcubehub.com/ads.txt` return `200` directly at the apex host in Vercel/domain settings instead of redirecting to `www`
 

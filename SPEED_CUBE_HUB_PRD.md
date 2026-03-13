@@ -150,6 +150,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
 - [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
+- [x] Footer Discord Link — Env-configurable Discord invite in the footer beside the legal links so visitors can join the community and report bugs in a public channel.
 - [ ] Social feed/discovery rework foundation — In progress on `codex/social-preview-foundation`: mixed feed entries (sessions + posts), richer session recap cards, unified Discover tabs (`All`, `People`, `Posts`, `Clubs`, `Events`), favorites/mutes, post composer, post/thread comments, preview seed script, and a localhost mock-preview fallback. Hosted dev still needs Supabase migration `026_social_preview_foundation.sql` applied before remote reseeding works.
 
 ### Security & Performance Hardening (Phase 9)
@@ -163,6 +164,7 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Fix landing page stats — use database aggregation (T48)
 - [x] Fix navbar — reduce server calls from 8 to 1 (T49)
 - [x] Fix dashboard — deduplicate session fetches + add limits (T50)
+- [x] Pre-launch navbar/community hardening (T166) — server-render initial navbar auth state, unify guest/logged-in nav text styling, add a footer Discord invite, and rate-limit `/api/scramble` + `/api/og`
 - [ ] Replace select("*") with explicit column lists (T51) — **Reverted 3x.** Requires a live Supabase DB schema audit first (`SELECT column_name FROM information_schema.columns WHERE table_name = '...'`) because many columns were added via SQL editor and don't match the TypeScript types. Do not re-attempt without verifying every column name against the live database.
 
 ### Profile Rework — 6-Tab Layout with Sidebar (Phase 11 + Comp Sim Expansion)
@@ -185,7 +187,8 @@ Rework the profile page from a flat vertical stack into a swipeable tab layout w
 - [ ] Activate unused components: `UpcomingCompetitions`, `PBProgressChart` (on profile)
 
 ### Remaining Security Items (Manual)
-- [ ] **Rate limiting** — Add rate limiting to login, signup, `/api/scramble`, and `/api/og`. Requires Upstash Redis (or similar) since Vercel serverless can't do in-memory rate limiting reliably. Supabase Auth already rate-limits login/signup natively, so the API routes are the priority.
+- [x] **API rate limiting** — Added Upstash REST-backed fixed-window protection to `/api/scramble` and `/api/og`, with a fail-open fallback if limiter storage is unavailable so those endpoints do not become an outage during Redis incidents.
+- [ ] **Login/signup custom rate limiting** — Deferred for now. Supabase Auth already rate-limits these flows natively, so revisit only if abuse shows up or auth moves behind custom endpoints.
 - [ ] **Challenges RLS policy** — The `challenges` table INSERT policy allows any authenticated user. Need a SQL migration to restrict INSERT to admin users only (currently admin check is only enforced in the server action, not at the database level).
 
 ### Coaching Platform (Future)
