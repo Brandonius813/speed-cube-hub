@@ -8,7 +8,7 @@ describe("TimerReadout", () => {
       <TimerReadout
         className="timer"
         phase="inspecting"
-        startMs={0}
+        currentTimeMs={null}
         last={null}
         inInspectionHold={false}
         inspectionSecondsLeft={12}
@@ -24,7 +24,7 @@ describe("TimerReadout", () => {
       <TimerReadout
         className="timer"
         phase="stopped"
-        startMs={0}
+        currentTimeMs={null}
         last={{ timeMs: 8340, penalty: "+2" }}
         inInspectionHold={false}
         inspectionSecondsLeft={15}
@@ -33,5 +33,21 @@ describe("TimerReadout", () => {
     )
 
     expect(markup).toContain(">10.34<")
+  })
+
+  it("shows the authoritative running time instead of deriving it internally", () => {
+    const markup = renderToStaticMarkup(
+      <TimerReadout
+        className="timer"
+        phase="running"
+        currentTimeMs={12870}
+        last={null}
+        inInspectionHold={false}
+        inspectionSecondsLeft={15}
+        timerUpdateMode="realtime"
+      />
+    )
+
+    expect(markup).toContain(">12.87<")
   })
 })

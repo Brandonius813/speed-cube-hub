@@ -1,6 +1,10 @@
 export type TimerTelemetryEventName =
   | "timer_stall_detected"
   | "longtask_while_running"
+  | "timer_input_delay_ms"
+  | "timer_display_mismatch_ms"
+  | "timer_solve_commit_ms"
+  | "timer_inspection_penalty_eval"
   | "scramble_worker_timeout"
   | "stats_worker_latency_ms"
   | "timer_error"
@@ -42,4 +46,3 @@ export function emitTimerTelemetry(
     console.debug("[timer-telemetry]", event)
   }
 }
-

@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { truncateMsToCentiseconds } from "@/lib/timer/averages"
 import { createTimerEngine, type TimerPhase } from "@/lib/timer/engine"
 import { useInspection, type InspectionVoiceGender } from "@/lib/timer/inspection"
+import { emitTimerTelemetry } from "@/lib/timer/telemetry"
+import { roundTelemetryMs } from "@/lib/timer/timing-core"
 import { getTimerReadoutColor } from "@/components/timer/shared-timer-surface"
+import { useSolveClock } from "@/components/timer/use-solve-clock"
 
 const HOLD_MS = 550
 
@@ -52,8 +54,6 @@ export function useSharedTimerController({
     voice: inspectionVoiceEnabled,
     voiceGender: inspectionVoiceGender,
   })
-  const startMsRef = useRef(0)
-  const [startMs, setStartMs] = useState(0)
   const phaseRef = useRef<TimerPhase>(engineSnapshot.phase)
   const heldRef = useRef(false)
   const holdTimeoutRef = useRef<number | null>(null)
@@ -83,13 +83,21 @@ export function useSharedTimerController({
     setInInspectionHold(value)
   }, [])
 
-  const startTimer = useCallback(() => {
-    const startedAt = performance.now()
-    startMsRef.current = startedAt
-    setStartMs(startedAt)
+  const solveClock = useSolveClock({
+    enabled,
+    onStall: (deltaMs) => {
+      emitTimerTelemetry("timer_stall_detected", { deltaMs })
+    },
+    onInputDelay: (delayMs) => {
+      emitTimerTelemetry("timer_input_delay_ms", { delayMs, scope: "shared_controller" })
+    },
+  })
+
+  const startTimer = useCallback((timestamp?: number | null) => {
+    solveClock.startSolve(timestamp)
     engine.dispatch({ type: "START_RUNNING" })
     onSolveStart()
-  }, [engine, onSolveStart])
+  }, [engine, onSolveStart, solveClock])
 
   const completeInspectionDnf = useCallback(() => {
     syncInspectionHold(false)
@@ -98,14 +106,23 @@ export function useSharedTimerController({
     onInspectionDnf()
   }, [engine, onInspectionDnf, syncInspectionHold])
 
-  const stopTimer = useCallback(() => {
+  const stopTimer = useCallback((timestamp?: number | null) => {
     if (phaseRef.current !== "running") return
-    const elapsed = truncateMsToCentiseconds(performance.now() - startMsRef.current)
+    const startedAt = solveClock.startedAt
+    const beforeStopDisplayMs = solveClock.displayElapsedMs
+    const elapsed = solveClock.stopSolve(timestamp)
     const penalty = inspectionPenaltyRef.current
     inspectionPenaltyRef.current = null
     engine.dispatch({ type: "STOP_SOLVE" })
+    if (beforeStopDisplayMs !== 0 && beforeStopDisplayMs !== elapsed) {
+      emitTimerTelemetry("timer_display_mismatch_ms", {
+        mismatchMs: roundTelemetryMs(elapsed - beforeStopDisplayMs),
+        scope: "shared_controller",
+        startedAt,
+      })
+    }
     onSolveComplete(elapsed, penalty)
-  }, [engine, onSolveComplete])
+  }, [engine, onSolveComplete, solveClock])
 
   const startHold = useCallback(() => {
     heldRef.current = true
@@ -118,27 +135,31 @@ export function useSharedTimerController({
     }, HOLD_MS)
   }, [clearHoldTimeout, engine])
 
-  const releaseHold = useCallback(() => {
+  const releaseHold = useCallback((timestamp?: number | null) => {
     clearHoldTimeout()
 
     if (tapToInspectRef.current) {
       tapToInspectRef.current = false
       engine.dispatch({ type: "START_INSPECTION" })
       onInspectionStart?.()
-      startInspection()
+      startInspection(timestamp)
       return
     }
 
     if (inspectionHoldRef.current) {
       syncInspectionHold(false)
       if (phaseRef.current === "ready") {
-        const penalty = finishInspection()
+        const penalty = finishInspection(timestamp)
+        emitTimerTelemetry("timer_inspection_penalty_eval", {
+          penalty,
+          scope: "shared_controller",
+        })
         if (penalty === "DNF") {
           completeInspectionDnf()
           return
         }
         inspectionPenaltyRef.current = penalty
-        startTimer()
+        startTimer(timestamp)
       } else {
         engine.dispatch({ type: "CANCEL_HOLD", backTo: "inspecting" })
       }
@@ -151,13 +172,13 @@ export function useSharedTimerController({
     }
 
     if (phaseRef.current !== "ready") return
-    startTimer()
+    startTimer(timestamp)
   }, [clearHoldTimeout, completeInspectionDnf, engine, finishInspection, onInspectionStart, startInspection, startTimer, syncInspectionHold])
 
-  const handlePress = useCallback(() => {
+  const handlePress = useCallback((timestamp?: number | null) => {
     const currentPhase = phaseRef.current
     if (currentPhase === "running") {
-      stopTimer()
+      stopTimer(timestamp)
       return
     }
 
@@ -181,19 +202,19 @@ export function useSharedTimerController({
     }
   }, [engine, inspectionEnabled, startHold, stopTimer, syncInspectionHold])
 
-  const handlePressEnd = useCallback(() => {
+  const handlePressEnd = useCallback((timestamp?: number | null) => {
     heldRef.current = false
-    releaseHold()
+    releaseHold(timestamp)
   }, [releaseHold])
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((timestamp?: number | null) => {
     if (!enabled) return
-    handlePress()
+    handlePress(timestamp)
   }, [enabled, handlePress])
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((timestamp?: number | null) => {
     if (!enabled) return
-    handlePressEnd()
+    handlePressEnd(timestamp)
   }, [enabled, handlePressEnd])
 
   useEffect(() => {
@@ -205,14 +226,14 @@ export function useSharedTimerController({
       eventKey.preventDefault()
       eventKey.stopPropagation()
       if (eventKey.repeat) return
-      handlePress()
+      handlePress(eventKey.timeStamp)
     }
 
     const onKeyUp = (eventKey: KeyboardEvent) => {
       if (eventKey.code !== "Space") return
       eventKey.preventDefault()
       eventKey.stopPropagation()
-      handlePressEnd()
+      handlePressEnd(eventKey.timeStamp)
     }
 
     window.addEventListener("keydown", onKeyDown, { capture: true })
@@ -248,7 +269,10 @@ export function useSharedTimerController({
     phase: engineSnapshot.phase,
     inInspectionHold,
     inspectionSecondsLeft,
-    startMs,
+    currentTimeMs:
+      engineSnapshot.phase === "running"
+        ? solveClock.displayElapsedMs
+        : solveClock.frozenElapsedMs,
     timeColor: getTimerReadoutColor({
       phase: engineSnapshot.phase,
       inInspectionHold,

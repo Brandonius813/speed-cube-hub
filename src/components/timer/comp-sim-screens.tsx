@@ -200,7 +200,7 @@ export function AttemptTimerScreen({
   timerPhase,
   inInspectionHold,
   inspectionSecondsLeft,
-  startMs,
+  currentTimeMs,
   timeColor,
   timerUpdateMode,
   timerReadoutTextSize,
@@ -213,12 +213,12 @@ export function AttemptTimerScreen({
   timerPhase: "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
   inInspectionHold: boolean
   inspectionSecondsLeft: number
-  startMs: number
+  currentTimeMs: number | null
   timeColor: string
   timerUpdateMode: TimerUpdateMode
   timerReadoutTextSize: TimerTextSize
-  onPointerDown: () => void
-  onPointerUp: () => void
+  onPointerDown: (timestamp?: number) => void
+  onPointerUp: (timestamp?: number) => void
   warning?: string | null
 }) {
   const title =
@@ -239,9 +239,9 @@ export function AttemptTimerScreen({
   return (
     <div
       className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerDown={(eventPointer) => onPointerDown(eventPointer.timeStamp)}
+      onPointerUp={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
+      onPointerCancel={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
         {title}
@@ -253,7 +253,7 @@ export function AttemptTimerScreen({
           timeColor
         )}
         phase={timerPhase}
-        startMs={startMs}
+        currentTimeMs={currentTimeMs}
         last={null}
         inInspectionHold={inInspectionHold}
         inspectionSecondsLeft={inspectionSecondsLeft}
@@ -307,7 +307,7 @@ export function SolveRecordedScreen({
           })
         )}
         phase="stopped"
-        startMs={0}
+        currentTimeMs={null}
         last={lastDisplaySolve}
         inInspectionHold={false}
         inspectionSecondsLeft={15}

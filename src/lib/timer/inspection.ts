@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { resolveInputTimestamp } from "@/lib/timer/input-timestamp"
+import { getInspectionSnapshot } from "@/lib/timer/timing-core"
 
 type InspectionState = "idle" | "inspecting" | "overtime" | "done"
 export type InspectionVoiceGender = "female" | "male"
@@ -18,11 +20,11 @@ type InspectionResult = {
   /** Whether inspection is actively counting down */
   isInspecting: boolean
   /** Start the 15-second inspection countdown */
-  startInspection: () => void
+  startInspection: (timestamp?: number | null) => void
   /** Cancel inspection (e.g., user presses escape) */
   cancelInspection: () => void
   /** Mark inspection as done (timer started) — returns penalty if any */
-  finishInspection: () => "+2" | "DNF" | null
+  finishInspection: (timestamp?: number | null) => "+2" | "DNF" | null
 }
 
 /**
@@ -44,7 +46,7 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
 
   const [state, setState] = useState<InspectionState>("idle")
   const [secondsLeft, setSecondsLeft] = useState(15)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const frameRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
   const has8sWarned = useRef(false)
   const has12sWarned = useRef(false)
@@ -68,13 +70,13 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
   }, [voiceGender])
 
   const cleanup = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
     }
   }, [])
 
-  const startInspection = useCallback(() => {
+  const startInspection = useCallback((timestamp?: number | null) => {
     cleanup()
     // Clear any stale queued speech from a previous inspection run.
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -84,37 +86,33 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
     }
     setState("inspecting")
     setSecondsLeft(15)
-    startTimeRef.current = Date.now()
+    startTimeRef.current = resolveInputTimestamp(timestamp)
     has8sWarned.current = false
     has12sWarned.current = false
 
-    intervalRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000
-      const remaining = 15 - elapsed
+    const tick = (ts: number) => {
+      const snapshot = getInspectionSnapshot(startTimeRef.current, ts)
+      setSecondsLeft(snapshot.secondsLeft)
+      setState(snapshot.state)
 
-      setSecondsLeft(Math.ceil(remaining))
-
-      // Voice warnings
-      if (remaining <= 7 && !has8sWarned.current) {
+      if (snapshot.elapsedMs >= 7000 && !has8sWarned.current) {
         has8sWarned.current = true
         if (voiceEnabled) speak("8 seconds")
       }
-      if (remaining <= 3 && !has12sWarned.current) {
+      if (snapshot.elapsedMs >= 12000 && !has12sWarned.current) {
         has12sWarned.current = true
         if (voiceEnabled) speak("12 seconds")
       }
 
-      // Overtime (past 15s)
-      if (remaining <= 0) {
-        setState("overtime")
+      if (snapshot.shouldAutoDnf) {
+        cleanup()
+        return
       }
 
-      // Auto-DNF past 17s
-      if (remaining <= -2) {
-        cleanup()
-        setState("done")
-      }
-    }, 100)
+      frameRef.current = requestAnimationFrame(tick)
+    }
+
+    frameRef.current = requestAnimationFrame(tick)
   }, [cleanup, speak, voiceEnabled])
 
   const cancelInspection = useCallback(() => {
@@ -126,18 +124,20 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
     }
   }, [cleanup])
 
-  const finishInspection = useCallback((): "+2" | "DNF" | null => {
+  const finishInspection = useCallback((timestamp?: number | null): "+2" | "DNF" | null => {
     cleanup()
-    const elapsed = (Date.now() - startTimeRef.current) / 1000
+    const snapshot = getInspectionSnapshot(
+      startTimeRef.current,
+      resolveInputTimestamp(timestamp)
+    )
+    setSecondsLeft(snapshot.secondsLeft)
     setState("done")
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
     }
 
-    if (elapsed > 17) return "DNF"
-    if (elapsed > 15) return "+2"
-    return null
+    return snapshot.penalty
   }, [cleanup])
 
   // Cleanup on unmount

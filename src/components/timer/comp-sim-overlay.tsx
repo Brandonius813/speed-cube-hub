@@ -295,7 +295,7 @@ export function CompSimOverlay({
                   timerPhase={timerController.phase}
                   inInspectionHold={timerController.inInspectionHold}
                   inspectionSecondsLeft={timerController.inspectionSecondsLeft}
-                  startMs={timerController.startMs}
+                  currentTimeMs={timerController.currentTimeMs}
                   timeColor={timerController.timeColor}
                   timerUpdateMode={timerUpdateMode}
                   timerReadoutTextSize={timerReadoutTextSize}

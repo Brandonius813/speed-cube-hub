@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useMemo, useRef, useState } from "react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 
@@ -69,7 +67,8 @@ function fmtWholeSeconds(ms: number): string {
 export function TimerReadout({
   className,
   phase,
-  startMs,
+  currentTimeMs = null,
+  startMs = 0,
   last,
   inInspectionHold,
   inspectionSecondsLeft,
@@ -79,7 +78,8 @@ export function TimerReadout({
 }: {
   className: string
   phase: SharedTimerPhase
-  startMs: number
+  currentTimeMs?: number | null
+  startMs?: number
   last: SharedTimerLastSolve
   inInspectionHold: boolean
   inspectionSecondsLeft: number
@@ -87,16 +87,19 @@ export function TimerReadout({
   btReset?: boolean
   onStall?: (deltaMs: number) => void
 }) {
-  const [runningDisplay, setRunningDisplay] = useState("0.00")
+  const [fallbackRunningDisplay, setFallbackRunningDisplay] = useState("0.00")
   const lastFrameRef = useRef<number | null>(null)
   const lastStallRef = useRef(0)
 
   useEffect(() => {
+    if (currentTimeMs !== null) {
+      lastFrameRef.current = null
+      return
+    }
     if (phase !== "running") {
       lastFrameRef.current = null
       return
     }
-
     if (timerUpdateMode === "solving") {
       lastFrameRef.current = null
       return
@@ -115,7 +118,7 @@ export function TimerReadout({
       }
       lastFrameRef.current = ts
       const elapsed = ts - startMs
-      setRunningDisplay(
+      setFallbackRunningDisplay(
         timerUpdateMode === "seconds"
           ? fmtWholeSeconds(elapsed)
           : formatTimeMsCentiseconds(elapsed)
@@ -127,27 +130,46 @@ export function TimerReadout({
       active = false
       cancelAnimationFrame(raf)
     }
-  }, [onStall, phase, startMs, timerUpdateMode])
+  }, [currentTimeMs, onStall, phase, startMs, timerUpdateMode])
 
   const display = useMemo(() => {
     if (phase === "running") {
       if (timerUpdateMode === "solving") return "solving"
-      if (lastFrameRef.current === null) {
-        return timerUpdateMode === "seconds" ? "0" : "0.00"
+      if (currentTimeMs === null) {
+        if (timerUpdateMode === "seconds" && fallbackRunningDisplay === "0.00") {
+          return "0"
+        }
+        return fallbackRunningDisplay
       }
-      return runningDisplay
+      return timerUpdateMode === "seconds"
+        ? fmtWholeSeconds(currentTimeMs)
+        : formatTimeMsCentiseconds(currentTimeMs)
     }
     if (phase === "inspecting" || inInspectionHold) {
       return String(Math.max(0, 15 - inspectionSecondsLeft))
     }
     if (phase === "ready") return "0.00"
     if (phase === "idle" && btReset) return "0.00"
+    if (phase === "stopped" && currentTimeMs !== null) {
+      return timerUpdateMode === "seconds"
+        ? fmtWholeSeconds(currentTimeMs)
+        : formatTimeMsCentiseconds(currentTimeMs)
+    }
     if (!last) return "0.00"
     if (last.penalty === "DNF") return "DNF"
     return formatTimeMsCentiseconds(
       last.penalty === "+2" ? last.timeMs + 2000 : last.timeMs
     )
-  }, [btReset, inInspectionHold, inspectionSecondsLeft, last, phase, runningDisplay, timerUpdateMode])
+  }, [
+    btReset,
+    currentTimeMs,
+    fallbackRunningDisplay,
+    inInspectionHold,
+    inspectionSecondsLeft,
+    last,
+    phase,
+    timerUpdateMode,
+  ])
 
   return <div className={className}>{display}</div>
 }
