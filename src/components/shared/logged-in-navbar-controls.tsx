@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { BarChart3, Bell, ClipboardList, Rss, Trophy, User, Users } from "lucide-react"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
-import { cn } from "@/lib/utils"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { NavbarNavLink, navbarIconClass, navbarLinkClass, navbarTextClass } from "@/components/shared/nav-links"
+import { cn } from "@/lib/utils"
 
 const NotificationPopup = dynamic(
   () =>
@@ -58,25 +59,11 @@ function StatsNavLinkInner({ isActive }: { isActive: boolean }) {
   return (
     <Link
       href="/profile?tab=stats"
-      className={cn(
-        "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
-        isActive
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground"
-      )}
+      className={navbarLinkClass(isActive)}
       aria-label="Stats"
     >
-      <BarChart3
-        className={cn("h-5 w-5 sm:hidden", isActive && "text-foreground")}
-      />
-      <span
-        className={cn(
-          "hidden text-lg font-bold sm:inline",
-          isActive && "border-b-2 border-primary pb-0.5"
-        )}
-      >
-        Stats
-      </span>
+      <BarChart3 className={cn(navbarIconClass(isActive), "sm:hidden")} />
+      <span className={navbarTextClass(isActive)}>Stats</span>
     </Link>
   )
 }
@@ -113,24 +100,6 @@ export function LoggedInNavbarControls({
 }) {
   const [profileOpen, setProfileOpen] = useState(false)
 
-  function isActive(href: string) {
-    if (href === "/") return pathname === "/"
-    return pathname === href || pathname.startsWith(href + "/")
-  }
-
-  function navLinkClass(href: string) {
-    return cn(
-      "flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors sm:min-h-0 sm:min-w-0",
-      isActive(href)
-        ? "text-foreground"
-        : "text-muted-foreground hover:text-foreground"
-    )
-  }
-
-  function navIconClass(href: string) {
-    return cn("h-5 w-5", isActive(href) ? "text-foreground" : "")
-  }
-
   return (
     <div className="flex items-center gap-2 sm:gap-6">
       <Link href="/timer">
@@ -141,23 +110,11 @@ export function LoggedInNavbarControls({
           Timer
         </Button>
       </Link>
-      <Link href="/import" className={navLinkClass("/import")} aria-label="Import Data">
-        <ClipboardList className={cn(navIconClass("/import"), "sm:hidden")} />
-        <span className={cn("hidden text-lg font-bold sm:inline", isActive("/import") && "border-b-2 border-primary pb-0.5")}>Import Data</span>
-      </Link>
-      <Link href="/feed" className={navLinkClass("/feed")} aria-label="Feed">
-        <Rss className={cn(navIconClass("/feed"), "sm:hidden")} />
-        <span className={cn("hidden text-lg font-bold sm:inline", isActive("/feed") && "border-b-2 border-primary pb-0.5")}>Feed</span>
-      </Link>
-      <Link href="/clubs" className={navLinkClass("/clubs")} aria-label="Clubs">
-        <Users className={cn(navIconClass("/clubs"), "sm:hidden")} />
-        <span className={cn("hidden text-lg font-bold sm:inline", isActive("/clubs") && "border-b-2 border-primary pb-0.5")}>Clubs</span>
-      </Link>
+      <NavbarNavLink href="/import" pathname={pathname} label="Import Data" icon={ClipboardList} />
+      <NavbarNavLink href="/feed" pathname={pathname} label="Feed" icon={Rss} />
+      <NavbarNavLink href="/clubs" pathname={pathname} label="Clubs" icon={Users} />
       <StatsNavLink pathname={pathname} />
-      <Link href="/leaderboards" className={navLinkClass("/leaderboards")} aria-label="Leaderboards">
-        <Trophy className={cn(navIconClass("/leaderboards"), "sm:hidden")} />
-        <span className={cn("hidden text-lg font-bold sm:inline", isActive("/leaderboards") && "border-b-2 border-primary pb-0.5")}>Leaderboards</span>
-      </Link>
+      <NavbarNavLink href="/leaderboards" pathname={pathname} label="Leaderboards" icon={Trophy} />
       <ThemeToggle />
       <NotificationPopup unreadCount={unreadCount} onUnreadCountChange={setUnreadCount} />
       <Popover open={profileOpen} onOpenChange={setProfileOpen}>
@@ -167,7 +124,7 @@ export function LoggedInNavbarControls({
             className="rounded-full p-1 transition-all hover:bg-foreground/10"
             aria-label="User menu"
           >
-            <Avatar className={cn("h-14 w-14 border-2", isActive("/profile") ? "border-primary ring-2 ring-primary/30" : "border-border")}>
+            <Avatar className={cn("h-14 w-14 border-2", pathname === "/profile" ? "border-primary ring-2 ring-primary/30" : "border-border")}>
               {userProfile?.avatar_url ? (
                 <AvatarImage
                   src={userProfile.avatar_url}
