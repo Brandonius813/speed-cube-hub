@@ -7,34 +7,66 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { signup } from "@/lib/actions/auth"
+import { resendSignupConfirmation, signup } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { buildOAuthCallbackUrl } from "@/lib/auth/app-url"
 
 type SignupContentProps = {
   nextPath: string
+  initialEmail?: string
 }
 
-export function SignupContent({ nextPath }: SignupContentProps) {
+export function SignupContent({
+  nextPath,
+  initialEmail = "",
+}: SignupContentProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState(initialEmail)
+  const [successEmail, setSuccessEmail] = useState("")
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [canResendConfirmation, setCanResendConfirmation] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setResendMessage(null)
+    setCanResendConfirmation(false)
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    const result = await signup(formData)
+    const result = await signup(formData, nextPath)
 
-    if (result?.error) {
+    if ("error" in result) {
       setError(result.error)
+      setCanResendConfirmation(Boolean(result.canResendConfirmation))
       setLoading(false)
       return
     }
 
+    setSuccessEmail(result.email ?? email)
     setSuccess(true)
+    setLoading(false)
+  }
+
+  async function handleResendConfirmation() {
+    setError(null)
+    setResendMessage(null)
+    setResendLoading(true)
+
+    const result = await resendSignupConfirmation(success ? successEmail : email, nextPath)
+
+    if ("error" in result) {
+      setError(result.error)
+      setResendLoading(false)
+      return
+    }
+
+    setResendMessage("A fresh confirmation email is on the way.")
+    setResendLoading(false)
   }
 
   if (success) {
@@ -51,12 +83,28 @@ export function SignupContent({ nextPath }: SignupContentProps) {
               <p className="text-sm">Check your email to confirm your account.</p>
             </div>
             <p className="text-center text-sm text-muted-foreground">
-              Once confirmed, you can log in and start tracking your solves.
+              Once you click the email link, we will log you in automatically and send you straight into the app.
             </p>
-            <Button asChild className="mt-2 min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href={nextPath === "/feed" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`}>
-                Go to Login
-              </Link>
+            <p className="text-center text-sm text-muted-foreground">
+              Sent to: <span className="font-medium text-foreground">{successEmail}</span>
+            </p>
+            {resendMessage ? (
+              <p className="text-center text-sm text-primary">{resendMessage}</p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={resendLoading}
+              onClick={handleResendConfirmation}
+              className="mt-2 min-h-11 w-full border-border/50"
+            >
+              {resendLoading ? "Sending confirmation..." : "Resend confirmation email"}
+            </Button>
+            <Button
+              asChild
+              className="min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Link href="/">Back to Home</Link>
             </Button>
           </CardContent>
         </Card>
@@ -87,7 +135,7 @@ export function SignupContent({ nextPath }: SignupContentProps) {
               const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                  redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`,
+                  redirectTo: buildOAuthCallbackUrl(nextPath),
                 },
               })
               if (error) {
@@ -172,6 +220,8 @@ export function SignupContent({ nextPath }: SignupContentProps) {
                 type="email"
                 placeholder="you@example.com"
                 required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 className="min-h-11"
               />
             </div>
@@ -190,7 +240,19 @@ export function SignupContent({ nextPath }: SignupContentProps) {
             </div>
 
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+            )}
+
+            {canResendConfirmation && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resendLoading || !email.trim()}
+                onClick={handleResendConfirmation}
+                className="min-h-11 w-full border-border/50"
+              >
+                {resendLoading ? "Sending confirmation..." : "Resend confirmation email"}
+              </Button>
             )}
 
             <Button

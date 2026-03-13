@@ -193,6 +193,9 @@
 ### Phase 34: Timer Session Duration Correction (T165)
 - ✅ T165: Editable timer session duration in the finish modal and saved-session popup
 
+### Phase 35: Auth Launch Hardening (T166)
+- ✅ T166: Recoverable signup bootstrap, auto-login email confirmation, resend confirmation, forgot/reset password, and auth launch checklist
+
 ---
 
 ## Open / Remaining Items

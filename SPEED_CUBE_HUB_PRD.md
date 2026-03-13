@@ -53,6 +53,7 @@ Tools for coaches to assign homework, review student practice data, and store co
 - **Phone-web protection:** iPhone/Android phone requests to desktop-style app routes are redirected to `/mobile-unsupported`; iPad/tablets stay on the web experience, and public browse routes remain phone-accessible.
 - **Server + Client component pattern:** `page.tsx` (server) fetches data, `*-content.tsx` (client) handles interactivity.
 - **Server actions** for mutations and data fetching. Client Supabase for auth checks only.
+- **Launch-safe auth flow:** Email/password signup requires confirmation via Supabase Auth custom SMTP, the confirmation link auto-logs the user back into the app, and account bootstrap (profile + onboarding) is safe to repair on signup, login, OAuth callback, and confirmation/recovery callbacks.
 - **React Compiler** enabled for automatic memoization.
 - **Local dev reliability:** Use `npm run dev:up` / `npm run dev:down` for persistent localhost sessions. HSTS is production-only (not sent in local dev).
 
@@ -585,6 +586,9 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 /                    → Landing page (hero, features, social proof)
 /login               → Login page (email + password + Google OAuth)
 /signup              → Signup page (first/last/middle name + email + password + Google OAuth)
+/forgot-password     → Request a password reset email
+/reset-password      → Save a new password after a recovery email
+/auth/confirm        → Verify email confirmation / recovery links and auto-login the user
 /practice-stats      → Practice stats (filters, charts, session log) [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /profile/[handle]    → Public profile for any user [public]

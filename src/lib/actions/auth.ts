@@ -1,11 +1,30 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { generateUniqueHandle } from "@/lib/actions/profiles"
-import { ensureUserOnboarding } from "@/lib/actions/onboarding"
+import { buildAuthConfirmUrl } from "@/lib/auth/app-url"
+import { ensureAuthUserBootstrap, buildDisplayName } from "@/lib/auth/bootstrap"
+import { getSafeNextPath } from "@/lib/auth/next-path"
 
-export async function login(formData: FormData) {
+type AuthActionResult =
+  | {
+      success: true
+      email?: string
+    }
+  | {
+      error: string
+      canResendConfirmation?: boolean
+    }
+
+function canResendConfirmationFromMessage(message: string) {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("email not confirmed") ||
+    normalized.includes("already registered") ||
+    normalized.includes("already exists")
+  )
+}
+
+export async function login(formData: FormData): Promise<AuthActionResult> {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
@@ -15,13 +34,28 @@ export async function login(formData: FormData) {
 
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
-    return { error: error.message }
+    const message = canResendConfirmationFromMessage(error.message)
+      ? "You need to confirm your email before you can log in."
+      : error.message
+
+    return {
+      error: message,
+      canResendConfirmation: canResendConfirmationFromMessage(error.message),
+    }
+  }
+
+  if (data.user) {
+    try {
+      await ensureAuthUserBootstrap(data.user)
+    } catch (bootstrapError) {
+      console.error("Login bootstrap repair failed", bootstrapError)
+    }
   }
 
   // Return success instead of server-side redirect so the browser
@@ -29,7 +63,10 @@ export async function login(formData: FormData) {
   return { success: true }
 }
 
-export async function signup(formData: FormData) {
+export async function signup(
+  formData: FormData,
+  nextPath?: string
+): Promise<AuthActionResult> {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
   const firstName = (formData.get("firstName") as string)?.trim()
@@ -40,61 +77,156 @@ export async function signup(formData: FormData) {
     return { error: "First name, last name, email, and password are required." }
   }
 
-  // Build display name: "First Last" or "First Middle Last"
-  const displayName = middleName
-    ? `${firstName} ${middleName} ${lastName}`
-    : `${firstName} ${lastName}`
+  const displayName = buildDisplayName(firstName, middleName, lastName)
 
   const supabase = await createClient()
+  const safeNextPath = getSafeNextPath(nextPath)
 
   // Create the auth user
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: buildAuthConfirmUrl(safeNextPath),
+      data: {
+        full_name: displayName,
+        given_name: firstName,
+        middle_name: middleName,
+        family_name: lastName,
+      },
+    },
   })
 
   if (error) {
-    return { error: error.message }
+    return {
+      error: error.message,
+      canResendConfirmation: canResendConfirmationFromMessage(error.message),
+    }
   }
 
   if (!data.user) {
     return { error: "Something went wrong. Please try again." }
   }
 
-  // Create the profile row
-  // Generate a unique handle — tries clean name first, adds numbers only if taken
-  const handle = await generateUniqueHandle(`${firstName}${lastName}`, supabase)
-
-  // Use admin client to bypass RLS — after signUp with email confirmation,
-  // the user doesn't have an active session yet, so RLS would block the insert
-  const admin = createAdminClient()
-  const { error: profileError } = await admin.from("profiles").insert({
-    id: data.user.id,
-    display_name: displayName,
-    handle,
-  })
-
-  if (profileError) {
-    // Clean up the orphaned auth account so the user can try again
-    try {
-      await admin.auth.admin.deleteUser(data.user.id)
-    } catch {
-      // If cleanup fails, the user can still try signing up again with the same email
-      console.error("Failed to clean up orphaned auth account:", data.user.id)
+  if (data.user.identities?.length === 0) {
+    return {
+      error:
+        "An account with this email already exists. If you still need the confirmation email, resend it below.",
+      canResendConfirmation: true,
     }
-    return { error: "Account setup failed. Please try again." }
   }
 
   try {
-    await ensureUserOnboarding(data.user.id)
-  } catch {
-    await admin.from("profiles").delete().eq("id", data.user.id)
-    try {
-      await admin.auth.admin.deleteUser(data.user.id)
-    } catch {
-      console.error("Failed to clean up auth account after onboarding setup failure:", data.user.id)
+    await ensureAuthUserBootstrap(data.user, {
+      displayName,
+      handleSeed: `${firstName}${lastName}`,
+    })
+  } catch (bootstrapError) {
+    console.error("Signup bootstrap repair failed", bootstrapError)
+  }
+
+  return { success: true, email }
+}
+
+export async function resendSignupConfirmation(
+  email: string,
+  nextPath?: string
+): Promise<AuthActionResult> {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) {
+    return { error: "Enter your email address first." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: trimmedEmail,
+    options: {
+      emailRedirectTo: buildAuthConfirmUrl(getSafeNextPath(nextPath)),
+    },
+  })
+
+  if (error) {
+    return {
+      error:
+        error.message ||
+        "Could not send another confirmation email right now. Please try again shortly.",
     }
-    return { error: "Account setup failed. Please try again." }
+  }
+
+  return { success: true, email: trimmedEmail }
+}
+
+export async function requestPasswordReset(
+  email: string
+): Promise<AuthActionResult> {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) {
+    return { error: "Enter your email address first." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo: buildAuthConfirmUrl(),
+  })
+
+  if (error) {
+    return {
+      error:
+        error.message ||
+        "Could not send a password reset email right now. Please try again shortly.",
+    }
+  }
+
+  return { success: true, email: trimmedEmail }
+}
+
+export async function updatePassword(
+  formData: FormData
+): Promise<AuthActionResult> {
+  const password = (formData.get("password") as string)?.trim()
+  const confirmPassword = (formData.get("confirmPassword") as string)?.trim()
+
+  if (!password || !confirmPassword) {
+    return { error: "Enter and confirm your new password." }
+  }
+
+  if (password.length < 6) {
+    return { error: "Your new password must be at least 6 characters." }
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Your password entries do not match." }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      error:
+        "That reset link is invalid or expired. Request a new password reset email to try again.",
+    }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  })
+
+  if (error) {
+    return {
+      error:
+        error.message ||
+        "Could not update your password right now. Please try again.",
+    }
+  }
+
+  try {
+    await ensureAuthUserBootstrap(user)
+  } catch (bootstrapError) {
+    console.error("Password reset bootstrap repair failed", bootstrapError)
   }
 
   return { success: true }

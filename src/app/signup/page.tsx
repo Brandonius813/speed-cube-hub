@@ -4,12 +4,16 @@ import { getSafeNextPath } from "@/lib/auth/next-path"
 type SignupPageProps = {
   searchParams?: Promise<{
     next?: string | string[] | undefined
+    email?: string | string[] | undefined
   }>
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const nextPath = getSafeNextPath(resolvedSearchParams?.next)
+  const initialEmail = Array.isArray(resolvedSearchParams?.email)
+    ? resolvedSearchParams?.email[0] ?? ""
+    : resolvedSearchParams?.email ?? ""
 
-  return <SignupContent nextPath={nextPath} />
+  return <SignupContent nextPath={nextPath} initialEmail={initialEmail} />
 }

@@ -3,40 +3,77 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Box } from "lucide-react"
+import { Box, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { login } from "@/lib/actions/auth"
+import { login, resendSignupConfirmation } from "@/lib/actions/auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { buildOAuthCallbackUrl } from "@/lib/auth/app-url"
+import type { AuthFeedback } from "@/lib/auth/messages"
 
 type LoginContentProps = {
   nextPath: string
+  initialFeedback?: AuthFeedback | null
+  initialEmail?: string
 }
 
-export function LoginContent({ nextPath }: LoginContentProps) {
+export function LoginContent({
+  nextPath,
+  initialFeedback,
+  initialEmail = "",
+}: LoginContentProps) {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(initialFeedback ?? null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [email, setEmail] = useState(initialEmail)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
+    setFeedback(null)
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
     const result = await login(formData)
 
-    if (result?.error) {
-      setError(result.error)
+    if ("error" in result) {
+      setFeedback({
+        tone: "error",
+        message: result.error,
+        showResendConfirmation: result.canResendConfirmation,
+      })
       setLoading(false)
       return
     }
 
     // Navigate client-side so the browser processes auth cookies first.
     router.push(nextPath)
+  }
+
+  async function handleResendConfirmation() {
+    setFeedback(null)
+    setResendLoading(true)
+
+    const result = await resendSignupConfirmation(email, nextPath)
+
+    if ("error" in result) {
+      setFeedback({
+        tone: "error",
+        message: result.error,
+        showResendConfirmation: true,
+      })
+      setResendLoading(false)
+      return
+    }
+
+    setFeedback({
+      tone: "success",
+      message: "A fresh confirmation email is on the way.",
+    })
+    setResendLoading(false)
   }
 
   return (
@@ -62,11 +99,14 @@ export function LoginContent({ nextPath }: LoginContentProps) {
               const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                  redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`,
+                  redirectTo: buildOAuthCallbackUrl(nextPath),
                 },
               })
               if (error) {
-                setError(error.message)
+                setFeedback({
+                  tone: "error",
+                  message: error.message,
+                })
                 setGoogleLoading(false)
               }
             }}
@@ -111,6 +151,8 @@ export function LoginContent({ nextPath }: LoginContentProps) {
                 type="email"
                 placeholder="you@example.com"
                 required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 className="min-h-11"
               />
             </div>
@@ -127,8 +169,44 @@ export function LoginContent({ nextPath }: LoginContentProps) {
               />
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Forgot your password?</span>
+              <Link
+                href={
+                  email
+                    ? `/forgot-password?email=${encodeURIComponent(email)}`
+                    : "/forgot-password"
+                }
+                className="text-primary hover:underline"
+              >
+                Reset it
+              </Link>
+            </div>
+
+            {feedback && (
+              <p
+                className={
+                  feedback.tone === "error"
+                    ? "text-sm text-destructive"
+                    : "text-sm text-primary"
+                }
+                role="alert"
+              >
+                {feedback.message}
+              </p>
+            )}
+
+            {feedback?.showResendConfirmation && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resendLoading || !email.trim()}
+                onClick={handleResendConfirmation}
+                className="min-h-11 w-full gap-2 border-border/50"
+              >
+                <Mail className="h-4 w-4" />
+                {resendLoading ? "Sending confirmation..." : "Resend confirmation email"}
+              </Button>
             )}
 
             <Button
@@ -143,7 +221,11 @@ export function LoginContent({ nextPath }: LoginContentProps) {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
-              href={nextPath === "/feed" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`}
+              href={
+                nextPath === "/feed"
+                  ? "/signup"
+                  : `/signup?next=${encodeURIComponent(nextPath)}`
+              }
               className="text-primary hover:underline"
             >
               Sign up
