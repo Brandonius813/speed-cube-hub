@@ -53,7 +53,7 @@ export function ImportPageContent() {
 
   return (
     <>
-      <div className="mx-auto flex h-full w-full max-w-4xl min-h-0 flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
             Import Data
