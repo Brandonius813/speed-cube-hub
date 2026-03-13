@@ -512,6 +512,7 @@ export async function getSolvesByEvent(
 }
 
 type SessionDividerRow = {
+  id: string
   timer_session_id: string | null
   title: string | null
   created_at: string
@@ -556,7 +557,7 @@ export async function getSessionDividerGroupsByTimerSession(
   const { data, error } = await supabase
     .from("sessions")
     .select(
-      "timer_session_id, title, created_at, num_solves, num_dnf, duration_minutes, avg_time, best_time, practice_type"
+      "id, timer_session_id, title, created_at, num_solves, num_dnf, duration_minutes, avg_time, best_time, practice_type"
     )
     .eq("user_id", user.id)
     .eq("event", event)
@@ -574,6 +575,8 @@ export async function getSessionDividerGroupsByTimerSession(
     const savedAt = Number.isFinite(savedAtMs) ? savedAtMs : Date.now()
     const group: SessionGroupMeta = {
       id: row.timer_session_id,
+      sessionId: row.id,
+      timerSessionId: row.timer_session_id,
       title: row.title?.trim() || "Saved Session",
       savedAt,
       solveCount: row.num_solves ?? 0,
@@ -591,6 +594,52 @@ export async function getSessionDividerGroupsByTimerSession(
   }
 
   return { data: Array.from(byTimerSessionId.values()) }
+}
+
+export async function updateTimerSessionDuration(
+  sessionId: string,
+  durationMinutes: number
+): Promise<{ error?: string }> {
+  if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 1440) {
+    return { error: "Duration must be a whole number of minutes between 1 and 1440." }
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "You must be logged in to edit a timer session." }
+  }
+
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .select("id, timer_session_id")
+    .eq("id", sessionId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (sessionError || !session) {
+    return { error: sessionError?.message ?? "Timer session not found." }
+  }
+
+  if (!session.timer_session_id) {
+    return { error: "Only timer-backed sessions can be edited here." }
+  }
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({ duration_minutes: durationMinutes })
+    .eq("id", sessionId)
+    .eq("user_id", user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {}
 }
 
 /**

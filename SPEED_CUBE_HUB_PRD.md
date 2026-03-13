@@ -316,6 +316,12 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Timer open now loads only a recent saved-history window plus the active unsaved block, older saved solves page in on demand, and exact solve/stat detail windows fetch from the server instead of requiring full event hydration
 - [x] Timer all-time pane charts now use aggregated server trend/distribution data in all-time mode instead of rendering from the loaded client window
 
+**Phase 34 — Timer Session Duration Correction — T165:**
+- [x] End Session now shows an editable duration field so users can correct an accidentally overlong tracked session before saving
+- [x] `saveTimerSession` now returns both `sessionId` and `timerSessionId`, and timer solve groups now persist under the real `timer_session_id` instead of a client-only UUID
+- [x] Saved-session divider metadata now stores the backing `sessionId`/`timerSessionId`, which keeps timer history popups aligned with the database across reloads and sync
+- [x] Timer saved-session popups now support duration-only edits with inline validation and immediate local metadata refresh, without changing solve times or session stats
+
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events

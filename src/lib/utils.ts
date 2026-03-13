@@ -56,6 +56,18 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
+ * Format whole minutes for inputs that accept either raw minutes or h:mm.
+ * Session durations are persisted as integer minutes, so values are rounded.
+ */
+export function formatDurationInput(minutes: number): string {
+  const roundedMinutes = Math.max(1, Math.round(minutes))
+  if (roundedMinutes < 60) return String(roundedMinutes)
+  const hours = Math.floor(roundedMinutes / 60)
+  const mins = roundedMinutes % 60
+  return `${hours}:${String(mins).padStart(2, "0")}`
+}
+
+/**
  * Format a solve time (in decimal seconds) to standard cubing notation.
  * - Under 60s: "12.34"
  * - 60s+: "1:30.00"

@@ -3,16 +3,19 @@
 import { useState, useTransition } from "react"
 import { X } from "lucide-react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
-import { cn } from "@/lib/utils"
+import { cn, formatDuration, formatDurationInput, parseDuration } from "@/lib/utils"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
 import type { TimerSolve } from "@/lib/timer/stats"
 
-function fmtDuration(minutes: number): string {
-  const m = Math.floor(minutes)
-  const s = Math.round((minutes - m) * 60)
-  if (m === 0) return `${s}s`
-  if (s === 0) return `${m}m`
-  return `${m}m ${s}s`
+type SavedSessionPayload = {
+  title: string
+  durationMinutes: number
+  practiceType: string
+  sessionId: string
+  timerSessionId: string
+  numDnf: number
+  avgSeconds: number | null
+  bestSeconds: number | null
 }
 
 interface Props {
@@ -24,7 +27,7 @@ interface Props {
   sessionStartMs: number
   onClose: () => void
   onDiscard: () => void
-  onSaved: (title: string) => void
+  onSaved: (payload: SavedSessionPayload) => void
 }
 
 export function EndSessionModal({
@@ -55,6 +58,7 @@ export function EndSessionModal({
       ? `${eventName} Solves`
       : `${eventName} ${practiceType}`
   )
+  const [durationInput, setDurationInput] = useState(formatDurationInput(durationMinutes))
   const [notes, setNotes] = useState("")
   const [shareToFeed, setShareToFeed] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +67,11 @@ export function EndSessionModal({
   function handleSave() {
     startTransition(async () => {
       setError(null)
+      const parsedDurationMinutes = parseDuration(durationInput)
+      if (!parsedDurationMinutes) {
+        setError('Invalid duration. Use minutes like "10" or h:mm like "1:30".')
+        return
+      }
       const result = await saveTimerSession({
         event,
         solves: solves.map((s) => ({
@@ -73,7 +82,7 @@ export function EndSessionModal({
           phases: s.phases ?? null,
           solved_at: s.solved_at,
         })),
-        duration_minutes: durationMinutes,
+        duration_minutes: parsedDurationMinutes,
         practice_type: practiceType,
         title: title.trim() || null,
         notes: notes.trim() || null,
@@ -84,7 +93,22 @@ export function EndSessionModal({
         setError(result.error)
         return
       }
-      onSaved(title.trim() || (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`))
+      if (!result.sessionId || !result.timerSessionId) {
+        setError("Session saved, but the timer session reference was missing.")
+        return
+      }
+      onSaved({
+        title:
+          title.trim() ||
+          (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`),
+        durationMinutes: parsedDurationMinutes,
+        practiceType,
+        sessionId: result.sessionId,
+        timerSessionId: result.timerSessionId,
+        numDnf,
+        avgSeconds: avgMs ? avgMs / 1000 : null,
+        bestSeconds: bestMs ? bestMs / 1000 : null,
+      })
     })
   }
 
@@ -118,7 +142,9 @@ export function EndSessionModal({
         </button>
 
         <h2 className="text-lg font-semibold mb-1">Save Session</h2>
-        <p className="text-xs text-muted-foreground mb-4">{fmtDuration(durationMinutes)} session</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Edit the session length before saving if you left the timer running.
+        </p>
 
         {/* Stats summary */}
         <div className="grid grid-cols-4 gap-2 mb-5 p-3 rounded-lg bg-muted/50 border border-border">
@@ -144,6 +170,24 @@ export function EndSessionModal({
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Avg</div>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+            Duration
+          </label>
+          <input
+            type="text"
+            value={durationInput}
+            onChange={(e) => setDurationInput(e.target.value)}
+            inputMode="numeric"
+            className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors font-mono"
+            placeholder='10 or 1:30'
+            aria-label="Session duration"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Minutes or h:mm. Saved as {formatDuration(Math.max(1, Math.round(durationMinutes)))} by default.
+          </p>
         </div>
 
         {/* Title */}

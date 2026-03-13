@@ -260,6 +260,17 @@ type PendingScrambleRequest = {
   timeoutId: number
 }
 
+type SavedSessionPayload = {
+  title: string
+  durationMinutes: number
+  practiceType: string
+  sessionId: string
+  timerSessionId: string
+  numDnf: number
+  avgSeconds: number | null
+  bestSeconds: number | null
+}
+
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return (
@@ -997,10 +1008,20 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
     const existingGroups = loadSessionGroups(eventId)
     const existingById = new Map(existingGroups.map((group) => [group.id, group]))
-    const missingIds = groupedIds.filter((groupId) => !existingById.has(groupId))
-    if (missingIds.length === 0) return null
+    const refreshIds = groupedIds.filter((groupId) => {
+      const existing = existingById.get(groupId)
+      if (!existing) return true
+      return (
+        !existing.sessionId ||
+        !existing.timerSessionId ||
+        typeof existing.durationMinutes !== "number" ||
+        !existing.practiceType ||
+        existing.title.trim().toLowerCase() === "saved session"
+      )
+    })
+    if (refreshIds.length === 0) return null
 
-    const { data, error } = await getSessionDividerGroupsByTimerSession(eventId, missingIds)
+    const { data, error } = await getSessionDividerGroupsByTimerSession(eventId, refreshIds)
     if (error || data.length === 0) return null
 
     let changed = false
@@ -1011,11 +1032,20 @@ export function TimerContent({ viewer }: TimerContentProps) {
         changed = true
         continue
       }
-      const shouldRefreshTitle =
-        existing.title.trim().toLowerCase() === "saved session" &&
-        group.title.trim().length > 0
-      if (shouldRefreshTitle) {
-        existingById.set(group.id, { ...existing, ...group })
+      const mergedGroup = { ...existing, ...group }
+      if (
+        existing.title !== mergedGroup.title ||
+        existing.savedAt !== mergedGroup.savedAt ||
+        existing.solveCount !== mergedGroup.solveCount ||
+        existing.sessionId !== mergedGroup.sessionId ||
+        existing.timerSessionId !== mergedGroup.timerSessionId ||
+        existing.durationMinutes !== mergedGroup.durationMinutes ||
+        existing.numDnf !== mergedGroup.numDnf ||
+        existing.avgSeconds !== mergedGroup.avgSeconds ||
+        existing.bestSeconds !== mergedGroup.bestSeconds ||
+        existing.practiceType !== mergedGroup.practiceType
+      ) {
+        existingById.set(group.id, mergedGroup)
         changed = true
       }
     }
@@ -1025,6 +1055,16 @@ export function TimerContent({ viewer }: TimerContentProps) {
     const merged = Array.from(existingById.values()).sort((a, b) => a.savedAt - b.savedAt)
     saveSessionGroups(eventId, merged)
     return merged
+  }, [])
+
+  const updateSavedSessionGroupDuration = useCallback((groupId: string, durationMinutes: number) => {
+    setSessionGroups((previous) => {
+      const nextGroups = previous.map((group) =>
+        group.id === groupId ? { ...group, durationMinutes } : group
+      )
+      saveSessionGroups(eventRef.current, nextGroups)
+      return nextGroups
+    })
   }, [])
 
   const insp = useInspection({
@@ -2017,9 +2057,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
     setPendingPracticeTypeSwitch(null)
   }
 
-  function handleSessionSaved(sessionTitle: string) {
+  function handleSessionSaved(session: SavedSessionPayload) {
     setShowEndModal(false)
-    const groupId = crypto.randomUUID()
+    const groupId = session.timerSessionId
     const allSolves = solvesRef.current
     const sessionSolves = getCurrentSessionSolves(allSolves)
     const queuedEventSwitch = pendingEventSwitch
@@ -2041,9 +2081,21 @@ export function TimerContent({ viewer }: TimerContentProps) {
     // Store group metadata for display
     const groups = loadSessionGroups(eventRef.current)
     const nextGroups = [
-      ...groups,
-      { id: groupId, title: sessionTitle, savedAt: Date.now(), solveCount: currentCount },
-    ]
+      ...groups.filter((group) => group.id !== groupId),
+      {
+        id: groupId,
+        sessionId: session.sessionId,
+        timerSessionId: session.timerSessionId,
+        title: session.title,
+        savedAt: Date.now(),
+        solveCount: currentCount,
+        durationMinutes: session.durationMinutes,
+        numDnf: session.numDnf,
+        avgSeconds: session.avgSeconds,
+        bestSeconds: session.bestSeconds,
+        practiceType: session.practiceType,
+      },
+    ].sort((a, b) => a.savedAt - b.savedAt)
     saveSessionGroups(eventRef.current, nextGroups)
     setSessionGroups(nextGroups)
 
@@ -3746,6 +3798,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onShareSolve={handleShareSolve}
             onUpdateStatCol={updateStatCol}
             onRangeChange={handleRangeChange}
+            onUpdateSavedSessionDuration={updateSavedSessionGroupDuration}
             onLoadOlderSolves={() => void loadOlderSavedSolvePage()}
           />
 
