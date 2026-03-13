@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
+import { startTransition, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Info, Settings } from "lucide-react"
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
@@ -9,9 +9,8 @@ import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspectio
 import { cn } from "@/lib/utils"
 import {
   formatTimeMsCentiseconds,
-  truncateMsToCentiseconds,
 } from "@/lib/timer/averages"
-import { resolveInputTimestamp } from "@/lib/timer/input-timestamp"
+import { roundTelemetryMs } from "@/lib/timer/timing-core"
 import {
   getTimerReadoutColor,
   parseTimerTextSize,
@@ -89,6 +88,7 @@ import {
   normalizeCompSimConfig,
   type CompSimRoundConfig,
 } from "@/lib/timer/comp-sim-round"
+import { useSolveClock } from "@/components/timer/use-solve-clock"
 
 const EndSessionModal = dynamic(
   () =>
@@ -663,6 +663,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [compSimEntryGuard, setCompSimEntryGuard] = useState<CompSimEntryGuard | null>(null)
   const [compSimBusy, setCompSimBusy] = useState(false)
+  const [pendingStoppedSolve, setPendingStoppedSolve] =
+    useState<SharedTimerLastSolve>(null)
   const [compSimConfig, setCompSimConfig] = useState<CompSimRoundConfig>(() => {
     try {
       const raw = localStorage.getItem(COMP_SIM_CONFIG_KEY)
@@ -790,7 +792,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const { btStatus, connect: btConnect, disconnect: btDisconnect } =
     useBluetoothTimer(btCallbacksRef.current)
 
-  const startRef = useRef(0)
   const phaseRef = useRef<TimerPhase>("idle")
   const heldRef = useRef(false)
   const holdTimeoutRef = useRef<number | null>(null)
@@ -800,6 +801,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const inspRef = useRef<ReturnType<typeof useInspection> | null>(null)
   const inspHoldRef = useRef(false)
   const tapToInspectRef = useRef(false)
+  const inspectionPenaltyRef = useRef<"+2" | "DNF" | null>(null)
   const btConnectedRef = useRef(false)
   const practiceTypeRef = useRef(practiceType)
   const compSimBusyRef = useRef(false)
@@ -904,6 +906,18 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const dispatchEngine = useCallback((eventMessage: TimerEvent) => {
     engineRef.current.dispatch(eventMessage)
   }, [])
+  const solveClock = useSolveClock({
+    enabled: practiceType !== "Comp Sim",
+    onStall: (deltaMs) => {
+      emitTimerTelemetry("timer_stall_detected", { deltaMs })
+      if (TIMER_V2_ENGINE_ENABLED) {
+        engineRef.current.dispatch({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
+      }
+    },
+    onInputDelay: (delayMs) => {
+      emitTimerTelemetry("timer_input_delay_ms", { delayMs, scope: "main_timer" })
+    },
+  })
 
   const updateSettingsMenuMaxHeight = useCallback(() => {
     if (typeof window === "undefined") return
@@ -1562,8 +1576,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
   useEffect(() => {
     if (insp.state === "done" && (phaseRef.current === "inspecting" || inspHoldRef.current)) {
       inspHoldRef.current = false
-      addSolve(0, "DNF")
+      inspectionPenaltyRef.current = null
+      setPendingStoppedSolve({ timeMs: 0, penalty: "DNF" })
+      solveClock.finalizeExternalSolve(0)
       dispatchEngine({ type: "INSPECTION_DONE" })
+      queueSolveCommit(0, "DNF")
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [insp.state])
@@ -1902,18 +1919,36 @@ export function TimerContent({ viewer }: TimerContentProps) {
     sessionSolveStartIndexRef.current = 0
   }
 
+  function queueSolveCommit(time_ms: number, penalty: Penalty) {
+    const commitStartedAt = performance.now()
+    startTransition(() => {
+      addSolve(time_ms, penalty, commitStartedAt)
+    })
+  }
+
   function startTimer(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
-    startRef.current = resolveInputTimestamp(inputTimestamp)
+    solveClock.clearFrozenElapsed()
+    setPendingStoppedSolve(null)
+    solveClock.startSolve(inputTimestamp)
     dispatchEngine({ type: "START_RUNNING" })
   }
 
   function stopTimer(inputTimestamp?: number) {
     if (practiceTypeRef.current === "Comp Sim") return
-    const stoppedAt = resolveInputTimestamp(inputTimestamp)
-    const ms = truncateMsToCentiseconds(Math.max(0, stoppedAt - startRef.current))
+    const beforeStopDisplayMs = solveClock.displayElapsedMs
+    const penalty = inspectionPenaltyRef.current
+    inspectionPenaltyRef.current = null
+    const ms = solveClock.stopSolve(inputTimestamp)
+    if (beforeStopDisplayMs !== 0 && beforeStopDisplayMs !== ms) {
+      emitTimerTelemetry("timer_display_mismatch_ms", {
+        scope: "main_timer",
+        mismatchMs: roundTelemetryMs(ms - beforeStopDisplayMs),
+      })
+    }
+    setPendingStoppedSolve({ timeMs: ms, penalty })
     dispatchEngine({ type: "STOP_SOLVE" })
-    addSolve(ms, null)
+    queueSolveCommit(ms, penalty)
   }
 
   function startHold() {
@@ -1938,18 +1973,26 @@ export function TimerContent({ viewer }: TimerContentProps) {
     if (tapToInspectRef.current) {
       tapToInspectRef.current = false
       dispatchEngine({ type: "START_INSPECTION" })
-      inspRef.current?.startInspection()
+      inspRef.current?.startInspection(inputTimestamp)
       return
     }
 
     if (inspHoldRef.current) {
       inspHoldRef.current = false
       if (phaseRef.current === "ready") {
-        const pen = inspRef.current?.finishInspection() ?? null
+        const pen = inspRef.current?.finishInspection(inputTimestamp) ?? null
+        emitTimerTelemetry("timer_inspection_penalty_eval", {
+          penalty: pen,
+          scope: "main_timer",
+        })
         if (pen === "DNF") {
-          addSolve(0, "DNF")
+          inspectionPenaltyRef.current = null
+          setPendingStoppedSolve({ timeMs: 0, penalty: "DNF" })
+          solveClock.finalizeExternalSolve(0)
           dispatchEngine({ type: "INSPECTION_DONE" })
+          queueSolveCommit(0, "DNF")
         } else {
+          inspectionPenaltyRef.current = pen
           startTimer(inputTimestamp)
         }
       } else {
@@ -2000,12 +2043,17 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
   }
 
-  function addSolve(time_ms: number, penalty: Penalty) {
+  function addSolve(
+    time_ms: number,
+    penalty: Penalty,
+    commitStartedAt = performance.now()
+  ) {
     if (practiceTypeRef.current === "Comp Sim") return
     if (sessionPausedRef.current) {
       showPausedAttemptPopup(SESSION_PAUSED_ENTRY_MSG)
       return
     }
+    setPendingStoppedSolve(null)
     const solvedAt = new Date().toISOString()
     const solve: Solve = {
       id: crypto.randomUUID(),
@@ -2023,6 +2071,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     appendStats(eventRef.current, solve)
     setSelectedId(null)
     consumeNextScramble()
+    emitTimerTelemetry("timer_solve_commit_ms", {
+      scope: "main_timer",
+      durationMs: roundTelemetryMs(performance.now() - commitStartedAt),
+    })
   }
 
   function setPenalty(id: string, penalty: Penalty) {
@@ -2349,7 +2401,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
       inspRef.current?.cancelInspection()
       btSolveFinalizedRef.current = false
       if (engineRef.current.getSnapshot().phase !== "running") {
-        startRef.current = performance.now()
+        solveClock.clearFrozenElapsed()
+        setPendingStoppedSolve(null)
+        solveClock.startSolve()
       }
       dispatchEngine({ type: "BT_RUNNING" })
     },
@@ -2367,14 +2421,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (!canFinalize || btSolveFinalizedRef.current) return
       btSolveFinalizedRef.current = true
       dispatchEngine({ type: "BT_STOPPED" })
-      const fallbackMs = truncateMsToCentiseconds(
-        performance.now() - startRef.current
-      )
       const solveMs =
         typeof time_ms === "number" && Number.isFinite(time_ms) && time_ms > 0
-          ? time_ms
-          : Math.max(0, fallbackMs)
-      addSolve(solveMs, null)
+          ? solveClock.finalizeExternalSolve(time_ms)
+          : solveClock.stopSolve()
+      setPendingStoppedSolve({ timeMs: solveMs, penalty: null })
+      queueSolveCommit(solveMs, null)
     },
     onIdle: () => {
       if (practiceTypeRef.current === "Comp Sim") {
@@ -2388,10 +2440,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
         // Fallback for firmware variants that jump straight to IDLE on stop.
         btSolveFinalizedRef.current = true
         dispatchEngine({ type: "BT_STOPPED" })
-        const fallbackMs = truncateMsToCentiseconds(
-          performance.now() - startRef.current
-        )
-        addSolve(Math.max(0, fallbackMs), null)
+        const fallbackMs = solveClock.stopSolve()
+        setPendingStoppedSolve({ timeMs: fallbackMs, penalty: null })
+        queueSolveCommit(fallbackMs, null)
         return
       }
       const shouldStartInspection =
@@ -2638,9 +2689,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   const parsedTypeTime = useMemo(() => parseTime(typeVal), [typeVal])
   const last = solves[solves.length - 1]
-  const lastDisplaySolve: SharedTimerLastSolve = last
-    ? { timeMs: last.time_ms, penalty: last.penalty }
-    : null
+  const lastDisplaySolve: SharedTimerLastSolve =
+    pendingStoppedSolve ??
+    (last
+      ? { timeMs: last.time_ms, penalty: last.penalty }
+      : null)
   shortcutSolveRef.current = detailSolve ?? selectedSolve ?? last ?? null
   const lastSinglePb = useMemo(() => getLastSinglePbCandidate(solves), [solves])
   const scrambleNavBtn =
@@ -3425,18 +3478,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   timeColor
                 )}
                 phase={phase}
-                startMs={startRef.current}
+                currentTimeMs={phase === "running" ? solveClock.displayElapsedMs : null}
                 last={lastDisplaySolve}
                 inInspectionHold={inInspHold}
                 inspectionSecondsLeft={insp.secondsLeft}
                 timerUpdateMode={timerUpdateMode}
                 btReset={engineSnapshot.btReset}
-                onStall={(deltaMs) => {
-                  emitTimerTelemetry("timer_stall_detected", { deltaMs })
-                  if (TIMER_V2_ENGINE_ENABLED) {
-                    dispatchEngine({ type: "SET_SUPPRESS_OPTIONAL_UI", suppress: true })
-                  }
-                }}
               />
             )}
 
