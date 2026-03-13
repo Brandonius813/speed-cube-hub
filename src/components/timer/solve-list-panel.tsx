@@ -14,6 +14,7 @@ import {
   useTransition,
 } from "react"
 import { updateTimerSessionDuration } from "@/lib/actions/timer"
+import type { TimerHistoryStatus } from "@/components/timer/use-timer-event-history"
 import { cn, formatDuration, formatDurationInput, parseDuration } from "@/lib/utils"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
@@ -82,6 +83,8 @@ interface SolveListPanelProps {
   currentSolveCount?: number
   showAllStats?: boolean
   textSize?: SolveListTextSize
+  historyStatus?: TimerHistoryStatus
+  historyError?: string | null
   hasOlderSolves?: boolean
   isLoadingOlderSolves?: boolean
   onSetSelectedId: (id: string | null) => void
@@ -95,6 +98,7 @@ interface SolveListPanelProps {
   onRangeChange: (next: { start: number; end: number }) => void
   onUpdateSavedSessionDuration?: (groupId: string, durationMinutes: number) => void
   onLoadOlderSolves?: () => void
+  onRetryHistoryLoad?: () => void
 }
 
 const DIVIDER_GAP = 24
@@ -207,6 +211,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   currentSolveCount,
   showAllStats = false,
   textSize = "md",
+  historyStatus = "ready",
+  historyError = null,
   hasOlderSolves = false,
   isLoadingOlderSolves = false,
   onSetSelectedId,
@@ -220,6 +226,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   onRangeChange,
   onUpdateSavedSessionDuration,
   onLoadOlderSolves,
+  onRetryHistoryLoad,
 }, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -508,168 +515,196 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
         className="min-h-0 flex-1 overflow-y-auto"
         style={{ overflowAnchor: "none" }}
       >
-        <table className="w-full text-[13px] font-mono border-collapse">
-          <thead className="sticky top-0 bg-background z-10">
-            <tr className="text-foreground border-b border-border">
-              <th className={cn("pr-1.5 py-2 w-[4.25rem] font-normal", textClasses.listHeader)}></th>
-              <th className={cn("text-right pr-1.5 py-2 font-sans font-normal uppercase tracking-wider text-foreground", textClasses.listHeader)}>single</th>
-              {([0, 1] as const).map((idx) => (
-                <th key={idx} className={cn("py-1 font-normal text-right", textClasses.listHeader, idx === 0 ? "pr-1.5" : "pr-2")}>
-                  <select
-                    className={cn("bg-transparent font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right", textClasses.listHeader)}
-                    value={statCols[idx]}
-                    onChange={(e) => onUpdateStatCol(idx, e.target.value)}
-                    title="Click to change"
-                  >
-                    {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {topSpacer > 0 && (
-              <tr>
-                <td colSpan={4} style={{ height: `${topSpacer}px` }} />
+        {loadedCount === 0 ? (
+          <div className="flex h-full min-h-[16rem] items-center justify-center px-4 py-8 text-center">
+            <div className="max-w-xs space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {historyStatus === "loading" && "Loading recent solves..."}
+                {historyStatus === "empty" && "No solves yet for this event."}
+                {historyStatus === "error" &&
+                  (historyError ?? "Failed to load recent solves.")}
+              </p>
+              {historyStatus === "error" && onRetryHistoryLoad && (
+                <button
+                  type="button"
+                  className="rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50"
+                  onClick={() => onRetryHistoryLoad()}
+                >
+                  Retry history load
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-[13px] font-mono border-collapse">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="text-foreground border-b border-border">
+                <th className={cn("pr-1.5 py-2 w-[4.25rem] font-normal", textClasses.listHeader)}></th>
+                <th className={cn("text-right pr-1.5 py-2 font-sans font-normal uppercase tracking-wider text-foreground", textClasses.listHeader)}>single</th>
+                {([0, 1] as const).map((idx) => (
+                  <th key={idx} className={cn("py-1 font-normal text-right", textClasses.listHeader, idx === 0 ? "pr-1.5" : "pr-2")}>
+                    <select
+                      className={cn("bg-transparent font-sans uppercase tracking-wider text-foreground hover:text-foreground cursor-pointer border-none outline-none appearance-none w-full text-right", textClasses.listHeader)}
+                      value={statCols[idx]}
+                      onChange={(e) => onUpdateStatCol(idx, e.target.value)}
+                      title="Click to change"
+                    >
+                      {STAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </th>
+                ))}
               </tr>
-            )}
+            </thead>
+            <tbody>
+              {topSpacer > 0 && (
+                <tr>
+                  <td colSpan={4} style={{ height: `${topSpacer}px` }} />
+                </tr>
+              )}
 
-            {rows.map((row, windowIdx) => {
-              const displayIdx = rangeStart + windowIdx
-              const isBoundary = groupBoundaries?.has(displayIdx)
-              const dividerLabel = isBoundary
-                ? groupDividerLabels?.get(displayIdx) ?? null
-                : null
-              const isSaved = !!row.solve.group
-              // Map to stats index:
-              // - fallback mode: stats run over all solves
-              // - normal mode: stats run on current (ungrouped) solves only
-              let statsIdx = -1
-              if (showAllStats) {
-                statsIdx = row.solveIndex
-              } else if (!isSaved) {
-                statsIdx = savedSolveCount > 0
-                  ? row.solveIndex - savedSolveCount
-                  : row.solveIndex
-              }
-              const stat1Value = statsIdx >= 0 ? stats.rolling1[statsIdx] ?? null : null
-              const stat2Value = statsIdx >= 0 ? stats.rolling2[statsIdx] ?? null : null
+              {rows.map((row, windowIdx) => {
+                const displayIdx = rangeStart + windowIdx
+                const isBoundary = groupBoundaries?.has(displayIdx)
+                const dividerLabel = isBoundary
+                  ? groupDividerLabels?.get(displayIdx) ?? null
+                  : null
+                const isSaved = !!row.solve.group
+                let statsIdx = -1
+                if (showAllStats) {
+                  statsIdx = row.solveIndex
+                } else if (!isSaved) {
+                  statsIdx = savedSolveCount > 0
+                    ? row.solveIndex - savedSolveCount
+                    : row.solveIndex
+                }
+                const stat1Value = statsIdx >= 0 ? stats.rolling1[statsIdx] ?? null : null
+                const stat2Value = statsIdx >= 0 ? stats.rolling2[statsIdx] ?? null : null
 
-              return (
-                <Fragment key={row.solve.id}>
-                  {isBoundary && (
-                    <tr aria-hidden="true">
-                      <td colSpan={4} className="relative p-0" style={{ height: `${DIVIDER_GAP}px` }}>
-                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-primary/20" />
-                        {dividerLabel && (
-                          <button
-                            type="button"
-                            className="absolute top-1/2 left-1 z-20 inline-block -translate-y-1/2 max-w-[11rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[11px] font-sans uppercase tracking-wider text-foreground hover:border-primary/70 hover:bg-primary/10 transition-colors"
-                            title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
-                            onClick={(eventClick) => {
-                              eventClick.stopPropagation()
-                              openStatsForDivider(dividerLabel)
-                            }}
-                          >
-                            {dividerLabel.title}
-                            {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                  <tr
-                    className={cn(
-                      "hover:bg-muted/30 transition-colors cursor-pointer",
-                      selectedId === row.solve.id && "bg-muted/40"
+                return (
+                  <Fragment key={row.solve.id}>
+                    {isBoundary && (
+                      <tr aria-hidden="true">
+                        <td colSpan={4} className="relative p-0" style={{ height: `${DIVIDER_GAP}px` }}>
+                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-primary/20" />
+                          {dividerLabel && (
+                            <button
+                              type="button"
+                              className="absolute top-1/2 left-1 z-20 inline-block -translate-y-1/2 max-w-[11rem] truncate rounded-full border border-primary/50 bg-background px-2 py-[1px] text-[11px] font-sans uppercase tracking-wider text-foreground hover:border-primary/70 hover:bg-primary/10 transition-colors"
+                              title={`${dividerLabel.title}${dividerLabel.date ? ` · ${dividerLabel.date}` : ""}`}
+                              onClick={(eventClick) => {
+                                eventClick.stopPropagation()
+                                openStatsForDivider(dividerLabel)
+                              }}
+                            >
+                              {dividerLabel.title}
+                              {dividerLabel.date ? ` · ${dividerLabel.date}` : ""}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
                     )}
-                    onClick={() => {
-                      onSelectSolveCell(row.solve.id, "single")
-                      onOpenSolveDetail(row.solve.id)
-                    }}
-                    style={{ height: `${rowHeight}px` }}
-                  >
-                    <td className={cn("text-right pr-1.5 py-0.5 text-foreground/90 font-mono", textClasses.listIndex)}>
-                      {row.displayNumber}
-                    </td>
-                    <td
+                    <tr
                       className={cn(
-                        "text-right pr-1.5 py-0.5 font-mono text-foreground transition-colors",
-                        textClasses.listValue,
-                        selectedId === row.solve.id &&
-                          selectedMetric === "single" &&
-                          "text-indigo-300 bg-indigo-500/15"
+                        "hover:bg-muted/30 transition-colors cursor-pointer",
+                        selectedId === row.solve.id && "bg-muted/40"
                       )}
-                      onClick={(eventClick) => {
-                        eventClick.stopPropagation()
+                      onClick={() => {
                         onSelectSolveCell(row.solve.id, "single")
                         onOpenSolveDetail(row.solve.id)
                       }}
+                      style={{ height: `${rowHeight}px` }}
                     >
-                      {fmtSolve(row.solve)}
-                    </td>
-                    <td
-                      className={cn(
-                        "text-right pr-1.5 py-0.5 text-foreground font-mono transition-colors",
-                        textClasses.listStat,
-                        stat1Value !== null && "cursor-pointer hover:text-indigo-200",
-                        selectedId === row.solve.id &&
-                          selectedMetric === "stat1" &&
-                          "text-indigo-300 bg-indigo-500/15"
-                      )}
-                      onClick={(eventClick) => {
-                        if (stat1Value === null) return
-                        eventClick.stopPropagation()
-                        onSelectSolveCell(row.solve.id, "stat1")
-                        onOpenStatDetail(row.solve.id, "stat1")
-                      }}
-                    >
-                      {D(stat1Value)}
-                    </td>
-                    <td
-                      className={cn(
-                        "text-right pr-2 py-0.5 text-foreground font-mono transition-colors",
-                        textClasses.listStat,
-                        stat2Value !== null && "cursor-pointer hover:text-indigo-200",
-                        selectedId === row.solve.id &&
-                          selectedMetric === "stat2" &&
-                          "text-indigo-300 bg-indigo-500/15"
-                      )}
-                      onClick={(eventClick) => {
-                        if (stat2Value === null) return
-                        eventClick.stopPropagation()
-                        onSelectSolveCell(row.solve.id, "stat2")
-                        onOpenStatDetail(row.solve.id, "stat2")
-                      }}
-                    >
-                      {D(stat2Value)}
-                    </td>
-                  </tr>
-                </Fragment>
-              )
-            })}
+                      <td className={cn("text-right pr-1.5 py-0.5 text-foreground/90 font-mono", textClasses.listIndex)}>
+                        {row.displayNumber}
+                      </td>
+                      <td
+                        className={cn(
+                          "text-right pr-1.5 py-0.5 font-mono text-foreground transition-colors",
+                          textClasses.listValue,
+                          selectedId === row.solve.id &&
+                            selectedMetric === "single" &&
+                            "text-indigo-300 bg-indigo-500/15"
+                        )}
+                        onClick={(eventClick) => {
+                          eventClick.stopPropagation()
+                          onSelectSolveCell(row.solve.id, "single")
+                          onOpenSolveDetail(row.solve.id)
+                        }}
+                      >
+                        {fmtSolve(row.solve)}
+                      </td>
+                      <td
+                        className={cn(
+                          "text-right pr-1.5 py-0.5 text-foreground font-mono transition-colors",
+                          textClasses.listStat,
+                          stat1Value !== null && "cursor-pointer hover:text-indigo-200",
+                          selectedId === row.solve.id &&
+                            selectedMetric === "stat1" &&
+                            "text-indigo-300 bg-indigo-500/15"
+                        )}
+                        onClick={(eventClick) => {
+                          if (stat1Value === null) return
+                          eventClick.stopPropagation()
+                          onSelectSolveCell(row.solve.id, "stat1")
+                          onOpenStatDetail(row.solve.id, "stat1")
+                        }}
+                      >
+                        {D(stat1Value)}
+                      </td>
+                      <td
+                        className={cn(
+                          "text-right pr-2 py-0.5 text-foreground font-mono transition-colors",
+                          textClasses.listStat,
+                          stat2Value !== null && "cursor-pointer hover:text-indigo-200",
+                          selectedId === row.solve.id &&
+                            selectedMetric === "stat2" &&
+                            "text-indigo-300 bg-indigo-500/15"
+                        )}
+                        onClick={(eventClick) => {
+                          if (stat2Value === null) return
+                          eventClick.stopPropagation()
+                          onSelectSolveCell(row.solve.id, "stat2")
+                          onOpenStatDetail(row.solve.id, "stat2")
+                        }}
+                      >
+                        {D(stat2Value)}
+                      </td>
+                    </tr>
+                  </Fragment>
+                )
+              })}
 
-            {bottomSpacer > 0 && (
-              <tr>
-                <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
-              </tr>
-            )}
-            {hasOlderSolves && (
-              <tr>
-                <td colSpan={4} className="px-3 py-3">
-                  <button
-                    type="button"
-                    className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={() => onLoadOlderSolves?.()}
-                    disabled={isLoadingOlderSolves}
-                  >
-                    {isLoadingOlderSolves ? "Loading older solves..." : "Load older solves"}
-                  </button>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              {bottomSpacer > 0 && (
+                <tr>
+                  <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
+                </tr>
+              )}
+              {historyError && historyStatus === "ready" && (
+                <tr>
+                  <td colSpan={4} className="px-3 pt-3">
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground">
+                      {historyError}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {hasOlderSolves && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-3">
+                    <button
+                      type="button"
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => onLoadOlderSolves?.()}
+                      disabled={isLoadingOlderSolves}
+                    >
+                      {isLoadingOlderSolves ? "Loading older solves..." : "Load older solves"}
+                    </button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {openSessionStats && (

@@ -51,6 +51,7 @@ import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
 import {
   getEventAnalytics,
+  getEventHistoryBootstrap,
   getEventSolveById,
   getSolveDetailWindow,
   listEventSolveWindow,
@@ -66,6 +67,11 @@ import {
   formatSessionDividerDate,
   type SessionGroupMeta,
 } from "@/lib/timer/session-dividers"
+import {
+  canLoadOlderSavedSolves,
+  getEffectiveSavedSolveCount,
+  useTimerEventHistory,
+} from "@/components/timer/use-timer-event-history"
 import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
 import { PracticeModeSelector } from "@/components/timer/practice-mode-selector"
 import {
@@ -727,14 +733,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [pendingPracticeTypeSwitch, setPendingPracticeTypeSwitch] = useState<string | null>(null)
   const [sessionSaved, setSessionSaved] = useState(false)
   const [pbPhotoOpen, setPbPhotoOpen] = useState(false)
-  const [savedSolveCountTotal, setSavedSolveCountTotal] = useState(0)
-  const [savedSolveCursor, setSavedSolveCursor] = useState<SolveWindowCursor | null>(null)
-  const [loadingOlderSolves, setLoadingOlderSolves] = useState(false)
   const [detailSolveOverride, setDetailSolveOverride] = useState<Solve | null>(null)
   const [allTimeAnalytics, setAllTimeAnalytics] = useState<TimerEventAnalytics | null>(null)
   const [allTimeAnalyticsEvent, setAllTimeAnalyticsEvent] = useState<string | null>(null)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
   const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
+  const [historyRetrySeed, setHistoryRetrySeed] = useState(0)
   const [mobilePaneOpenRequestKey, setMobilePaneOpenRequestKey] = useState(0)
   const [solveRange, setSolveRange] = useState({
     start: 0,
@@ -765,6 +769,25 @@ export function TimerContent({ viewer }: TimerContentProps) {
     handle: "you",
     avatarUrl: null as string | null,
   })
+  const {
+    historyStatus,
+    historyError,
+    savedSolveCountTotal,
+    savedSolveCursor,
+    loadingOlderSolves,
+    reset: resetEventHistory,
+    startBootstrap: startHistoryBootstrap,
+    markReady: markHistoryReady,
+    markEmpty: markHistoryEmpty,
+    markError: markHistoryError,
+    syncTotalSavedCount,
+    incrementTotalSavedCount,
+    decrementTotalSavedCount,
+    setCursor: setHistoryCursor,
+    startOlderLoad,
+    finishOlderLoad,
+    failOlderLoad,
+  } = useTimerEventHistory()
   const activeTour = parseOnboardingTour(searchParams.get("tour"))
   const timerTour =
     activeTour === "timer-basics"
@@ -959,6 +982,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       .catch(() => {})
   }, [])
 
+  const retryEventHistoryLoad = useCallback(() => {
+    setHistoryRetrySeed((previous) => previous + 1)
+  }, [])
+
   const loadLocalSolveWindow = useCallback(async (eventId: string): Promise<Solve[]> => {
     const totalLocalSolves = await solveStoreRef.current.count(eventId)
     if (totalLocalSolves === 0) return []
@@ -1115,9 +1142,25 @@ export function TimerContent({ viewer }: TimerContentProps) {
   // Compute saved vs current session solve counts for display + stats
   const unsavedSolves = useMemo(() => getTrailingUnsavedSolves(solves), [solves])
   const loadedSavedSolveCount = solves.length - unsavedSolves.length
-  const savedSolveCount = Math.max(savedSolveCountTotal, loadedSavedSolveCount)
+  const eventHistoryState = useMemo(
+    () => ({
+      status: historyStatus,
+      errorMessage: historyError,
+      totalSavedCount: savedSolveCountTotal,
+      cursor: savedSolveCursor,
+      loadingOlderSolves,
+    }),
+    [
+      historyError,
+      historyStatus,
+      loadingOlderSolves,
+      savedSolveCountTotal,
+      savedSolveCursor,
+    ]
+  )
+  const savedSolveCount = getEffectiveSavedSolveCount(eventHistoryState, loadedSavedSolveCount)
   const totalSolveCount = savedSolveCount + unsavedSolves.length
-  const hasOlderSavedSolves = loadedSavedSolveCount < savedSolveCount
+  const hasOlderSavedSolves = canLoadOlderSavedSolves(eventHistoryState, loadedSavedSolveCount)
   const hasActiveSession =
     sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
   const getCurrentSessionSolves = useCallback((allSolves: Solve[]) => {
@@ -1133,10 +1176,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const currentSolveCount = currentSessionSolves.length
   // Keep time-list stats aligned to every visible solve row when saved solves exist.
   const showAllStatsInList = loadedSavedSolveCount > 0
-  const panelStats = useMemo(
-    () => (showAllStatsInList ? computeStatsSync(solves, statCols) : stats),
-    [showAllStatsInList, solves, statCols, stats]
+  const loadedHistoryStats = useMemo(
+    () => (showAllStatsInList ? computeStatsSync(solves, statCols) : null),
+    [showAllStatsInList, solves, statCols]
   )
+  const panelStats = showAllStatsInList && loadedHistoryStats ? loadedHistoryStats : stats
   const panelSavedSolveCount = showAllStatsInList ? 0 : loadedSavedSolveCount
 
   function clearTour() {
@@ -1579,19 +1623,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
     let cancelled = false
     const groups = loadSessionGroups(event)
     setSessionGroups(groups)
-    setSavedSolveCursor(null)
-    setSavedSolveCountTotal(0)
-    setLoadingOlderSolves(false)
+    resetEventHistory()
+    startHistoryBootstrap()
     setDetailSolveOverride(null)
     ;(async () => {
       await migrateLegacySolves(event)
-      const [loadedWindow, countResult] = await Promise.all([
-        loadLocalSolveWindow(event),
-        getSolveCountByEvent(event),
-      ])
-      const totalSavedCount = countResult.error
-        ? Math.max(0, loadedWindow.length - getTrailingUnsavedSolves(loadedWindow).length)
-        : countResult.count
+      const loadedWindow = await loadLocalSolveWindow(event)
       const loadedRaw = loadedWindow
       let loaded = loadedRaw
 
@@ -1604,23 +1641,83 @@ export function TimerContent({ viewer }: TimerContentProps) {
       }
 
       if (cancelled) return
-      setSolves(loaded)
-      setSavedSolveCursor(getSavedSolveWindowCursor(loaded))
-      setSavedSolveCountTotal(totalSavedCount)
-      setSelectedId(null)
-      setDetailSolveId(null)
-      setSolveRange((prev) => ({
-        ...prev,
-        start: 0,
-        end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
-      }))
-      // Stats only computed on the active session block.
-      const currentSolves = getCurrentSessionSolves(loaded)
-      initStats(event, currentSolves)
-      void hydrateDividerMetadata(event, loaded).then((mergedGroups) => {
-        if (cancelled || !mergedGroups || eventRef.current !== event) return
-        setSessionGroups(mergedGroups)
-      })
+
+      const finalizeVisibleWindow = (nextSolves: Solve[]) => {
+        setSolves(nextSolves)
+        setSelectedId(null)
+        setDetailSolveId(null)
+        setSolveRange((prev) => ({
+          ...prev,
+          start: 0,
+          end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
+        }))
+        const currentSolves = getCurrentSessionSolves(nextSolves)
+        initStats(event, currentSolves)
+        void hydrateDividerMetadata(event, nextSolves).then((mergedGroups) => {
+          if (cancelled || !mergedGroups || eventRef.current !== event) return
+          setSessionGroups(mergedGroups)
+        })
+      }
+
+      const loadedSavedCount = Math.max(
+        0,
+        loaded.length - getTrailingUnsavedSolves(loaded).length
+      )
+
+      if (loaded.length > 0) {
+        finalizeVisibleWindow(loaded)
+        markHistoryReady({
+          totalSavedCount: loadedSavedCount,
+          cursor: getSavedSolveWindowCursor(loaded),
+        })
+
+        void getSolveCountByEvent(event).then((countResult) => {
+          if (cancelled || countResult.error) return
+          syncTotalSavedCount(countResult.count)
+        })
+      } else {
+        const bootstrap = await getEventHistoryBootstrap({
+          event,
+          limit: SAVED_SOLVE_PAGE_SIZE,
+        })
+
+        if (cancelled) return
+
+        if (bootstrap.error) {
+          setSolves([])
+          setSelectedId(null)
+          setDetailSolveId(null)
+          initStats(event, [])
+          markHistoryError(bootstrap.error)
+          return
+        }
+
+        const bootSolves = trimLoadedSolveWindow(bootstrap.solves.map(toTimerSolve))
+
+        if (bootSolves.length === 0) {
+          setSolves([])
+          setSelectedId(null)
+          setDetailSolveId(null)
+          initStats(event, [])
+          markHistoryEmpty()
+          return
+        }
+
+        await solveStoreRef.current
+          .replaceSession(event, bootSolves)
+          .catch(() =>
+            emitTimerTelemetry("timer_error", { scope: "solve_store_replace_bootstrap" })
+          )
+
+        if (cancelled) return
+
+        finalizeVisibleWindow(bootSolves)
+        markHistoryReady({
+          totalSavedCount: bootstrap.totalCount,
+          cursor: bootstrap.nextCursor,
+        })
+        loaded = bootSolves
+      }
 
       // Background cross-device sync: if DB has more solves than local,
       // pull them in. This is a one-time cost per device per event.
@@ -1634,7 +1731,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           if (cancelled || !synced) return
           const trimmedSynced = trimLoadedSolveWindow(synced)
           setSolves(trimmedSynced)
-          setSavedSolveCursor(getSavedSolveWindowCursor(trimmedSynced))
+          setHistoryCursor(getSavedSolveWindowCursor(trimmedSynced))
           const syncedCurrent = getCurrentSessionSolves(trimmedSynced)
           initStats(event, syncedCurrent)
           void hydrateDividerMetadata(event, trimmedSynced).then((mergedGroups) => {
@@ -1651,9 +1748,17 @@ export function TimerContent({ viewer }: TimerContentProps) {
     event,
     getCurrentSessionSolves,
     hydrateDividerMetadata,
+    historyRetrySeed,
     initStats,
     loadLocalSolveWindow,
+    markHistoryEmpty,
+    markHistoryError,
+    markHistoryReady,
     migrateLegacySolves,
+    resetEventHistory,
+    setHistoryCursor,
+    startHistoryBootstrap,
+    syncTotalSavedCount,
   ])
 
   useEffect(() => {
@@ -2072,8 +2177,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
     // Tag only the solves added during the active session.
     setSolves(nextSolves)
-    setSavedSolveCountTotal((previous) => previous + currentCount)
-    setSavedSolveCursor(getSavedSolveWindowCursor(nextSolves))
+    incrementTotalSavedCount(currentCount)
+    setHistoryCursor(getSavedSolveWindowCursor(nextSolves))
     void solveStoreRef.current
       .replaceSession(eventRef.current, nextSolves)
       .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_save" }))
@@ -2325,9 +2430,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
     solveListPanelRef.current?.preserveScrollPosition()
     setSolves(nextSolves)
-    setSavedSolveCursor(getSavedSolveWindowCursor(nextSolves))
+    setHistoryCursor(getSavedSolveWindowCursor(nextSolves))
     if (solveSnapshot?.group) {
-      setSavedSolveCountTotal((previous) => Math.max(0, previous - 1))
+      decrementTotalSavedCount(1)
     }
     void solveStoreRef.current
       .deleteSolve(id)
@@ -2952,28 +3057,31 @@ export function TimerContent({ viewer }: TimerContentProps) {
     !scramble.startsWith("Scramble worker unavailable")
 
   const loadOlderSavedSolvePage = useCallback(async () => {
-    if (loadingOlderSolves) return
     if (!savedSolveCursor) return
-    if (!hasOlderSavedSolves) return
+    if (!canLoadOlderSavedSolves(eventHistoryState, loadedSavedSolveCount)) {
+      return
+    }
 
-    setLoadingOlderSolves(true)
+    startOlderLoad()
     const result = await listEventSolveWindow({
       event,
       cursor: savedSolveCursor,
       limit: SAVED_SOLVE_PAGE_SIZE,
     })
-    setLoadingOlderSolves(false)
 
     if (result.error || result.solves.length === 0) {
       if (!result.error) {
-        setSavedSolveCountTotal(loadedSavedSolveCount)
+        syncTotalSavedCount(loadedSavedSolveCount)
+        finishOlderLoad(null)
+      } else {
+        failOlderLoad(result.error)
       }
       return
     }
 
     const olderSavedSolves = result.solves.map(toTimerSolve).filter((solve) => !!solve.group)
     if (olderSavedSolves.length === 0) {
-      setSavedSolveCursor(result.nextCursor)
+      finishOlderLoad(result.nextCursor)
       return
     }
 
@@ -2983,18 +3091,21 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (uniqueOlderSolves.length === 0) return previous
       return [...uniqueOlderSolves, ...previous]
     })
-    setSavedSolveCursor(result.nextCursor)
+    finishOlderLoad(result.nextCursor)
     void hydrateDividerMetadata(event, olderSavedSolves).then((mergedGroups) => {
       if (!mergedGroups || eventRef.current !== event) return
       setSessionGroups(mergedGroups)
     })
   }, [
+    eventHistoryState,
     event,
-    hasOlderSavedSolves,
+    failOlderLoad,
+    finishOlderLoad,
     hydrateDividerMetadata,
     loadedSavedSolveCount,
-    loadingOlderSolves,
     savedSolveCursor,
+    startOlderLoad,
+    syncTotalSavedCount,
   ])
 
   const inInspHold =
@@ -3787,6 +3898,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
             currentSolveCount={sessionSolveCountForPanel}
             showAllStats={showAllStatsInList}
             textSize={paneTimeTextSize}
+            historyStatus={historyStatus}
+            historyError={historyError}
             hasOlderSolves={hasOlderSavedSolves}
             isLoadingOlderSolves={loadingOlderSolves}
             onSetSelectedId={setSelectedId}
@@ -3800,6 +3913,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onRangeChange={handleRangeChange}
             onUpdateSavedSessionDuration={updateSavedSessionGroupDuration}
             onLoadOlderSolves={() => void loadOlderSavedSolvePage()}
+            onRetryHistoryLoad={retryEventHistoryLoad}
           />
 
           <div

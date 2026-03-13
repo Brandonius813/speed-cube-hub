@@ -335,6 +335,58 @@ export async function listEventSolveWindow(params: {
   }
 }
 
+export async function getEventHistoryBootstrap(params: {
+  event: string
+  limit?: number
+}): Promise<{
+  solves: Solve[]
+  totalCount: number
+  nextCursor: SolveWindowCursor | null
+  error?: string
+}> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      solves: [],
+      totalCount: 0,
+      nextCursor: null,
+      error: "Not authenticated",
+    }
+  }
+
+  const limit = Math.min(Math.max(params.limit ?? 200, 1), 1000)
+  const { data, count, error } = await supabase
+    .from("solves")
+    .select(SOLVE_SELECT_COLUMNS, { count: "exact" })
+    .eq("user_id", user.id)
+    .eq("event", params.event)
+    .order("solved_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    return {
+      solves: [],
+      totalCount: 0,
+      nextCursor: null,
+      error: error.message,
+    }
+  }
+
+  const newestFirst = (data as unknown as Solve[] | null) ?? []
+  const last = newestFirst[newestFirst.length - 1] ?? null
+
+  return {
+    solves: newestFirst.reverse(),
+    totalCount: count ?? newestFirst.length,
+    nextCursor: last ? { solvedAt: last.solved_at, id: last.id } : null,
+  }
+}
+
 export async function getSolveDetailWindow(params: {
   solveId: string
   statKey?: string
