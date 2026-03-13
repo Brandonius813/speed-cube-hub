@@ -11,8 +11,10 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react"
-import { cn, formatDuration } from "@/lib/utils"
+import { updateTimerSessionDuration } from "@/lib/actions/timer"
+import { cn, formatDuration, formatDurationInput, parseDuration } from "@/lib/utils"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { STAT_OPTIONS, type Penalty, type TimerSolve as Solve } from "@/lib/timer/stats"
 import type { DividerLabel } from "@/lib/timer/session-dividers"
@@ -91,6 +93,7 @@ interface SolveListPanelProps {
   onShareSolve?: (solve: Solve) => void
   onUpdateStatCol: (idx: 0 | 1, key: string) => void
   onRangeChange: (next: { start: number; end: number }) => void
+  onUpdateSavedSessionDuration?: (groupId: string, durationMinutes: number) => void
   onLoadOlderSolves?: () => void
 }
 
@@ -215,6 +218,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   onShareSolve,
   onUpdateStatCol,
   onRangeChange,
+  onUpdateSavedSessionDuration,
   onLoadOlderSolves,
 }, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
@@ -305,11 +309,27 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = latestSolve
   const countDisplay = `${currentSolveCount ?? totalSolveCount}/${totalSolveCount}`
-  const closeSessionStats = useCallback(() => setOpenSessionStats(null), [])
+  const [isEditingSessionDuration, setIsEditingSessionDuration] = useState(false)
+  const [sessionDurationInput, setSessionDurationInput] = useState("")
+  const [sessionDurationError, setSessionDurationError] = useState<string | null>(null)
+  const [isSavingSessionDuration, startSavingSessionDuration] = useTransition()
+  const closeSessionStats = useCallback(() => {
+    setOpenSessionStats(null)
+    setIsEditingSessionDuration(false)
+    setSessionDurationInput("")
+    setSessionDurationError(null)
+  }, [])
   const openStatsForDivider = useCallback(
     (label: DividerLabel | null) => {
       if (!label) return
       setOpenSessionStats(label)
+      setIsEditingSessionDuration(false)
+      setSessionDurationError(null)
+      setSessionDurationInput(
+        label.stats.durationMinutes !== null
+          ? formatDurationInput(label.stats.durationMinutes)
+          : "1"
+      )
     },
     []
   )
@@ -317,6 +337,42 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
     () => new Map(sessionStats.milestoneRows.map((row) => [row.key, row.best])),
     [sessionStats.milestoneRows]
   )
+  const canEditOpenSessionDuration =
+    !!openSessionStats?.sessionId && !!openSessionStats?.timerSessionId
+  const handleSaveSessionDuration = useCallback(() => {
+    if (!openSessionStats?.sessionId) return
+
+    const parsedDurationMinutes = parseDuration(sessionDurationInput)
+    if (!parsedDurationMinutes) {
+      setSessionDurationError('Invalid duration. Use minutes like "10" or h:mm like "1:30".')
+      return
+    }
+
+    const groupId = openSessionStats.groupId
+    const sessionId = openSessionStats.sessionId
+    startSavingSessionDuration(async () => {
+      setSessionDurationError(null)
+      const result = await updateTimerSessionDuration(sessionId, parsedDurationMinutes)
+      if (result.error) {
+        setSessionDurationError(result.error)
+        return
+      }
+
+      onUpdateSavedSessionDuration?.(groupId, parsedDurationMinutes)
+      setOpenSessionStats((current) => {
+        if (!current || current.groupId !== groupId) return current
+        return {
+          ...current,
+          stats: {
+            ...current.stats,
+            durationMinutes: parsedDurationMinutes,
+          },
+        }
+      })
+      setSessionDurationInput(formatDurationInput(parsedDurationMinutes))
+      setIsEditingSessionDuration(false)
+    })
+  }, [onUpdateSavedSessionDuration, openSessionStats, sessionDurationInput])
 
   return (
     <div
@@ -668,6 +724,76 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                 <p className="font-mono text-base text-foreground">{openSessionStats.stats.dnfCount}</p>
               </div>
             </div>
+
+            {canEditOpenSessionDuration && (
+              <div className="mt-3 rounded-lg border border-border/40 bg-muted/10 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Timer Session Duration
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Update the session length without changing solves or stats.
+                    </p>
+                  </div>
+                  {!isEditingSessionDuration && (
+                    <button
+                      type="button"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                      onClick={() => setIsEditingSessionDuration(true)}
+                    >
+                      Edit duration
+                    </button>
+                  )}
+                </div>
+
+                {isEditingSessionDuration && (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      value={sessionDurationInput}
+                      onChange={(event) => setSessionDurationInput(event.target.value)}
+                      inputMode="numeric"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none transition-colors focus:border-primary"
+                      placeholder='10 or 1:30'
+                      aria-label="Edit saved session duration"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Use minutes or h:mm.
+                    </p>
+                    {sessionDurationError && (
+                      <p className="text-xs text-destructive">{sessionDurationError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                        onClick={handleSaveSessionDuration}
+                        disabled={isSavingSessionDuration}
+                      >
+                        {isSavingSessionDuration ? "Saving..." : "Save duration"}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => {
+                          setIsEditingSessionDuration(false)
+                          setSessionDurationError(null)
+                          setSessionDurationInput(
+                            openSessionStats.stats.durationMinutes !== null
+                              ? formatDurationInput(openSessionStats.stats.durationMinutes)
+                              : "1"
+                          )
+                        }}
+                        disabled={isSavingSessionDuration}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               type="button"

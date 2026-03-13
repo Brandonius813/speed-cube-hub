@@ -6,6 +6,8 @@ export type SessionGroupMeta = {
   title: string
   savedAt: number
   solveCount: number
+  sessionId?: string
+  timerSessionId?: string
   // Optional feed-style summary stats for divider popups.
   durationMinutes?: number
   numDnf?: number
@@ -15,10 +17,13 @@ export type SessionGroupMeta = {
 }
 
 export type DividerLabel = {
+  groupId: string
   title: string
   date: string | null
   stats: DividerStats
   practiceType: string | null
+  sessionId: string | null
+  timerSessionId: string | null
 }
 
 export type DividerStats = {
@@ -138,6 +143,7 @@ export function computeSessionDividers(
     const meta = groupById.get(currentGroup)
     const dateFromGroup = parseDateGroup(currentGroup)
     labels.set(displayIdx, {
+      groupId: currentGroup,
       title: normalizeTitle(meta?.title, dateFromGroup ? "Session" : "Saved Session"),
       date:
         typeof meta?.savedAt === "number"
@@ -151,6 +157,8 @@ export function computeSessionDividers(
         bestSeconds: null,
       },
       practiceType: meta?.practiceType ?? null,
+      sessionId: meta?.sessionId ?? null,
+      timerSessionId: meta?.timerSessionId ?? null,
     })
   }
 

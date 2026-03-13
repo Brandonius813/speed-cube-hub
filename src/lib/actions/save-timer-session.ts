@@ -39,7 +39,7 @@ export async function saveTimerSession(data: {
     ended_reason: CompSimEndedReason
     cutoff_met: boolean | null
   } | null
-}): Promise<{ error?: string; sessionId?: string }> {
+}): Promise<{ error?: string; sessionId?: string; timerSessionId?: string }> {
   if (data.solves.length === 0) {
     return { error: "No solves to save." }
   }
@@ -181,5 +181,5 @@ export async function saveTimerSession(data: {
     ])
   }
 
-  return { sessionId: session?.id }
+  return { sessionId: session?.id, timerSessionId: timerSession.id }
 }

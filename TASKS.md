@@ -189,6 +189,9 @@
 ### Phase 33: Timer Scalability Foundation (T164)
 - ✅ T164: Million-solve timer analytics, paged timer history, and aggregated all-time timer panes
 
+### Phase 34: Timer Session Duration Correction (T165)
+- ✅ T165: Editable timer session duration in the finish modal and saved-session popup
+
 ---
 
 ## Open / Remaining Items
