@@ -232,6 +232,13 @@ Shared log for parallel Claude Code sessions. Each session appends entries when 
 **Files touched:** `src/components/timer/timer-content.tsx`, `src/components/timer/use-shared-timer-controller.ts`, `src/components/timer/use-solve-clock.ts`, `src/components/timer/shared-timer-surface.tsx`, `src/components/timer/shared-timer-surface.test.tsx`, `src/components/timer/comp-sim-overlay.tsx`, `src/components/timer/comp-sim-screens.tsx`, `src/lib/timer/inspection.ts`, `src/lib/timer/telemetry.ts`, `src/lib/timer/timing-core.ts`, `src/lib/timer/timing-core.test.ts`, `AGENT_LOG.md`
 **Checks:** `./node_modules/.bin/vitest run src/lib/timer/timing-core.test.ts src/lib/timer/input-timestamp.test.ts src/components/timer/shared-timer-surface.test.tsx` passed. `./node_modules/.bin/eslint src/components/timer/timer-content.tsx src/components/timer/comp-sim-overlay.tsx src/components/timer/comp-sim-screens.tsx src/components/timer/shared-timer-surface.tsx src/components/timer/shared-timer-surface.test.tsx src/components/timer/use-shared-timer-controller.ts src/components/timer/use-solve-clock.ts src/lib/timer/inspection.ts src/lib/timer/telemetry.ts src/lib/timer/timing-core.ts src/lib/timer/timing-core.test.ts` passed. `./node_modules/.bin/tsc --noEmit --pretty false` passed.
 
+### 2026-03-13 11:52 AM EDT — Import Page Footer Overlap Fix
+
+**Task:** Stop the manual session form on `/import` from running into the footer on shorter viewports
+**Status:** Removed the hard viewport-height cap from the import route and moved the fill-screen behavior onto the page content wrapper as a minimum height instead. The Import Data page still fills the available screen for the chat import tab, but the manual "Log Practice Session" form can now grow naturally and push the footer down instead of overlapping it.
+**Files touched:** `src/app/(main)/import/page.tsx`, `src/components/import/import-page-content.tsx`, `AGENT_LOG.md`
+**Checks:** `npm exec eslint -- 'src/app/(main)/import/page.tsx' src/components/import/import-page-content.tsx` passed. `npm exec tsc -- --noEmit` passed.
+
 ### 2026-03-12 03:32 PM EDT — Million-Solve Timer Scalability Foundation
 
 **Task:** Start the million-solve timer optimization plan by removing the worst raw-history reads and shrinking timer history hydration
