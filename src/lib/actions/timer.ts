@@ -36,7 +36,6 @@ const SOLVE_SELECT_COLUMNS = [
   "event",
   "comp_sim_group",
   "notes",
-  "phases",
   "solve_session_id",
   "solved_at",
   "created_at",
