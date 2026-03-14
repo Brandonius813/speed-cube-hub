@@ -52,6 +52,7 @@ import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
 import {
   getEventAnalytics,
   getEventHistoryBootstrap,
+  getTimerSolveListSummary,
   getEventSolveById,
   getSolveDetailWindow,
   listEventSolveWindow,
@@ -96,7 +97,13 @@ import { getProfile } from "@/lib/actions/profiles"
 import { getSessionDividerGroupsByTimerSession } from "@/lib/actions/timer"
 import { ONBOARDING_TOURS, parseOnboardingTour } from "@/lib/onboarding"
 import type { ShareCardData } from "@/components/share/share-card"
-import type { Solve as StoredSolve, TimerEventAnalytics } from "@/lib/types"
+import type {
+  TimerMilestoneKey,
+  Solve as StoredSolve,
+  TimerEventAnalytics,
+  TimerSavedSessionSummary,
+  TimerSolveListSummary,
+} from "@/lib/types"
 import {
   DEFAULT_COMP_SIM_ROUND_CONFIG,
   normalizeCompSimConfig,
@@ -522,6 +529,61 @@ function summaryToStats(summary: StatsSummary): SolveStats {
   }
 }
 
+function secondsToMs(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null
+  return Math.round(value * 1000)
+}
+
+function buildSavedSessionSummaryStats(summary: TimerSavedSessionSummary | null): SolveStats | null {
+  if (!summary) return null
+  return {
+    best: secondsToMs(summary.best_single_seconds),
+    mean: secondsToMs(summary.mean_seconds),
+    milestoneRows: MILESTONES.map((size) => {
+      const key = `ao${size}` as TimerMilestoneKey
+      const value = summary[`best_ao${size}` as keyof TimerSavedSessionSummary]
+      return {
+        key,
+        cur: null,
+        best: secondsToMs(typeof value === "number" ? value : null),
+      }
+    }).filter((row) => row.best !== null),
+    rolling1: [],
+    rolling2: [],
+  }
+}
+
+function mergeExactSummaryStats(params: {
+  fallback: SolveStats
+  exactSummary: TimerSolveListSummary | null
+  preferVisibleCurrent: boolean
+}): SolveStats {
+  const { fallback, exactSummary, preferVisibleCurrent } = params
+  const exactEventSummary = exactSummary?.eventSummary ?? null
+  const exactRows = exactSummary?.milestoneRows ?? []
+  const visibleRowMap = new Map(fallback.milestoneRows.map((row) => [row.key, row]))
+  const exactRowMap = new Map(exactRows.map((row) => [row.key, row]))
+
+  const milestoneRows = MILESTONES.map((size) => {
+    const key = `ao${size}` as TimerMilestoneKey
+    const visibleRow = visibleRowMap.get(key) ?? null
+    const exactRow = exactRowMap.get(key) ?? null
+    return {
+      key,
+      cur: preferVisibleCurrent ? (visibleRow?.cur ?? exactRow?.cur ?? null) : (exactRow?.cur ?? visibleRow?.cur ?? null),
+      best: exactRow?.best ?? visibleRow?.best ?? null,
+    }
+  }).filter((row) => row.cur !== null || row.best !== null)
+
+  return {
+    best: exactEventSummary?.best_single_ms ?? fallback.best,
+    mean: exactEventSummary?.mean_ms ?? fallback.mean,
+    milestoneRows,
+    rolling1: fallback.rolling1,
+    rolling2: fallback.rolling2,
+  }
+}
+
 function toChartSolve(solve: Solve, eventId: string, solveNumber: number): StoredSolve {
   const timestamp = solve.solved_at ?? new Date(1704067200000 + solveNumber * 1000).toISOString()
   return {
@@ -736,6 +798,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const [detailSolveOverride, setDetailSolveOverride] = useState<Solve | null>(null)
   const [allTimeAnalytics, setAllTimeAnalytics] = useState<TimerEventAnalytics | null>(null)
   const [allTimeAnalyticsEvent, setAllTimeAnalyticsEvent] = useState<string | null>(null)
+  const [solveListSummary, setSolveListSummary] = useState<TimerSolveListSummary | null>(null)
+  const [solveListSummaryEvent, setSolveListSummaryEvent] = useState<string | null>(null)
+  const [solveListSummaryError, setSolveListSummaryError] = useState<string | null>(null)
   const [stats, setStats] = useState<SolveStats>(() => computeStatsSync([], ["ao5", "ao12"]))
   const [sessionGroups, setSessionGroups] = useState<SessionGroupMeta[]>([])
   const [historyRetrySeed, setHistoryRetrySeed] = useState(0)
@@ -881,16 +946,23 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
   useEffect(() => {
     let cancelled = false
-    void getEventAnalytics(event)
-      .then((result) => {
+    setSolveListSummaryError(null)
+    void Promise.all([getEventAnalytics(event), getTimerSolveListSummary(event)])
+      .then(([analyticsResult, solveListSummaryResult]) => {
         if (cancelled) return
-        setAllTimeAnalytics(result.data)
+        setAllTimeAnalytics(analyticsResult.data)
         setAllTimeAnalyticsEvent(event)
+        setSolveListSummary(solveListSummaryResult.data)
+        setSolveListSummaryEvent(event)
+        setSolveListSummaryError(solveListSummaryResult.error ?? null)
       })
       .catch(() => {
         if (cancelled) return
         setAllTimeAnalytics(null)
         setAllTimeAnalyticsEvent(event)
+        setSolveListSummary(null)
+        setSolveListSummaryEvent(event)
+        setSolveListSummaryError("Failed to load exact timer summary.")
       })
     return () => {
       cancelled = true
@@ -973,11 +1045,14 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const shortcutSolveRef = useRef<Solve | null>(null)
 
   const refreshAllTimeAnalytics = useCallback((eventId: string) => {
-    void getEventAnalytics(eventId)
-      .then((result) => {
+    void Promise.all([getEventAnalytics(eventId), getTimerSolveListSummary(eventId)])
+      .then(([analyticsResult, solveListSummaryResult]) => {
         if (eventRef.current !== eventId) return
-        setAllTimeAnalytics(result.data)
+        setAllTimeAnalytics(analyticsResult.data)
         setAllTimeAnalyticsEvent(eventId)
+        setSolveListSummary(solveListSummaryResult.data)
+        setSolveListSummaryEvent(eventId)
+        setSolveListSummaryError(solveListSummaryResult.error ?? null)
       })
       .catch(() => {})
   }, [])
@@ -1180,7 +1255,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     () => (showAllStatsInList ? computeStatsSync(solves, statCols) : null),
     [showAllStatsInList, solves, statCols]
   )
-  const panelStats = showAllStatsInList && loadedHistoryStats ? loadedHistoryStats : stats
+  const visibleListStats = showAllStatsInList && loadedHistoryStats ? loadedHistoryStats : stats
   const panelSavedSolveCount = showAllStatsInList ? 0 : loadedSavedSolveCount
 
   function clearTour() {
@@ -2887,6 +2962,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     return
   }, [detailSolve, detailSolveId])
   const scopedAllTimeAnalytics = allTimeAnalyticsEvent === event ? allTimeAnalytics : null
+  const scopedSolveListSummary = solveListSummaryEvent === event ? solveListSummary : null
   const allTimeBestSingleMs = scopedAllTimeAnalytics?.summary?.best_single_ms ?? null
   const isSolvePersonalBest = useCallback((solve: Solve | null) => {
     if (!solve) return false
@@ -2991,23 +3067,36 @@ export function TimerContent({ viewer }: TimerContentProps) {
     if (!mostRecentGroupId) return []
     return solves.filter((solve) => solve.group === mostRecentGroupId)
   }, [sessionGroups, solves])
+  const savedSessionSummaryStats = useMemo(
+    () => buildSavedSessionSummaryStats(scopedSolveListSummary?.latestSavedSessionSummary ?? null),
+    [scopedSolveListSummary]
+  )
+  const headerSummaryStats = useMemo(
+    () => mergeExactSummaryStats({
+      fallback: visibleListStats,
+      exactSummary: scopedSolveListSummary,
+      preferVisibleCurrent: hasActiveSession || currentSessionSolves.length > 0,
+    }),
+    [currentSessionSolves.length, hasActiveSession, scopedSolveListSummary, visibleListStats]
+  )
   const sessionStatsForPanel = useMemo(
     () =>
       hasActiveSession || currentSessionSolves.length > 0
         ? stats
-        : computeStatsSync(mostRecentSavedSessionSolves, statCols),
+        : savedSessionSummaryStats ?? computeStatsSync(mostRecentSavedSessionSolves, statCols),
     [
       currentSessionSolves.length,
       hasActiveSession,
       mostRecentSavedSessionSolves,
       statCols,
+      savedSessionSummaryStats,
       stats,
     ]
   )
   const sessionSolveCountForPanel =
     hasActiveSession || currentSessionSolves.length > 0
       ? currentSolveCount
-      : mostRecentSavedSessionSolves.length
+      : scopedSolveListSummary?.latestSavedSessionSummary?.solve_count ?? mostRecentSavedSessionSolves.length
 
   const sessionChartSolves = useMemo(() => {
     const source =
@@ -3200,9 +3289,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (phaseRef.current === "running" || engineRef.current.getSnapshot().suppressOptionalUi) {
         return
       }
-      if (next.end >= solvesRef.current.length && hasOlderSavedSolves && !loadingOlderSolves) {
-        void loadOlderSavedSolvePage()
-      }
       setSolveRange((previous) => {
         if (previous.start === next.start && previous.end === next.end) {
           return previous
@@ -3210,7 +3296,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         return next
       })
     },
-    [hasOlderSavedSolves, loadOlderSavedSolvePage, loadingOlderSolves]
+    []
   )
 
   const compSimEntryDialogConfig = (() => {
@@ -3884,7 +3970,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
             rangeEnd={solveRange.end}
             scrollResetKey={event}
             frozen={phase === "running" || engineSnapshot.suppressOptionalUi}
-            stats={panelStats}
+            stats={visibleListStats}
+            summaryStats={headerSummaryStats}
             sessionStats={sessionStatsForPanel}
             statCols={statCols}
             latestSolve={last ?? null}
@@ -3898,6 +3985,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             currentSolveCount={sessionSolveCountForPanel}
             showAllStats={showAllStatsInList}
             textSize={paneTimeTextSize}
+            summaryError={solveListSummaryError}
             historyStatus={historyStatus}
             historyError={historyError}
             hasOlderSolves={hasOlderSavedSolves}
@@ -3912,7 +4000,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onUpdateStatCol={updateStatCol}
             onRangeChange={handleRangeChange}
             onUpdateSavedSessionDuration={updateSavedSessionGroupDuration}
-            onLoadOlderSolves={() => void loadOlderSavedSolvePage()}
+            onLoadOlderSolves={loadOlderSavedSolvePage}
             onRetryHistoryLoad={retryEventHistoryLoad}
           />
 

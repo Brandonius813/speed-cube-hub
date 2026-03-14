@@ -8,6 +8,8 @@ import type { TimerSession, Solve } from "@/lib/types"
 import type { SessionGroupMeta } from "@/lib/timer/session-dividers"
 import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 import {
+  computeFixedMilestoneRows,
+  milestoneRowsToSessionPatch,
   refreshSolveSessionSummary,
   refreshTimerEventAnalytics,
 } from "@/lib/actions/timer-analytics"
@@ -779,6 +781,9 @@ export async function bulkImportSolves(
 
     const avgSolveMs = avgMs ?? 30000
     const durationMinutes = Math.max(1, Math.round((avgSolveMs * solves.length) / 60000))
+    const sessionMilestonePatch = milestoneRowsToSessionPatch(
+      computeFixedMilestoneRows(solves)
+    )
 
     await supabase.from("sessions").insert({
       user_id: user.id,
@@ -790,6 +795,7 @@ export async function bulkImportSolves(
       duration_minutes: durationMinutes,
       avg_time: avgMs ? msToTruncatedSeconds(avgMs) : null,
       best_time: bestMs ? msToTruncatedSeconds(bestMs) : null,
+      ...sessionMilestonePatch,
       timer_session_id: timerSession.id,
       solve_session_id: solveSessionId,
       feed_visible: false,
@@ -895,6 +901,9 @@ export async function finalizeTimerSession(
   const bestTimeSeconds = bestTimeMs
     ? msToTruncatedSeconds(bestTimeMs)
     : null
+  const sessionMilestonePatch = milestoneRowsToSessionPatch(
+    computeFixedMilestoneRows(typedSolves)
+  )
 
   // Today's date in YYYY-MM-DD format (Pacific Time, not UTC)
   const sessionDate = getTodayPacific()
@@ -930,6 +939,7 @@ export async function finalizeTimerSession(
       duration_minutes: durationMinutes,
       avg_time: avgTimeSeconds,
       best_time: bestTimeSeconds,
+      ...sessionMilestonePatch,
       timer_session_id: timerSessionId,
       feed_visible: true,
       title: `${numSolves} solve${numSolves !== 1 ? "s" : ""} — Timer Session`,

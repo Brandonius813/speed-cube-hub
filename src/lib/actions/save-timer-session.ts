@@ -7,6 +7,8 @@ import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 import type { CompSimEndedReason, CompSimFormat, CompSimScene } from "@/lib/timer/comp-sim-round"
 import {
+  computeFixedMilestoneRows,
+  milestoneRowsToSessionPatch,
   refreshSolveSessionSummary,
   refreshTimerEventAnalytics,
 } from "@/lib/actions/timer-analytics"
@@ -123,6 +125,9 @@ export async function saveTimerSession(data: {
   // Convert ms → decimal seconds by truncating to centiseconds.
   const avgSeconds = avgMs ? msToTruncatedSeconds(avgMs) : null
   const bestSeconds = bestMs ? msToTruncatedSeconds(bestMs) : null
+  const sessionMilestonePatch = milestoneRowsToSessionPatch(
+    computeFixedMilestoneRows(data.solves)
+  )
 
   // 4. Create the sessions row (the log entry that appears in feed + stats)
   const { data: session, error: sessionError } = await supabase
@@ -137,6 +142,7 @@ export async function saveTimerSession(data: {
       duration_minutes: durationMinutes,
       avg_time: avgSeconds,
       best_time: bestSeconds,
+      ...sessionMilestonePatch,
       title: data.title || null,
       notes: data.notes || null,
       feed_visible: data.feed_visible,

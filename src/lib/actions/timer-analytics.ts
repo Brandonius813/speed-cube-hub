@@ -6,9 +6,13 @@ import type {
   Solve,
   SolveDailyRollup,
   SolveSessionSummary,
+  TimerMilestoneKey,
+  TimerMilestoneSummaryRow,
   TimerAnalyticsDistributionBucket,
   TimerAnalyticsTrendPoint,
   TimerEventAnalytics,
+  TimerSavedSessionSummary,
+  TimerSolveListSummary,
 } from "@/lib/types"
 
 const SOLVE_SELECT_COLUMNS = [
@@ -36,9 +40,42 @@ const EVENT_SUMMARY_SELECT_COLUMNS = [
   "total_effective_time_ms",
   "best_single_ms",
   "mean_ms",
+  "current_ao5_ms",
+  "best_ao5_ms",
+  "current_ao12_ms",
+  "best_ao12_ms",
+  "current_ao25_ms",
+  "best_ao25_ms",
+  "current_ao50_ms",
+  "best_ao50_ms",
+  "current_ao100_ms",
+  "best_ao100_ms",
+  "current_ao200_ms",
+  "best_ao200_ms",
+  "current_ao500_ms",
+  "best_ao500_ms",
+  "current_ao1000_ms",
+  "best_ao1000_ms",
   "first_solved_at",
   "last_solved_at",
   "updated_at",
+].join(", ")
+
+const SESSION_SUMMARY_SELECT_COLUMNS = [
+  "id",
+  "timer_session_id",
+  "num_solves",
+  "avg_time",
+  "best_time",
+  "best_ao5",
+  "best_ao12",
+  "best_ao25",
+  "best_ao50",
+  "best_ao100",
+  "best_ao200",
+  "best_ao500",
+  "best_ao1000",
+  "created_at",
 ].join(", ")
 
 const SOLVE_SESSION_SUMMARY_SELECT_COLUMNS = [
@@ -72,6 +109,243 @@ const DAILY_ROLLUP_SELECT_COLUMNS = [
 export type SolveWindowCursor = {
   solvedAt: string
   id: string
+}
+
+const FIXED_TIMER_MILESTONE_SIZES = [5, 12, 25, 50, 100, 200, 500, 1000] as const
+
+type FixedMilestoneSize = (typeof FIXED_TIMER_MILESTONE_SIZES)[number]
+type SummarySolveShape = Pick<Solve, "time_ms" | "penalty">
+
+const INFINITY_TIME = Number.POSITIVE_INFINITY
+
+function milestoneKey(size: FixedMilestoneSize): TimerMilestoneKey {
+  return `ao${size}` as TimerMilestoneKey
+}
+
+function eventCurrentField(size: FixedMilestoneSize): keyof EventSummary {
+  return `current_ao${size}_ms` as keyof EventSummary
+}
+
+function eventBestField(size: FixedMilestoneSize): keyof EventSummary {
+  return `best_ao${size}_ms` as keyof EventSummary
+}
+
+function sessionBestField(size: FixedMilestoneSize): keyof TimerSavedSessionSummary {
+  return `best_ao${size}` as keyof TimerSavedSessionSummary
+}
+
+function effectiveSolveMs(solve: SummarySolveShape): number {
+  if (solve.penalty === "DNF") return INFINITY_TIME
+  return solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
+}
+
+function insertSorted(sorted: number[], value: number): void {
+  let low = 0
+  let high = sorted.length
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (sorted[mid] <= value) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  sorted.splice(low, 0, value)
+}
+
+function removeSorted(sorted: number[], value: number): void {
+  let low = 0
+  let high = sorted.length
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (sorted[mid] < value) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  if (sorted[low] === value) {
+    sorted.splice(low, 1)
+  }
+}
+
+function computeAverageFromSortedWindow(sorted: number[]): number | null {
+  let dnfCount = 0
+  for (let index = sorted.length - 1; index >= 0 && !Number.isFinite(sorted[index]); index--) {
+    dnfCount += 1
+    if (dnfCount > 1) return null
+  }
+
+  let sum = 0
+  for (let index = 1; index < sorted.length - 1; index += 1) {
+    const value = sorted[index]
+    if (!Number.isFinite(value)) return null
+    sum += value
+  }
+
+  return Math.round(sum / (sorted.length - 2))
+}
+
+export function computeFixedMilestoneRows(
+  solves: SummarySolveShape[]
+): TimerMilestoneSummaryRow[] {
+  if (solves.length === 0) return []
+
+  const effectiveTimes = solves.map(effectiveSolveMs)
+
+  return FIXED_TIMER_MILESTONE_SIZES
+    .filter((size) => effectiveTimes.length >= size)
+    .map((size) => {
+      const sortedWindow = effectiveTimes.slice(0, size).sort((a, b) => a - b)
+      let current = computeAverageFromSortedWindow(sortedWindow)
+      let best = current
+
+      for (let index = size; index < effectiveTimes.length; index += 1) {
+        removeSorted(sortedWindow, effectiveTimes[index - size])
+        insertSorted(sortedWindow, effectiveTimes[index])
+        current = computeAverageFromSortedWindow(sortedWindow)
+        if (current !== null && (best === null || current < best)) {
+          best = current
+        }
+      }
+
+      return {
+        key: milestoneKey(size),
+        cur: current,
+        best,
+      }
+    })
+}
+
+function milestoneRowsToEventPatch(
+  rows: TimerMilestoneSummaryRow[]
+): Record<string, number | null> {
+  const patch: Record<string, number | null> = {}
+  for (const size of FIXED_TIMER_MILESTONE_SIZES) {
+    const row = rows.find((candidate) => candidate.key === milestoneKey(size)) ?? null
+    patch[`current_ao${size}_ms`] = row?.cur ?? null
+    patch[`best_ao${size}_ms`] = row?.best ?? null
+  }
+  return patch
+}
+
+export function milestoneRowsToSessionPatch(
+  rows: TimerMilestoneSummaryRow[]
+): Record<string, number | null> {
+  const patch: Record<string, number | null> = {}
+  for (const size of FIXED_TIMER_MILESTONE_SIZES) {
+    const row = rows.find((candidate) => candidate.key === milestoneKey(size)) ?? null
+    patch[`best_ao${size}`] = row?.best !== null && row?.best !== undefined
+      ? Math.max(0, Math.trunc(row.best / 10)) / 100
+      : null
+  }
+  return patch
+}
+
+function buildEventSummaryMilestoneRows(summary: EventSummary | null): TimerMilestoneSummaryRow[] {
+  if (!summary) return []
+  return FIXED_TIMER_MILESTONE_SIZES.map((size) => ({
+    key: milestoneKey(size),
+    cur: (summary[eventCurrentField(size)] as number | null) ?? null,
+    best: (summary[eventBestField(size)] as number | null) ?? null,
+  })).filter((row) => row.cur !== null || row.best !== null)
+}
+
+function needsEventSummaryMilestoneBackfill(summary: EventSummary | null): boolean {
+  if (!summary) return true
+  return FIXED_TIMER_MILESTONE_SIZES.some((size) => (
+    summary.solve_count >= size &&
+    (
+      summary[eventCurrentField(size)] === null ||
+      summary[eventBestField(size)] === null
+    )
+  ))
+}
+
+function needsSessionMilestoneBackfill(summary: TimerSavedSessionSummary | null): boolean {
+  if (!summary) return false
+  return FIXED_TIMER_MILESTONE_SIZES.some((size) => (
+    summary.solve_count >= size &&
+    summary[sessionBestField(size)] === null
+  ))
+}
+
+async function refreshEventSummaryMilestones(params: {
+  userId: string
+  event: string
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const { error: refreshError } = await supabase.rpc("refresh_timer_event_analytics", {
+    p_user_id: params.userId,
+    p_event: params.event,
+  })
+
+  if (refreshError) {
+    return { error: refreshError.message }
+  }
+
+  const { data: orderedSolves, error: solvesError } = await supabase
+    .from("solves")
+    .select("time_ms, penalty")
+    .eq("user_id", params.userId)
+    .eq("event", params.event)
+    .order("solved_at", { ascending: true })
+    .order("id", { ascending: true })
+
+  if (solvesError) {
+    return { error: solvesError.message }
+  }
+
+  const milestonePatch = milestoneRowsToEventPatch(
+    computeFixedMilestoneRows(((orderedSolves as SummarySolveShape[] | null) ?? []))
+  )
+
+  const { error: updateError } = await supabase
+    .from("event_summaries")
+    .update(milestonePatch)
+    .eq("user_id", params.userId)
+    .eq("event", params.event)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  return {}
+}
+
+async function backfillLatestSessionMilestones(params: {
+  userId: string
+  sessionId: string
+  timerSessionId: string
+}): Promise<Record<string, number | null> | null> {
+  const supabase = await createClient()
+  const { data: solves, error } = await supabase
+    .from("solves")
+    .select("time_ms, penalty")
+    .eq("user_id", params.userId)
+    .eq("timer_session_id", params.timerSessionId)
+    .order("solve_number", { ascending: true })
+
+  if (error) {
+    return null
+  }
+
+  const patch = milestoneRowsToSessionPatch(
+    computeFixedMilestoneRows(((solves as SummarySolveShape[] | null) ?? []))
+  )
+
+  const { error: updateError } = await supabase
+    .from("sessions")
+    .update(patch)
+    .eq("id", params.sessionId)
+    .eq("user_id", params.userId)
+
+  if (updateError) {
+    return null
+  }
+
+  return patch
 }
 
 function labelDate(date: Date): string {
@@ -185,16 +459,7 @@ export async function refreshTimerEventAnalytics(event: string): Promise<{ error
     return { error: "Not authenticated" }
   }
 
-  const { error } = await supabase.rpc("refresh_timer_event_analytics", {
-    p_user_id: user.id,
-    p_event: event,
-  })
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  return {}
+  return refreshEventSummaryMilestones({ userId: user.id, event })
 }
 
 export async function refreshSolveSessionSummary(
@@ -522,6 +787,116 @@ export async function getEventAnalytics(event: string): Promise<{
       daily: typedDaily,
       trend: buildTrendPoints(typedDaily),
       distribution: typedDistribution,
+    },
+  }
+}
+
+export async function getTimerSolveListSummary(event: string): Promise<{
+  data: TimerSolveListSummary | null
+  error?: string
+}> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { data: null, error: "Not authenticated" }
+  }
+
+  const { data: eventSummary, error: eventSummaryError } = await supabase
+    .from("event_summaries")
+    .select(EVENT_SUMMARY_SELECT_COLUMNS)
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .maybeSingle()
+
+  if (eventSummaryError) {
+    return { data: null, error: eventSummaryError.message }
+  }
+
+  let typedEventSummary = (eventSummary as EventSummary | null) ?? null
+  if (needsEventSummaryMilestoneBackfill(typedEventSummary)) {
+    const refreshResult = await refreshEventSummaryMilestones({ userId: user.id, event })
+    if (refreshResult.error) {
+      return { data: null, error: refreshResult.error }
+    }
+
+    const refreshed = await supabase
+      .from("event_summaries")
+      .select(EVENT_SUMMARY_SELECT_COLUMNS)
+      .eq("user_id", user.id)
+      .eq("event", event)
+      .maybeSingle()
+
+    if (refreshed.error) {
+      return { data: null, error: refreshed.error.message }
+    }
+
+    typedEventSummary = (refreshed.data as EventSummary | null) ?? null
+  }
+
+  const latestSessionResult = await supabase
+    .from("sessions")
+    .select(SESSION_SUMMARY_SELECT_COLUMNS)
+    .eq("user_id", user.id)
+    .eq("event", event)
+    .not("timer_session_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latestSessionResult.error) {
+    return { data: null, error: latestSessionResult.error.message }
+  }
+
+  const latestSessionRow = (latestSessionResult.data as Record<string, unknown> | null) ?? null
+  let latestSavedSessionSummary: TimerSavedSessionSummary | null = latestSessionRow
+    ? {
+        id: latestSessionRow.id as string,
+        timer_session_id: latestSessionRow.timer_session_id as string,
+        solve_count: (latestSessionRow.num_solves as number | null) ?? 0,
+        mean_seconds: (latestSessionRow.avg_time as number | null) ?? null,
+        best_single_seconds: (latestSessionRow.best_time as number | null) ?? null,
+        best_ao5: (latestSessionRow.best_ao5 as number | null) ?? null,
+        best_ao12: (latestSessionRow.best_ao12 as number | null) ?? null,
+        best_ao25: (latestSessionRow.best_ao25 as number | null) ?? null,
+        best_ao50: (latestSessionRow.best_ao50 as number | null) ?? null,
+        best_ao100: (latestSessionRow.best_ao100 as number | null) ?? null,
+        best_ao200: (latestSessionRow.best_ao200 as number | null) ?? null,
+        best_ao500: (latestSessionRow.best_ao500 as number | null) ?? null,
+        best_ao1000: (latestSessionRow.best_ao1000 as number | null) ?? null,
+        created_at: latestSessionRow.created_at as string,
+      }
+    : null
+
+  if (needsSessionMilestoneBackfill(latestSavedSessionSummary)) {
+    const patch = await backfillLatestSessionMilestones({
+      userId: user.id,
+      sessionId: latestSavedSessionSummary!.id,
+      timerSessionId: latestSavedSessionSummary!.timer_session_id,
+    })
+
+    if (patch) {
+      latestSavedSessionSummary = {
+        ...latestSavedSessionSummary!,
+        best_ao5: patch.best_ao5 ?? null,
+        best_ao12: patch.best_ao12 ?? null,
+        best_ao25: patch.best_ao25 ?? null,
+        best_ao50: patch.best_ao50 ?? null,
+        best_ao100: patch.best_ao100 ?? null,
+        best_ao200: patch.best_ao200 ?? null,
+        best_ao500: patch.best_ao500 ?? null,
+        best_ao1000: patch.best_ao1000 ?? null,
+      }
+    }
+  }
+
+  return {
+    data: {
+      eventSummary: typedEventSummary,
+      latestSavedSessionSummary,
+      milestoneRows: buildEventSummaryMilestoneRows(typedEventSummary),
     },
   }
 }

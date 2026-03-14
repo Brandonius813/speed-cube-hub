@@ -70,6 +70,7 @@ interface SolveListPanelProps {
   scrollResetKey: string
   frozen?: boolean
   stats: SolveStats
+  summaryStats: SolveStats
   sessionStats: SolveStats
   statCols: [string, string]
   latestSolve: Solve | null
@@ -83,6 +84,7 @@ interface SolveListPanelProps {
   currentSolveCount?: number
   showAllStats?: boolean
   textSize?: SolveListTextSize
+  summaryError?: string | null
   historyStatus?: TimerHistoryStatus
   historyError?: string | null
   hasOlderSolves?: boolean
@@ -97,7 +99,7 @@ interface SolveListPanelProps {
   onUpdateStatCol: (idx: 0 | 1, key: string) => void
   onRangeChange: (next: { start: number; end: number }) => void
   onUpdateSavedSessionDuration?: (groupId: string, durationMinutes: number) => void
-  onLoadOlderSolves?: () => void
+  onLoadOlderSolves?: () => Promise<void> | void
   onRetryHistoryLoad?: () => void
 }
 
@@ -198,6 +200,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   scrollResetKey,
   frozen = false,
   stats,
+  summaryStats,
   sessionStats,
   statCols,
   latestSolve,
@@ -211,6 +214,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   currentSolveCount,
   showAllStats = false,
   textSize = "md",
+  summaryError = null,
   historyStatus = "ready",
   historyError = null,
   hasOlderSolves = false,
@@ -230,8 +234,11 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
 }, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
+  const footerSentinelRef = useRef<HTMLDivElement | null>(null)
   const rangeRef = useRef({ start: -1, end: -1 })
   const pendingScrollTopRef = useRef<number | null>(null)
+  const pendingAnchorRef = useRef<{ solveId: string; offsetTop: number } | null>(null)
+  const olderLoadPromiseRef = useRef<Promise<void> | null>(null)
   const [openSessionStats, setOpenSessionStats] = useState<DividerLabel | null>(null)
   const sortedBoundaries = useMemo(
     () =>
@@ -282,6 +289,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
 
   useEffect(() => {
     rangeRef.current = { start: -1, end: -1 }
+    pendingAnchorRef.current = null
+    olderLoadPromiseRef.current = null
     if (!listRef.current) return
     listRef.current.scrollTop = 0
     emitRange()
@@ -311,6 +320,103 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
       window.removeEventListener("resize", onResize)
     }
   }, [emitRange])
+
+  const captureVisibleAnchor = useCallback(() => {
+    const container = listRef.current
+    if (!container) return null
+
+    const containerTop = container.getBoundingClientRect().top
+    const rowElements = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-solve-row='true']")
+    )
+
+    for (const rowElement of rowElements) {
+      const rect = rowElement.getBoundingClientRect()
+      if (rect.bottom <= containerTop) continue
+      const solveId = rowElement.dataset.solveId
+      if (!solveId) continue
+      return {
+        solveId,
+        offsetTop: rect.top - containerTop,
+      }
+    }
+
+    return null
+  }, [])
+
+  const loadOlderWithAnchor = useCallback(() => {
+    if (
+      frozen ||
+      !hasOlderSolves ||
+      isLoadingOlderSolves ||
+      !onLoadOlderSolves ||
+      olderLoadPromiseRef.current
+    ) {
+      return
+    }
+
+    pendingAnchorRef.current = captureVisibleAnchor()
+    const loadPromise = Promise.resolve(onLoadOlderSolves())
+      .catch(() => {})
+      .finally(() => {
+        olderLoadPromiseRef.current = null
+      })
+
+    olderLoadPromiseRef.current = loadPromise
+  }, [
+    captureVisibleAnchor,
+    frozen,
+    hasOlderSolves,
+    isLoadingOlderSolves,
+    onLoadOlderSolves,
+  ])
+
+  useLayoutEffect(() => {
+    const anchor = pendingAnchorRef.current
+    const container = listRef.current
+    if (!anchor || !container) return
+
+    const rowElement = container.querySelector<HTMLElement>(
+      `[data-solve-id="${anchor.solveId}"]`
+    )
+    if (!rowElement) return
+
+    const containerTop = container.getBoundingClientRect().top
+    const rowTop = rowElement.getBoundingClientRect().top - containerTop
+    container.scrollTop += rowTop - anchor.offsetTop
+    pendingAnchorRef.current = null
+    emitRange()
+  }, [emitRange, loadedCount, rows])
+
+  useEffect(() => {
+    const container = listRef.current
+    const sentinel = footerSentinelRef.current
+    if (
+      !container ||
+      !sentinel ||
+      typeof IntersectionObserver === "undefined" ||
+      !hasOlderSolves ||
+      frozen
+    ) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0]
+        if (!firstEntry?.isIntersecting) return
+        loadOlderWithAnchor()
+      },
+      {
+        root: container,
+        rootMargin: "0px 0px 160px 0px",
+        threshold: 0,
+      }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [frozen, hasOlderSolves, loadOlderWithAnchor, rows.length])
 
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
@@ -406,10 +512,10 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             <tr>
               <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>single</td>
               <td className={cn("text-right pr-2 font-mono text-foreground font-medium", textClasses.summaryValue)}>{last ? fmtSolve(last) : "—"}</td>
-              <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(stats.best)}</td>
+              <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(summaryStats.best)}</td>
               <td className={cn("text-right font-mono text-foreground", textClasses.summaryValue)}>{D(sessionStats.best)}</td>
             </tr>
-            {stats.milestoneRows.map((row) => (
+            {summaryStats.milestoneRows.map((row) => (
               <tr key={row.key}>
                 <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>{row.key}</td>
                 <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(row.cur)}</td>
@@ -442,11 +548,16 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                 all-time mean:
               </span>{" "}
               <span className={cn("font-mono text-foreground", textClasses.footerValue)}>
-                {D(stats.mean)}
+                {D(summaryStats.mean)}
               </span>
             </div>
           </div>
         </div>
+        {summaryError && (
+          <p className="mt-2 text-center text-[11px] font-sans text-muted-foreground">
+            Top summary is using loaded solves while exact totals refresh.
+          </p>
+        )}
         {selectedSolve && (
           <div className="mt-2.5 flex gap-2">
             <button
@@ -604,6 +715,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                       </tr>
                     )}
                     <tr
+                      data-solve-row="true"
+                      data-solve-id={row.solve.id}
                       className={cn(
                         "hover:bg-muted/30 transition-colors cursor-pointer",
                         selectedId === row.solve.id && "bg-muted/40"
@@ -679,26 +792,36 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                   <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
                 </tr>
               )}
-              {historyError && historyStatus === "ready" && (
+              <tr aria-hidden="true">
+                <td colSpan={4} className="px-3 py-1">
+                  <div ref={footerSentinelRef} className="h-px w-full" />
+                </td>
+              </tr>
+              {isLoadingOlderSolves && (
                 <tr>
-                  <td colSpan={4} className="px-3 pt-3">
-                    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground">
-                      {historyError}
+                  <td colSpan={4} className="px-3 py-3">
+                    <div className="flex items-center justify-center gap-2 text-xs font-sans uppercase tracking-wider text-muted-foreground">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border border-primary/30 border-t-primary" />
+                      Loading older solves...
                     </div>
                   </td>
                 </tr>
               )}
-              {hasOlderSolves && (
+              {historyError && historyStatus === "ready" && !isLoadingOlderSolves && (
                 <tr>
                   <td colSpan={4} className="px-3 py-3">
-                    <button
-                      type="button"
-                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60"
-                      onClick={() => onLoadOlderSolves?.()}
-                      disabled={isLoadingOlderSolves}
-                    >
-                      {isLoadingOlderSolves ? "Loading older solves..." : "Load older solves"}
-                    </button>
+                    <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs text-foreground">
+                      <p>{historyError}</p>
+                      {hasOlderSolves && onLoadOlderSolves && (
+                        <button
+                          type="button"
+                          className="rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs font-sans uppercase tracking-wider text-foreground transition-colors hover:bg-secondary/50"
+                          onClick={() => loadOlderWithAnchor()}
+                        >
+                          Retry older solves
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

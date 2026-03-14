@@ -59,6 +59,14 @@ export type Session = {
   duration_minutes: number;
   avg_time: number | null;
   best_time: number | null;
+  best_ao5?: number | null;
+  best_ao12?: number | null;
+  best_ao25?: number | null;
+  best_ao50?: number | null;
+  best_ao100?: number | null;
+  best_ao200?: number | null;
+  best_ao500?: number | null;
+  best_ao1000?: number | null;
   title: string | null;
   notes: string | null;
   feed_visible?: boolean;
@@ -325,6 +333,22 @@ export type SolveSessionSummary = {
   updated_at: string;
 };
 
+export type TimerMilestoneKey =
+  | "ao5"
+  | "ao12"
+  | "ao25"
+  | "ao50"
+  | "ao100"
+  | "ao200"
+  | "ao500"
+  | "ao1000";
+
+export type TimerMilestoneSummaryRow = {
+  key: TimerMilestoneKey;
+  cur: number | null;
+  best: number | null;
+};
+
 export type EventSummary = {
   user_id: string;
   event: string;
@@ -334,9 +358,48 @@ export type EventSummary = {
   total_effective_time_ms: number;
   best_single_ms: number | null;
   mean_ms: number | null;
+  current_ao5_ms: number | null;
+  best_ao5_ms: number | null;
+  current_ao12_ms: number | null;
+  best_ao12_ms: number | null;
+  current_ao25_ms: number | null;
+  best_ao25_ms: number | null;
+  current_ao50_ms: number | null;
+  best_ao50_ms: number | null;
+  current_ao100_ms: number | null;
+  best_ao100_ms: number | null;
+  current_ao200_ms: number | null;
+  best_ao200_ms: number | null;
+  current_ao500_ms: number | null;
+  best_ao500_ms: number | null;
+  current_ao1000_ms: number | null;
+  best_ao1000_ms: number | null;
   first_solved_at: string | null;
   last_solved_at: string | null;
   updated_at: string;
+};
+
+export type TimerSavedSessionSummary = {
+  id: string;
+  timer_session_id: string;
+  solve_count: number;
+  mean_seconds: number | null;
+  best_single_seconds: number | null;
+  best_ao5: number | null;
+  best_ao12: number | null;
+  best_ao25: number | null;
+  best_ao50: number | null;
+  best_ao100: number | null;
+  best_ao200: number | null;
+  best_ao500: number | null;
+  best_ao1000: number | null;
+  created_at: string;
+};
+
+export type TimerSolveListSummary = {
+  eventSummary: EventSummary | null;
+  latestSavedSessionSummary: TimerSavedSessionSummary | null;
+  milestoneRows: TimerMilestoneSummaryRow[];
 };
 
 export type SolveDailyRollup = {
