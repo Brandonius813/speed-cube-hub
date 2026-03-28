@@ -12,7 +12,7 @@ type UseAutoSessionOptions = {
   solveCount: number
   timingActive: boolean
   practiceType: string
-  onStartSession: () => void
+  onStartSession: (opts?: { includePriorSolves?: number }) => void
   onEndSession: () => void
 }
 
@@ -105,7 +105,7 @@ export function useAutoSession({
       prev === 0 &&
       solveCount === 1
     ) {
-      onStartRef.current()
+      onStartRef.current({ includePriorSolves: 1 })
     }
   }, [solveCount, autoStartEnabled, hasActiveSession, practiceType])
 

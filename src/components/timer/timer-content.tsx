@@ -2146,10 +2146,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }, 1300)
   }
 
-  function startSession() {
+  function startSession(opts?: { includePriorSolves?: number }) {
     if (practiceTypeRef.current === "Comp Sim") return
     const unsavedSolveCount = getTrailingUnsavedSolves(solvesRef.current).length
-    sessionSolveStartIndexRef.current = unsavedSolveCount
+    const startIndex = Math.max(0, unsavedSolveCount - (opts?.includePriorSolves ?? 0))
+    sessionSolveStartIndexRef.current = startIndex
     setSessionStartTime(Date.now())
     setSessionElapsed(0)
     setSessionPaused(false)
@@ -2157,7 +2158,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     sessionPausedMsRef.current = 0
     pausedAtRef.current = null
     try {
-      localStorage.setItem(SESSION_START_SOLVE_INDEX_KEY, String(unsavedSolveCount))
+      localStorage.setItem(SESSION_START_SOLVE_INDEX_KEY, String(startIndex))
       localStorage.removeItem(SESSION_PAUSED_MS_KEY)
       localStorage.removeItem(SESSION_PAUSED_KEY)
       localStorage.removeItem(SESSION_PAUSED_AT_KEY)
@@ -4307,7 +4308,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
               ) : (
                 <button
                   className="w-full px-4 py-3 text-sm font-semibold text-left text-white transition-all hover:brightness-110 bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
-                  onClick={startSession}
+                  onClick={() => startSession()}
                 >
                   {sessionSaved ? (
                     <span className="text-white">Session saved! Start another</span>
