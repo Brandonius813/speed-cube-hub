@@ -84,7 +84,8 @@ interface SolveListPanelProps {
   currentSolveCount?: number
   showAllStats?: boolean
   textSize?: SolveListTextSize
-  summaryError?: string | null
+  eventDnfCount?: number | null
+  unsavedDnfCount?: number
   historyStatus?: TimerHistoryStatus
   historyError?: string | null
   hasOlderSolves?: boolean
@@ -214,7 +215,8 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   currentSolveCount,
   showAllStats = false,
   textSize = "md",
-  summaryError = null,
+  eventDnfCount = null,
+  unsavedDnfCount = 0,
   historyStatus = "ready",
   historyError = null,
   hasOlderSolves = false,
@@ -421,7 +423,9 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   const topSpacer = getPrefixHeight(rangeStart)
   const bottomSpacer = Math.max(0, totalHeight - getPrefixHeight(rangeEnd))
   const last = latestSolve
-  const countDisplay = `${currentSolveCount ?? totalSolveCount}/${totalSolveCount}`
+  const totalDnfCount = eventDnfCount != null ? eventDnfCount + unsavedDnfCount : null
+  const validSolveCount = totalDnfCount != null ? totalSolveCount - totalDnfCount : totalSolveCount
+  const countDisplay = `${validSolveCount}/${totalSolveCount}`
   const [isEditingSessionDuration, setIsEditingSessionDuration] = useState(false)
   const [sessionDurationInput, setSessionDurationInput] = useState("")
   const [sessionDurationError, setSessionDurationError] = useState<string | null>(null)
@@ -553,11 +557,6 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             </div>
           </div>
         </div>
-        {summaryError && (
-          <p className="mt-2 text-center text-[11px] font-sans text-muted-foreground">
-            Top summary is using loaded solves while exact totals refresh.
-          </p>
-        )}
         {selectedSolve && (
           <div className="mt-2.5 flex gap-2">
             <button

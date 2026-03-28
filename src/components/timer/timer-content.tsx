@@ -111,6 +111,7 @@ import {
   type CompSimRoundConfig,
 } from "@/lib/timer/comp-sim-round"
 import { useSolveClock } from "@/components/timer/use-solve-clock"
+import { useAutoSession } from "@/components/timer/use-auto-session"
 
 const EndSessionModal = dynamic(
   () =>
@@ -715,6 +716,30 @@ export function TimerContent({ viewer }: TimerContentProps) {
         : DEFAULT_HOLD_MS
     } catch {
       return DEFAULT_HOLD_MS
+    }
+  })
+  const [autoSessionEnabled, setAutoSessionEnabled] = useState(() => {
+    try {
+      const raw = localStorage.getItem("timer-auto-session")
+      return raw === null ? true : raw === "true"
+    } catch {
+      return true
+    }
+  })
+  const [autoStopEnabled, setAutoStopEnabled] = useState(() => {
+    try {
+      const raw = localStorage.getItem("timer-auto-stop")
+      return raw === null ? true : raw === "true"
+    } catch {
+      return true
+    }
+  })
+  const [idleTimeoutMin, setIdleTimeoutMin] = useState(() => {
+    try {
+      const raw = Number(localStorage.getItem("timer-idle-timeout-min"))
+      return [5, 10, 15, 30].includes(raw) ? raw : 10
+    } catch {
+      return 10
     }
   })
   const [typeVal, setTypeVal] = useState("")
@@ -2986,6 +3011,11 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }, [detailSolve, detailSolveId])
   const scopedAllTimeAnalytics = allTimeAnalyticsEvent === event ? allTimeAnalytics : null
   const scopedSolveListSummary = solveListSummaryEvent === event ? solveListSummary : null
+  const eventDnfCount = scopedSolveListSummary?.eventSummary?.dnf_count ?? null
+  const unsavedDnfCount = useMemo(
+    () => unsavedSolves.filter((s) => s.penalty === "DNF").length,
+    [unsavedSolves]
+  )
   const allTimeBestSingleMs = scopedAllTimeAnalytics?.summary?.best_single_ms ?? null
   const isSolvePersonalBest = useCallback((solve: Solve | null) => {
     if (!solve) return false
@@ -3233,6 +3263,24 @@ export function TimerContent({ viewer }: TimerContentProps) {
   useScreenWakeLock({
     enabled: wakeLockEnabled,
     context: "main_timer",
+  })
+
+  const {
+    idleWarningSecondsLeft,
+    dismissIdleWarning,
+    autoStopReason,
+    clearAutoStopReason,
+  } = useAutoSession({
+    autoStartEnabled: autoSessionEnabled,
+    autoStopEnabled,
+    idleTimeoutMin,
+    hasActiveSession,
+    sessionPaused,
+    solveCount: currentSolveCount,
+    timingActive,
+    practiceType,
+    onStartSession: startSession,
+    onEndSession: endSession,
   })
 
   const paneContext = useMemo(
@@ -3785,6 +3833,64 @@ export function TimerContent({ viewer }: TimerContentProps) {
                         ))}
                       </div>
                     </div>
+                    <div className="my-1 border-t border-border" />
+                    <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Sessions
+                    </div>
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                      onClick={() => {
+                        const next = !autoSessionEnabled
+                        setAutoSessionEnabled(next)
+                        try { localStorage.setItem("timer-auto-session", String(next)) } catch {}
+                      }}
+                    >
+                      <span className="text-foreground">Auto-Start Sessions</span>
+                      <span className={cn("font-mono text-[12px]", autoSessionEnabled ? "text-primary font-medium" : "text-muted-foreground")}>
+                        {autoSessionEnabled ? "On" : "Off"}
+                      </span>
+                    </button>
+                    <button
+                      className={cn("w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors", !autoSessionEnabled && "opacity-40 cursor-not-allowed")}
+                      onClick={() => {
+                        if (!autoSessionEnabled) return
+                        const next = !autoStopEnabled
+                        setAutoStopEnabled(next)
+                        try { localStorage.setItem("timer-auto-stop", String(next)) } catch {}
+                      }}
+                      disabled={!autoSessionEnabled}
+                    >
+                      <span className="text-foreground">Auto-Stop on Idle</span>
+                      <span className={cn("font-mono text-[12px]", autoStopEnabled && autoSessionEnabled ? "text-primary font-medium" : "text-muted-foreground")}>
+                        {autoStopEnabled ? "On" : "Off"}
+                      </span>
+                    </button>
+                    {autoSessionEnabled && autoStopEnabled && (
+                      <div className="px-3 py-2 space-y-1.5">
+                        <span className="block text-[11px] font-medium text-foreground">
+                          Idle Timeout
+                        </span>
+                        <div className="grid grid-cols-4 gap-1">
+                          {([5, 10, 15, 30] as const).map((min) => (
+                            <button
+                              key={min}
+                              className={cn(
+                                "h-7 rounded border text-[11px] font-medium transition-colors",
+                                idleTimeoutMin === min
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                              onClick={() => {
+                                setIdleTimeoutMin(min)
+                                try { localStorage.setItem("timer-idle-timeout-min", String(min)) } catch {}
+                              }}
+                            >
+                              {min}m
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {practiceType !== "Comp Sim" && (
                       <>
                         <div className="my-1 border-t border-border" />
@@ -4020,7 +4126,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
             currentSolveCount={sessionSolveCountForPanel}
             showAllStats={showAllStatsInList}
             textSize={paneTimeTextSize}
-            summaryError={solveListSummaryError}
+            eventDnfCount={eventDnfCount}
+            unsavedDnfCount={unsavedDnfCount}
             historyStatus={historyStatus}
             historyError={historyError}
             hasOlderSolves={hasOlderSavedSolves}
@@ -4207,7 +4314,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   ) : (
                     <span className="inline-flex items-center gap-2 whitespace-nowrap">
                       <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
-                      Start Session
+                      {autoSessionEnabled ? "Start Session (or just start solving)" : "Start Session"}
                     </span>
                   )}
                 </button>
@@ -4221,6 +4328,26 @@ export function TimerContent({ viewer }: TimerContentProps) {
         <div className="pointer-events-none fixed left-1/2 top-16 z-[70] -translate-x-1/2 px-4">
           <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/15 px-3 py-2 text-xs font-semibold text-yellow-300 shadow-lg backdrop-blur-sm">
             {pausedAttemptMessage}
+          </div>
+        </div>
+      )}
+
+      {idleWarningSecondsLeft !== null && (
+        <div className="fixed left-1/2 top-16 z-[70] -translate-x-1/2 px-4">
+          <div className="flex items-center gap-3 rounded-lg border border-orange-500/50 bg-orange-500/15 px-4 py-2.5 text-xs font-semibold text-orange-300 shadow-lg backdrop-blur-sm">
+            <span>
+              Session ending in{" "}
+              <span className="font-mono">
+                {Math.floor(idleWarningSecondsLeft / 60)}:{String(idleWarningSecondsLeft % 60).padStart(2, "0")}
+              </span>
+              {" "}due to inactivity
+            </span>
+            <button
+              className="rounded-md border border-orange-400/50 bg-orange-500/20 px-2.5 py-1 text-[11px] font-semibold text-orange-200 transition-colors hover:bg-orange-500/30"
+              onClick={dismissIdleWarning}
+            >
+              Stay active
+            </button>
           </div>
         </div>
       )}
@@ -4250,13 +4377,21 @@ export function TimerContent({ viewer }: TimerContentProps) {
             (Date.now() - activeSessionStartMs - sessionPausedMsRef.current) / 1000 / 60
           }
           sessionStartMs={activeSessionStartMs}
+          autoStopReason={autoStopReason}
           onClose={() => {
             setShowEndModal(false)
             setPendingEventSwitch(null)
             setPendingPracticeTypeSwitch(null)
+            clearAutoStopReason()
           }}
-          onDiscard={discardSessionSolves}
-          onSaved={handleSessionSaved}
+          onDiscard={() => {
+            discardSessionSolves()
+            clearAutoStopReason()
+          }}
+          onSaved={(payload) => {
+            handleSessionSaved(payload)
+            clearAutoStopReason()
+          }}
         />
       )}
       <SolveDetailModal
