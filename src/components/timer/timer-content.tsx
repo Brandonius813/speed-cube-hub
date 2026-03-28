@@ -4300,7 +4300,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                       onClick={endSession}
                       disabled={timingActive}
                     >
-                      {currentSolveCount === 0 ? "Cancel" : "End"}
+                      {currentSolveCount === 0 ? "Cancel" : "⏹ Stop"}
                     </button>
                   </div>
                 </>
@@ -4314,7 +4314,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   ) : (
                     <span className="inline-flex items-center gap-2 whitespace-nowrap">
                       <span className="h-2.5 w-2.5 rounded-full bg-white/90 animate-pulse" />
-                      {autoSessionEnabled ? "Start Session (or just start solving)" : "Start Session"}
+                      Start Session
                     </span>
                   )}
                 </button>
