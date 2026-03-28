@@ -168,7 +168,10 @@ const PbPhotoModeOverlay = dynamic(
   { loading: () => null }
 )
 
-const HOLD_MS = 550
+const HOLD_MS_OPTIONS = [0, 100, 200, 300, 550] as const
+type HoldMs = (typeof HOLD_MS_OPTIONS)[number]
+const DEFAULT_HOLD_MS: HoldMs = 550
+const HOLD_MS_KEY = "timer-hold-ms"
 const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
 const SCRAMBLE_TIMEOUT_MS = 1800
 const SCRAMBLE_MAX_RETRIES = 3
@@ -704,6 +707,16 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return "lg"
     }
   })
+  const [holdMs, setHoldMs] = useState<HoldMs>(() => {
+    try {
+      const raw = Number(localStorage.getItem(HOLD_MS_KEY))
+      return (HOLD_MS_OPTIONS as readonly number[]).includes(raw)
+        ? (raw as HoldMs)
+        : DEFAULT_HOLD_MS
+    } catch {
+      return DEFAULT_HOLD_MS
+    }
+  })
   const [typeVal, setTypeVal] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<SolveSelectionMetric>("single")
@@ -996,6 +1009,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const phaseRef = useRef<TimerPhase>("idle")
   const heldRef = useRef(false)
   const holdTimeoutRef = useRef<number | null>(null)
+  const holdMsRef = useRef<HoldMs>(holdMs)
   const scrambleRef = useRef("")
   const eventRef = useRef("333")
   const inspOnRef = useRef(false)
@@ -1207,6 +1221,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   scrambleRef.current = scramble
   eventRef.current = event
   inspOnRef.current = inspOn
+  holdMsRef.current = holdMs
   inspRef.current = insp
   sessionPausedRef.current = sessionPaused
   practiceTypeRef.current = practiceType
@@ -2324,13 +2339,18 @@ export function TimerContent({ viewer }: TimerContentProps) {
   function startHold() {
     if (practiceTypeRef.current === "Comp Sim") return
     heldRef.current = true
-    dispatchEngine({ type: "START_HOLD" })
-    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
-    holdTimeoutRef.current = window.setTimeout(() => {
-      if (phaseRef.current === "holding" && heldRef.current) {
-        dispatchEngine({ type: "HOLD_READY" })
-      }
-    }, HOLD_MS)
+    const duration = holdMsRef.current
+    if (duration === 0) {
+      dispatchEngine({ type: "HOLD_READY" })
+    } else {
+      dispatchEngine({ type: "START_HOLD" })
+      if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
+      holdTimeoutRef.current = window.setTimeout(() => {
+        if (phaseRef.current === "holding" && heldRef.current) {
+          dispatchEngine({ type: "HOLD_READY" })
+        }
+      }, duration)
+    }
   }
 
   function releaseHold(inputTimestamp?: number) {
@@ -3644,6 +3664,38 @@ export function TimerContent({ viewer }: TimerContentProps) {
                             {option.label}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 space-y-1.5">
+                      <span className="block text-[11px] font-medium text-foreground">
+                        Hold to Start
+                      </span>
+                      <div className="grid grid-cols-5 gap-1">
+                        {HOLD_MS_OPTIONS.map((ms) => {
+                          const disabled = typing
+                          return (
+                            <button
+                              key={ms}
+                              className={cn(
+                                "h-7 rounded border text-[11px] font-medium transition-colors",
+                                holdMs === ms
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                                disabled && "opacity-40 cursor-not-allowed"
+                              )}
+                              onClick={() => {
+                                if (disabled) return
+                                setHoldMs(ms)
+                                try {
+                                  localStorage.setItem(HOLD_MS_KEY, String(ms))
+                                } catch {}
+                              }}
+                              disabled={disabled}
+                            >
+                              {ms === 0 ? "None" : `${ms}ms`}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                     <div className="px-3 py-2 space-y-1.5">
