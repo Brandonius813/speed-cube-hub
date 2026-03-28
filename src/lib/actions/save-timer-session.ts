@@ -111,6 +111,7 @@ export async function saveTimerSession(data: {
 
   const { error: solvesError } = await supabase.from("solves").insert(solveRows)
   if (solvesError) {
+    await supabase.from("timer_sessions").delete().eq("id", timerSession.id)
     return { error: solvesError.message }
   }
 
@@ -164,6 +165,10 @@ export async function saveTimerSession(data: {
     .single()
 
   if (sessionError) {
+    // Clean up the already-inserted solves and timer_session to prevent orphaned data.
+    // Without this, retrying the save would create duplicate solves in the database.
+    await supabase.from("solves").delete().eq("timer_session_id", timerSession.id)
+    await supabase.from("timer_sessions").delete().eq("id", timerSession.id)
     return { error: sessionError.message }
   }
 
