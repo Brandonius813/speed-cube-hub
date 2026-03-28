@@ -12,16 +12,15 @@
 ## How to Use This File (Parallel Sessions)
 
 1. `git pull origin dev` before starting
-2. Create a worktree + branch: `git worktree add ../speed-cube-hub-<taskname> -b task/<taskname>`
-3. Find a task that is `🔲 Available` with all dependencies `✅ Done`
-4. Change status to `🏗️ In Progress`, add your identifier + branch
-5. Push the claim to your task branch (NOT to `dev`)
-6. When done, mark `✅ Done`, push final commit, tell the user
+2. Find a task that is `🔲 Available` with all dependencies `✅ Done`
+3. Change status to `🏗️ In Progress [this session]`
+4. Commit the claim so other sessions see it
+5. Build the feature on `dev`, then mark `✅ Done` and push
 
 **Rules:**
-- Never push directly to `dev` — push to your task branch only
+- All work happens on `dev` branch
 - Never start a task whose dependencies aren't all done
-- Use `npx tsc --noEmit` to verify TypeScript (avoids `.next/lock` conflicts)
+- Use `npx tsc --noEmit` to verify TypeScript when multiple agents are active (avoids `.next/lock` conflicts)
 
 ---
 
@@ -161,10 +160,8 @@
 
 ## Open / Remaining Items
 
-These items are tracked in the PRD under "Remaining Security Items (Manual)" and incomplete roadmap checkboxes. Current parallel layout is pre-claimed below.
-
-- 🏗️ In Progress — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart` (branch: `task/activate-profile-components`, worktree: `../speed-cube-hub-agent-profile`)
-- 🏗️ In Progress — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar (branch: `task/rate-limit-api-routes`, worktree: `../speed-cube-hub-agent-ratelimit`)
-- 🏗️ In Progress — Challenges RLS policy — restrict INSERT to admin users at DB level (branch: `task/challenges-rls-admin-insert`, worktree: `../speed-cube-hub-agent-rls`)
+- 🔲 Available — Activate unused profile components: `UpcomingCompetitions`, `PBProgressChart`
+- 🔲 Available — Rate limiting on API routes (`/api/scramble`, `/api/og`) — requires Upstash Redis or similar
+- 🔲 Available — Challenges RLS policy — restrict INSERT to admin users at DB level
 
 ---

@@ -30,22 +30,6 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000) in your browser.
 
 Use `http://` for local development, not `https://`.
 
-## Parallel Codex Sessions
-
-When multiple Codex agents are running, use the shared live claims file before editing:
-
-```bash
-npm run agent:bootstrap -- --task "Task name"
-npm run claims:status
-npm run claims:claim -- --task "Task name" --files "src/path-a.ts,src/path-b.ts"
-npm run claims:touch
-npm run claims:release
-```
-
-The shared file lives at `/Users/brandontrue/Documents/Coding/speed-cube-hub-coordination/ACTIVE_CLAIMS.md`.
-Use it for live file locks only. Put finished handoff notes in `AGENT_LOG.md`.
-`agent:bootstrap` creates or reuses a sibling worktree and `codex/...` branch automatically so the user does not need to do that setup by hand.
-
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) with Nunito and JetBrains Mono.

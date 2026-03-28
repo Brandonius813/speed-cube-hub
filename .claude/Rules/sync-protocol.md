@@ -1,11 +1,11 @@
 # Sync Protocol for Parallel Sessions
 
-When multiple Claude Code sessions work on this project simultaneously, they coordinate through a shared task board and log file.
+When multiple Claude Code sessions work on this project simultaneously, they coordinate through a shared task board and log file. All sessions work on the `dev` branch.
 
 ## Key Files
 
-- **`.claude/AGENT_LOG.md`** — Shared log where sessions record what they did, what they learned, and warnings for others
 - **`.claude/TASKS.md`** — Task board for claiming and tracking work
+- **`.claude/AGENT_LOG.md`** — Shared log where sessions record what they did, what they learned, and warnings for others
 - **`.claude/SPEED_CUBE_HUB_PRD.md`** — Feature completion tracking
 
 ## Starting a New Session

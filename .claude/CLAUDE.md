@@ -31,6 +31,10 @@ There are no tests configured in this project yet.
 
 Every page is publicly viewable. Admin controls are conditionally rendered using `{isAdmin && ...}`.
 
+- Crawl-helper routes (`/ads.txt`, `/robots.txt`, `/sitemap.xml`) must stay public and plain-text/XML for AdSense and search crawlers.
+- Public profile compare route: `/profile/[handle]/compare` (opt-in). Base profile view is the default.
+- Onboarding progress: private `user_onboarding` table; guided tours via `?tour=` params + `/getting-started/feed`.
+
 ### Route Groups & Shared Layout
 
 - **`(main)` route group** — All pages that share Navbar + Footer live under `src/app/(main)/`. The shared layout (`src/app/(main)/layout.tsx`) renders Navbar and Footer once, so they persist across navigations without re-mounting.
@@ -177,6 +181,15 @@ The timer is a full-featured csTimer-parity system spanning 33 component files (
 - **Database stores times as decimal seconds** (e.g., `10.32`). Display with a `formatTime()` utility.
 - **Timer solves store times as integer milliseconds** (e.g., `10320` = 10.32s) in the `solves` table. Convert to decimal seconds when syncing to `sessions.avg_time`.
 - **Timezone:** Pacific Time (`America/Los_Angeles`), hardcoded in date helpers.
+- **Safety note:** Task T51 (`select("*")` replacement) was reverted 3x. Never retry without a live Supabase schema audit for every affected table/column.
+
+## Definition of Done (Per Feature)
+
+1. Feature behavior works
+2. Code quality is acceptable with minimal blast radius
+3. `npm run build` passes (or `npx tsc --noEmit` if other agents are active)
+4. Docs updated if conventions/routes/key files changed (CLAUDE.md, PRD)
+5. User receives plain-English test steps and expected results
 
 ## Environment Variables
 
@@ -201,26 +214,21 @@ See `.env.local.example` for required variables:
 
 The product requirements document is at `.claude/SPEED_CUBE_HUB_PRD.md`. Read it at the start of every session to understand what's been built and what's remaining.
 
-## Task List (Multi-Session)
+## Parallel Sessions
 
-The shared task list is at `.claude/TASKS.md`. This is a coordinated task board designed for up to 5 Claude sessions working in parallel. Each session should:
+Multiple Claude Code sessions can work on this project simultaneously. Coordination uses two files:
 
-1. `git pull origin dev` before starting
-2. Claim an available task by updating its status to `🏗️ In Progress`
-3. Commit the claim immediately so other sessions see it
-4. Build the feature, then mark it `✅ Done` and push
+- **`.claude/TASKS.md`** — Task board. Claim a task (`🏗️ In Progress`) before starting, mark `✅ Done` when finished.
+- **`.claude/AGENT_LOG.md`** — Append-only log (max 20 entries). Record what you did, learnings, and warnings for other sessions.
 
-Always check dependencies before claiming a task — don't start work that depends on unfinished tasks.
-
-## Agent Coordination Log
-
-The shared agent log is at `.claude/AGENT_LOG.md`. This is an append-only log where parallel sessions record what they did, what they learned, and any warnings for other sessions.
-
-- **Managed by:** The `/sync` skill — type `/sync` in any session to check in
-- **Format:** Timestamped entries, newest at bottom, hard limit of 20 entries
-- **When to sync:** At session start, after completing a task, before stopping work
+**Workflow:**
+1. Run `/start` to pull latest, read the board, claim a task, and begin work
+2. Work on `dev` branch — commit after every working feature
+3. Use `npx tsc --noEmit` instead of `npm run build` when multiple agents are active (avoids `.next/lock` contention)
+4. Run `/sync` when done — logs your work, marks task complete, pushes
+5. Never touch files that belong to another agent's claimed task
 
 ## Feature Status
 
-Features will be tracked in the PRD with checkmarks. Refer to it for current progress.
+Features are tracked in the PRD (`.claude/SPEED_CUBE_HUB_PRD.md`) with checkmarks.
 

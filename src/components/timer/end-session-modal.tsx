@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useMemo } from "react"
 import { X } from "lucide-react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
+import { bestStat } from "@/lib/timer/stats"
 import { cn, formatDuration, formatDurationInput, parseDuration } from "@/lib/utils"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
 import type { TimerSolve } from "@/lib/timer/stats"
@@ -25,9 +26,53 @@ interface Props {
   practiceType: string
   durationMinutes: number
   sessionStartMs: number
+  autoStopReason?: "idle" | null
   onClose: () => void
   onDiscard: () => void
   onSaved: (payload: SavedSessionPayload) => void
+}
+
+function SessionSparkline({ solves }: { solves: TimerSolve[] }) {
+  const points = useMemo(() => {
+    const effective = solves.map((s) => {
+      if (s.penalty === "DNF") return null
+      return s.penalty === "+2" ? s.time_ms + 2000 : s.time_ms
+    })
+    const valid = effective.filter((t): t is number => t !== null)
+    if (valid.length < 2) return null
+    const min = Math.min(...valid)
+    const max = Math.max(...valid)
+    const range = max - min || 1
+    const width = 220
+    const height = 44
+    const padding = 4
+
+    const coords: { x: number; y: number; isBest: boolean }[] = []
+    let validIdx = 0
+    for (const t of effective) {
+      if (t === null) continue
+      const x = padding + (validIdx / (valid.length - 1)) * (width - padding * 2)
+      const y = padding + (1 - (t - min) / range) * (height - padding * 2)
+      coords.push({ x, y, isBest: t === min })
+      validIdx++
+    }
+    return { coords, width, height }
+  }, [solves])
+
+  if (!points) return null
+
+  const { coords, width, height } = points
+  const linePath = coords.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
+  const bestPoint = coords.find((p) => p.isBest)
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-11" preserveAspectRatio="none">
+      <path d={linePath} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary/60" />
+      {bestPoint && (
+        <circle cx={bestPoint.x} cy={bestPoint.y} r="3" className="fill-green-400" />
+      )}
+    </svg>
+  )
 }
 
 export function EndSessionModal({
@@ -37,6 +82,7 @@ export function EndSessionModal({
   practiceType,
   durationMinutes,
   sessionStartMs,
+  autoStopReason,
   onClose,
   onDiscard,
   onSaved,
@@ -52,6 +98,23 @@ export function EndSessionModal({
       : null
   const bestMs = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : null
   const numDnf = solves.length - nonDnf.length
+
+  // Extended stats
+  const bestAo5 = useMemo(() => bestStat(solves, "ao5"), [solves])
+  const bestAo12 = useMemo(() => bestStat(solves, "ao12"), [solves])
+
+  // Improvement indicator: compare first-half avg vs second-half avg
+  const improvement = useMemo(() => {
+    if (effectiveTimes.length < 6) return null
+    const mid = Math.floor(effectiveTimes.length / 2)
+    const firstHalf = effectiveTimes.slice(0, mid)
+    const secondHalf = effectiveTimes.slice(mid)
+    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length
+    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length
+    if (firstAvg === 0) return null
+    const pct = ((firstAvg - secondAvg) / firstAvg) * 100
+    return { pct, improved: pct > 0 }
+  }, [effectiveTimes])
 
   const [title, setTitle] = useState(
     practiceType === "Solves"
@@ -129,7 +192,7 @@ export function EndSessionModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md mx-4 bg-background border border-border rounded-xl shadow-2xl p-6"
+        className="relative w-full max-w-md mx-4 bg-background border border-border rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -141,13 +204,19 @@ export function EndSessionModal({
           <X size={18} />
         </button>
 
-        <h2 className="text-lg font-semibold mb-1">Save Session</h2>
+        {autoStopReason === "idle" && (
+          <div className="mb-4 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-xs text-orange-300">
+            Session ended automatically due to inactivity.
+          </div>
+        )}
+
+        <h2 className="text-lg font-semibold mb-1">Session Summary</h2>
         <p className="text-xs text-muted-foreground mb-4">
-          Edit the session length before saving if you left the timer running.
+          Review your session stats, then save or discard.
         </p>
 
         {/* Stats summary */}
-        <div className="grid grid-cols-4 gap-2 mb-5 p-3 rounded-lg bg-muted/50 border border-border">
+        <div className="grid grid-cols-4 gap-2 mb-3 p-3 rounded-lg bg-muted/50 border border-border">
           <div className="text-center">
             <div className="font-mono text-base font-medium">{solves.length}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Solves</div>
@@ -171,6 +240,41 @@ export function EndSessionModal({
             <div className="text-[11px] text-muted-foreground mt-0.5">Avg</div>
           </div>
         </div>
+
+        {/* Extended stats row: Ao5, Ao12, improvement */}
+        {(bestAo5 !== null || bestAo12 !== null || improvement !== null) && (
+          <div className="flex items-center gap-3 mb-3 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 text-xs">
+            {bestAo5 !== null && (
+              <div className="text-center">
+                <div className="font-mono font-medium">{formatTimeMsCentiseconds(bestAo5)}</div>
+                <div className="text-[10px] text-muted-foreground">Best Ao5</div>
+              </div>
+            )}
+            {bestAo12 !== null && (
+              <div className="text-center">
+                <div className="font-mono font-medium">{formatTimeMsCentiseconds(bestAo12)}</div>
+                <div className="text-[10px] text-muted-foreground">Best Ao12</div>
+              </div>
+            )}
+            {improvement !== null && (
+              <div className="ml-auto text-center">
+                <div className={cn("font-mono font-medium", improvement.improved ? "text-green-400" : "text-red-400")}>
+                  {improvement.improved ? "↓" : "↑"} {Math.abs(improvement.pct).toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {improvement.improved ? "Faster" : "Slower"} 2nd half
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sparkline */}
+        {solves.length >= 3 && (
+          <div className="mb-4 px-1">
+            <SessionSparkline solves={solves} />
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">

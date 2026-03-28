@@ -29,6 +29,8 @@ Tools for coaches to assign homework, review student practice data, and store co
 - **Bootstrapped side income** — target: a few thousand dollars per month
 - **Freemium:** Almost all features free. Paid tier unlocks premium features.
 - **Ads** on the free tier. Paid subscription removes ads.
+- Manual AdSense placements are live on the homepage, feed, leaderboards sidebar (desktop only), and public profiles. Timer, auth, admin, and onboarding flows stay ad-free.
+- AdSense crawl helpers are live at `/ads.txt`, `/robots.txt`, and `/sitemap.xml`. If AdSense still warns on the apex domain, the remaining fix is the Vercel/domain redirect behavior for `https://speedcubehub.com/ads.txt`.
 - **Coach seat pricing:** Coaches (or cubing.gg) pay per coach seat to use the coaching tools.
 - **Potential cubing.gg partnership:** Per-coach-seat licensing, or deeper integration where Speed Cube Hub becomes part of the cubing.gg ecosystem.
 
@@ -48,9 +50,29 @@ Tools for coaches to assign homework, review student practice data, and store co
 ## Architecture Decisions
 
 - **Public-first:** All pages publicly viewable. Admin controls hidden via `isAdmin` boolean.
+- **Phone-web protection:** iPhone/Android phone requests to desktop-style app routes are redirected to `/mobile-unsupported`; iPad/tablets stay on the web experience, and public browse routes remain phone-accessible.
 - **Server + Client component pattern:** `page.tsx` (server) fetches data, `*-content.tsx` (client) handles interactivity.
 - **Server actions** for mutations and data fetching. Client Supabase for auth checks only.
 - **React Compiler** enabled for automatic memoization.
+- **Local dev reliability:** Use `npm run dev:up` / `npm run dev:down` for persistent localhost sessions. HSTS is production-only (not sent in local dev).
+
+---
+
+## Native Platform Expansion (Planned)
+
+Speed Cube Hub is now planned as a multi-client platform, not just a website.
+
+- **Near-term target:** native iPhone + iPad app
+- **Next target:** native Android app
+- **Later target:** native macOS app
+- **Sync rule:** one canonical backend and database; all clients read/write the same product data
+- **Architecture rule:** Next.js server actions are not the long-term backend boundary for native work; shared backend contracts must be extracted for cross-client features
+- **Monetization rule:** digital purchases inside native apps must be designed around platform billing plus server-verified entitlements
+
+Canonical implementation plans:
+
+- `plans/native-platform-migration.md`
+- `plans/native-platform-agent-workstreams.md`
 
 ---
 
@@ -116,16 +138,19 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] PB History / Progress Charts (step-line chart on dashboard showing running PB progression per event)
 - [x] Enhanced Streaks (prominent on profile, streak milestones, gamified feel like Duolingo)
 - [x] Weekly/Monthly Challenges (community-wide, e.g. "100 solves this week" — everyone can join, progress calculated from real sessions)
+- [x] New-user onboarding checklist + guided tours (first-time users land on `/profile`, see an owner-only checklist on profile overview, and launch page-specific spotlight tours for profile, cubes, bulk import, timer, Comp Sim, feed, and clubs that only complete on real successful actions)
 - [ ] Badges & Credentials — REMOVED (v1 was stripped out; to be redesigned)
 
 ### Social Wave 4 — Community & Discovery
 - [x] Public Leaderboards (fastest averages, most solves, longest streaks, most practice time — global + friends-only views)
+- [x] Profile Head-to-Head Comparison (`/profile/[handle]/compare`) — logged-in users can compare themselves against a viewed public profile across last 7/30 day practice, all-time event practice totals, and current PBs without changing the default profile view
 - [x] SOR & Kinch Rank Leaderboards (Sum of Ranks + Kinch scores for ALL WCA competitors globally, sourced from WCA database export synced weekly via GitHub Action; region filtering by world/continent/country; single/average toggle; "Find Me" for linked WCA IDs; SOR rank and Kinch score on user profiles)
 - [x] Clubs/Groups (cubing teams, coaching groups, regional clubs — shared feeds and member lists)
 - [x] Year in Review / Wrapped (annual stats summary a la Spotify Wrapped — total solves, hours, PB improvements, most-practiced event)
 - [x] Share Cards (auto-generated shareable images when you hit a PB or finish a big session — post to Instagram/Discord/X) -- Built OG image API route using @vercel/og, share button on feed items and profile PBs with Web Share API (mobile) + clipboard fallback (desktop)
 - [x] Personal Bests Page — Dedicated `/pbs` page for manually logging PB history (Single, Ao5, Ao12, etc. per event). Card grid grouped by event, "Log New PB" modal, PB history modal with Recharts progression chart, smart is_current auto-promotion, delete with next-fastest promotion. Uses `personal_bests` table with RLS.
 - [x] Feedback System — "Send Feedback" button in footer opens a modal with category picker (Bug Report, Feature Request, General Feedback, Other) and message box. Requires login to submit, saves to `feedback` table. No spam risk since auth-gated.
+- [ ] Social feed/discovery rework foundation — In progress on `codex/social-preview-foundation`: mixed feed entries (sessions + posts), richer session recap cards, unified Discover tabs (`All`, `People`, `Posts`, `Clubs`, `Events`), favorites/mutes, post composer, post/thread comments, preview seed script, and a localhost mock-preview fallback. Hosted dev still needs Supabase migration `026_social_preview_foundation.sql` applied before remote reseeding works.
 
 ### Security & Performance Hardening (Phase 9)
 - [x] Fix open redirect in Google OAuth callback (T41)
@@ -140,18 +165,19 @@ Each practice session captures (based on the proven model from brandontruecubing
 - [x] Fix dashboard — deduplicate session fetches + add limits (T50)
 - [ ] Replace select("*") with explicit column lists (T51) — **Reverted 3x.** Requires a live Supabase DB schema audit first (`SELECT column_name FROM information_schema.columns WHERE table_name = '...'`) because many columns were added via SQL editor and don't match the TypeScript types. Do not re-attempt without verifying every column name against the live database.
 
-### Profile Rework — 5-Tab Layout with Sidebar (Phase 11)
+### Profile Rework — 6-Tab Layout with Sidebar (Phase 11 + Comp Sim Expansion)
 
-Rework the profile page from a flat vertical stack into a 5-tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
+Rework the profile page from a flat vertical stack into a swipeable tab layout with a persistent Skool-style sidebar on desktop. Mobile: full-width swipeable tabs (Clash Royale-style). Desktop: clickable tabs + sticky profile card sidebar on right.
 
 - [x] Schema: `main_events text[]` (up to 3 main events, replaces single `main_event`)
 - [x] Server action: `getPBsByUserId` (public PB fetch for any user)
 - [x] SessionLog `readOnly` prop (for public profile Stats tab)
 - [x] Profile sidebar component (Skool-style card: avatar, name, main events, bio, meta, stats, follow, social links)
 - [x] Profile tabs component (tab bar + swipe detection + URL integration)
-- [x] 5 tab content components:
+- [x] 6 tab content components:
   - **PBs** — read-only PB grid for visitors, full CRUD for owner, PB progression chart
   - **Stats** — practice heatmap, streak, charts, session log
+  - **Comp Sim** — dedicated round history, KPI cards, result trend, event/format/outcome filters, and comp-vs-practice comparison
   - **Overview** (default) — profile header (mobile), stat cards, practice streak, recent activity
   - **Cubes** — main cubes grid (existing component)
   - **Official** — WCA results (lazy-loaded), allrounding, upcoming competitions
@@ -175,11 +201,11 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 
 **V1 Features (Complete):**
 - [x] Core timer with spacebar start/stop (desktop) and tap start/stop (mobile)
-- [x] NxN scrambles (2x2–7x7) via `cubing` library — WCA-standard random-state for all events via server-side API route (`/api/scramble`), with random-move fallback
+- [x] NxN scrambles (2x2–7x7) via `cubing` library, plus a dedicated TNoodle-style Square-1 core — WCA-standard random-state for supported events via server-side API route (`/api/scramble`), without the old unsafe Square-1 random-tuple fallback
 - [x] Scrollable solve list with times, penalties (+2/DNF), delete, per-solve notes
 - [x] Running averages: Ao5, Ao12, Ao50, Ao100, BPA, WPA, best single, best Ao5, best Ao12, session mean
 - [x] WCA inspection timer: 15-second countdown with voice warnings at 8s and 12s, toggleable
-- [x] Competition simulation mode: solves grouped in Ao5 sets (trimmed mean)
+- [x] Competition simulation mode: Comp Sim mode entry from the timer practice-type selector, `Mo3`/`Ao5` round formats, cumulative time limits, cutoff after solve 1 or 2, configurable wait-range bounds, multi-minute crowd-scene ambience, audio-backed inspection calls, selectable local-vs-stationary pre-attempt start flows, optional 60-second sit-down ready window, richer live event shell, explicit post-solve penalty review with retroactive round-sheet edits, owner-side profile edit/delete actions for saved Comp Sim rounds, Ao5 solve-4 BPA/WPA pressure cues, and cleaned-up Stats-tab Comp Sim tracking with usable filters
 - [x] Typing input mode (stackmat-style digit entry)
 - [x] Session auto-logging: when ended, auto-creates a `sessions` row for feed/stats/leaderboards
 - [x] Adaptive layout: full-screen on mobile, dashboard (timer + stats sidebar) on desktop
@@ -209,8 +235,8 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Keyboard shortcuts (Ctrl+1/2/3 penalties, Ctrl+Z undo, Alt+arrows, event quick-switch) (T111)
 - [x] Undo last solve with toast notification (T112)
 - [x] Solve notes/comments UI in detail modal (T113)
-- [x] 2D scramble image visualization (T114)
-- [x] Cross solver tool (T115)
+- [x] 2D scramble image visualization (T114) — includes a custom TNoodle-style Square-1 renderer so draw/animation match the legal Square-1 state model
+- [x] Cross solver tool (T115) with fixed cube-orientation guidance per cross color (for example: Red bottom, Green front)
 
 **Phase 16 — Training Scrambles — T116-T123:**
 - [x] 3x3 CFOP core (PLL, OLL, F2L, LL, LSLL, easy cross) — scramble type selector in timer (T116)
@@ -265,6 +291,38 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - [x] Multiple solve deletion (batch select) (T151)
 - [x] Auto-backup / auto-export (T152)
 
+**Phase 24 — Timer Multi-Pane Workspace — T153:**
+- [x] Modular pane workspace (up to 4 tools) with fixed desktop slots (top-right, bottom-right, bottom-middle, bottom-left) + mobile stacked drawer
+- [x] Mobile stacked pane drawer with add/remove/reorder and per-pane height presets
+- [x] Tool registry architecture + new Scramble Text pane + split chart tools (Time Distribution, Time Trend)
+- [x] Local-first layout persistence with account sync (`timer_pane_layouts`) and latest-write-wins merge
+- [x] User controls: edit/lock mode, auto-hide panes during solve toggle, reset layout
+
+**Phase 26 — Timer QoL Polish — T155:**
+- [x] Quick timer shortcuts for `+2`, `DNF`, and next scramble
+- [x] Reopening a tool pane restores its last slot/settings instead of jumping back to defaults
+- [x] Timer text sizing controls for larger scramble/readout/list text, plus separate pane scramble/solve-time sizing in settings
+- [x] Session-vs-all-time stats in the left timer panel (session best + session mean alongside current/all-time)
+- [x] Click a solve on the left to open a richer detail modal with notes, scramble, PB/share, penalty changes, and delete
+- [x] Screen wake lock keeps laptops awake while GAN timer or active timer/Comp Sim flows are in use
+- [x] Comp Sim / GAN flow hardening: Comp Sim is now an exclusive mode with guarded entry, clearer copy, standalone auto-save timing, and ignored GAN input while the simulator is active
+- [x] Shared solve-import review for timer exports: csTimer, CubeTime, and future raw-solve parsers now use the same pre-import summary cards and suspicious-solve review flow (best single, current/best Ao5, Ao12, Ao100, plus outlier toggles)
+
+**Phase 33 — Timer Scalability Foundation — T164:**
+- [x] Added timer analytics summary/rollup tables (`event_summaries`, `solve_session_summaries`, `solve_daily_rollups`) plus a histogram RPC so all-time timer/profile/dashboard charts no longer require raw solve downloads
+- [x] `saveTimerSession`, timer imports, manual solve updates/deletes, and solve-session merge/split now refresh the affected timer analytics summaries after solve mutations
+- [x] Timer daily stats now read from daily rollups/event summaries instead of selecting raw solve timestamps and grouping them in JavaScript
+- [x] Dashboard/profile/timer all-time solve analytics now use aggregated server payloads (distribution buckets + date buckets) instead of `getSolvesByEvent()`
+- [x] Timer local solve cache moved to a fresh v2 IndexedDB store and cross-device sync now hydrates only a recent event window instead of mirroring the entire event history on first load
+- [x] Timer open now loads only a recent saved-history window plus the active unsaved block, older saved solves page in on demand, and exact solve/stat detail windows fetch from the server instead of requiring full event hydration
+- [x] Timer all-time pane charts now use aggregated server trend/distribution data in all-time mode instead of rendering from the loaded client window
+
+**Phase 34 — Timer Session Duration Correction — T165:**
+- [x] End Session now shows an editable duration field so users can correct an accidentally overlong tracked session before saving
+- [x] `saveTimerSession` now returns both `sessionId` and `timerSessionId`, and timer solve groups now persist under the real `timer_session_id` instead of a client-only UUID
+- [x] Saved-session divider metadata now stores the backing `sessionId`/`timerSessionId`, which keeps timer history popups aligned with the database across reloads and sync
+- [x] Timer saved-session popups now support duration-only edits with inline validation and immediate local metadata refresh, without changing solve times or session stats
+
 ### Algorithm Learning System (Future)
 - Khan Academy-style structured learning
 - Learn OLL, PLL, and other algorithm sets for all events
@@ -317,6 +375,22 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 | notes | text | Optional |
 | feed_visible | boolean | Whether to show in feed (default true, false for bulk-imported sessions) |
 | created_at | timestamptz | Auto (used for feed ordering) |
+
+**user_onboarding** — Private first-time onboarding progress
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid (PK/FK) | References profiles(id), CASCADE |
+| auto_launch_pending | boolean | Whether the first profile overview tour should auto-open |
+| profile_viewed_at | timestamptz | First owner overview visit completion |
+| main_cube_added_at | timestamptz | First successful main cube save |
+| bulk_imported_at | timestamptz | First successful bulk import |
+| first_timer_solve_at | timestamptz | First successful persisted timer solve |
+| feed_visited_at | timestamptz | Feed checklist step completion via onboarding route |
+| clubs_searched_at | timestamptz | First non-empty clubs search completion |
+| dismissed_at | timestamptz | When auto-launch was dismissed |
+| finished_at | timestamptz | Set once all onboarding steps are complete |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto (trigger) |
 
 **follows** — Social follow relationships
 | Column | Type | Notes |
@@ -514,9 +588,11 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 /practice-stats      → Practice stats (filters, charts, session log) [protected]
 /profile             → User's own profile (header, stats, cubes, PBs, WCA results, activity) [protected]
 /profile/[handle]    → Public profile for any user [public]
+/profile/[handle]/compare → Logged-in head-to-head comparison against that public profile [protected]
 /log                 → Log a practice session (form) [protected]
 /timer               → Built-in cubing timer [protected]
 /feed                → Activity feed (sessions from followed users) [protected]
+/getting-started/feed → Onboarding entry route that marks the feed checklist step then redirects into `/feed?tour=feed` [protected]
 /discover            → Search and browse cubers [public]
 /notifications       → Notification inbox (likes, comments, follows, PBs) [protected]
 /leaderboards        → Public leaderboards (fastest averages, most solves, streaks, SOR/Kinch) [public]
@@ -592,7 +668,7 @@ Cloud-synced cubing timer at `/timer` — a modern, beautiful alternative to csT
 - Speed Cube Hub replaces brandontruecubing.com (the old personal tracker)
 - The founder is non-technical — all communication should be in plain English
 - Designs come from v0.dev — preserve the visual intent when implementing
-- **Mobile-first is critical.** An iOS app comes later — the mobile web experience must be flawless. See `.claude/Rules/mobile-first.md` for specific guidelines.
+- **Mobile-first is critical.** An iOS app comes later — the mobile web experience must be flawless. See `Rules/mobile-first.md` for specific guidelines.
 - Database stores times as decimal seconds (e.g., `10.32`)
 - Timezone: Pacific Time (`America/Los_Angeles`), hardcoded in date helpers
 - cubing.gg is a complementary platform (Tymon Kolasinski's coaching/courses) — not a competitor
