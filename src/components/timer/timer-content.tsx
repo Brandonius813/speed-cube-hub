@@ -2151,8 +2151,17 @@ export function TimerContent({ viewer }: TimerContentProps) {
     const unsavedSolveCount = getTrailingUnsavedSolves(solvesRef.current).length
     const startIndex = Math.max(0, unsavedSolveCount - (opts?.includePriorSolves ?? 0))
     sessionSolveStartIndexRef.current = startIndex
-    setSessionStartTime(Date.now())
-    setSessionElapsed(0)
+    // Backdate session start to include the triggering solve's duration
+    let backdateMs = 0
+    if (opts?.includePriorSolves && unsavedSolveCount > 0) {
+      const unsaved = getTrailingUnsavedSolves(solvesRef.current)
+      const triggeringSolve = unsaved[unsaved.length - 1]
+      if (triggeringSolve) {
+        backdateMs = triggeringSolve.time_ms + (triggeringSolve.penalty === "+2" ? 2000 : 0)
+      }
+    }
+    setSessionStartTime(Date.now() - backdateMs)
+    setSessionElapsed(Math.floor(backdateMs / 1000))
     setSessionPaused(false)
     setSessionSaved(false)
     sessionPausedMsRef.current = 0
