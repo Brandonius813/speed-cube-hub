@@ -8,11 +8,13 @@ import type { TimerSession, Solve } from "@/lib/types"
 import type { SessionGroupMeta } from "@/lib/timer/session-dividers"
 import { markOnboardingStepComplete } from "@/lib/actions/onboarding"
 import {
-  computeFixedMilestoneRows,
-  milestoneRowsToSessionPatch,
   refreshSolveSessionSummary,
   refreshTimerEventAnalytics,
 } from "@/lib/actions/timer-analytics"
+import {
+  computeFixedMilestoneRows,
+  milestoneRowsToSessionPatch,
+} from "@/lib/actions/timer-milestone-helpers"
 
 const TIMER_SESSION_SELECT_COLUMNS = [
   "id",

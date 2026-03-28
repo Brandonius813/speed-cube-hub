@@ -338,13 +338,13 @@ export function AttemptTimerScreen({
         inspectionSecondsLeft={inspectionSecondsLeft}
         timerUpdateMode={timerUpdateMode}
       />
-      {readyWindowLabel && timerPhase === "ready" && !inInspectionHold && (
+      {readyWindowLabel && !inInspectionHold && (
         <p className="mt-4 font-mono text-3xl font-light tabular-nums text-cyan-100">
           {readyWindowLabel}
         </p>
       )}
       <p className="mt-3 text-sm text-muted-foreground">{prompt}</p>
-      {readyWindowExpired && timerPhase === "ready" && (
+      {readyWindowExpired && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           You missed the 60-second ready window. Warning only: you can still continue this attempt.
         </div>

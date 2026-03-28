@@ -7,11 +7,13 @@ import { getTodayPacific } from "@/lib/utils"
 import { getOrCreateDefaultSession } from "@/lib/actions/solve-sessions"
 import type { CompSimEndedReason, CompSimFormat, CompSimScene } from "@/lib/timer/comp-sim-round"
 import {
-  computeFixedMilestoneRows,
-  milestoneRowsToSessionPatch,
   refreshSolveSessionSummary,
   refreshTimerEventAnalytics,
 } from "@/lib/actions/timer-analytics"
+import {
+  computeFixedMilestoneRows,
+  milestoneRowsToSessionPatch,
+} from "@/lib/actions/timer-milestone-helpers"
 
 export async function saveTimerSession(data: {
   event: string

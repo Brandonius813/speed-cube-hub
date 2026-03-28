@@ -20,6 +20,7 @@ import type { Session } from "@/lib/types"
 import { EditSessionModal } from "@/components/dashboard/edit-session-modal"
 import { SessionCard, SessionTable } from "@/components/dashboard/session-log-layouts"
 import { deleteSessionsBulk } from "@/lib/actions/sessions"
+import { clearSolveSessionFromIndexedDb } from "@/lib/timer/solve-store"
 
 const PAGE_SIZE = 20
 
@@ -143,6 +144,12 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
       setDeleting(false)
       setShowDeleteConfirm(false)
       return
+    }
+    // Clear IndexedDB cache for deleted solve sessions
+    if (result.solveSessionIds) {
+      for (const id of result.solveSessionIds) {
+        void clearSolveSessionFromIndexedDb(id)
+      }
     }
     setDeleting(false)
     setShowDeleteConfirm(false)

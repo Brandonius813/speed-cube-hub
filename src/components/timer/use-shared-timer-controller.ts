@@ -124,6 +124,16 @@ export function useSharedTimerController({
     onSolveComplete(elapsed, penalty)
   }, [engine, onSolveComplete, solveClock])
 
+  /** Stop using an externally-measured time (e.g. GAN hardware timer). */
+  const externalStopSolve = useCallback((timeMs: number) => {
+    if (phaseRef.current !== "running") return
+    solveClock.stopSolve()
+    const penalty = inspectionPenaltyRef.current
+    inspectionPenaltyRef.current = null
+    engine.dispatch({ type: "STOP_SOLVE" })
+    onSolveComplete(timeMs, penalty)
+  }, [engine, onSolveComplete, solveClock])
+
   const startHold = useCallback(() => {
     heldRef.current = true
     engine.dispatch({ type: "START_HOLD" })
@@ -280,5 +290,9 @@ export function useSharedTimerController({
     }),
     handlePointerDown,
     handlePointerUp,
+    handlePress,
+    handlePressEnd,
+    externalStopSolve,
+    startTimer,
   }
 }

@@ -32,8 +32,8 @@ type InspectionResult = {
  *
  * WCA rules:
  * - 15 seconds of inspection time
- * - Judge says "8 seconds" at 8s remaining (7 seconds elapsed)
- * - Judge says "12 seconds" at 12s remaining (3 seconds remaining)
+ * - Judge says "8 seconds" at 8 seconds elapsed (7s remaining)
+ * - Judge says "12 seconds" at 12 seconds elapsed (3s remaining)
  * - Starting after 15s but before 17s = +2 penalty
  * - Starting after 17s = DNF
  *
@@ -95,11 +95,13 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
       setSecondsLeft(snapshot.secondsLeft)
       setState(snapshot.state)
 
-      if (snapshot.elapsedMs >= 7000 && !has8sWarned.current) {
+      // Pre-fire ~300ms early to compensate for TTS startup latency.
+      // WCA calls happen at 8s and 12s elapsed.
+      if (snapshot.elapsedMs >= 7700 && !has8sWarned.current) {
         has8sWarned.current = true
         if (voiceEnabled) speak("8 seconds")
       }
-      if (snapshot.elapsedMs >= 12000 && !has12sWarned.current) {
+      if (snapshot.elapsedMs >= 11700 && !has12sWarned.current) {
         has12sWarned.current = true
         if (voiceEnabled) speak("12 seconds")
       }

@@ -33,6 +33,7 @@ import {
 import { Trash2 } from "lucide-react"
 import { WCA_EVENTS, getPracticeTypesForEvent } from "@/lib/constants"
 import { updateSession, deleteSession } from "@/lib/actions/sessions"
+import { clearSolveSessionFromIndexedDb } from "@/lib/timer/solve-store"
 import {
   GUARDED_NUMBER_INPUT_CLASSNAME,
   preventGuardedNumberInputKey,
@@ -172,6 +173,11 @@ export function EditSessionModal({
       setError(result.error)
       setDeleting(false)
       return
+    }
+
+    // Clear IndexedDB cache so the timer doesn't show stale solves
+    if (result.solveSessionId) {
+      void clearSolveSessionFromIndexedDb(result.solveSessionId)
     }
 
     setDeleting(false)

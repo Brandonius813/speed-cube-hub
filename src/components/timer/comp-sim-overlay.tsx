@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender } from "@/lib/timer/inspection"
@@ -30,6 +30,15 @@ import {
   type CompSimRoundConfig,
 } from "@/lib/timer/comp-sim-round"
 
+/** Handle exposed to the parent for forwarding GAN bluetooth events. */
+export type CompSimBtHandle = {
+  handleBtPress: (timestamp?: number) => void
+  handleBtRelease: (timestamp?: number) => void
+  handleBtSolveComplete: (timeMs: number) => void
+  handleBtRunning: () => void
+  phase: string
+}
+
 type Props = {
   event: string
   config: CompSimRoundConfig
@@ -42,6 +51,7 @@ type Props = {
   onExit: () => void
   onConfigChange?: (config: CompSimRoundConfig) => void
   onBusyChange?: (busy: boolean) => void
+  btHandleRef?: Ref<CompSimBtHandle | null>
 }
 
 function formatPressureWarning(
@@ -80,6 +90,7 @@ export function CompSimOverlay({
   onExit,
   onConfigChange,
   onBusyChange,
+  btHandleRef,
 }: Props) {
   const compSim = useCompSim({ event, config })
   const { snapshot, roundResult } = compSim
@@ -124,6 +135,21 @@ export function CompSimOverlay({
     onSolveStart: compSim.startSolve,
     onSolveComplete: compSim.handleSolveComplete,
   })
+
+  useImperativeHandle(btHandleRef, () => ({
+    handleBtPress: timerController.handlePress,
+    handleBtRelease: timerController.handlePressEnd,
+    handleBtRunning: () => {
+      // If not yet running, start the solve (GAN hardware started)
+      if (timerController.phase !== "running") {
+        timerController.startTimer()
+      }
+    },
+    handleBtSolveComplete: (timeMs: number) => {
+      timerController.externalStopSolve(timeMs)
+    },
+    phase,
+  }), [timerController, phase])
 
   useEffect(() => {
     onBusyChange?.(phase !== "idle")

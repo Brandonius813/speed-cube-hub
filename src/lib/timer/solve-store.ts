@@ -508,3 +508,17 @@ export function createSolveStore(): SolveStore {
     },
   }
 }
+
+/**
+ * Standalone helper to clear a solve session from IndexedDB without needing
+ * a full SolveStore instance.  Best-effort — silently ignores errors.
+ */
+export async function clearSolveSessionFromIndexedDb(sessionId: string): Promise<void> {
+  if (!supportsIndexedDb()) return
+  try {
+    const db = await openDb()
+    await clearIndexedDbSession(db, sessionId)
+  } catch {
+    // Best-effort cleanup — if IndexedDB is unavailable, skip silently.
+  }
+}

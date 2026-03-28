@@ -186,7 +186,7 @@ function computeAverageFromSortedWindow(sorted: number[]): number | null {
   return Math.round(sum / (sorted.length - 2))
 }
 
-export function computeFixedMilestoneRows(
+function computeFixedMilestoneRows(
   solves: SummarySolveShape[]
 ): TimerMilestoneSummaryRow[] {
   if (solves.length === 0) return []
@@ -229,7 +229,7 @@ function milestoneRowsToEventPatch(
   return patch
 }
 
-export function milestoneRowsToSessionPatch(
+function milestoneRowsToSessionPatch(
   rows: TimerMilestoneSummaryRow[]
 ): Record<string, number | null> {
   const patch: Record<string, number | null> = {}

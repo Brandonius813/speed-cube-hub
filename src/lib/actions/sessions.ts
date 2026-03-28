@@ -386,7 +386,7 @@ export async function updateSession(
 
 export async function deleteSession(
   sessionId: string
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; solveSessionId?: string | null }> {
   const supabase = await createClient();
 
   const {
@@ -397,6 +397,36 @@ export async function deleteSession(
     return { error: "You must be logged in to delete a session." };
   }
 
+  // Look up related IDs before deleting
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("solve_session_id, timer_session_id")
+    .eq("id", sessionId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!session) {
+    return { error: "Session not found." };
+  }
+
+  // Delete solves linked to the solve session
+  if (session.solve_session_id) {
+    await supabase
+      .from("solves")
+      .delete()
+      .eq("solve_session_id", session.solve_session_id)
+      .eq("user_id", user.id);
+  }
+
+  // Delete the solve_session (cascades to solve_session_summaries if any)
+  if (session.solve_session_id) {
+    await supabase
+      .from("solve_sessions")
+      .delete()
+      .eq("id", session.solve_session_id);
+  }
+
+  // Delete the sessions row
   const { error } = await supabase
     .from("sessions")
     .delete()
@@ -407,12 +437,12 @@ export async function deleteSession(
     return { error: error.message };
   }
 
-  return {};
+  return { solveSessionId: session.solve_session_id ?? null };
 }
 
 export async function deleteSessionsBulk(
   sessionIds: string[]
-): Promise<{ deleted: number; error?: string }> {
+): Promise<{ deleted: number; error?: string; solveSessionIds?: string[] }> {
   const supabase = await createClient();
 
   const {
@@ -427,6 +457,32 @@ export async function deleteSessionsBulk(
     return { deleted: 0, error: "No sessions selected." };
   }
 
+  // Look up related solve_session_ids
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("solve_session_id")
+    .in("id", sessionIds)
+    .eq("user_id", user.id);
+
+  const solveSessionIds = (sessions ?? [])
+    .map((s) => s.solve_session_id)
+    .filter((id): id is string => id != null);
+
+  // Delete solves linked to these solve sessions
+  if (solveSessionIds.length > 0) {
+    await supabase
+      .from("solves")
+      .delete()
+      .in("solve_session_id", solveSessionIds)
+      .eq("user_id", user.id);
+
+    // Delete solve_sessions
+    await supabase
+      .from("solve_sessions")
+      .delete()
+      .in("id", solveSessionIds);
+  }
+
   const { error } = await supabase
     .from("sessions")
     .delete()
@@ -437,7 +493,7 @@ export async function deleteSessionsBulk(
     return { deleted: 0, error: error.message };
   }
 
-  return { deleted: sessionIds.length };
+  return { deleted: sessionIds.length, solveSessionIds };
 }
 
 export async function getSessionStats() {

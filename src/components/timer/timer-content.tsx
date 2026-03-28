@@ -41,6 +41,7 @@ import {
 } from "@/components/timer/use-bluetooth-timer"
 import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import { isBleSupported } from "@/lib/timer/bluetooth"
+import type { CompSimBtHandle } from "@/components/timer/comp-sim-overlay"
 import {
   createTimerEngine,
   type TimerEvent,
@@ -184,14 +185,11 @@ const SESSION_PAUSED_KEY = "timer-session-paused"
 const SESSION_PAUSED_AT_KEY = "timer-session-paused-at"
 const SESSION_PAUSED_SOLVE_MSG = "Session is paused. Resume it to solve."
 const SESSION_PAUSED_ENTRY_MSG = "Session is paused. Resume it to enter a time."
-const COMP_SIM_GAN_IGNORED_MSG = "GAN input ignored during Comp Sim. Use the Comp Sim timer controls."
 const COMP_SIM_CONFIG_KEY = "timer-comp-sim-config"
 const LEGACY_TIMER_TEXT_SIZE_KEY = "timer-text-size"
 const TIMER_SCRAMBLE_TEXT_SIZE_KEY = "timer-scramble-text-size"
 const TIMER_PANE_TIME_TEXT_SIZE_KEY = "timer-pane-time-text-size"
 type CompSimEntryGuard =
-  | "gan_connected"
-  | "gan_connected_empty_session"
   | "empty_session"
   | "session_unsaved"
 
@@ -810,8 +808,14 @@ export function TimerContent({ viewer }: TimerContentProps) {
     end: INITIAL_SOLVE_WINDOW,
   })
   const [pausedAttemptMessage, setPausedAttemptMessage] = useState<string | null>(null)
-  const [compSimIgnoredMessage, setCompSimIgnoredMessage] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
+  const [showBtReconnect, setShowBtReconnect] = useState(() => {
+    try {
+      return isBleSupported() && localStorage.getItem("timer-last-input-bt") === "true"
+    } catch {
+      return false
+    }
+  })
   const [shareCardData, setShareCardData] = useState<ShareCardData | null>(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [compSimEntryGuard, setCompSimEntryGuard] = useState<CompSimEntryGuard | null>(null)
@@ -1002,6 +1006,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const btConnectedRef = useRef(false)
   const practiceTypeRef = useRef(practiceType)
   const compSimBusyRef = useRef(false)
+  const compSimBtRef = useRef<CompSimBtHandle | null>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const settingsOpenRef = useRef(false)
   const shareModalOpenRef = useRef(false)
@@ -1036,8 +1041,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
   )
   const sessionPausedRef = useRef(false)
   const pausedAttemptTimeoutRef = useRef<number | null>(null)
-  const compSimIgnoredTimeoutRef = useRef<number | null>(null)
-  const compSimGanIgnoredShownRef = useRef(false)
   const suppressUiResetRef = useRef<number | null>(null)
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
@@ -2068,6 +2071,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
   useEffect(() => {
     dispatchEngine({ type: "BT_CONNECTED", connected: btStatus === "connected" })
     btConnectedRef.current = btStatus === "connected"
+    if (btStatus === "connected") {
+      try { localStorage.setItem("timer-last-input-bt", "true") } catch {}
+      setShowBtReconnect(false)
+    }
   }, [btStatus, dispatchEngine])
 
   useEffect(() => {
@@ -2078,22 +2085,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (pausedAttemptTimeoutRef.current !== null) {
         clearTimeout(pausedAttemptTimeoutRef.current)
       }
-      if (compSimIgnoredTimeoutRef.current !== null) {
-        clearTimeout(compSimIgnoredTimeoutRef.current)
-      }
       clearPendingScrambleRequests()
     }
   }, [clearPendingScrambleRequests])
-
-  useEffect(() => {
-    if (practiceType === "Comp Sim") return
-    compSimGanIgnoredShownRef.current = false
-    setCompSimIgnoredMessage(null)
-    if (compSimIgnoredTimeoutRef.current !== null) {
-      clearTimeout(compSimIgnoredTimeoutRef.current)
-      compSimIgnoredTimeoutRef.current = null
-    }
-  }, [practiceType])
 
   function fmtSession(seconds: number): string {
     const m = Math.floor(seconds / 60)
@@ -2110,19 +2104,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
       setPausedAttemptMessage(null)
       pausedAttemptTimeoutRef.current = null
     }, 1300)
-  }
-
-  function showCompSimIgnoredPopup() {
-    if (compSimGanIgnoredShownRef.current) return
-    compSimGanIgnoredShownRef.current = true
-    setCompSimIgnoredMessage(COMP_SIM_GAN_IGNORED_MSG)
-    if (compSimIgnoredTimeoutRef.current !== null) {
-      clearTimeout(compSimIgnoredTimeoutRef.current)
-    }
-    compSimIgnoredTimeoutRef.current = window.setTimeout(() => {
-      setCompSimIgnoredMessage(null)
-      compSimIgnoredTimeoutRef.current = null
-    }, 1800)
   }
 
   function startSession() {
@@ -2557,13 +2538,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }
 
   function enterCompSim(
-    options: { disconnectGan?: boolean; cancelEmptySession?: boolean; autoStart?: boolean } = {}
+    options: { cancelEmptySession?: boolean; autoStart?: boolean } = {}
   ) {
     if (options.cancelEmptySession && hasActiveSession) {
       cancelSession()
-    }
-    if (options.disconnectGan && btStatus === "connected") {
-      btDisconnect()
     }
     setCompSimEntryGuard(null)
     setPendingPracticeTypeSwitch(null)
@@ -2615,14 +2593,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
 
     if (hasActiveSession) {
-      setCompSimEntryGuard(
-        btStatus === "connected" ? "gan_connected_empty_session" : "empty_session"
-      )
-      return
-    }
-
-    if (btStatus === "connected") {
-      setCompSimEntryGuard("gan_connected")
+      setCompSimEntryGuard("empty_session")
       return
     }
 
@@ -2769,7 +2740,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
   btCallbacksRef.current = {
     onHandsOn: () => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        const handle = compSimBtRef.current
+        if (!handle) return
+        // Hands on pad during comp sim → press (starts hold for inspection/solve)
+        const csPhase = handle.phase
+        if (csPhase === "ready" || csPhase === "inspecting") {
+          handle.handleBtPress()
+        }
         return
       }
       if (sessionPausedRef.current) return
@@ -2777,7 +2754,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     onGetSet: () => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        // GAN armed — no additional action needed, hold is time-based
         return
       }
       if (sessionPausedRef.current) return
@@ -2788,7 +2765,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     onHandsOff: () => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        const handle = compSimBtRef.current
+        if (!handle) return
+        // Hands off pad → release (starts timer or inspection)
+        handle.handleBtRelease()
         return
       }
       if (sessionPausedRef.current) return
@@ -2799,7 +2779,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     onRunning: () => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        const handle = compSimBtRef.current
+        if (!handle) return
+        handle.handleBtRunning()
         return
       }
       if (sessionPausedRef.current) {
@@ -2817,7 +2799,15 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     onStopped: (time_ms: number | null) => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        const handle = compSimBtRef.current
+        if (!handle) return
+        const solveMs =
+          typeof time_ms === "number" && Number.isFinite(time_ms) && time_ms > 0
+            ? time_ms
+            : 0
+        if (solveMs > 0) {
+          handle.handleBtSolveComplete(solveMs)
+        }
         return
       }
       if (sessionPausedRef.current) {
@@ -2838,12 +2828,25 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     onIdle: () => {
       if (practiceTypeRef.current === "Comp Sim") {
-        showCompSimIgnoredPopup()
+        const handle = compSimBtRef.current
+        if (!handle) return
+        // Idle in comp sim → start inspection if in ready phase
+        const csPhase = handle.phase
+        if (csPhase === "ready") {
+          // Simulate a tap to trigger inspection start
+          handle.handleBtPress()
+          handle.handleBtRelease()
+        }
         return
       }
       if (sessionPausedRef.current) return
-      inspRef.current?.cancelInspection()
       const phaseNow = engineRef.current.getSnapshot().phase
+      // If already inspecting, don't cancel+restart — let the countdown continue
+      if (phaseNow === "inspecting") {
+        dispatchEngine({ type: "BT_IDLE" })
+        return
+      }
+      inspRef.current?.cancelInspection()
       if (phaseNow === "running" && !btSolveFinalizedRef.current) {
         // Fallback for firmware variants that jump straight to IDLE on stop.
         btSolveFinalizedRef.current = true
@@ -3345,47 +3348,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
             },
           ],
         }
-      case "gan_connected_empty_session":
-        return {
-          title: "Disconnect GAN before Comp Sim",
-          description:
-            "Competition Simulator should run on its own so the GAN timer cannot record a second solve underneath it. Your empty normal practice session will be canceled automatically.",
-          actions: [
-            {
-              label: "Disconnect GAN and Start Comp Sim",
-              tone: "primary" as const,
-              onSelect: () =>
-                enterCompSim({ disconnectGan: true, cancelEmptySession: true }),
-            },
-            {
-              label: "Go Back",
-              onSelect: () => {
-                setCompSimAutoStartRequested(false)
-                setCompSimEntryGuard(null)
-              },
-            },
-          ],
-        }
-      case "gan_connected":
-        return {
-          title: "Disconnect GAN before Comp Sim",
-          description:
-            "Competition Simulator should run on its own so the GAN timer cannot record a second solve underneath it.",
-          actions: [
-            {
-              label: "Disconnect GAN and Start Comp Sim",
-              tone: "primary" as const,
-              onSelect: () => enterCompSim({ disconnectGan: true }),
-            },
-            {
-              label: "Go Back",
-              onSelect: () => {
-                setCompSimAutoStartRequested(false)
-                setCompSimEntryGuard(null)
-              },
-            },
-          ],
-        }
       default:
         return null
     }
@@ -3396,6 +3358,26 @@ export function TimerContent({ viewer }: TimerContentProps) {
       {storageWarning && (
         <div className="bg-yellow-900/60 border-b border-yellow-700/50 px-4 py-2 text-center text-xs text-yellow-200">
           {storageWarning}
+        </div>
+      )}
+      {showBtReconnect && btStatus === "disconnected" && (
+        <div className="bg-blue-900/60 border-b border-blue-700/50 px-4 py-2 flex items-center justify-center gap-3 text-xs text-blue-200">
+          <span>Your last session used a GAN timer.</span>
+          <button
+            onClick={() => { btConnect(); setShowBtReconnect(false) }}
+            className="font-semibold text-blue-100 underline underline-offset-2"
+          >
+            Reconnect
+          </button>
+          <button
+            onClick={() => {
+              setShowBtReconnect(false)
+              try { localStorage.removeItem("timer-last-input-bt") } catch {}
+            }}
+            className="text-blue-400 hover:text-blue-200"
+          >
+            Dismiss
+          </button>
         </div>
       )}
       <div ref={timerTopAreaRef}>
@@ -3958,6 +3940,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           onConfigChange={updateCompSimConfig}
           onExit={handleCompSimExit}
           onBusyChange={setCompSimBusy}
+          btHandleRef={compSimBtRef}
         />
       ) : (
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
@@ -4186,14 +4169,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
         <div className="pointer-events-none fixed left-1/2 top-16 z-[70] -translate-x-1/2 px-4">
           <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/15 px-3 py-2 text-xs font-semibold text-yellow-300 shadow-lg backdrop-blur-sm">
             {pausedAttemptMessage}
-          </div>
-        </div>
-      )}
-
-      {compSimIgnoredMessage && (
-        <div className="pointer-events-none fixed left-1/2 top-28 z-[70] -translate-x-1/2 px-4">
-          <div className="rounded-lg border border-blue-500/40 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-200 shadow-lg backdrop-blur-sm">
-            {compSimIgnoredMessage}
           </div>
         </div>
       )}
