@@ -1084,6 +1084,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const solvesRef = useRef<Solve[]>([])
   const statColsRef = useRef<[string, string]>(statCols)
   const btSolveFinalizedRef = useRef(false)
+  const lastBtIdleResetRef = useRef(0)
   const shortcutSolveRef = useRef<Solve | null>(null)
 
   const refreshAllTimeAnalytics = useCallback((eventId: string) => {
@@ -2898,6 +2899,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       const phaseNow = engineRef.current.getSnapshot().phase
       // If already inspecting, don't cancel+restart — let the countdown continue
       if (phaseNow === "inspecting") {
+        inspRef.current?.cancelInspection()
         dispatchEngine({ type: "BT_IDLE" })
         return
       }
@@ -2916,10 +2918,15 @@ export function TimerContent({ viewer }: TimerContentProps) {
         phaseNow !== "stopped" &&
         phaseNow !== "running"
       if (shouldStartInspection) {
+        if (Date.now() - lastBtIdleResetRef.current < 500) {
+          dispatchEngine({ type: "BT_IDLE" })
+          return
+        }
         dispatchEngine({ type: "START_INSPECTION" })
         inspRef.current?.startInspection()
       } else {
         dispatchEngine({ type: "BT_IDLE" })
+        lastBtIdleResetRef.current = Date.now()
       }
     },
     onDisconnect: () => {
