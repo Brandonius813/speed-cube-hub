@@ -2800,7 +2800,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         if (!handle) return
         // Hands on pad during comp sim → press (starts hold for inspection/solve)
         const csPhase = handle.phase
-        if (csPhase === "ready" || csPhase === "inspecting") {
+        if (csPhase === "ready" || csPhase === "inspecting" || csPhase === "solving") {
           handle.handleBtPress()
         }
         return
@@ -2886,13 +2886,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (practiceTypeRef.current === "Comp Sim") {
         const handle = compSimBtRef.current
         if (!handle) return
-        // Idle in comp sim → start inspection if in ready phase
-        const csPhase = handle.phase
-        if (csPhase === "ready") {
-          // Simulate a tap to trigger inspection start
-          handle.handleBtPress()
-          handle.handleBtRelease()
-        }
+        handle.handleBtIdle()
         return
       }
       if (sessionPausedRef.current) return

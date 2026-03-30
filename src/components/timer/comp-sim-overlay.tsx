@@ -36,6 +36,8 @@ export type CompSimBtHandle = {
   handleBtRelease: (timestamp?: number) => void
   handleBtSolveComplete: (timeMs: number) => void
   handleBtRunning: () => void
+  /** Advance through comp sim flow via GAN idle/reset button. */
+  handleBtIdle: () => void
   phase: string
 }
 
@@ -148,8 +150,21 @@ export function CompSimOverlay({
     handleBtSolveComplete: (timeMs: number) => {
       timerController.externalStopSolve(timeMs)
     },
+    handleBtIdle: () => {
+      // Advance through comp sim flow via GAN idle/reset button press.
+      if (phase === "scramble_shown") {
+        compSim.confirmCubeCovered()
+      } else if (phase === "ready" && snapshot.sitDownRequired) {
+        compSim.sitDown()
+      } else if (phase === "ready" && !snapshot.sitDownRequired) {
+        timerController.handlePress()
+        timerController.handlePressEnd()
+      } else if (phase === "solve_recorded") {
+        compSim.advanceToNextAttempt()
+      }
+    },
     phase,
-  }), [timerController, phase])
+  }), [compSim, phase, snapshot.sitDownRequired, timerController])
 
   useEffect(() => {
     onBusyChange?.(phase !== "idle")

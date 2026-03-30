@@ -50,6 +50,7 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
   const startTimeRef = useRef<number>(0)
   const has8sWarned = useRef(false)
   const has12sWarned = useRef(false)
+  const cancelledRef = useRef(false)
 
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined") return
@@ -89,6 +90,7 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
     startTimeRef.current = resolveInputTimestamp(timestamp)
     has8sWarned.current = false
     has12sWarned.current = false
+    cancelledRef.current = false
 
     const tick = (ts: number) => {
       const snapshot = getInspectionSnapshot(startTimeRef.current, ts)
@@ -97,11 +99,12 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
 
       // Pre-fire ~300ms early to compensate for TTS startup latency.
       // WCA calls happen at 8s and 12s elapsed.
-      if (snapshot.elapsedMs >= 7700 && !has8sWarned.current) {
+      // Guard with cancelledRef to prevent speech leaking after cancellation.
+      if (snapshot.elapsedMs >= 7700 && !has8sWarned.current && !cancelledRef.current) {
         has8sWarned.current = true
         if (voiceEnabled) speak("8 seconds")
       }
-      if (snapshot.elapsedMs >= 11700 && !has12sWarned.current) {
+      if (snapshot.elapsedMs >= 11700 && !has12sWarned.current && !cancelledRef.current) {
         has12sWarned.current = true
         if (voiceEnabled) speak("12 seconds")
       }
@@ -118,15 +121,19 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
   }, [cleanup, speak, voiceEnabled])
 
   const cancelInspection = useCallback(() => {
+    cancelledRef.current = true
     cleanup()
     setState("idle")
     setSecondsLeft(15)
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
+      // Double-cancel to catch utterances that were in-flight during the RAF tick.
+      setTimeout(() => window.speechSynthesis.cancel(), 0)
     }
   }, [cleanup])
 
   const finishInspection = useCallback((timestamp?: number | null): "+2" | "DNF" | null => {
+    cancelledRef.current = true
     cleanup()
     const snapshot = getInspectionSnapshot(
       startTimeRef.current,
@@ -137,6 +144,7 @@ export function useInspection(options?: InspectionOptions): InspectionResult {
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
+      setTimeout(() => window.speechSynthesis.cancel(), 0)
     }
 
     return snapshot.penalty

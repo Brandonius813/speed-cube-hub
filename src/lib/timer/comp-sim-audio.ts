@@ -210,7 +210,12 @@ const INSPECTION_CALL_CUES: CuePreset[] = [
   },
 ]
 
-let ambientAudio: HTMLAudioElement | null = null
+// Web Audio API ambient loop state (gapless looping via AudioBufferSourceNode)
+let ambientCtx: AudioContext | null = null
+let ambientSource: AudioBufferSourceNode | null = null
+let ambientGain: GainNode | null = null
+const ambientBufferCache = new Map<string, AudioBuffer>()
+
 let activeOneShots = new Set<HTMLAudioElement>()
 let reactionTimeout: ReturnType<typeof setTimeout> | null = null
 let previewReactionTimeout: ReturnType<typeof setTimeout> | null = null
@@ -244,8 +249,49 @@ function createAudio(src: string, volume: number, loop = false): HTMLAudioElemen
   return audio
 }
 
+function getAmbientContext(): AudioContext {
+  if (!ambientCtx || ambientCtx.state === "closed") {
+    ambientCtx = new AudioContext()
+  }
+  return ambientCtx
+}
+
+async function fetchAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuffer> {
+  const cached = ambientBufferCache.get(src)
+  if (cached) return cached
+  const response = await fetch(src)
+  const arrayBuffer = await response.arrayBuffer()
+  const buffer = await ctx.decodeAudioData(arrayBuffer)
+  ambientBufferCache.set(src, buffer)
+  return buffer
+}
+
+async function startAmbientLoop(src: string, volume: number): Promise<void> {
+  stopAmbientAudio()
+  const ctx = getAmbientContext()
+  if (ctx.state === "suspended") await ctx.resume()
+
+  const buffer = await fetchAudioBuffer(ctx, src)
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.loop = true
+
+  const gain = ctx.createGain()
+  gain.gain.value = clamp(volume, 0, 1)
+
+  source.connect(gain)
+  gain.connect(ctx.destination)
+  source.start()
+
+  ambientSource = source
+  ambientGain = gain
+}
+
 export function primeCompSimAudioPlayback(): void {
   if (typeof window === "undefined" || audioUnlocked) return
+
+  // Initialize Web Audio context on user gesture
+  getAmbientContext()
 
   const primer = new Audio(SILENT_AUDIO_DATA_URI)
   primer.volume = 0
@@ -284,13 +330,17 @@ function stopActiveOneShots() {
 }
 
 function stopAmbientAudio() {
-  if (ambientAudio) {
+  if (ambientSource) {
     try {
-      ambientAudio.pause()
-      ambientAudio.currentTime = 0
+      ambientSource.stop()
     } catch {}
+    ambientSource.disconnect()
+    ambientSource = null
   }
-  ambientAudio = null
+  if (ambientGain) {
+    ambientGain.disconnect()
+    ambientGain = null
+  }
 }
 
 function clearPlaybackState() {
@@ -356,19 +406,10 @@ function beginPlayback(options: StartNoiseOptions, mode: PlaybackMode): void {
   if (options.scene === "off") return
 
   const scene = AMBIENT_SCENES[options.scene]
-  const nextAmbientAudio = createAudio(
-    scene.src,
-    scene.gain * (0.35 + clamp(options.intensity / 100, 0, 1) * 0.85),
-    true
-  )
-  ambientAudio = nextAmbientAudio
+  const volume = scene.gain * (0.35 + clamp(options.intensity / 100, 0, 1) * 0.85)
 
-  if (!nextAmbientAudio) return
-
-  void nextAmbientAudio.play().catch(() => {
-    if (ambientAudio === nextAmbientAudio) {
-      ambientAudio = null
-    }
+  // Use Web Audio API for gapless looping (avoids MP3 padding gaps)
+  void startAmbientLoop(scene.src, volume).catch(() => {
     if (playbackMode === mode) {
       clearPlaybackState()
     }
@@ -424,4 +465,58 @@ export function stopSoundscapePreview(): void {
 export function stopAllNoise(): void {
   clearPreviewTimers()
   clearPlaybackState()
+}
+
+// ---------------------------------------------------------------------------
+// Ready-window audio cues (Web Audio API tones — no external files needed)
+// ---------------------------------------------------------------------------
+
+let toneCtx: AudioContext | null = null
+
+function getToneContext(): AudioContext | null {
+  if (typeof window === "undefined") return null
+  if (!toneCtx || toneCtx.state === "closed") {
+    toneCtx = new AudioContext()
+  }
+  return toneCtx
+}
+
+function playTone(
+  frequency: number,
+  durationMs: number,
+  options?: { endFrequency?: number; volume?: number }
+) {
+  const ctx = getToneContext()
+  if (!ctx) return
+  if (ctx.state === "suspended") void ctx.resume()
+
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = "sine"
+  osc.frequency.setValueAtTime(frequency, ctx.currentTime)
+  if (options?.endFrequency) {
+    osc.frequency.linearRampToValueAtTime(
+      options.endFrequency,
+      ctx.currentTime + durationMs / 1000
+    )
+  }
+  gain.gain.setValueAtTime(options?.volume ?? 0.35, ctx.currentTime)
+  // Fade out over last 30% to avoid click
+  gain.gain.setValueAtTime(options?.volume ?? 0.35, ctx.currentTime + durationMs / 1000 * 0.7)
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationMs / 1000)
+
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start()
+  osc.stop(ctx.currentTime + durationMs / 1000)
+}
+
+/** Single beep at 15 seconds remaining in the ready window. */
+export function playReadyWindow15sWarning(): void {
+  playTone(880, 200, { volume: 0.3 })
+}
+
+/** Descending tone when the 60-second ready window expires. */
+export function playReadyWindowExpired(): void {
+  playTone(880, 500, { endFrequency: 440, volume: 0.4 })
 }

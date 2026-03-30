@@ -15,7 +15,13 @@ import {
   getPlannedSolveCount,
   normalizeCompSimConfig,
 } from "@/lib/timer/comp-sim-round"
-import { playInspectionCall, startNoise, stopAllNoise } from "@/lib/timer/comp-sim-audio"
+import {
+  playInspectionCall,
+  playReadyWindow15sWarning,
+  playReadyWindowExpired,
+  startNoise,
+  stopAllNoise,
+} from "@/lib/timer/comp-sim-audio"
 import { msToTruncatedSeconds } from "@/lib/timer/averages"
 
 type ScrambleWorkerRequest = { requestId: number; eventId: string }
@@ -67,6 +73,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const readyWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const readyWindowWarningRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const workerRef = useRef<Worker | null>(null)
 
   useEffect(() => {
@@ -88,9 +95,11 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current)
     if (cueTimeoutRef.current) clearTimeout(cueTimeoutRef.current)
     if (readyWindowTimeoutRef.current) clearTimeout(readyWindowTimeoutRef.current)
+    if (readyWindowWarningRef.current) clearTimeout(readyWindowWarningRef.current)
     waitTimeoutRef.current = null
     cueTimeoutRef.current = null
     readyWindowTimeoutRef.current = null
+    readyWindowWarningRef.current = null
   }, [])
 
   useEffect(() => {
@@ -344,16 +353,31 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
         clearTimeout(readyWindowTimeoutRef.current)
         readyWindowTimeoutRef.current = null
       }
+      if (readyWindowWarningRef.current) {
+        clearTimeout(readyWindowWarningRef.current)
+        readyWindowWarningRef.current = null
+      }
       return
     }
 
     const remainingMs = snapshot.readyWindowDeadlineMs - Date.now()
     if (remainingMs <= 0) {
+      playReadyWindowExpired()
       engineRef.current.dispatch({ type: "READY_WINDOW_EXPIRED" })
       return
     }
 
+    // Schedule 15-second warning beep
+    const warningMs = remainingMs - 15_000
+    if (warningMs > 0) {
+      readyWindowWarningRef.current = setTimeout(() => {
+        playReadyWindow15sWarning()
+        readyWindowWarningRef.current = null
+      }, warningMs)
+    }
+
     readyWindowTimeoutRef.current = setTimeout(() => {
+      playReadyWindowExpired()
       engineRef.current.dispatch({ type: "READY_WINDOW_EXPIRED" })
       readyWindowTimeoutRef.current = null
     }, remainingMs)
@@ -362,6 +386,10 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
       if (readyWindowTimeoutRef.current) {
         clearTimeout(readyWindowTimeoutRef.current)
         readyWindowTimeoutRef.current = null
+      }
+      if (readyWindowWarningRef.current) {
+        clearTimeout(readyWindowWarningRef.current)
+        readyWindowWarningRef.current = null
       }
     }
   }, [

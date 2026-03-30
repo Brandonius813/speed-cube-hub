@@ -93,18 +93,28 @@ export function useSharedTimerController({
     },
   })
 
-  const startTimer = useCallback((timestamp?: number | null) => {
-    solveClock.startSolve(timestamp)
-    engine.dispatch({ type: "START_RUNNING" })
-    onSolveStart()
-  }, [engine, onSolveStart, solveClock])
-
   const completeInspectionDnf = useCallback(() => {
     syncInspectionHold(false)
     inspectionPenaltyRef.current = null
     engine.dispatch({ type: "INSPECTION_DONE" })
     onInspectionDnf()
   }, [engine, onInspectionDnf, syncInspectionHold])
+
+  const startTimer = useCallback((timestamp?: number | null) => {
+    // If transitioning from inspection (e.g. GAN onRunning), evaluate penalty
+    // before starting the solve. Without this, the penalty is never applied.
+    if (phaseRef.current === "inspecting") {
+      const penalty = finishInspection(timestamp)
+      if (penalty === "DNF") {
+        completeInspectionDnf()
+        return
+      }
+      inspectionPenaltyRef.current = penalty
+    }
+    solveClock.startSolve(timestamp)
+    engine.dispatch({ type: "START_RUNNING" })
+    onSolveStart()
+  }, [completeInspectionDnf, engine, finishInspection, onSolveStart, solveClock])
 
   const stopTimer = useCallback((timestamp?: number | null) => {
     if (phaseRef.current !== "running") return
