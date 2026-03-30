@@ -2376,10 +2376,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     if (practiceTypeRef.current === "Comp Sim") return
     heldRef.current = true
     const duration = holdMsRef.current
+    dispatchEngine({ type: "START_HOLD" })
     if (duration === 0) {
       dispatchEngine({ type: "HOLD_READY" })
     } else {
-      dispatchEngine({ type: "START_HOLD" })
       if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
       holdTimeoutRef.current = window.setTimeout(() => {
         if (phaseRef.current === "holding" && heldRef.current) {
