@@ -16,7 +16,7 @@ import type { Solve } from "@/lib/types"
 import { getSolveCountByEvent } from "@/lib/actions/timer"
 import { listRecentEventSolves } from "@/lib/actions/timer-analytics"
 
-const RECENT_SYNC_LIMIT = 500
+const SYNC_PAGE_SIZE = 2000
 
 function dateGroupFromSolvedAt(solvedAt: string): string | null {
   const day = solvedAt.slice(0, 10)
@@ -111,14 +111,20 @@ export async function syncSolvesFromDb(
       return null
     }
 
-    const { solves: allDbSolves, error: fetchError } = await listRecentEventSolves({
-      event,
-      limit: RECENT_SYNC_LIMIT,
-      offset: 0,
-    })
-
-    if (fetchError) {
-      return null
+    // Paginate to fetch ALL solves from the server
+    const allDbSolves: Solve[] = []
+    let syncOffset = 0
+    while (true) {
+      const page = await listRecentEventSolves({
+        event,
+        limit: SYNC_PAGE_SIZE,
+        offset: syncOffset,
+      })
+      if (page.error) return null
+      if (page.solves.length === 0) break
+      allDbSolves.push(...page.solves)
+      if (page.solves.length < SYNC_PAGE_SIZE) break
+      syncOffset += SYNC_PAGE_SIZE
     }
 
     // Imported datasets can contain one timer_session_id spanning many days.

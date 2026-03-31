@@ -61,11 +61,10 @@ import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
 import {
   getEventAnalytics,
-  getEventHistoryBootstrap,
   getTimerSolveListSummary,
   getEventSolveById,
   getSolveDetailWindow,
-  listEventSolveWindow,
+  listRecentEventSolves,
   type SolveWindowCursor,
 } from "@/lib/actions/timer-analytics"
 import {
@@ -80,8 +79,6 @@ import {
   type SessionGroupMeta,
 } from "@/lib/timer/session-dividers"
 import {
-  canLoadOlderSavedSolves,
-  getEffectiveSavedSolveCount,
   useTimerEventHistory,
 } from "@/components/timer/use-timer-event-history"
 import { getEventLabel, getPracticeTypesForEvent } from "@/lib/constants"
@@ -195,8 +192,6 @@ const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
 const SCRAMBLE_TIMEOUT_MS = 2000
 const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
-const SAVED_SOLVE_PAGE_SIZE = 200
-const LOCAL_SOLVE_LOAD_BATCH_SIZE = 200
 const SETTINGS_MENU_VIEWPORT_MARGIN_PX = 12
 const SETTINGS_MENU_MIN_HEIGHT_PX = 180
 const TIMER_V2_ENGINE_ENABLED = process.env.NEXT_PUBLIC_TIMER_V2_ENGINE !== "false"
@@ -353,14 +348,6 @@ function getSavedSolveWindowCursor(solves: Solve[]): SolveWindowCursor | null {
   }
 }
 
-function trimLoadedSolveWindow(
-  solves: Solve[],
-  savedLimit = SAVED_SOLVE_PAGE_SIZE
-): Solve[] {
-  const unsaved = getTrailingUnsavedSolves(solves)
-  const saved = solves.slice(0, Math.max(0, solves.length - unsaved.length))
-  return [...saved.slice(-savedLimit), ...unsaved]
-}
 
 function needsHistoricGroupBackfill(solves: Solve[]): boolean {
   if (solves.length === 0) return false
@@ -884,9 +871,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const {
     historyStatus,
     historyError,
-    savedSolveCountTotal,
     savedSolveCursor,
-    loadingOlderSolves,
     reset: resetEventHistory,
     startBootstrap: startHistoryBootstrap,
     markReady: markHistoryReady,
@@ -896,9 +881,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
     incrementTotalSavedCount,
     decrementTotalSavedCount,
     setCursor: setHistoryCursor,
-    startOlderLoad,
-    finishOlderLoad,
-    failOlderLoad,
   } = useTimerEventHistory()
   const activeTour = parseOnboardingTour(searchParams.get("tour"))
   const timerTour =
@@ -1148,31 +1130,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }, [])
 
   const loadLocalSolveWindow = useCallback(async (eventId: string): Promise<Solve[]> => {
-    const totalLocalSolves = await solveStoreRef.current.count(eventId)
-    if (totalLocalSolves === 0) return []
-
-    const newestFirst: Solve[] = []
-    let offset = 0
-    let savedSolveCount = 0
-    let sawSavedSolve = false
-
-    while (
-      offset < totalLocalSolves &&
-      (!sawSavedSolve || savedSolveCount < SAVED_SOLVE_PAGE_SIZE)
-    ) {
-      const batch = await solveStoreRef.current.listWindow(
-        eventId,
-        offset,
-        LOCAL_SOLVE_LOAD_BATCH_SIZE
-      ) as Solve[]
-      if (batch.length === 0) break
-      newestFirst.push(...batch)
-      savedSolveCount += batch.filter((solve) => !!solve.group).length
-      sawSavedSolve = sawSavedSolve || batch.some((solve) => !!solve.group)
-      offset += batch.length
-    }
-
-    return trimLoadedSolveWindow(newestFirst.reverse())
+    const allSolves = await solveStoreRef.current.loadSession(eventId)
+    return allSolves as Solve[]
   }, [])
 
   const hydrateDividerMetadata = useCallback(async (
@@ -1305,25 +1264,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   // Compute saved vs current session solve counts for display + stats
   const unsavedSolves = useMemo(() => getTrailingUnsavedSolves(solves), [solves])
   const loadedSavedSolveCount = solves.length - unsavedSolves.length
-  const eventHistoryState = useMemo(
-    () => ({
-      status: historyStatus,
-      errorMessage: historyError,
-      totalSavedCount: savedSolveCountTotal,
-      cursor: savedSolveCursor,
-      loadingOlderSolves,
-    }),
-    [
-      historyError,
-      historyStatus,
-      loadingOlderSolves,
-      savedSolveCountTotal,
-      savedSolveCursor,
-    ]
-  )
-  const savedSolveCount = getEffectiveSavedSolveCount(eventHistoryState, loadedSavedSolveCount)
-  const totalSolveCount = savedSolveCount + unsavedSolves.length
-  const hasOlderSavedSolves = canLoadOlderSavedSolves(eventHistoryState, loadedSavedSolveCount)
+  const totalSolveCount = solves.length
   const hasActiveSession =
     sessionStartTime !== null && Number.isFinite(sessionStartTime) && sessionStartTime > 0
   const getCurrentSessionSolves = useCallback((allSolves: Solve[]) => {
@@ -1834,25 +1775,36 @@ export function TimerContent({ viewer }: TimerContentProps) {
           syncTotalSavedCount(countResult.count)
         })
       } else {
-        const bootstrap = await getEventHistoryBootstrap({
-          event,
-          limit: SAVED_SOLVE_PAGE_SIZE,
-        })
+        // Fetch ALL solves from server (paginated in batches of 2000)
+        const allBootSolves: Solve[] = []
+        let bootOffset = 0
+        const BOOT_PAGE = 2000
+        let bootError: string | undefined
+        while (true) {
+          const page = await listRecentEventSolves({
+            event,
+            limit: BOOT_PAGE,
+            offset: bootOffset,
+          })
+          if (page.error) { bootError = page.error; break }
+          if (page.solves.length === 0) break
+          allBootSolves.push(...page.solves.map(toTimerSolve))
+          if (page.solves.length < BOOT_PAGE) break
+          bootOffset += BOOT_PAGE
+        }
 
         if (cancelled) return
 
-        if (bootstrap.error) {
+        if (bootError) {
           setSolves([])
           setSelectedId(null)
           setDetailSolveId(null)
           initStats(event, [])
-          markHistoryError(bootstrap.error)
+          markHistoryError(bootError)
           return
         }
 
-        const bootSolves = trimLoadedSolveWindow(bootstrap.solves.map(toTimerSolve))
-
-        if (bootSolves.length === 0) {
+        if (allBootSolves.length === 0) {
           setSolves([])
           setSelectedId(null)
           setDetailSolveId(null)
@@ -1862,19 +1814,19 @@ export function TimerContent({ viewer }: TimerContentProps) {
         }
 
         await solveStoreRef.current
-          .replaceSession(event, bootSolves)
+          .replaceSession(event, allBootSolves)
           .catch(() =>
             emitTimerTelemetry("timer_error", { scope: "solve_store_replace_bootstrap" })
           )
 
         if (cancelled) return
 
-        finalizeVisibleWindow(bootSolves)
+        finalizeVisibleWindow(allBootSolves)
         markHistoryReady({
-          totalSavedCount: bootstrap.totalCount,
-          cursor: bootstrap.nextCursor,
+          totalSavedCount: allBootSolves.length,
+          cursor: getSavedSolveWindowCursor(allBootSolves),
         })
-        loaded = bootSolves
+        loaded = allBootSolves
       }
 
       // Background cross-device sync: if DB has more solves than local,
@@ -1887,11 +1839,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
       }).then(
         (synced) => {
           if (cancelled || !synced) return
-          const trimmedSynced = trimLoadedSolveWindow(synced)
-          setSolves(trimmedSynced)
-          setHistoryCursor(getSavedSolveWindowCursor(trimmedSynced))
-          initStats(event, trimmedSynced)
-          void hydrateDividerMetadata(event, trimmedSynced).then((mergedGroups) => {
+          setSolves(synced)
+          setHistoryCursor(getSavedSolveWindowCursor(synced))
+          initStats(event, synced)
+          void hydrateDividerMetadata(event, synced).then((mergedGroups) => {
             if (cancelled || !mergedGroups || eventRef.current !== event) return
             setSessionGroups(mergedGroups)
           })
@@ -3294,68 +3245,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
     !scramble.startsWith("Preparing") &&
     !scramble.startsWith("Scramble worker unavailable")
 
-  const loadOlderSavedSolvePage = useCallback(async () => {
-    if (!savedSolveCursor) return
-    if (!canLoadOlderSavedSolves(eventHistoryState, loadedSavedSolveCount)) {
-      return
-    }
-
-    startOlderLoad()
-    const result = await listEventSolveWindow({
-      event,
-      cursor: savedSolveCursor,
-      limit: SAVED_SOLVE_PAGE_SIZE,
-    })
-
-    if (result.error || result.solves.length === 0) {
-      if (!result.error) {
-        syncTotalSavedCount(loadedSavedSolveCount)
-        finishOlderLoad(null)
-      } else {
-        failOlderLoad(result.error)
-      }
-      return
-    }
-
-    const olderSavedSolves = result.solves.map(toTimerSolve).filter((solve) => !!solve.group)
-    if (olderSavedSolves.length === 0) {
-      finishOlderLoad(result.nextCursor)
-      return
-    }
-
-    let merged: Solve[] = []
-    setSolves((previous) => {
-      const existingIds = new Set(previous.map((solve) => solve.id))
-      const uniqueOlderSolves = olderSavedSolves.filter((solve) => !existingIds.has(solve.id))
-      if (uniqueOlderSolves.length === 0) {
-        merged = previous
-        return previous
-      }
-      merged = [...uniqueOlderSolves, ...previous]
-      return merged
-    })
-    finishOlderLoad(result.nextCursor)
-    // Recompute stats with the full solve list (including newly loaded older solves)
-    if (merged.length > 0) {
-      recomputeStats(event, merged)
-    }
-    void hydrateDividerMetadata(event, olderSavedSolves).then((mergedGroups) => {
-      if (!mergedGroups || eventRef.current !== event) return
-      setSessionGroups(mergedGroups)
-    })
-  }, [
-    eventHistoryState,
-    event,
-    failOlderLoad,
-    finishOlderLoad,
-    hydrateDividerMetadata,
-    loadedSavedSolveCount,
-    recomputeStats,
-    savedSolveCursor,
-    startOlderLoad,
-    syncTotalSavedCount,
-  ])
-
   const inInspHold =
     (phase === "holding" || phase === "ready") && inspHoldRef.current
   const timingActive = phase === "running" || phase === "inspecting" || inInspHold
@@ -4351,8 +4240,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
             unsavedDnfCount={unsavedDnfCount}
             historyStatus={historyStatus}
             historyError={historyError}
-            hasOlderSolves={hasOlderSavedSolves}
-            isLoadingOlderSolves={loadingOlderSolves}
             onSetSelectedId={setSelectedId}
             onOpenSolveDetail={handleOpenSolveDetail}
             onOpenStatDetail={handleOpenStatDetail}
@@ -4363,7 +4250,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onUpdateStatCol={updateStatCol}
             onRangeChange={handleRangeChange}
             onUpdateSavedSessionDuration={updateSavedSessionGroupDuration}
-            onLoadOlderSolves={loadOlderSavedSolvePage}
             onRetryHistoryLoad={retryEventHistoryLoad}
             multiSelectMode={multiSelect.isActive}
             multiSelectCount={multiSelect.selectedCount}

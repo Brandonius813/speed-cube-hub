@@ -458,7 +458,7 @@ export function createSolveStore(): SolveStore {
 
     async loadSession(sessionId: string) {
       return withDb(
-        (db) => withTimeout(loadIndexedDbSession(db, sessionId), "loadSession"),
+        (db) => loadIndexedDbSession(db, sessionId),
         async () => [...getMemorySession(sessionId)]
       )
     },
