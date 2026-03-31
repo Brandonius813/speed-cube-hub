@@ -10,7 +10,7 @@ type Props = {
   disabled?: boolean
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 MB
 const ACCEPTED_EXTENSIONS = [".csv", ".txt", ".tsv", ".json"]
 
 export function ImportDropZone({ onData, disabled }: Props) {
@@ -21,7 +21,7 @@ export function ImportDropZone({ onData, disabled }: Props) {
   const handleFile = useCallback(
     (file: File) => {
       if (file.size > MAX_FILE_SIZE) {
-        alert("File is too large. Maximum size is 5 MB.")
+        alert("File is too large. Maximum size is 15 MB.")
         return
       }
       const reader = new FileReader()
@@ -88,7 +88,7 @@ export function ImportDropZone({ onData, disabled }: Props) {
           Drop a file here or click to browse
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          CSV, TXT, TSV, or JSON \u2014 up to 5 MB
+          CSV, TXT, TSV, or JSON \u2014 up to 15 MB
         </p>
         <p className="mt-2 text-xs text-muted-foreground/70">
           Supports csTimer, CubeTime, Twisty Timer, or any timer export

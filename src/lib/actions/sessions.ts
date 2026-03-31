@@ -269,9 +269,6 @@ export async function createSessionsBulk(
     return { inserted: 0, error: "No sessions to import." };
   }
 
-  if (sessions.length > 500) {
-    return { inserted: 0, error: "Maximum 500 sessions per import." };
-  }
 
   // Validate every row
   for (let i = 0; i < sessions.length; i++) {
@@ -321,13 +318,21 @@ export async function createSessionsBulk(
     };
   });
 
-  const { error } = await supabase.from("sessions").insert(rows);
+  const BATCH_SIZE = 500;
+  let totalInserted = 0;
 
-  if (error) {
-    return { inserted: 0, error: error.message };
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("sessions").insert(batch);
+
+    if (error) {
+      return { inserted: totalInserted, error: error.message };
+    }
+
+    totalInserted += batch.length;
   }
 
-  return { inserted: rows.length };
+  return { inserted: totalInserted };
 }
 
 export async function updateSession(
