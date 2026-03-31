@@ -74,6 +74,7 @@ export interface SolveStore {
   ): Promise<void>
   updatePenalty(id: string, penalty: Penalty): Promise<void>
   deleteSolve(id: string): Promise<void>
+  deleteSolves(ids: string[]): Promise<void>
   listWindow(sessionId: string, offset: number, limit: number): Promise<TimerSolve[]>
   count(sessionId: string): Promise<number>
   loadSession(sessionId: string): Promise<TimerSolve[]>
@@ -227,6 +228,14 @@ async function deleteIndexedDbSolve(db: IDBDatabase, id: string): Promise<void> 
   const tx = db.transaction(STORE_NAME, "readwrite")
   const store = tx.objectStore(STORE_NAME)
   store.delete(id)
+  await transactionDone(tx)
+}
+
+async function deleteIndexedDbSolves(db: IDBDatabase, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const tx = db.transaction(STORE_NAME, "readwrite")
+  const store = tx.objectStore(STORE_NAME)
+  for (const id of ids) store.delete(id)
   await transactionDone(tx)
 }
 
@@ -409,6 +418,22 @@ export function createSolveStore(): SolveStore {
             if (next.length !== solves.length) {
               memoryStore.bySession.set(sessionId, next)
               break
+            }
+          }
+        }
+      )
+    },
+
+    async deleteSolves(ids: string[]) {
+      if (ids.length === 0) return
+      return withDb(
+        (db) => deleteIndexedDbSolves(db, ids),
+        async () => {
+          const idSet = new Set(ids)
+          for (const [sessionId, solves] of memoryStore.bySession.entries()) {
+            const next = solves.filter((s) => !idSet.has(s.id))
+            if (next.length !== solves.length) {
+              memoryStore.bySession.set(sessionId, next)
             }
           }
         }

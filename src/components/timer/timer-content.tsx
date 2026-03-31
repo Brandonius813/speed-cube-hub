@@ -2028,6 +2028,17 @@ export function TimerContent({ viewer }: TimerContentProps) {
   }, [settingsOpen])
 
   useEffect(() => {
+    if (!exportOpen) return
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [exportOpen])
+
+  useEffect(() => {
     if (!settingsOpen) {
       setSettingsMenuMaxHeight(null)
       return
@@ -3647,6 +3658,38 @@ export function TimerContent({ viewer }: TimerContentProps) {
                   </button>
                 </>
               )}
+              {solves.length > 0 && (
+                <div className="relative" ref={exportRef}>
+                  <button
+                    className="p-1.5 rounded border border-border text-muted-foreground/70 hover:text-foreground transition-colors"
+                    onClick={() => setExportOpen((v) => !v)}
+                    title="Export solves"
+                  >
+                    <Download size={14} />
+                  </button>
+                  {exportOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1">
+                      {([
+                        { key: "csv" as const, label: "Export CSV" },
+                        { key: "json" as const, label: "Export JSON" },
+                        { key: "txt" as const, label: "Export csTimer TXT" },
+                        { key: "clipboard" as const, label: "Copy Stats" },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => {
+                            void handleExport(opt.key)
+                            setExportOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-secondary/50 transition-colors"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="relative" ref={settingsRef}>
                 <button
                   data-onboarding-target="timer-settings"
@@ -4299,7 +4342,22 @@ export function TimerContent({ viewer }: TimerContentProps) {
             data-onboarding-target="timer-readout"
             className="fixed inset-y-0 left-0 right-0 lg:left-72 xl:left-80 flex flex-col items-center justify-center pointer-events-none z-10"
           >
-            {typing ? (
+            {typing && phase === "inspecting" ? (
+              <TimerReadout
+                className={cn(
+                  "font-mono font-light transition-colors duration-75 cursor-default",
+                  TIMER_READOUT_SIZE_CLASSES[timerReadoutTextSize],
+                  "text-foreground"
+                )}
+                phase={phase}
+                currentTimeMs={null}
+                last={lastDisplaySolve}
+                inInspectionHold={false}
+                inspectionSecondsLeft={insp.secondsLeft}
+                timerUpdateMode={timerUpdateMode}
+                btReset={engineSnapshot.btReset}
+              />
+            ) : typing ? (
               <>
                 <div
                   className="flex items-center justify-center w-full max-w-[56rem] px-4 pointer-events-auto"
@@ -4338,10 +4396,14 @@ export function TimerContent({ viewer }: TimerContentProps) {
                 <p className="mt-2 text-sm font-mono text-muted-foreground h-5">
                   {sessionPaused
                     ? "Session paused"
+                    : inspectionPenaltyRef.current === "+2"
+                    ? "+2 from inspection"
                     : typeVal
                     ? parsedTypeTime !== null
                       ? `= ${formatTimeMsCentiseconds(parsedTypeTime)}`
                       : "invalid"
+                    : inspOn
+                    ? "Space to inspect"
                     : ""}
                 </p>
               </>

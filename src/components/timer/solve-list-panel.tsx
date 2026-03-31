@@ -102,6 +102,15 @@ interface SolveListPanelProps {
   onUpdateSavedSessionDuration?: (groupId: string, durationMinutes: number) => void
   onLoadOlderSolves?: () => Promise<void> | void
   onRetryHistoryLoad?: () => void
+  multiSelectMode?: boolean
+  multiSelectCount?: number
+  isMultiSelected?: (id: string) => boolean
+  isSelectAll?: boolean
+  onToggleMultiSelect?: (id: string) => void
+  onToggleSelectAll?: () => void
+  onEnterMultiSelect?: (initialId?: string) => void
+  onExitMultiSelect?: () => void
+  onBulkDelete?: () => void
 }
 
 const DIVIDER_GAP = 24
@@ -233,6 +242,15 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   onUpdateSavedSessionDuration,
   onLoadOlderSolves,
   onRetryHistoryLoad,
+  multiSelectMode = false,
+  multiSelectCount = 0,
+  isMultiSelected,
+  isSelectAll = false,
+  onToggleMultiSelect,
+  onToggleSelectAll,
+  onEnterMultiSelect,
+  onExitMultiSelect,
+  onBulkDelete,
 }, ref) {
   const sp = (e: React.PointerEvent) => e.stopPropagation()
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -251,6 +269,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   )
   const rowHeight = ROW_HEIGHT_BY_SIZE[textSize]
   const textClasses = PANEL_TEXT_CLASSES[textSize]
+  const statsIncomplete = historyStatus === "loading" || hasOlderSolves
   const getPrefixHeight = useCallback(
     (rowIndex: number) =>
       rowIndex * rowHeight +
@@ -529,6 +548,14 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             ))}
           </tbody>
         </table>
+        {statsIncomplete && (
+          <div className="mt-2 flex items-center justify-center gap-1.5 text-muted-foreground">
+            <span className="h-3 w-3 animate-spin rounded-full border border-primary/30 border-t-primary" />
+            <span className="font-sans text-[10px] uppercase tracking-wider">
+              Loading all-time stats…
+            </span>
+          </div>
+        )}
         <div className="mt-2.5 border-t border-border pt-2">
           <div className="space-y-1 text-center">
             <div className="whitespace-nowrap">
@@ -557,7 +584,35 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             </div>
           </div>
         </div>
-        {selectedSolve && (
+        {multiSelectMode ? (
+          <div className="mt-2.5 flex items-center gap-2">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSelectAll}
+                onChange={() => onToggleSelectAll?.()}
+                className="accent-primary h-3.5 w-3.5"
+              />
+              <span className={cn(textClasses.actionButton, "font-sans text-muted-foreground")}>All</span>
+            </label>
+            <span className={cn(textClasses.actionButton, "font-sans text-foreground font-medium")}>
+              {multiSelectCount} selected
+            </span>
+            <button
+              className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-red-500/60 text-red-400 hover:bg-red-500/15 hover:text-red-300 transition-colors disabled:opacity-40")}
+              onClick={() => onBulkDelete?.()}
+              disabled={multiSelectCount === 0}
+            >
+              Delete
+            </button>
+            <button
+              className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:text-foreground transition-colors")}
+              onClick={() => onExitMultiSelect?.()}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : selectedSolve && (
           <div className="mt-2.5 flex gap-2">
             <button
               className={cn(
@@ -595,6 +650,14 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                 onClick={() => onShareSolve(selectedSolve)}
               >
                 Share
+              </button>
+            )}
+            {onEnterMultiSelect && (
+              <button
+                className={cn(textClasses.actionButton, "font-sans px-2.5 py-1.5 rounded border border-border text-foreground hover:border-primary hover:text-primary transition-colors")}
+                onClick={() => onEnterMultiSelect(selectedSolve.id)}
+              >
+                Select
               </button>
             )}
             <button
@@ -649,6 +712,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
           <table className="w-full text-[13px] font-mono border-collapse">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="text-foreground border-b border-border">
+                {multiSelectMode && <th className="w-7 py-2"></th>}
                 <th className={cn("pr-1.5 py-2 w-[4.25rem] font-normal", textClasses.listHeader)}></th>
                 <th className={cn("text-right pr-1.5 py-2 font-sans font-normal uppercase tracking-wider text-foreground", textClasses.listHeader)}>single</th>
                 {([0, 1] as const).map((idx) => (
@@ -668,7 +732,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             <tbody>
               {topSpacer > 0 && (
                 <tr>
-                  <td colSpan={4} style={{ height: `${topSpacer}px` }} />
+                  <td colSpan={multiSelectMode ? 5 : 4} style={{ height: `${topSpacer}px` }} />
                 </tr>
               )}
 
@@ -694,7 +758,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                   <Fragment key={row.solve.id}>
                     {isBoundary && (
                       <tr aria-hidden="true">
-                        <td colSpan={4} className="relative p-0" style={{ height: `${DIVIDER_GAP}px` }}>
+                        <td colSpan={multiSelectMode ? 5 : 4} className="relative p-0" style={{ height: `${DIVIDER_GAP}px` }}>
                           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-primary/20" />
                           {dividerLabel && (
                             <button
@@ -718,14 +782,30 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                       data-solve-id={row.solve.id}
                       className={cn(
                         "hover:bg-muted/30 transition-colors cursor-pointer",
-                        selectedId === row.solve.id && "bg-muted/40"
+                        selectedId === row.solve.id && !multiSelectMode && "bg-muted/40",
+                        multiSelectMode && isMultiSelected?.(row.solve.id) && "bg-primary/10"
                       )}
                       onClick={() => {
+                        if (multiSelectMode) {
+                          onToggleMultiSelect?.(row.solve.id)
+                          return
+                        }
                         onSelectSolveCell(row.solve.id, "single")
                         onOpenSolveDetail(row.solve.id)
                       }}
                       style={{ height: `${rowHeight}px` }}
                     >
+                      {multiSelectMode && (
+                        <td className="w-7 text-center py-0.5">
+                          <input
+                            type="checkbox"
+                            checked={isMultiSelected?.(row.solve.id) ?? false}
+                            onChange={() => onToggleMultiSelect?.(row.solve.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="accent-primary h-3.5 w-3.5 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className={cn("text-right pr-1.5 py-0.5 text-foreground/90 font-mono", textClasses.listIndex)}>
                         {row.displayNumber}
                       </td>
@@ -788,17 +868,17 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
 
               {bottomSpacer > 0 && (
                 <tr>
-                  <td colSpan={4} style={{ height: `${bottomSpacer}px` }} />
+                  <td colSpan={multiSelectMode ? 5 : 4} style={{ height: `${bottomSpacer}px` }} />
                 </tr>
               )}
               <tr aria-hidden="true">
-                <td colSpan={4} className="px-3 py-1">
+                <td colSpan={multiSelectMode ? 5 : 4} className="px-3 py-1">
                   <div ref={footerSentinelRef} className="h-px w-full" />
                 </td>
               </tr>
               {isLoadingOlderSolves && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-3">
+                  <td colSpan={multiSelectMode ? 5 : 4} className="px-3 py-3">
                     <div className="flex items-center justify-center gap-2 text-xs font-sans uppercase tracking-wider text-muted-foreground">
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border border-primary/30 border-t-primary" />
                       Loading older solves...
@@ -808,7 +888,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
               )}
               {historyError && historyStatus === "ready" && !isLoadingOlderSolves && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-3">
+                  <td colSpan={multiSelectMode ? 5 : 4} className="px-3 py-3">
                     <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs text-foreground">
                       <p>{historyError}</p>
                       {hasOlderSolves && onLoadOlderSolves && (
