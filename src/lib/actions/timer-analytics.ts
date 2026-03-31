@@ -1,6 +1,11 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import {
+  insertSorted,
+  removeSorted,
+  computeAverageFromSortedWindow,
+} from "@/lib/timer/sorted-window"
 import type {
   EventSummary,
   Solve,
@@ -139,52 +144,7 @@ function effectiveSolveMs(solve: SummarySolveShape): number {
   return solve.penalty === "+2" ? solve.time_ms + 2000 : solve.time_ms
 }
 
-function insertSorted(sorted: number[], value: number): void {
-  let low = 0
-  let high = sorted.length
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2)
-    if (sorted[mid] <= value) {
-      low = mid + 1
-    } else {
-      high = mid
-    }
-  }
-  sorted.splice(low, 0, value)
-}
-
-function removeSorted(sorted: number[], value: number): void {
-  let low = 0
-  let high = sorted.length
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2)
-    if (sorted[mid] < value) {
-      low = mid + 1
-    } else {
-      high = mid
-    }
-  }
-  if (sorted[low] === value) {
-    sorted.splice(low, 1)
-  }
-}
-
-function computeAverageFromSortedWindow(sorted: number[]): number | null {
-  let dnfCount = 0
-  for (let index = sorted.length - 1; index >= 0 && !Number.isFinite(sorted[index]); index--) {
-    dnfCount += 1
-    if (dnfCount > 1) return null
-  }
-
-  let sum = 0
-  for (let index = 1; index < sorted.length - 1; index += 1) {
-    const value = sorted[index]
-    if (!Number.isFinite(value)) return null
-    sum += value
-  }
-
-  return Math.round(sum / (sorted.length - 2))
-}
+// insertSorted, removeSorted, computeAverageFromSortedWindow imported from @/lib/timer/sorted-window
 
 function computeFixedMilestoneRows(
   solves: SummarySolveShape[]
@@ -251,15 +211,10 @@ function buildEventSummaryMilestoneRows(summary: EventSummary | null): TimerMile
   })).filter((row) => row.cur !== null || row.best !== null)
 }
 
-function needsEventSummaryMilestoneBackfill(summary: EventSummary | null): boolean {
-  if (!summary) return true
-  return FIXED_TIMER_MILESTONE_SIZES.some((size) => (
-    summary.solve_count >= size &&
-    (
-      summary[eventCurrentField(size)] === null ||
-      summary[eventBestField(size)] === null
-    )
-  ))
+function needsEventSummaryMilestoneBackfill(_summary: EventSummary | null): boolean {
+  // Always refresh milestones — stale non-null values caused incorrect all-time PBs
+  // after session saves. This only runs on page load and session save, not every solve.
+  return true
 }
 
 function needsSessionMilestoneBackfill(summary: TimerSavedSessionSummary | null): boolean {

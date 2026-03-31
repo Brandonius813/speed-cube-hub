@@ -1,6 +1,7 @@
 import {
-  bestStat,
   computeStat,
+  computeAllMilestonesSliding,
+  buildRollingArraySliding,
   type Penalty,
   type TimerSolve,
 } from "@/lib/timer/stats"
@@ -40,7 +41,7 @@ function clearCache(): void {
   cacheValid = false
 }
 
-/** Full recomputation — used for init, recompute, delete, update. Populates caches. */
+/** Full recomputation using O(n log k) sliding windows. */
 function computeSummaryFull(
   solves: TimerSolve[],
   statCols: [string, string],
@@ -65,29 +66,16 @@ function computeSummaryFull(
     ? Math.round(cachedValidSum / cachedValidCount)
     : null
 
+  // Use single-pass sliding window for all milestones — O(n * sum(log k_i))
+  const milestoneRows = computeAllMilestonesSliding(solves, milestones)
   cachedBestByMilestone = new Map()
-  const milestoneRows = milestones
-    .filter((n) => solves.length >= n)
-    .map((n) => {
-      const key = `ao${n}`
-      const cur = computeStat(solves, key)
-      const best = bestStat(solves, key)
-      cachedBestByMilestone.set(key, best)
-      return { key, cur, best }
-    })
+  for (const row of milestoneRows) {
+    cachedBestByMilestone.set(row.key, row.best)
+  }
 
-  const n1 = parseInt(statCols[0].slice(2), 10)
-  const n2 = parseInt(statCols[1].slice(2), 10)
-
-  cachedRolling1 = solves.map((_, i) => {
-    if (i + 1 < n1) return null
-    return computeStat(solves.slice(i + 1 - n1, i + 1), statCols[0])
-  })
-
-  cachedRolling2 = solves.map((_, i) => {
-    if (i + 1 < n2) return null
-    return computeStat(solves.slice(i + 1 - n2, i + 1), statCols[1])
-  })
+  // Use sliding window for rolling arrays — O(n log k) per column
+  cachedRolling1 = buildRollingArraySliding(solves, statCols[0])
+  cachedRolling2 = buildRollingArraySliding(solves, statCols[1])
 
   cacheValid = true
   return { best: cachedBestSingle, mean, milestoneRows, rolling1: cachedRolling1, rolling2: cachedRolling2 }
@@ -133,15 +121,16 @@ function computeSummaryAppend(
     .filter((n) => solves.length >= n)
     .map((n) => {
       const key = `ao${n}`
-      const cur = computeStat(solves, key)
 
-      // For best: only compute the newest trailing window and compare with cache
+      // cur = newest trailing window (same as computeStat on full array)
+      const cur = solves.length >= n
+        ? computeStat(solves.slice(-n), key)
+        : null
+
+      // For best: compare newest window with cached best
       let best = cachedBestByMilestone.get(key) ?? null
-      if (solves.length >= n) {
-        const newest = computeStat(solves.slice(-n), key)
-        if (newest !== null && (best === null || newest < best)) {
-          best = newest
-        }
+      if (cur !== null && (best === null || cur < best)) {
+        best = cur
       }
       cachedBestByMilestone.set(key, best)
 

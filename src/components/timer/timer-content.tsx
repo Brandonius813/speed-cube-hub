@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { startTransition, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Info, Settings } from "lucide-react"
+import { Download, Info, Settings } from "lucide-react"
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour"
 import { type InspectionVoiceGender, useInspection } from "@/lib/timer/inspection"
 import { cn } from "@/lib/utils"
@@ -24,8 +24,9 @@ import {
 import {
   type Penalty,
   type TimerSolve as Solve,
-  bestStat,
   computeStat,
+  computeAllMilestonesSliding,
+  buildRollingArraySliding,
 } from "@/lib/timer/stats"
 import {
   SolveListPanel,
@@ -41,6 +42,13 @@ import {
 } from "@/components/timer/use-bluetooth-timer"
 import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
 import { isBleSupported } from "@/lib/timer/bluetooth"
+import {
+  type ShortcutMap,
+  loadShortcutMap,
+  saveShortcutMap,
+  matchShortcut,
+} from "@/lib/timer/keyboard-shortcuts"
+import ShortcutSettings from "@/components/timer/shortcut-settings"
 import type { CompSimBtHandle } from "@/components/timer/comp-sim-overlay"
 import {
   createTimerEngine,
@@ -61,6 +69,7 @@ import {
 } from "@/lib/actions/timer-analytics"
 import {
   deleteSolve as deleteSolveAction,
+  deleteSolves as deleteSolvesAction,
   getSolveCountByEvent,
   updateSolve as updateSolveAction,
 } from "@/lib/actions/timer"
@@ -112,6 +121,14 @@ import {
 } from "@/lib/timer/comp-sim-round"
 import { useSolveClock } from "@/components/timer/use-solve-clock"
 import { useAutoSession } from "@/components/timer/use-auto-session"
+import { useMultiSelect } from "@/components/timer/use-multi-select"
+import {
+  solvesToCSV,
+  solvesToJSON,
+  solvesToCsTimerTxt,
+  statsToClipboard,
+  downloadFile,
+} from "@/lib/timer/export"
 
 const EndSessionModal = dynamic(
   () =>
@@ -174,7 +191,7 @@ type HoldMs = (typeof HOLD_MS_OPTIONS)[number]
 const DEFAULT_HOLD_MS: HoldMs = 550
 const HOLD_MS_KEY = "timer-hold-ms"
 const MILESTONES = [5, 12, 25, 50, 100, 200, 500, 1000]
-const SCRAMBLE_TIMEOUT_MS = 1800
+const SCRAMBLE_TIMEOUT_MS = 2000
 const SCRAMBLE_MAX_RETRIES = 3
 const INITIAL_SOLVE_WINDOW = 120
 const SAVED_SOLVE_PAGE_SIZE = 200
@@ -492,25 +509,10 @@ function computeStatsSync(solves: Solve[], statCols: [string, string]): SolveSta
     ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
     : null
 
-  const milestoneRows = MILESTONES.filter((n) => solves.length >= n).map((n) => {
-    const key = `ao${n}`
-    return {
-      key,
-      cur: computeStat(solves, key),
-      best: bestStat(solves, key),
-    }
-  })
-
-  const n1 = parseInt(statCols[0].slice(2), 10)
-  const n2 = parseInt(statCols[1].slice(2), 10)
-  const rolling1 = solves.map((_, i) => {
-    if (i + 1 < n1) return null
-    return computeStat(solves.slice(i + 1 - n1, i + 1), statCols[0])
-  })
-  const rolling2 = solves.map((_, i) => {
-    if (i + 1 < n2) return null
-    return computeStat(solves.slice(i + 1 - n2, i + 1), statCols[1])
-  })
+  // Use O(n log k) sliding window instead of O(n²) brute force
+  const milestoneRows = computeAllMilestonesSliding(solves, MILESTONES)
+  const rolling1 = buildRollingArraySliding(solves, statCols[0])
+  const rolling2 = buildRollingArraySliding(solves, statCols[1])
 
   return {
     best: valid.length ? Math.min(...valid) : null,
@@ -631,7 +633,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return "333"
     }
   })
-  const [scramble, setScramble] = useState("Preparing scramble...")
+  const [scramble, setScramble] = useState("Generating scramble...")
   const [scrambleError, setScrambleError] = useState<string | null>(null)
   const [solves, setSolves] = useState<Solve[]>([])
   const [inspOn, setInspOn] = useState(() => {
@@ -758,6 +760,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsMenuMaxHeight, setSettingsMenuMaxHeight] = useState<number | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef<HTMLDivElement | null>(null)
   const [statCols, setStatCols] = useState<[string, string]>(() => {
     try {
       const s = localStorage.getItem("timer-stat-rows")
@@ -1086,6 +1090,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const btSolveFinalizedRef = useRef(false)
   const lastBtIdleResetRef = useRef(0)
   const shortcutSolveRef = useRef<Solve | null>(null)
+  const [shortcutMap, setShortcutMap] = useState<ShortcutMap>(() => loadShortcutMap())
+  const shortcutMapRef = useRef(shortcutMap)
 
   const refreshAllTimeAnalytics = useCallback((eventId: string) => {
     void Promise.all([getEventAnalytics(eventId), getTimerSolveListSummary(eventId)])
@@ -1255,6 +1261,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   scrambleReadyRef.current = engineSnapshot.scrambleReady
   solvesRef.current = solves
   statColsRef.current = statCols
+  shortcutMapRef.current = shortcutMap
   settingsOpenRef.current = settingsOpen
   shareModalOpenRef.current = shareModalOpen
 
@@ -1293,13 +1300,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
     [getCurrentSessionSolves, solves]
   )
   const currentSolveCount = currentSessionSolves.length
-  // Keep time-list stats aligned to every visible solve row when saved solves exist.
+  // Worker stats already cover all loaded solves (including history), so use them directly.
   const showAllStatsInList = loadedSavedSolveCount > 0
-  const loadedHistoryStats = useMemo(
-    () => (showAllStatsInList ? computeStatsSync(solves, statCols) : null),
-    [showAllStatsInList, solves, statCols]
-  )
-  const visibleListStats = showAllStatsInList && loadedHistoryStats ? loadedHistoryStats : stats
+  const visibleListStats = stats
   const panelSavedSolveCount = showAllStatsInList ? 0 : loadedSavedSolveCount
 
   function clearTour() {
@@ -1517,7 +1520,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return
     }
 
-    scrambleHistoryRef.current = [currentValue, "Preparing scramble..."]
+    scrambleHistoryRef.current = [currentValue, "Generating scramble..."]
     goToScramble(1)
     dispatchEngine({ type: "SET_SCRAMBLE_READY", ready: false })
     if (!hasPendingScrambleKind("current", eventId)) {
@@ -1885,7 +1888,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     nextScrambleRef.current = null
     scrambleHistoryRef.current = []
     scrambleIdxRef.current = 0
-    setScramble("Preparing scramble...")
+    setScramble("Generating scramble...")
     setScrambleCanGoPrev(false)
     setScrambleError(null)
     dispatchEngine({ type: "SET_SCRAMBLE_READY", ready: false })
@@ -2054,38 +2057,57 @@ export function TimerContent({ viewer }: TimerContentProps) {
       if (settingsOpenRef.current || shareModalOpenRef.current) return
       if (eventKey.code === "Space") {
         eventKey.preventDefault()
-        if (eventKey.repeat || typing) return
+        if (eventKey.repeat) return
+        if (typing) {
+          // In typing mode, spacebar only works for inspection
+          if (!inspOnRef.current) return
+          const p = phaseRef.current
+          if (p === "idle" || p === "stopped") {
+            // Start inspection
+            if (!scrambleReadyRef.current) return
+            tapToInspectRef.current = true
+            heldRef.current = true
+            dispatchEngine({ type: "HOLD_READY" })
+          } else if (p === "inspecting") {
+            // Finish inspection → store penalty, go to stopped for time entry
+            const pen = inspRef.current?.finishInspection(eventKey.timeStamp) ?? null
+            if (pen === "DNF") {
+              inspectionPenaltyRef.current = null
+              setPendingStoppedSolve({ timeMs: 0, penalty: "DNF" })
+              solveClock.finalizeExternalSolve(0)
+              dispatchEngine({ type: "INSPECTION_DONE" })
+              queueSolveCommit(0, "DNF")
+            } else {
+              inspectionPenaltyRef.current = pen
+              dispatchEngine({ type: "INSPECTION_DONE" })
+            }
+          }
+          return
+        }
         handlePress(eventKey.timeStamp)
         return
       }
       if (typing) return
 
       const idleLikePhase = phaseRef.current === "idle" || phaseRef.current === "stopped"
-      const hasModifier = eventKey.metaKey || eventKey.ctrlKey || eventKey.altKey
       const shortcutSolve = shortcutSolveRef.current
-      const lowerKey = eventKey.key.toLowerCase()
+      const action = idleLikePhase ? matchShortcut(eventKey, shortcutMapRef.current) : null
 
-      if (idleLikePhase && !hasModifier) {
-        if (eventKey.key === "+" && shortcutSolve) {
-          eventKey.preventDefault()
-          setPenalty(
-            shortcutSolve.id,
-            shortcutSolve.penalty === "+2" ? null : "+2"
-          )
-          return
-        }
-        if (lowerKey === "d" && shortcutSolve) {
-          eventKey.preventDefault()
-          setPenalty(
-            shortcutSolve.id,
-            shortcutSolve.penalty === "DNF" ? null : "DNF"
-          )
-          return
-        }
-        if (lowerKey === "n") {
-          eventKey.preventDefault()
-          nextScramble()
-          return
+      if (action) {
+        eventKey.preventDefault()
+        switch (action) {
+          case "toggle-plus2":
+            if (shortcutSolve) setPenalty(shortcutSolve.id, shortcutSolve.penalty === "+2" ? null : "+2")
+            return
+          case "toggle-dnf":
+            if (shortcutSolve) setPenalty(shortcutSolve.id, shortcutSolve.penalty === "DNF" ? null : "DNF")
+            return
+          case "next-scramble":
+            nextScramble()
+            return
+          case "delete-last-solve":
+            if (shortcutSolve) deleteSolve(shortcutSolve.id)
+            return
         }
       }
 
@@ -2095,8 +2117,19 @@ export function TimerContent({ viewer }: TimerContentProps) {
     const up = (eventKey: KeyboardEvent) => {
       if (practiceTypeRef.current === "Comp Sim") return
       if (btConnectedRef.current) return
-      if (eventKey.code !== "Space" || typing) return
+      if (eventKey.code !== "Space") return
+      if (typing && !inspOnRef.current) return
       eventKey.preventDefault()
+      if (typing) {
+        // In typing mode, release triggers inspection start via tapToInspect
+        if (tapToInspectRef.current) {
+          tapToInspectRef.current = false
+          dispatchEngine({ type: "START_INSPECTION" })
+          inspRef.current?.startInspection(eventKey.timeStamp)
+        }
+        heldRef.current = false
+        return
+      }
       heldRef.current = false
       releaseHold(eventKey.timeStamp)
     }
@@ -2779,7 +2812,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     }
 
     const currentValue = history[idx] ?? scrambleRef.current
-    scrambleHistoryRef.current = [currentValue, "Preparing scramble..."]
+    scrambleHistoryRef.current = [currentValue, "Generating scramble..."]
     goToScramble(1)
     dispatchEngine({ type: "SET_SCRAMBLE_READY", ready: false })
     if (!hasPendingScrambleKind("current", eventRef.current)) {
@@ -3170,10 +3203,23 @@ export function TimerContent({ viewer }: TimerContentProps) {
     return source.map((solve, index) => toChartSolve(solve, event, index + 1))
   }, [currentSessionSolves, event, hasActiveSession, mostRecentSavedSessionSolves])
 
-  const allChartSolves = useMemo(
-    () => solves.map((solve, index) => toChartSolve(solve, event, index + 1)),
-    [event, solves]
-  )
+  const allChartCacheRef = useRef<{ event: string; length: number; result: StoredSolve[] }>({
+    event: "", length: 0, result: [],
+  })
+  const allChartSolves = useMemo(() => {
+    const cache = allChartCacheRef.current
+    if (cache.event === event && solves.length >= cache.length && cache.length > 0) {
+      const newItems = solves.slice(cache.length).map((solve, i) =>
+        toChartSolve(solve, event, cache.length + i + 1)
+      )
+      const result = newItems.length > 0 ? [...cache.result, ...newItems] : cache.result
+      allChartCacheRef.current = { event, length: solves.length, result }
+      return result
+    }
+    const result = solves.map((solve, index) => toChartSolve(solve, event, index + 1))
+    allChartCacheRef.current = { event, length: solves.length, result }
+    return result
+  }, [event, solves])
   const allTimeDistributionBuckets = useMemo(() => {
     const total = scopedAllTimeAnalytics?.summary?.solve_count ?? 0
     if (!scopedAllTimeAnalytics?.distribution.length) return []
@@ -3380,6 +3426,79 @@ export function TimerContent({ viewer }: TimerContentProps) {
     },
     []
   )
+
+  // ── Multi-select & Bulk Delete ──────────────────────────────────────
+  const multiSelect = useMultiSelect(solves.length)
+
+  const handleBulkDelete = useCallback(async () => {
+    const count = multiSelect.selectedCount
+    if (count === 0) return
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${count} solve${count === 1 ? "" : "s"}? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    let idsToDelete: string[]
+    if (multiSelect.isSelectAll) {
+      const allSolves = await solveStoreRef.current.loadSession(event)
+      idsToDelete = allSolves
+        .filter((s) => !multiSelect.excludedIds.has(s.id))
+        .map((s) => s.id)
+    } else {
+      idsToDelete = Array.from(multiSelect.selectedIds)
+    }
+    if (idsToDelete.length === 0) return
+
+    const idSet = new Set(idsToDelete)
+    const savedDeleteCount = solvesRef.current.filter(
+      (s) => s.group && idSet.has(s.id)
+    ).length
+
+    await solveStoreRef.current.deleteSolves(idsToDelete)
+
+    const nextSolves = solvesRef.current.filter((s) => !idSet.has(s.id))
+    solveListPanelRef.current?.preserveScrollPosition()
+    setSolves(nextSolves)
+    setHistoryCursor(getSavedSolveWindowCursor(nextSolves))
+    if (savedDeleteCount > 0) decrementTotalSavedCount(savedDeleteCount)
+    recomputeStats(event, nextSolves)
+    setSelectedId(null)
+    multiSelect.exit()
+
+    void deleteSolvesAction(idsToDelete).then((result) => {
+      if (!result.error) refreshAllTimeAnalytics(eventRef.current)
+    })
+  }, [multiSelect, event, recomputeStats, refreshAllTimeAnalytics, decrementTotalSavedCount])
+
+  // ── Export Handler ─────────────────────────────────────────────────
+  const handleExport = useCallback(async (format: "csv" | "json" | "txt" | "clipboard") => {
+    const allSolves = await solveStoreRef.current.loadSession(event)
+    const exportSolves = allSolves as unknown as import("@/lib/types").Solve[]
+    const eventLabel = event.replace(/[^a-zA-Z0-9]/g, "_")
+    const timestamp = new Date().toISOString().slice(0, 10)
+    switch (format) {
+      case "csv": {
+        const content = solvesToCSV(exportSolves, event)
+        downloadFile(content, `${eventLabel}_${timestamp}.csv`, "text/csv")
+        break
+      }
+      case "json": {
+        const content = solvesToJSON(exportSolves, event)
+        downloadFile(content, `${eventLabel}_${timestamp}.json`, "application/json")
+        break
+      }
+      case "txt": {
+        const content = solvesToCsTimerTxt(exportSolves, event)
+        downloadFile(content, `${eventLabel}_${timestamp}.txt`, "text/plain")
+        break
+      }
+      case "clipboard": {
+        const content = statsToClipboard(exportSolves, event)
+        await navigator.clipboard.writeText(content)
+        break
+      }
+    }
+  }, [event])
 
   const compSimEntryDialogConfig = (() => {
     switch (compSimEntryGuard) {
@@ -3622,13 +3741,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
                           return next
                         })
                       }
-                      disabled={typing}
                     >
                       <span className="text-foreground">⏱ Inspection</span>
                       <span
                         className={cn(
                           "font-mono text-[12px]",
-                          inspOn && !typing
+                          inspOn
                             ? "text-primary font-medium"
                             : "text-muted-foreground"
                         )}
@@ -3647,13 +3765,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
                           return next
                         })
                       }
-                      disabled={typing || !inspOn}
+                      disabled={!inspOn}
                     >
                       <span className="text-foreground">🔊 Inspection Voice Alerts</span>
                       <span
                         className={cn(
                           "font-mono text-[12px]",
-                          inspVoiceOn && inspOn && !typing
+                          inspVoiceOn && inspOn
                             ? "text-primary font-medium"
                             : "text-muted-foreground"
                         )}
@@ -3670,7 +3788,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
                           { value: "female", label: "Female" },
                           { value: "male", label: "Male" },
                         ] as const).map((voiceOption) => {
-                          const disabled = typing || !inspOn || !inspVoiceOn
+                          const disabled = !inspOn || !inspVoiceOn
                           return (
                             <button
                               key={voiceOption.value}
@@ -3902,6 +4020,17 @@ export function TimerContent({ viewer }: TimerContentProps) {
                         </div>
                       </div>
                     )}
+                    <div className="my-1 border-t border-border" />
+                    <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Shortcuts
+                    </div>
+                    <ShortcutSettings
+                      map={shortcutMap}
+                      onMapChange={(next) => {
+                        setShortcutMap(next)
+                        saveShortcutMap(next)
+                      }}
+                    />
                     {practiceType !== "Comp Sim" && (
                       <>
                         <div className="my-1 border-t border-border" />
@@ -4155,6 +4284,15 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onUpdateSavedSessionDuration={updateSavedSessionGroupDuration}
             onLoadOlderSolves={loadOlderSavedSolvePage}
             onRetryHistoryLoad={retryEventHistoryLoad}
+            multiSelectMode={multiSelect.isActive}
+            multiSelectCount={multiSelect.selectedCount}
+            isMultiSelected={multiSelect.isSelected}
+            isSelectAll={multiSelect.isSelectAll}
+            onToggleMultiSelect={multiSelect.toggleSelect}
+            onToggleSelectAll={multiSelect.toggleSelectAll}
+            onEnterMultiSelect={multiSelect.enter}
+            onExitMultiSelect={multiSelect.exit}
+            onBulkDelete={handleBulkDelete}
           />
 
           <div
@@ -4186,7 +4324,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
                       }
                       if (eventInput.key !== "Enter") return
                       if (!parsedTypeTime) return
-                      addSolve(parsedTypeTime, null)
+                      const inspPen = inspectionPenaltyRef.current
+                      inspectionPenaltyRef.current = null
+                      addSolve(parsedTypeTime, inspPen)
                       setTypeVal("")
                     }}
                     className={cn(
