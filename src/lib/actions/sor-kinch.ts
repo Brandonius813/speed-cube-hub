@@ -107,7 +107,7 @@ async function fetchSorKinchLeaderboard(
   // Run count + data queries in parallel (not sequentially)
   let countQuery = supabase
     .from("wca_rankings")
-    .select("id", { count: "exact", head: true })
+    .select("wca_id", { count: "exact", head: true })
     .not(column, "is", null)
   countQuery = applyRegionFilter(countQuery, region)
 
@@ -184,7 +184,7 @@ export async function findUserInSorKinch(
     .from("wca_rankings")
     .select(`wca_id, name, country_id, ${column}`)
     .eq("wca_id", wcaId)
-    .single()
+    .maybeSingle()
 
   const row = userData as AnyRow | null
   if (!row || row[column] == null) return null
@@ -194,7 +194,7 @@ export async function findUserInSorKinch(
   // Run rank + total count queries in parallel
   let rankQuery = supabase
     .from("wca_rankings")
-    .select("id", { count: "exact", head: true })
+    .select("wca_id", { count: "exact", head: true })
     .not(column, "is", null)
   if (ascending) {
     rankQuery = rankQuery.lt(column, userScore)
@@ -205,7 +205,7 @@ export async function findUserInSorKinch(
 
   let totalQuery = supabase
     .from("wca_rankings")
-    .select("id", { count: "exact", head: true })
+    .select("wca_id", { count: "exact", head: true })
     .not(column, "is", null)
   totalQuery = applyRegionFilter(totalQuery, region)
 
@@ -261,7 +261,7 @@ export async function getUserSorKinchStats(
     .from("wca_rankings")
     .select("wca_id, sor_single, sor_average, kinch_single")
     .eq("wca_id", wcaId)
-    .single()
+    .maybeSingle()
 
   const row = data as AnyRow | null
   if (!row) return null
@@ -276,27 +276,27 @@ export async function getUserSorKinchStats(
   const queries = await Promise.all([
     // SOR single rank
     sorSingle != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).lt("sor_single", sorSingle).not("sor_single", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).lt("sor_single", sorSingle).not("sor_single", "is", null)
       : Promise.resolve({ count: null }),
     // SOR single total
     sorSingle != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).not("sor_single", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).not("sor_single", "is", null)
       : Promise.resolve({ count: null }),
     // SOR average rank
     sorAverage != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).lt("sor_average", sorAverage).not("sor_average", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).lt("sor_average", sorAverage).not("sor_average", "is", null)
       : Promise.resolve({ count: null }),
     // SOR average total
     sorAverage != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).not("sor_average", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).not("sor_average", "is", null)
       : Promise.resolve({ count: null }),
     // Kinch rank
     kinchValue != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).gt("kinch_single", kinchValue).not("kinch_single", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).gt("kinch_single", kinchValue).not("kinch_single", "is", null)
       : Promise.resolve({ count: null }),
     // Kinch total
     kinchValue != null
-      ? supabase.from("wca_rankings").select("id", { count: "exact", head: true }).not("kinch_single", "is", null)
+      ? supabase.from("wca_rankings").select("wca_id", { count: "exact", head: true }).not("kinch_single", "is", null)
       : Promise.resolve({ count: null }),
   ])
 

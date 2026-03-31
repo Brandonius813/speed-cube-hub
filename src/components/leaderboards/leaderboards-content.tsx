@@ -267,17 +267,23 @@ export function LeaderboardsContent({
       }
       const type = category === "kinch" ? "single" : sorKinchType
       startFindTransition(async () => {
-        const result = await findUserInSorKinch(
-          category as "sor" | "kinch",
-          type,
-          viewerWcaId,
-          { level: region.level, id: region.id }
-        )
-        if (result) {
-          setWcaMyRank(result)
-          setViewingMyRank(true)
-          setFindMeNoData(false)
-        } else {
+        try {
+          const result = await findUserInSorKinch(
+            category as "sor" | "kinch",
+            type,
+            viewerWcaId,
+            { level: region.level, id: region.id }
+          )
+          if (result) {
+            setWcaMyRank(result)
+            setViewingMyRank(true)
+            setFindMeNoData(false)
+          } else {
+            setFindMeNoData(true)
+            setViewingMyRank(false)
+          }
+        } catch (err) {
+          console.error("Find Me error:", err)
           setFindMeNoData(true)
           setViewingMyRank(false)
         }
