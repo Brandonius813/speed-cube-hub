@@ -1810,8 +1810,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           start: 0,
           end: Math.max(INITIAL_SOLVE_WINDOW, prev.end),
         }))
-        const currentSolves = getCurrentSessionSolves(nextSolves)
-        initStats(event, currentSolves)
+        initStats(event, nextSolves)
         void hydrateDividerMetadata(event, nextSolves).then((mergedGroups) => {
           if (cancelled || !mergedGroups || eventRef.current !== event) return
           setSessionGroups(mergedGroups)
@@ -1891,8 +1890,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           const trimmedSynced = trimLoadedSolveWindow(synced)
           setSolves(trimmedSynced)
           setHistoryCursor(getSavedSolveWindowCursor(trimmedSynced))
-          const syncedCurrent = getCurrentSessionSolves(trimmedSynced)
-          initStats(event, syncedCurrent)
+          initStats(event, trimmedSynced)
           void hydrateDividerMetadata(event, trimmedSynced).then((mergedGroups) => {
             if (cancelled || !mergedGroups || eventRef.current !== event) return
             setSessionGroups(mergedGroups)
@@ -3216,14 +3214,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     () => buildSavedSessionSummaryStats(scopedSolveListSummary?.latestSavedSessionSummary ?? null),
     [scopedSolveListSummary]
   )
-  const headerSummaryStats = useMemo(
-    () => mergeExactSummaryStats({
-      fallback: visibleListStats,
-      exactSummary: scopedSolveListSummary,
-      preferVisibleCurrent: hasActiveSession || currentSessionSolves.length > 0,
-    }),
-    [currentSessionSolves.length, hasActiveSession, scopedSolveListSummary, visibleListStats]
-  )
+  const headerSummaryStats = visibleListStats
   const sessionStatsForPanel = useMemo(
     () =>
       hasActiveSession || currentSessionSolves.length > 0
@@ -3332,13 +3323,22 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return
     }
 
+    let merged: Solve[] = []
     setSolves((previous) => {
       const existingIds = new Set(previous.map((solve) => solve.id))
       const uniqueOlderSolves = olderSavedSolves.filter((solve) => !existingIds.has(solve.id))
-      if (uniqueOlderSolves.length === 0) return previous
-      return [...uniqueOlderSolves, ...previous]
+      if (uniqueOlderSolves.length === 0) {
+        merged = previous
+        return previous
+      }
+      merged = [...uniqueOlderSolves, ...previous]
+      return merged
     })
     finishOlderLoad(result.nextCursor)
+    // Recompute stats with the full solve list (including newly loaded older solves)
+    if (merged.length > 0) {
+      recomputeStats(event, merged)
+    }
     void hydrateDividerMetadata(event, olderSavedSolves).then((mergedGroups) => {
       if (!mergedGroups || eventRef.current !== event) return
       setSessionGroups(mergedGroups)
@@ -3350,6 +3350,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     finishOlderLoad,
     hydrateDividerMetadata,
     loadedSavedSolveCount,
+    recomputeStats,
     savedSolveCursor,
     startOlderLoad,
     syncTotalSavedCount,
