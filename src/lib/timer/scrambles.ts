@@ -1,9 +1,10 @@
 "use client"
 
 import {
-  generateSquare1Scramble,
-  generateSquare1ScrambleSequence,
-} from "@/lib/timer/square1"
+  getScramble as cstimerGetScramble,
+  setSeed as cstimerSetSeed,
+} from "cstimer_module"
+import { generateSquare1Scramble } from "./square1"
 
 type Rng = () => number
 
@@ -14,48 +15,34 @@ type RandomMoveConfig = {
 }
 
 const QUARTER_TURN_MODS = ["", "'", "2"] as const
-const TWO_WAY_MODS = ["", "'"] as const
-const DEFAULT_EVENT_FALLBACK = "333"
 
-const WCA_EVENTS_WITH_API = new Set([
-  "222", "333", "444", "555", "666", "777",
-  "333bf", "444bf", "555bf", "333mbf", "333oh", "333fm",
-  "minx", "pyram", "clock", "skewb", "sq1",
-])
-const SCRAMBLE_API_TIMEOUT_MS = 1200
-
-function resolveApiUrl(path: string): string | null {
-  try {
-    const origin = globalThis.location?.origin
-    if (origin && origin !== "null") {
-      return new URL(path, origin).toString()
-    }
-  } catch {}
-  try {
-    const href = globalThis.location?.href
-    if (href) {
-      const parsed = new URL(href)
-      if (parsed.origin && parsed.origin !== "null") {
-        return new URL(path, parsed.origin).toString()
-      }
-    }
-  } catch {}
-  return null
+/** Maps our event IDs to [cstimerType, length] for WCA random-state generation. */
+const CSTIMER_EVENT_MAP: Record<string, [string, number]> = {
+  "222": ["222so", 0],
+  "333": ["333", 0],
+  "444": ["444wca", 0],
+  "555": ["555wca", 60],
+  "666": ["666wca", 80],
+  "777": ["777wca", 100],
+  "333bf": ["333ni", 0],
+  "444bf": ["444bld", 40],
+  "555bf": ["555bld", 60],
+  "333mbf": ["r3ni", 5],
+  "333oh": ["333", 0],
+  "333fm": ["333fm", 0],
+  minx: ["mgmp", 70],
+  pyram: ["pyrso", 10],
+  clock: ["clkwca", 0],
+  skewb: ["skbso", 0],
 }
 
+// --- Random-move fallback configs (non-WCA events only) ---
+
 const EVENT_RANDOM_MOVE_CONFIG: Record<string, RandomMoveConfig> = {
-  "222": { faces: ["U", "D", "L", "R", "F", "B"], count: 11 },
-  "333": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
-  "333bf": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
-  "333mbf": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
-  "333oh": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
-  "333fm": { faces: ["U", "D", "L", "R", "F", "B"], count: 20 },
-  "444": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], count: 40 },
-  "555": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw"], count: 60 },
-  "666": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 80 },
-  "777": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 100 },
-  pyram: { faces: ["U", "L", "R", "B"], count: 10, mods: TWO_WAY_MODS },
-  skewb: { faces: ["U", "L", "R", "B"], count: 11, mods: TWO_WAY_MODS },
+  "888": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 120 },
+  "999": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 140 },
+  "101010": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 160 },
+  "111111": { faces: ["U", "D", "L", "R", "F", "B", "Uw", "Dw", "Lw", "Rw", "Fw", "Bw", "3Uw", "3Dw", "3Lw", "3Rw", "3Fw", "3Bw"], count: 180 },
 }
 
 let seededRng: Rng | null = null
@@ -134,34 +121,15 @@ function randomMovesScramble(config: RandomMoveConfig): string {
   return moves.join(" ")
 }
 
-function generateMegaminxFallback(): string {
-  const rows: string[] = []
-  for (let r = 0; r < 7; r++) {
-    const row: string[] = []
-    for (let i = 0; i < 5; i++) {
-      row.push(randomInt(2) === 0 ? "R++" : "R--")
-      row.push(randomInt(2) === 0 ? "D++" : "D--")
-    }
-    row.push(randomInt(2) === 0 ? "U" : "U'")
-    rows.push(row.join(" "))
-  }
-  return rows.join("\n")
-}
+function generateFallbackScramble(eventId: string): string {
+  if (eventId.startsWith("relay")) return generateRelayFallback(eventId)
+  if (eventId === "sq1") return generateSquare1Scramble()
 
-function generateClockFallback(): string {
-  const frontDials = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"]
-  const backDials = ["U", "R", "D", "L", "ALL"]
-  const makeDialTurn = (dial: string) => {
-    const amount = randomInt(6) + 1
-    const sign = randomInt(2) === 0 ? "+" : "-"
-    return `${dial}${amount}${sign}`
-  }
-  return `${frontDials.map(makeDialTurn).join(" ")} y2 ${backDials.map(makeDialTurn).join(" ")}`
-}
+  const config = EVENT_RANDOM_MOVE_CONFIG[eventId]
+  if (config) return randomMovesScramble(config)
 
-function normalizeMegaminxRows(scramble: string): string {
-  if (scramble.includes("\n")) return scramble
-  return scramble.replace(/\bU'?\s*/g, (match) => `${match.trimEnd()}\n`).trimEnd()
+  // Default: try as 333 random-move for truly unknown events
+  return randomMovesScramble({ faces: ["U", "D", "L", "R", "F", "B"], count: 20 })
 }
 
 function generateRelayFallback(eventId: string): string {
@@ -174,112 +142,45 @@ function generateRelayFallback(eventId: string): string {
   const relayEvents = chain[eventId]
   if (!relayEvents) return ""
   return relayEvents
-    .map((relayEvent, index) => `${index + 2}) ${generateFallbackScramble(relayEvent)}`)
+    .map((relayEvent, index) => `${index + 2}) ${generateScramble(relayEvent)}`)
     .join("\n")
 }
 
-function generateFallbackScramble(eventId: string): string {
-  if (eventId === "minx") return generateMegaminxFallback()
-  if (eventId === "clock") return generateClockFallback()
-  if (eventId.startsWith("relay")) return generateRelayFallback(eventId)
-
-  const config = EVENT_RANDOM_MOVE_CONFIG[eventId]
-  if (config) return randomMovesScramble(config)
-
-  const defaultConfig = EVENT_RANDOM_MOVE_CONFIG[DEFAULT_EVENT_FALLBACK]
-  return defaultConfig ? randomMovesScramble(defaultConfig) : "Scramble not available for this event"
-}
-
 /**
- * Fetches a scramble from the server-side cubing.js generator.
- * This is the preferred path for the timer worker.
- */
-export async function fetchOfficialScramble(
-  eventId: string,
-  signal?: AbortSignal
-): Promise<{ scramble: string | null; error?: string }> {
-  if (!WCA_EVENTS_WITH_API.has(eventId)) {
-    return { scramble: null, error: `No API scramble for ${eventId}` }
-  }
-
-  try {
-    const path = `/api/scramble?event=${encodeURIComponent(eventId)}`
-    const apiUrl = resolveApiUrl(path)
-    if (!apiUrl) {
-      return { scramble: null, error: "Unable to resolve scramble API URL in this context" }
-    }
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), SCRAMBLE_API_TIMEOUT_MS)
-    const onAbort = () => controller.abort()
-    if (signal) {
-      if (signal.aborted) {
-        clearTimeout(timeout)
-        return { scramble: null, error: "Scramble request aborted" }
-      }
-      signal.addEventListener("abort", onAbort, { once: true })
-    }
-
-    let response: Response
-    try {
-      response = await fetch(apiUrl, {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      })
-    } finally {
-      clearTimeout(timeout)
-      if (signal) {
-        signal.removeEventListener("abort", onAbort)
-      }
-    }
-
-    if (!response.ok) {
-      return { scramble: null, error: `API status ${response.status}` }
-    }
-
-    const payload = (await response.json()) as { scramble?: unknown }
-    if (typeof payload.scramble !== "string" || payload.scramble.trim().length === 0) {
-      return { scramble: null, error: "API returned empty scramble" }
-    }
-
-    const raw = payload.scramble.trim()
-    const normalized = eventId === "minx" ? normalizeMegaminxRows(raw) : raw
-    return { scramble: normalized }
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      return {
-        scramble: null,
-        error: "Scramble API timed out",
-      }
-    }
-    return {
-      scramble: null,
-      error: err instanceof Error ? err.message : "Failed to fetch scramble",
-    }
-  }
-}
-
-/**
- * Synchronous local scramble generator.
- * Square-1 uses the TNoodle-style port; other non-timer tools use fallback generators.
+ * Generates a scramble for the given event.
+ * WCA events use cstimer_module (random-state, WCA-compliant).
+ * Non-WCA events use random-move fallback.
  */
 export function generateScramble(eventId: string): string {
+  if (eventId === "sq1") {
+    return generateSquare1Scramble()
+  }
+
   try {
-    if (eventId === "sq1") {
-      return generateSquare1Scramble(seededRng ?? undefined)
+    const mapping = CSTIMER_EVENT_MAP[eventId]
+    if (mapping) {
+      const [type, length] = mapping
+      const result = cstimerGetScramble(type, length)
+      if (typeof result === "string" && result.trim().length > 0) {
+        return result.trim()
+      }
     }
     return generateFallbackScramble(eventId)
   } catch {
-    return "Error generating scramble — try refreshing"
+    return generateFallbackScramble(eventId)
   }
 }
 
 /**
- * Sets a global seed for deterministic local scramble generation.
+ * Sets a global seed for deterministic scramble generation.
  */
 export function setScrambleSeed(seed: string | null): void {
-  seededRng = seed ? createSeededRng(seed) : null
+  if (seed) {
+    cstimerSetSeed(seed)
+    seededRng = createSeededRng(seed)
+  } else {
+    seededRng = null
+  }
 }
 
 /**
@@ -290,10 +191,7 @@ export function generateSeededScrambles(
   seed: string,
   count: number
 ): string[] {
-  if (eventId === "sq1") {
-    return generateSquare1ScrambleSequence({ seed, count })
-  }
-
+  cstimerSetSeed(seed)
   const previousRng = seededRng
   seededRng = createSeededRng(seed)
 
