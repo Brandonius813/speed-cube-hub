@@ -1,5 +1,6 @@
 // Web Worker for off-main-thread scramble generation using cstimer_module.
 // All WCA events use csTimer's random-state generators (same engine as csTimer.net).
+// Events where csTimer fails in the worker (sq1, pyram) use dedicated solvers.
 import { getScramble, setSeed } from "cstimer_module"
 import { generateScramble } from "./scrambles"
 import { generateSquare1Scramble } from "./square1"
@@ -41,6 +42,22 @@ const CSTIMER_EVENT_MAP: Record<string, [string, number]> = {
   skewb: ["skbso", 0],
 }
 
+/** Events that need cubing.js because csTimer fails in the worker. */
+const CUBING_JS_EVENTS: Record<string, string> = {
+  pyram: "pyram",
+}
+
+/** Lazily cached cubing/scramble module. */
+let cubingScrambleModule: { randomScrambleForEvent: (event: string) => Promise<{ toString(): string }> } | null = null
+
+async function getCubingScramble(cubingEventId: string): Promise<string> {
+  if (!cubingScrambleModule) {
+    cubingScrambleModule = await import("cubing/scramble")
+  }
+  const scramble = await cubingScrambleModule.randomScrambleForEvent(cubingEventId)
+  return scramble.toString()
+}
+
 function generateCstimerScramble(eventId: string): string | null {
   const mapping = CSTIMER_EVENT_MAP[eventId]
   if (!mapping) return null
@@ -49,36 +66,44 @@ function generateCstimerScramble(eventId: string): string | null {
   return typeof result === "string" && result.trim().length > 0 ? result.trim() : null
 }
 
-self.onmessage = (e: MessageEvent<ScrambleWorkerRequest>) => {
+/** Check if a pyraminx scramble has tip moves (lowercase l, r, b, u). */
+function hasPyramTips(scramble: string): boolean {
+  return /[lrbu]/.test(scramble)
+}
+
+/** Generate a single scramble, using cubing.js for events that need it. */
+async function generateSingleScramble(eventId: string): Promise<string> {
+  // Square-1: dedicated TNoodle solver
+  if (eventId === "sq1") return generateSquare1Scramble()
+
+  // Try csTimer first
+  try {
+    const cstimer = generateCstimerScramble(eventId)
+    // For pyraminx, verify tips are present (csTimer sometimes fails silently)
+    if (cstimer && (eventId !== "pyram" || hasPyramTips(cstimer))) {
+      return cstimer
+    }
+  } catch {
+    // csTimer failed, continue to fallback
+  }
+
+  // Events with cubing.js fallback (pyraminx)
+  const cubingEventId = CUBING_JS_EVENTS[eventId]
+  if (cubingEventId) {
+    try {
+      return await getCubingScramble(cubingEventId)
+    } catch {
+      // cubing.js also failed, use local generator
+    }
+  }
+
+  return generateScramble(eventId)
+}
+
+self.onmessage = async (e: MessageEvent<ScrambleWorkerRequest>) => {
   const { requestId, eventId, mode = "single", seed, count } = e.data
 
   try {
-    // Square-1: use dedicated TNoodle solver (pure JS, no csTimer dependency)
-    if (eventId === "sq1") {
-      if (mode === "sequence") {
-        const sequenceCount = Math.floor(count ?? 0)
-        const scrambles: string[] = []
-        for (let i = 0; i < sequenceCount; i++) {
-          scrambles.push(generateSquare1Scramble())
-        }
-        self.postMessage({
-          requestId,
-          eventId,
-          scramble: null,
-          scrambles,
-        } satisfies ScrambleWorkerResponse)
-        return
-      }
-
-      const scramble = generateSquare1Scramble()
-      self.postMessage({
-        requestId,
-        eventId,
-        scramble,
-      } satisfies ScrambleWorkerResponse)
-      return
-    }
-
     // Seeded sequence mode (used by comp sim)
     if (mode === "sequence") {
       if (typeof seed !== "string" || !Number.isFinite(count) || (count ?? 0) < 1) {
@@ -95,8 +120,7 @@ self.onmessage = (e: MessageEvent<ScrambleWorkerRequest>) => {
       const sequenceCount = Math.floor(count ?? 0)
       const scrambles: string[] = []
       for (let i = 0; i < sequenceCount; i++) {
-        const s = generateCstimerScramble(eventId)
-        scrambles.push(s ?? generateScramble(eventId))
+        scrambles.push(await generateSingleScramble(eventId))
       }
 
       self.postMessage({
@@ -108,8 +132,8 @@ self.onmessage = (e: MessageEvent<ScrambleWorkerRequest>) => {
       return
     }
 
-    // Single scramble: try cstimer_module first (WCA random-state), then fallback for non-WCA events
-    const scramble = generateCstimerScramble(eventId) ?? generateScramble(eventId)
+    // Single scramble
+    const scramble = await generateSingleScramble(eventId)
 
     self.postMessage({
       requestId,
@@ -118,7 +142,7 @@ self.onmessage = (e: MessageEvent<ScrambleWorkerRequest>) => {
       warning: scramble ? undefined : "Failed to generate scramble",
     } satisfies ScrambleWorkerResponse)
   } catch (err) {
-    // If cstimer_module throws, fall back to local generator
+    // Last resort fallback
     const fallback = generateScramble(eventId)
     self.postMessage({
       requestId,
