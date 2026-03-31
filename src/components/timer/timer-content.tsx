@@ -56,6 +56,7 @@ import {
   type TimerPhase,
 } from "@/lib/timer/engine"
 import { createSolveStore } from "@/lib/timer/solve-store"
+import { getCachedStats, setCachedStats } from "@/lib/timer/stats-cache"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
 import {
@@ -993,6 +994,24 @@ export function TimerContent({ viewer }: TimerContentProps) {
   useEffect(() => {
     let cancelled = false
     setSolveListSummaryError(null)
+
+    // Phase 1: Show cached data instantly (stale-while-revalidate)
+    void Promise.all([
+      getCachedStats<TimerEventAnalytics>(`analytics:${event}`),
+      getCachedStats<TimerSolveListSummary>(`solveListSummary:${event}`),
+    ]).then(([cachedAnalytics, cachedSummary]) => {
+      if (cancelled) return
+      if (cachedAnalytics) {
+        setAllTimeAnalytics(cachedAnalytics)
+        setAllTimeAnalyticsEvent(event)
+      }
+      if (cachedSummary) {
+        setSolveListSummary(cachedSummary)
+        setSolveListSummaryEvent(event)
+      }
+    })
+
+    // Phase 2: Fetch fresh data from server in background
     void Promise.all([getEventAnalytics(event), getTimerSolveListSummary(event)])
       .then(([analyticsResult, solveListSummaryResult]) => {
         if (cancelled) return
@@ -1001,12 +1020,20 @@ export function TimerContent({ viewer }: TimerContentProps) {
         setSolveListSummary(solveListSummaryResult.data)
         setSolveListSummaryEvent(event)
         setSolveListSummaryError(solveListSummaryResult.error ?? null)
+        // Write fresh results to cache
+        if (analyticsResult.data) {
+          void setCachedStats(`analytics:${event}`, analyticsResult.data)
+        }
+        if (solveListSummaryResult.data) {
+          void setCachedStats(`solveListSummary:${event}`, solveListSummaryResult.data)
+        }
       })
       .catch(() => {
         if (cancelled) return
-        setAllTimeAnalytics(null)
+        // Only show error if we had no cached data
+        if (!allTimeAnalytics) setAllTimeAnalytics(null)
         setAllTimeAnalyticsEvent(event)
-        setSolveListSummary(null)
+        if (!solveListSummary) setSolveListSummary(null)
         setSolveListSummaryEvent(event)
         setSolveListSummaryError("Failed to load exact timer summary.")
       })
@@ -1094,7 +1121,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const shortcutMapRef = useRef(shortcutMap)
 
   const refreshAllTimeAnalytics = useCallback((eventId: string) => {
-    void Promise.all([getEventAnalytics(eventId), getTimerSolveListSummary(eventId)])
+    void Promise.all([
+      getEventAnalytics(eventId),
+      getTimerSolveListSummary(eventId, { forceRefresh: true }),
+    ])
       .then(([analyticsResult, solveListSummaryResult]) => {
         if (eventRef.current !== eventId) return
         setAllTimeAnalytics(analyticsResult.data)
@@ -1102,6 +1132,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
         setSolveListSummary(solveListSummaryResult.data)
         setSolveListSummaryEvent(eventId)
         setSolveListSummaryError(solveListSummaryResult.error ?? null)
+        // Update cache with fresh data
+        if (analyticsResult.data) {
+          void setCachedStats(`analytics:${eventId}`, analyticsResult.data)
+        }
+        if (solveListSummaryResult.data) {
+          void setCachedStats(`solveListSummary:${eventId}`, solveListSummaryResult.data)
+        }
       })
       .catch(() => {})
   }, [])

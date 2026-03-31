@@ -211,10 +211,12 @@ function buildEventSummaryMilestoneRows(summary: EventSummary | null): TimerMile
   })).filter((row) => row.cur !== null || row.best !== null)
 }
 
-function needsEventSummaryMilestoneBackfill(_summary: EventSummary | null): boolean {
-  // Always refresh milestones — stale non-null values caused incorrect all-time PBs
-  // after session saves. This only runs on page load and session save, not every solve.
-  return true
+function needsEventSummaryMilestoneBackfill(summary: EventSummary | null): boolean {
+  if (!summary) return true
+  return FIXED_TIMER_MILESTONE_SIZES.some((size) => (
+    summary.solve_count >= size &&
+    (summary[eventBestField(size)] as number | null) === null
+  ))
 }
 
 function needsSessionMilestoneBackfill(summary: TimerSavedSessionSummary | null): boolean {
@@ -746,7 +748,10 @@ export async function getEventAnalytics(event: string): Promise<{
   }
 }
 
-export async function getTimerSolveListSummary(event: string): Promise<{
+export async function getTimerSolveListSummary(
+  event: string,
+  options?: { forceRefresh?: boolean },
+): Promise<{
   data: TimerSolveListSummary | null
   error?: string
 }> {
@@ -771,7 +776,8 @@ export async function getTimerSolveListSummary(event: string): Promise<{
   }
 
   let typedEventSummary = (eventSummary as EventSummary | null) ?? null
-  if (needsEventSummaryMilestoneBackfill(typedEventSummary)) {
+  const forceRefresh = options?.forceRefresh ?? false
+  if (forceRefresh || needsEventSummaryMilestoneBackfill(typedEventSummary)) {
     const refreshResult = await refreshEventSummaryMilestones({ userId: user.id, event })
     if (refreshResult.error) {
       return { data: null, error: refreshResult.error }
