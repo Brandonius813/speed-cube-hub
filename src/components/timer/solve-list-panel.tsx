@@ -269,7 +269,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   )
   const rowHeight = ROW_HEIGHT_BY_SIZE[textSize]
   const textClasses = PANEL_TEXT_CLASSES[textSize]
-  const statsIncomplete = historyStatus === "loading" || hasOlderSolves
+  const statsIncomplete = historyStatus === "loading"
   const getPrefixHeight = useCallback(
     (rowIndex: number) =>
       rowIndex * rowHeight +
