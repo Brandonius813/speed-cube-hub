@@ -1794,6 +1794,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
           bootOffset += BOOT_PAGE
         }
 
+        // Server returns newest-first; reverse to oldest-first so the
+        // display reversal (`solves.length - 1 - displayIndex`) shows newest on top.
+        allBootSolves.reverse()
+
         if (cancelled) return
 
         if (bootError) {
@@ -3173,15 +3177,14 @@ export function TimerContent({ viewer }: TimerContentProps) {
   const sessionStatsForPanel = useMemo(
     () =>
       hasActiveSession || currentSessionSolves.length > 0
-        ? stats
+        ? computeStatsSync(currentSessionSolves, statCols)
         : savedSessionSummaryStats ?? computeStatsSync(mostRecentSavedSessionSolves, statCols),
     [
-      currentSessionSolves.length,
+      currentSessionSolves,
       hasActiveSession,
       mostRecentSavedSessionSolves,
       statCols,
       savedSessionSummaryStats,
-      stats,
     ]
   )
   const sessionSolveCountForPanel =
