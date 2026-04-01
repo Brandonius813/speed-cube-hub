@@ -385,7 +385,7 @@ export function CompSimOverlay({
               {(phase === "inspecting" ||
                 phase === "solving" ||
                 (phase === "ready" && !snapshot.sitDownRequired)) &&
-                (typing ? (
+                (typing && (phase === "solving" || (phase === "ready" && !inspectionEnabled)) ? (
                   <CompSimTypingInput
                     typeVal={typeVal}
                     parsedTypeTime={parsedTypeTime}
@@ -394,7 +394,14 @@ export function CompSimOverlay({
                     onChangeVal={setTypeVal}
                     onSubmit={() => {
                       if (!parsedTypeTime) return
-                      compSim.submitTypedTime(parsedTypeTime)
+                      if (phase === "solving") {
+                        // After inspection: stop the running timer with the typed time.
+                        // externalStopSolve reads the inspection penalty automatically.
+                        timerController.externalStopSolve(parsedTypeTime)
+                      } else {
+                        // No inspection: record the typed time directly.
+                        compSim.submitTypedTime(parsedTypeTime)
+                      }
                       setTypeVal("")
                     }}
                   />
