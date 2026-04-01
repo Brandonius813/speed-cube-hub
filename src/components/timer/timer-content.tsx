@@ -56,6 +56,7 @@ import {
   type TimerPhase,
 } from "@/lib/timer/engine"
 import { createSolveStore } from "@/lib/timer/solve-store"
+import { parseTime } from "@/lib/timer/parse-time"
 import { getCachedStats, setCachedStats } from "@/lib/timer/stats-cache"
 import { emitTimerTelemetry } from "@/lib/timer/telemetry"
 import { syncSolvesFromDb } from "@/lib/timer/cross-device-sync"
@@ -418,42 +419,6 @@ function backfillGroupsFromMetadata(
   }
 
   return { solves: patched, changed }
-}
-
-function parseTime(raw: string): number | null {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-
-  if (trimmed.includes(":")) {
-    const colonMatch = trimmed.match(/^(\d+):(\d{1,2})(?:[.,](\d{1,2}))?$/)
-    if (!colonMatch) return null
-    const mins = parseInt(colonMatch[1], 10)
-    const secs = parseInt(colonMatch[2], 10)
-    const cs = parseInt((colonMatch[3] ?? "0").padEnd(2, "0"), 10)
-    if (secs >= 60) return null
-    const ms = (mins * 60 + secs) * 1000 + cs * 10
-    return ms > 0 ? ms : null
-  }
-
-  const normalized = trimmed.replace(",", ".")
-  if (normalized.includes(".")) {
-    if (!/^(?:\d+\.?\d*|\.\d+)$/.test(normalized)) return null
-    const seconds = Number(normalized)
-    if (!Number.isFinite(seconds) || seconds <= 0) return null
-    const ms = Math.round(seconds * 100) * 10
-    return ms > 0 ? ms : null
-  }
-
-  const digits = normalized.replace(/\D/g, "")
-  if (!digits) return null
-  const padded = digits.padStart(3, "0")
-  const cs = parseInt(padded.slice(-2), 10)
-  const rest = padded.slice(0, -2)
-  const secs = parseInt(rest.slice(-2) || "0", 10)
-  const mins = parseInt(rest.slice(0, -2) || "0", 10)
-  if (secs >= 60) return null
-  const ms = (mins * 60 + secs) * 1000 + cs * 10
-  return ms > 0 ? ms : null
 }
 
 function getEffectiveSolveMs(solve: Solve): number | null {
@@ -1794,9 +1759,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
           bootOffset += BOOT_PAGE
         }
 
-        // Server returns newest-first; reverse to oldest-first so the
-        // display reversal (`solves.length - 1 - displayIndex`) shows newest on top.
-        allBootSolves.reverse()
+        // listRecentEventSolves already returns oldest-first (it reverses
+        // internally). The display formula (`solves.length - 1 - displayIndex`)
+        // expects oldest-first so no further reordering is needed.
 
         if (cancelled) return
 
@@ -4207,6 +4172,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           event={event}
           config={compSimConfig}
           startSignal={compSimStartSignal}
+          typing={typing}
           inspectionEnabled={inspOn}
           inspectionVoiceEnabled={inspVoiceOn}
           inspectionVoiceGender={inspVoiceGender}

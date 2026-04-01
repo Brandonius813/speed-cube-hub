@@ -391,7 +391,7 @@ export async function updateSession(
 
 export async function deleteSession(
   sessionId: string
-): Promise<{ error?: string; solveSessionId?: string | null }> {
+): Promise<{ error?: string; solveSessionId?: string | null; event?: string }> {
   const supabase = await createClient();
 
   const {
@@ -405,7 +405,7 @@ export async function deleteSession(
   // Look up related IDs before deleting
   const { data: session } = await supabase
     .from("sessions")
-    .select("solve_session_id, timer_session_id")
+    .select("solve_session_id, timer_session_id, event")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .single();
@@ -442,12 +442,12 @@ export async function deleteSession(
     return { error: error.message };
   }
 
-  return { solveSessionId: session.solve_session_id ?? null };
+  return { solveSessionId: session.solve_session_id ?? null, event: session.event };
 }
 
 export async function deleteSessionsBulk(
   sessionIds: string[]
-): Promise<{ deleted: number; error?: string; solveSessionIds?: string[] }> {
+): Promise<{ deleted: number; error?: string; solveSessionIds?: string[]; events?: string[] }> {
   const supabase = await createClient();
 
   const {
@@ -462,16 +462,24 @@ export async function deleteSessionsBulk(
     return { deleted: 0, error: "No sessions selected." };
   }
 
-  // Look up related solve_session_ids
+  // Look up related solve_session_ids and events
   const { data: sessions } = await supabase
     .from("sessions")
-    .select("solve_session_id")
+    .select("solve_session_id, event")
     .in("id", sessionIds)
     .eq("user_id", user.id);
 
   const solveSessionIds = (sessions ?? [])
     .map((s) => s.solve_session_id)
     .filter((id): id is string => id != null);
+
+  const events = [
+    ...new Set(
+      (sessions ?? [])
+        .map((s) => s.event)
+        .filter((e): e is string => e != null)
+    ),
+  ];
 
   // Delete solves linked to these solve sessions
   if (solveSessionIds.length > 0) {
@@ -498,7 +506,7 @@ export async function deleteSessionsBulk(
     return { deleted: 0, error: error.message };
   }
 
-  return { deleted: sessionIds.length, solveSessionIds };
+  return { deleted: sessionIds.length, solveSessionIds, events };
 }
 
 export async function getSessionStats() {

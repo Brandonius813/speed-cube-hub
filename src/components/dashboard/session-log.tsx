@@ -145,10 +145,10 @@ export function SessionLog({ sessions, readOnly = false }: { sessions: Session[]
       setShowDeleteConfirm(false)
       return
     }
-    // Clear IndexedDB cache for deleted solve sessions
-    if (result.solveSessionIds) {
-      for (const id of result.solveSessionIds) {
-        void clearSolveSessionFromIndexedDb(id)
+    // Clear IndexedDB cache for affected events so the timer re-syncs
+    if (result.events) {
+      for (const evt of result.events) {
+        void clearSolveSessionFromIndexedDb(evt)
       }
     }
     setDeleting(false)

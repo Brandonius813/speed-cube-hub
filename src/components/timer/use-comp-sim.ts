@@ -46,6 +46,7 @@ export type CompSimApi = {
   startSolve: () => void
   submitInspectionDnf: () => void
   handleSolveComplete: (time_ms: number, penalty: "+2" | "DNF" | null) => void
+  submitTypedTime: (time_ms: number) => void
   updateSolvePenalty: (solveIndex: number, penalty: "+2" | "DNF" | null) => void
   advanceToNextAttempt: () => void
   cancelSim: () => void
@@ -294,6 +295,24 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     resolvePostSolveSnapshot(engine.getSnapshot())
   }, [resolvePostSolveSnapshot])
 
+  const submitTypedTime = useCallback((time_ms: number) => {
+    const engine = engineRef.current
+    const current = engine.getSnapshot()
+    if (current.phase !== "ready" && current.phase !== "inspecting" && current.phase !== "solving") return
+    const scramble = current.scrambles[current.solveIndex] ?? ""
+
+    // Transition through required states so the engine accepts the solve
+    if (current.phase === "ready") {
+      engine.dispatch({ type: "READY_START" })
+      engine.dispatch({ type: "SOLVE_START" })
+    } else if (current.phase === "inspecting") {
+      engine.dispatch({ type: "SOLVE_START" })
+    }
+
+    engine.dispatch({ type: "SOLVE_COMPLETE", time_ms, penalty: null, scramble })
+    resolvePostSolveSnapshot(engine.getSnapshot())
+  }, [resolvePostSolveSnapshot])
+
   const updateSolvePenalty = useCallback((solveIndex: number, penalty: "+2" | "DNF" | null) => {
     const engine = engineRef.current
     engine.dispatch({ type: "UPDATE_SOLVE_PENALTY", solveIndex, penalty })
@@ -408,6 +427,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     startSolve,
     submitInspectionDnf,
     handleSolveComplete,
+    submitTypedTime,
     updateSolvePenalty,
     advanceToNextAttempt,
     cancelSim,

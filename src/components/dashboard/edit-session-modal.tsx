@@ -176,8 +176,8 @@ export function EditSessionModal({
     }
 
     // Clear IndexedDB cache so the timer doesn't show stale solves
-    if (result.solveSessionId) {
-      void clearSolveSessionFromIndexedDb(result.solveSessionId)
+    if (result.event) {
+      void clearSolveSessionFromIndexedDb(result.event)
     }
 
     setDeleting(false)

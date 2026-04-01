@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react"
 import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
+import { parseTime } from "@/lib/timer/parse-time"
 import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
@@ -45,6 +46,7 @@ type Props = {
   event: string
   config: CompSimRoundConfig
   startSignal: number
+  typing: boolean
   inspectionEnabled: boolean
   inspectionVoiceEnabled: boolean
   inspectionVoiceGender: InspectionVoiceGender
@@ -84,6 +86,7 @@ export function CompSimOverlay({
   event,
   config,
   startSignal,
+  typing,
   inspectionEnabled,
   inspectionVoiceEnabled,
   inspectionVoiceGender,
@@ -100,6 +103,15 @@ export function CompSimOverlay({
   const wakeLockEnabled = phase !== "idle" && phase !== "sim_complete"
   const handledStartSignalRef = useRef(0)
   const [readyWindowNow, setReadyWindowNow] = useState(() => Date.now())
+  const [typeVal, setTypeVal] = useState("")
+  const parsedTypeTime = useMemo(() => parseTime(typeVal), [typeVal])
+
+  // Reset typing input when advancing to next attempt
+  useEffect(() => {
+    if (phase === "ready" || phase === "scramble_shown") {
+      setTypeVal("")
+    }
+  }, [phase])
 
   useScreenWakeLock({
     enabled: wakeLockEnabled,
@@ -372,24 +384,38 @@ export function CompSimOverlay({
               )}
               {(phase === "inspecting" ||
                 phase === "solving" ||
-                (phase === "ready" && !snapshot.sitDownRequired)) && (
-                <AttemptTimerScreen
-                  formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
-                  inspectionEnabled={inspectionEnabled}
-                  timerPhase={timerController.phase}
-                  inInspectionHold={timerController.inInspectionHold}
-                  inspectionSecondsLeft={timerController.inspectionSecondsLeft}
-                  currentTimeMs={timerController.currentTimeMs}
-                  timeColor={timerController.timeColor}
-                  timerUpdateMode={timerUpdateMode}
-                  timerReadoutTextSize={timerReadoutTextSize}
-                  onPointerDown={timerController.handlePointerDown}
-                  onPointerUp={timerController.handlePointerUp}
-                  warning={pressureWarning}
-                  readyWindowLabel={readyWindowLabel}
-                  readyWindowExpired={snapshot.readyWindowExpired}
-                />
-              )}
+                (phase === "ready" && !snapshot.sitDownRequired)) &&
+                (typing ? (
+                  <CompSimTypingInput
+                    typeVal={typeVal}
+                    parsedTypeTime={parsedTypeTime}
+                    solveIndex={snapshot.solveIndex}
+                    total={snapshot.roundConfig.plannedSolveCount}
+                    onChangeVal={setTypeVal}
+                    onSubmit={() => {
+                      if (!parsedTypeTime) return
+                      compSim.submitTypedTime(parsedTypeTime)
+                      setTypeVal("")
+                    }}
+                  />
+                ) : (
+                  <AttemptTimerScreen
+                    formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
+                    inspectionEnabled={inspectionEnabled}
+                    timerPhase={timerController.phase}
+                    inInspectionHold={timerController.inInspectionHold}
+                    inspectionSecondsLeft={timerController.inspectionSecondsLeft}
+                    currentTimeMs={timerController.currentTimeMs}
+                    timeColor={timerController.timeColor}
+                    timerUpdateMode={timerUpdateMode}
+                    timerReadoutTextSize={timerReadoutTextSize}
+                    onPointerDown={timerController.handlePointerDown}
+                    onPointerUp={timerController.handlePointerUp}
+                    warning={pressureWarning}
+                    readyWindowLabel={readyWindowLabel}
+                    readyWindowExpired={snapshot.readyWindowExpired}
+                  />
+                ))}
               {phase === "solve_recorded" && (
                 <SolveRecordedScreen
                   snapshot={snapshot}
@@ -410,6 +436,54 @@ export function CompSimOverlay({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function CompSimTypingInput({
+  typeVal,
+  parsedTypeTime,
+  solveIndex,
+  total,
+  onChangeVal,
+  onSubmit,
+}: {
+  typeVal: string
+  parsedTypeTime: number | null
+  solveIndex: number
+  total: number
+  onChangeVal: (val: string) => void
+  onSubmit: () => void
+}) {
+  return (
+    <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        Solve {solveIndex + 1} of {total}
+      </p>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Type your time and press Enter
+      </p>
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder="0000"
+        value={typeVal}
+        autoFocus
+        onChange={(e) => onChangeVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return
+          e.preventDefault()
+          onSubmit()
+        }}
+        className="mx-auto block w-full max-w-xs rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-center font-mono text-3xl text-foreground outline-none focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/40"
+      />
+      <p className="mt-3 h-5 text-sm font-mono text-muted-foreground">
+        {typeVal
+          ? parsedTypeTime !== null
+            ? `= ${formatTimeMsCentiseconds(parsedTypeTime)}`
+            : "invalid"
+          : "\u00A0"}
+      </p>
     </div>
   )
 }
