@@ -861,6 +861,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return DEFAULT_COMP_SIM_ROUND_CONFIG
     }
   })
+  const [syncingFromCloud, setSyncingFromCloud] = useState(false)
   const [compSimStartSignal, setCompSimStartSignal] = useState(0)
   const [compSimAutoStartRequested, setCompSimAutoStartRequested] = useState(false)
   const [shareAuthor, setShareAuthor] = useState({
@@ -1778,7 +1779,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         // Fetch ALL solves from server (paginated in batches of 2000)
         const allBootSolves: Solve[] = []
         let bootOffset = 0
-        const BOOT_PAGE = 2000
+        const BOOT_PAGE = 1000
         let bootError: string | undefined
         while (true) {
           const page = await listRecentEventSolves({
@@ -1833,6 +1834,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       // pull them in. This is a one-time cost per device per event.
       const shouldBackfillGroups = needsHistoricGroupBackfill(loaded)
 
+      setSyncingFromCloud(true)
       syncSolvesFromDb(event, solveStoreRef.current, {
         forceGroupBackfill: shouldBackfillGroups,
         localSolves: loaded,
@@ -1847,7 +1849,9 @@ export function TimerContent({ viewer }: TimerContentProps) {
             setSessionGroups(mergedGroups)
           })
         }
-      )
+      ).finally(() => {
+        if (!cancelled) setSyncingFromCloud(false)
+      })
     })()
     return () => {
       cancelled = true
@@ -4240,6 +4244,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             unsavedDnfCount={unsavedDnfCount}
             historyStatus={historyStatus}
             historyError={historyError}
+            syncingFromCloud={syncingFromCloud}
             onSetSelectedId={setSelectedId}
             onOpenSolveDetail={handleOpenSolveDetail}
             onOpenStatDetail={handleOpenStatDetail}

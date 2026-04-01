@@ -16,7 +16,7 @@ import type { Solve } from "@/lib/types"
 import { getSolveCountByEvent } from "@/lib/actions/timer"
 import { listRecentEventSolves } from "@/lib/actions/timer-analytics"
 
-const SYNC_PAGE_SIZE = 2000
+const SYNC_PAGE_SIZE = 1000
 
 function dateGroupFromSolvedAt(solvedAt: string): string | null {
   const day = solvedAt.slice(0, 10)

@@ -876,7 +876,7 @@ export async function listRecentEventSolves(params: {
     return { solves: [], error: "Not authenticated" }
   }
 
-  const limit = Math.min(Math.max(params.limit ?? 500, 1), 2000)
+  const limit = Math.min(Math.max(params.limit ?? 500, 1), 1000)
   const offset = Math.max(params.offset ?? 0, 0)
 
   const { data, error } = await supabase

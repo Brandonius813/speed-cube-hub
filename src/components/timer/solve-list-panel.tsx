@@ -88,6 +88,7 @@ interface SolveListPanelProps {
   unsavedDnfCount?: number
   historyStatus?: TimerHistoryStatus
   historyError?: string | null
+  syncingFromCloud?: boolean
   onSetSelectedId: (id: string | null) => void
   onOpenSolveDetail: (id: string) => void
   onOpenStatDetail: (id: string, metric: SolveListStatMetric) => void
@@ -225,6 +226,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   unsavedDnfCount = 0,
   historyStatus = "ready",
   historyError = null,
+  syncingFromCloud = false,
   onSetSelectedId,
   onOpenSolveDetail,
   onOpenStatDetail,
@@ -446,6 +448,14 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             <span className="h-3 w-3 animate-spin rounded-full border border-primary/30 border-t-primary" />
             <span className="font-sans text-[10px] uppercase tracking-wider">
               Loading all-time stats…
+            </span>
+          </div>
+        )}
+        {syncingFromCloud && !statsIncomplete && (
+          <div className="mt-2 flex items-center justify-center gap-1.5 text-muted-foreground">
+            <span className="h-3 w-3 animate-spin rounded-full border border-primary/30 border-t-primary" />
+            <span className="font-sans text-[10px] uppercase tracking-wider">
+              Syncing solves from cloud…
             </span>
           </div>
         )}
