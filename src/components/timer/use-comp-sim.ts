@@ -16,7 +16,6 @@ import {
   normalizeCompSimConfig,
 } from "@/lib/timer/comp-sim-round"
 import {
-  playInspectionCall,
   playReadyWindow15sWarning,
   playReadyWindowExpired,
   startNoise,
@@ -195,12 +194,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     const snap = engine.getSnapshot()
     waitTimeoutRef.current = setTimeout(() => {
       engine.dispatch({ type: "WAIT_COMPLETE" })
-      if (snap.roundConfig.inspectionCallEnabled) {
-        playInspectionCall()
-      }
-      cueTimeoutRef.current = setTimeout(() => {
-        engine.dispatch({ type: "CUE_DONE" })
-      }, 1500)
+      engine.dispatch({ type: "CUE_DONE" })
     }, snap.waitDurationMs)
   }, [])
 

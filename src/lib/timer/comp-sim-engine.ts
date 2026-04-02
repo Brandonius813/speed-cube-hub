@@ -241,20 +241,10 @@ function reduce(state: CompSimSnapshot, event: CompSimEvent): CompSimSnapshot {
 
     case "CUE_DONE":
       if (state.phase !== "solve_cue") return state
-      if (state.roundConfig.startFlow === "stationary_auto_call") {
-        return {
-          ...state,
-          phase: "ready",
-          ...startReadyWindow(state),
-        }
-      }
       return {
         ...state,
         phase: "ready",
-        sitDownRequired: true,
-        readyWindowStartedAtMs: null,
-        readyWindowDeadlineMs: null,
-        readyWindowExpired: false,
+        ...startReadyWindow(state),
       }
 
     case "SIT_DOWN":

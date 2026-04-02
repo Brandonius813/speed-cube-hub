@@ -1,7 +1,7 @@
 "use client"
 
-import type { ComponentType, ReactNode } from "react"
-import { Check, Flag, TimerReset, Volume2 } from "lucide-react"
+import type { ReactNode } from "react"
+import { Flag } from "lucide-react"
 import {
   computeBPA,
   computeWPA,
@@ -24,7 +24,6 @@ import {
   formatCompSimConstraintSummary,
   getCompSimEndedReasonLabel,
   getCompSimFormatLabel,
-  getCompSimSceneLabel,
   getEffectiveTime,
   type CompSimRoundConfig,
   type CompSimRoundResult,
@@ -116,7 +115,7 @@ export function ScrambleScreen({ compSim }: { compSim: CompSimApi }) {
   const summaries = formatCompSimConstraintSummary(snapshot.roundConfig)
 
   return (
-    <div className="w-full max-w-4xl rounded-[2rem] border border-border/70 bg-card/85 p-6 shadow-2xl">
+    <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-border/70 bg-card/85 p-6 shadow-2xl">
       <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
         <span>Solve {snapshot.solveIndex + 1} of {total}</span>
         {summaries.map((summary) => (
@@ -257,9 +256,6 @@ export function ReadyWindowScreen({
           {formatReadyWindowMs(readyWindowMsLeft ?? 0)}
         </p>
       )}
-      <p className="mt-3 text-sm text-muted-foreground">
-        Use the normal timer hold-to-start flow to begin inspection.
-      </p>
       {readyWindowExpired && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           You missed the 60-second ready window. This is warning-only and the attempt can still continue.
@@ -271,7 +267,6 @@ export function ReadyWindowScreen({
 
 export function AttemptTimerScreen({
   formatLabel,
-  inspectionEnabled,
   timerPhase,
   inInspectionHold,
   inspectionSecondsLeft,
@@ -286,7 +281,6 @@ export function AttemptTimerScreen({
   readyWindowExpired,
 }: {
   formatLabel: string
-  inspectionEnabled: boolean
   timerPhase: "idle" | "holding" | "ready" | "inspecting" | "running" | "stopped"
   inInspectionHold: boolean
   inspectionSecondsLeft: number
@@ -306,18 +300,9 @@ export function AttemptTimerScreen({
       : timerPhase === "inspecting" || inInspectionHold
         ? "Inspection"
         : `${formatLabel} Round`
-  const prompt =
-    timerPhase === "running"
-      ? "Press spacebar or tap to stop"
-      : timerPhase === "inspecting" || inInspectionHold
-        ? "Hold and release just like the normal timer to start your solve"
-        : inspectionEnabled
-          ? "Use the normal timer hold-to-start flow to begin inspection"
-          : "Use the normal timer hold-to-start flow to begin your solve"
-
   return (
     <div
-      className="w-full max-w-xl cursor-pointer select-none rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl"
+      className="flex w-full cursor-pointer select-none flex-col items-center text-center"
       onPointerDown={(eventPointer) => onPointerDown(eventPointer.timeStamp)}
       onPointerUp={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
       onPointerCancel={(eventPointer) => onPointerUp(eventPointer.timeStamp)}
@@ -343,14 +328,13 @@ export function AttemptTimerScreen({
           {readyWindowLabel}
         </p>
       )}
-      <p className="mt-3 text-sm text-muted-foreground">{prompt}</p>
       {readyWindowExpired && (
-        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+        <div className="mt-4 max-w-md rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           You missed the 60-second ready window. Warning only: you can still continue this attempt.
         </div>
       )}
       {warning && (
-        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+        <div className="mt-4 max-w-md rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
           {warning}
         </div>
       )}
@@ -381,7 +365,7 @@ export function SolveRecordedScreen({
   const formatLabel = getCompSimFormatLabel(snapshot.roundConfig.format)
 
   return (
-    <div className="w-full max-w-xl rounded-[2rem] border border-border/70 bg-card/85 p-8 text-center shadow-2xl">
+    <div className="flex w-full flex-col items-center text-center">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
         {formatLabel} Attempt Review
       </p>
@@ -402,9 +386,6 @@ export function SolveRecordedScreen({
         inspectionSecondsLeft={15}
         timerUpdateMode="realtime"
       />
-      <p className="mt-3 text-sm text-muted-foreground">
-        Review the latest attempt before the round moves on.
-      </p>
 
       <div className="mt-5 grid grid-cols-3 gap-2">
         <PenaltyButton
@@ -588,68 +569,24 @@ export function ResultsScreen({
   const { snapshot, benchmarks } = compSim
   const currentSeconds =
     roundResult.resultMs == null ? null : roundResult.resultMs / 1000
-  const sceneLabel = getCompSimSceneLabel(snapshot.roundConfig.scene)
   const formatLabel = getCompSimFormatLabel(snapshot.roundConfig.format)
-  const endedReasonLabel = getCompSimEndedReasonLabel(snapshot.endedReason ?? "completed")
-  const constraintSummary = formatCompSimConstraintSummary(snapshot.roundConfig).join(" • ")
 
   return (
-    <div className="grid w-full max-w-6xl gap-5 xl:grid-cols-[minmax(0,1.1fr)_360px]">
+    <div className="grid w-full gap-5 xl:max-w-none xl:grid-cols-[1fr_360px]">
       <div className="rounded-[2rem] border border-border/70 bg-card/90 p-6 shadow-2xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-              {compSim.isSaving ? "Saving…" : "Saved"}
-            </p>
-            <h2 className="mt-2 text-3xl font-black text-foreground">
-              {formatLabel} Result:{" "}
-              <span className="font-mono">
-                {roundResult.isDnf ? "DNF" : roundResult.resultMs != null ? fmtTime(roundResult.resultMs) : "No Result"}
-              </span>
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Attempt #{compSim.attemptNumber} • {constraintSummary}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 text-right">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Ended
-            </p>
-            <p className="mt-1 text-lg font-bold text-foreground">{endedReasonLabel}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <ResultPill icon={TimerReset} label="Scene" value={sceneLabel} />
-          <ResultPill
-            icon={Flag}
-            label="Cutoff"
-            value={
-              snapshot.roundConfig.cutoff
-                ? snapshot.cutoffMet === true
-                  ? "Made cutoff"
-                  : snapshot.cutoffMet === false
-                    ? "Missed cutoff"
-                    : "Pending"
-                : "None"
-            }
-          />
-          <ResultPill
-            icon={Volume2}
-            label="Time Limit"
-            value={
-              snapshot.roundConfig.cumulativeTimeLimitMs == null
-                ? "None"
-                : snapshot.endedReason === "time_limit_reached"
-                  ? "Reached"
-                  : "Stayed under"
-            }
-          />
-          <ResultPill
-            icon={Check}
-            label="Intensity"
-            value={`${snapshot.roundConfig.intensity}%`}
-          />
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+            {compSim.isSaving ? "Saving…" : "Saved"}
+          </p>
+          <h2 className="mt-2 text-3xl font-black text-foreground">
+            {formatLabel} Result:{" "}
+            <span className="font-mono">
+              {roundResult.isDnf ? "DNF" : roundResult.resultMs != null ? fmtTime(roundResult.resultMs) : "No Result"}
+            </span>
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Attempt #{compSim.attemptNumber}
+          </p>
         </div>
 
         <div className="mt-5 rounded-2xl border border-border/60 bg-background/70 p-4">
@@ -730,26 +667,6 @@ function PressureItem({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-2">
       <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-base font-semibold text-foreground">{value}</p>
-    </div>
-  )
-}
-
-function ResultPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span>{label}</span>
-      </div>
-      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
 }

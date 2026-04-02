@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils"
 import { type InspectionVoiceGender } from "@/lib/timer/inspection"
 import { useCompSim } from "@/components/timer/use-comp-sim"
 import { useScreenWakeLock } from "@/components/timer/use-screen-wake-lock"
+import { startNoise, stopAllNoise } from "@/lib/timer/comp-sim-audio"
+import { LiveSettingsPopover } from "@/components/timer/comp-sim-live-settings"
 import {
   AttemptTimerScreen,
-  CueScreen,
   IdleScreen,
-  ReadyWindowScreen,
   ResultsScreen,
   RoundSheet,
   ScrambleScreen,
@@ -138,7 +138,7 @@ export function CompSimOverlay({
 
   const timerController = useSharedTimerController({
     enabled:
-      (phase === "ready" && !snapshot.sitDownRequired) ||
+      phase === "ready" ||
       phase === "inspecting" ||
       phase === "solving",
     inspectionEnabled,
@@ -166,9 +166,7 @@ export function CompSimOverlay({
       // Advance through comp sim flow via GAN idle/reset button press.
       if (phase === "scramble_shown") {
         compSim.confirmCubeCovered()
-      } else if (phase === "ready" && snapshot.sitDownRequired) {
-        compSim.sitDown()
-      } else if (phase === "ready" && !snapshot.sitDownRequired) {
+      } else if (phase === "ready") {
         timerController.handlePress()
         timerController.handlePressEnd()
       } else if (phase === "solve_recorded") {
@@ -176,7 +174,7 @@ export function CompSimOverlay({
       }
     },
     phase,
-  }), [compSim, phase, snapshot.sitDownRequired, timerController])
+  }), [compSim, phase, timerController])
 
   useEffect(() => {
     onBusyChange?.(phase !== "idle")
@@ -195,7 +193,7 @@ export function CompSimOverlay({
   }, [compSim, phase, startSignal])
 
   useEffect(() => {
-    if (phase !== "ready" || snapshot.sitDownRequired || snapshot.readyWindowDeadlineMs == null) {
+    if (phase !== "ready" || snapshot.readyWindowDeadlineMs == null) {
       return
     }
 
@@ -204,7 +202,7 @@ export function CompSimOverlay({
     }, 250)
 
     return () => window.clearInterval(interval)
-  }, [phase, snapshot.readyWindowDeadlineMs, snapshot.sitDownRequired])
+  }, [phase, snapshot.readyWindowDeadlineMs])
 
   const handleExit = useCallback(() => {
     compSim.cancelSim()
@@ -223,7 +221,6 @@ export function CompSimOverlay({
       : Math.max(0, snapshot.readyWindowDeadlineMs - readyWindowNow)
   const readyWindowLabel =
     phase === "ready" &&
-    !snapshot.sitDownRequired &&
     snapshot.roundConfig.readyCountdownEnabled &&
     readyWindowMsLeft != null
       ? `${Math.floor(Math.ceil(readyWindowMsLeft / 1000) / 60)}:${String(
@@ -232,8 +229,22 @@ export function CompSimOverlay({
       : null
   const handleRoundConfigChange = useCallback(
     (nextConfig: CompSimRoundConfig) => {
+      const prev = compSim.snapshot.roundConfig
       compSim.applyRoundConfig(nextConfig)
       onConfigChange?.(nextConfig)
+      // Restart ambient audio if scene or intensity changed during a live round
+      const isLive = compSim.snapshot.phase !== "idle" && compSim.snapshot.phase !== "sim_complete"
+      if (isLive && (nextConfig.scene !== prev.scene || nextConfig.intensity !== prev.intensity || nextConfig.randomReactionsEnabled !== prev.randomReactionsEnabled)) {
+        if (nextConfig.scene === "off") {
+          stopAllNoise()
+        } else {
+          startNoise({
+            scene: nextConfig.scene,
+            intensity: nextConfig.intensity,
+            randomReactionsEnabled: nextConfig.randomReactionsEnabled,
+          })
+        }
+      }
     },
     [compSim, onConfigChange]
   )
@@ -282,9 +293,17 @@ export function CompSimOverlay({
       <div className="border-b border-border/60 bg-black/20 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-              Competition Mode Live
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                Competition Mode Live
+              </p>
+              {phase !== "idle" && phase !== "sim_complete" && (
+                <LiveSettingsPopover
+                  config={snapshot.roundConfig}
+                  onChange={handleRoundConfigChange}
+                />
+              )}
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <StatusChip label={getCompSimFormatLabel(snapshot.roundConfig.format)} />
               <StatusChip label={getCompSimSceneLabel(snapshot.roundConfig.scene)} />
@@ -355,7 +374,7 @@ export function CompSimOverlay({
           <div
             className={cn(
               "flex w-full flex-col items-center gap-5",
-              showRoundSheet && "xl:grid xl:max-w-6xl xl:grid-cols-[minmax(0,1.1fr)_360px] xl:items-start"
+              showRoundSheet && "xl:grid xl:max-w-none xl:grid-cols-[1fr_360px] xl:items-start xl:gap-6"
             )}
           >
             <div className="flex w-full justify-center">
@@ -370,21 +389,9 @@ export function CompSimOverlay({
                   warning={pressureWarning}
                 />
               )}
-              {phase === "solve_cue" && <CueScreen warning={pressureWarning} />}
-              {phase === "ready" && snapshot.sitDownRequired && (
-                <ReadyWindowScreen
-                  sitDownRequired={true}
-                  readyCountdownEnabled={snapshot.roundConfig.readyCountdownEnabled}
-                  readyWindowMsLeft={readyWindowMsLeft}
-                  readyWindowExpired={snapshot.readyWindowExpired}
-                  onSitDown={compSim.sitDown}
-                  onPointerDown={timerController.handlePointerDown}
-                  onPointerUp={timerController.handlePointerUp}
-                />
-              )}
               {(phase === "inspecting" ||
                 phase === "solving" ||
-                (phase === "ready" && !snapshot.sitDownRequired)) &&
+                phase === "ready") &&
                 (typing && (phase === "solving" || (phase === "ready" && !inspectionEnabled)) ? (
                   <CompSimTypingInput
                     typeVal={typeVal}
@@ -408,7 +415,6 @@ export function CompSimOverlay({
                 ) : (
                   <AttemptTimerScreen
                     formatLabel={getCompSimFormatLabel(snapshot.roundConfig.format)}
-                    inspectionEnabled={inspectionEnabled}
                     timerPhase={timerController.phase}
                     inInspectionHold={timerController.inInspectionHold}
                     inspectionSecondsLeft={timerController.inspectionSecondsLeft}
