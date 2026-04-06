@@ -19,6 +19,7 @@ export function PaneTimeTrend({ pane, context, updatePaneOptions }: PaneContentP
         onScopeChange={(nextScope) =>
           updatePaneOptions(pane.id, { ...pane.options, scope: nextScope })
         }
+        {...(scope === "all" ? { line1Label: "Daily Mean" } : {})}
       />
     </div>
   )

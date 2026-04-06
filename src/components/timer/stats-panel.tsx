@@ -341,10 +341,9 @@ export function StatsPanel({
                     label: point.label,
                     time: point.best_single_ms,
                     line1: point.mean_ms,
-                    line2: point.best_single_ms,
+                    line2: null,
                   }))}
-                  line1Label="Mean"
-                  line2Label="Best"
+                  line1Label="Daily Mean"
                 />
               </>
             ) : (

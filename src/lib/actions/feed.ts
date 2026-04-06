@@ -108,9 +108,9 @@ export async function hydrateSessionFeedEntries(
       like_count: likeInfo.get(row.id as string)?.count ?? 0,
       has_liked: likeInfo.get(row.id as string)?.hasLiked ?? false,
       comment_count: commentCounts[row.id as string] ?? 0,
-      best_ao5: solves.length > 0 ? msToSeconds(bestAoN(solves, 5)) : null,
-      best_ao12: solves.length > 0 ? msToSeconds(bestAoN(solves, 12)) : null,
-      best_ao25: solves.length > 0 ? msToSeconds(bestAoN(solves, 25)) : null,
+      best_ao5: (solves.length > 0 ? msToSeconds(bestAoN(solves, 5)) : null) ?? (row.best_ao5 as number | null),
+      best_ao12: (solves.length > 0 ? msToSeconds(bestAoN(solves, 12)) : null) ?? (row.best_ao12 as number | null),
+      best_ao25: (solves.length > 0 ? msToSeconds(bestAoN(solves, 25)) : null) ?? (row.best_ao25 as number | null),
     }
   })
 }
