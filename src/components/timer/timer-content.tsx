@@ -1718,6 +1718,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
           .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_backfill" }))
       }
 
+      // Ensure oldest-first ordering regardless of how solves were stored
+      // in IndexedDB (prior cache may have wrong page-level ordering).
+      loaded.sort((a, b) => {
+        const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
+        return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
+      })
+
       if (cancelled) return
 
       const finalizeVisibleWindow = (nextSolves: Solve[]) => {
