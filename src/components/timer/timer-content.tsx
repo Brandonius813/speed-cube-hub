@@ -2027,7 +2027,12 @@ export function TimerContent({ viewer }: TimerContentProps) {
     const dn = (eventKey: KeyboardEvent) => {
       if (practiceTypeRef.current === "Comp Sim") return
       if (btConnectedRef.current) return
-      if (isInteractiveTarget(eventKey.target)) return
+      if (isInteractiveTarget(eventKey.target)) {
+        // In typing mode, let modifier shortcuts (Ctrl+2, Alt+Z, etc.)
+        // pass through even when the input is focused.
+        const hasModifier = eventKey.ctrlKey || eventKey.altKey || eventKey.metaKey
+        if (!typing || !hasModifier) return
+      }
       if (settingsOpenRef.current || shareModalOpenRef.current) return
       if (eventKey.code === "Space") {
         eventKey.preventDefault()
@@ -3208,7 +3213,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         label: point.label,
         time: point.best_single_ms,
         line1: point.mean_ms,
-        line2: point.best_single_ms,
+        line2: null,
       })) ?? [],
     [scopedAllTimeAnalytics]
   )
@@ -3377,9 +3382,8 @@ export function TimerContent({ viewer }: TimerContentProps) {
     setSelectedId(null)
     multiSelect.exit()
 
-    void deleteSolvesAction(idsToDelete).then((result) => {
-      if (!result.error) refreshAllTimeAnalytics(eventRef.current)
-    })
+    const result = await deleteSolvesAction(idsToDelete)
+    if (!result.error) refreshAllTimeAnalytics(eventRef.current)
   }, [multiSelect, event, recomputeStats, refreshAllTimeAnalytics, decrementTotalSavedCount])
 
   // ── Export Handler ─────────────────────────────────────────────────
