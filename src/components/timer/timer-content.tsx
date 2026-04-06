@@ -600,7 +600,21 @@ export function TimerContent({ viewer }: TimerContentProps) {
   })
   const [scramble, setScramble] = useState("Generating scramble...")
   const [scrambleError, setScrambleError] = useState<string | null>(null)
-  const [solves, setSolves] = useState<Solve[]>([])
+  const [rawSolves, setRawSolves] = useState<Solve[]>([])
+  // Guarantee oldest-first ordering for display regardless of how solves were set.
+  // Timsort on an already-sorted array is O(n) comparisons with no allocations.
+  const solves = useMemo(() => {
+    for (let i = 1; i < rawSolves.length; i++) {
+      if ((rawSolves[i].solved_at ?? "") < (rawSolves[i - 1].solved_at ?? "")) {
+        return [...rawSolves].sort((a, b) => {
+          const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
+          return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
+        })
+      }
+    }
+    return rawSolves
+  }, [rawSolves])
+  const setSolves = setRawSolves
   const [inspOn, setInspOn] = useState(() => {
     try {
       return localStorage.getItem("timer-insp-on") === "true"
@@ -1718,13 +1732,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
           .catch(() => emitTimerTelemetry("timer_error", { scope: "solve_store_replace_backfill" }))
       }
 
-      // Ensure oldest-first ordering regardless of how solves were stored
-      // in IndexedDB (prior cache may have wrong page-level ordering).
-      loaded.sort((a, b) => {
-        const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
-        return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
-      })
-
       if (cancelled) return
 
       const finalizeVisibleWindow = (nextSolves: Solve[]) => {
@@ -1777,14 +1784,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
           if (page.solves.length < BOOT_PAGE) break
           bootOffset += BOOT_PAGE
         }
-
-        // Each page from listRecentEventSolves is oldest-first internally,
-        // but pages are fetched newest-batch-first. Sort the full array to
-        // guarantee oldest-first order across page boundaries.
-        allBootSolves.sort((a, b) => {
-          const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
-          return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
-        })
 
         if (cancelled) return
 
