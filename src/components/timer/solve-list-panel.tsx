@@ -40,6 +40,9 @@ export interface SolveStats {
   milestoneRows: { key: string; cur: number | null; best: number | null }[]
   rolling1: (number | null)[]
   rolling2: (number | null)[]
+  pbSingle?: boolean[]
+  pbRolling1?: boolean[]
+  pbRolling2?: boolean[]
 }
 
 export type SolveListRow = {
@@ -92,6 +95,7 @@ interface SolveListPanelProps {
   onSetSelectedId: (id: string | null) => void
   onOpenSolveDetail: (id: string) => void
   onOpenStatDetail: (id: string, metric: SolveListStatMetric) => void
+  onOpenSummaryStatDetail?: (statKey: string, column: "current" | "allTimeBest" | "sessionBest") => void
   onSelectSolveCell: (id: string, metric: SolveSelectionMetric) => void
   onSetPenalty: (id: string, p: Penalty) => void
   onDeleteSolve: (id: string) => void
@@ -230,6 +234,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
   onSetSelectedId,
   onOpenSolveDetail,
   onOpenStatDetail,
+  onOpenSummaryStatDetail,
   onSelectSolveCell,
   onSetPenalty,
   onDeleteSolve,
@@ -430,15 +435,40 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
             <tr>
               <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>single</td>
               <td className={cn("text-right pr-2 font-mono text-foreground font-medium", textClasses.summaryValue)}>{last ? fmtSolve(last) : "—"}</td>
-              <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(summaryStats.best)}</td>
-              <td className={cn("text-right font-mono text-foreground", textClasses.summaryValue)}>{D(sessionStats.best)}</td>
+              <td
+                className={cn("text-right pr-2 font-mono text-foreground cursor-pointer hover:text-indigo-300 transition-colors rounded", textClasses.summaryValue)}
+                onClick={() => summaryStats.best !== null && onOpenSummaryStatDetail?.("single", "allTimeBest")}
+              >
+                {D(summaryStats.best)}
+              </td>
+              <td
+                className={cn("text-right font-mono text-foreground cursor-pointer hover:text-indigo-300 transition-colors rounded", textClasses.summaryValue)}
+                onClick={() => sessionStats.best !== null && onOpenSummaryStatDetail?.("single", "sessionBest")}
+              >
+                {D(sessionStats.best)}
+              </td>
             </tr>
             {summaryStats.milestoneRows.map((row) => (
               <tr key={row.key}>
                 <td className={cn("font-sans text-foreground py-1 pr-2", textClasses.summaryLabel)}>{row.key}</td>
-                <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(row.cur)}</td>
-                <td className={cn("text-right pr-2 font-mono text-foreground", textClasses.summaryValue)}>{D(row.best)}</td>
-                <td className={cn("text-right font-mono text-foreground", textClasses.summaryValue)}>{D(sessionBestByKey.get(row.key) ?? null)}</td>
+                <td
+                  className={cn("text-right pr-2 font-mono text-foreground cursor-pointer hover:text-indigo-300 transition-colors rounded", textClasses.summaryValue)}
+                  onClick={() => row.cur !== null && onOpenSummaryStatDetail?.(row.key, "current")}
+                >
+                  {D(row.cur)}
+                </td>
+                <td
+                  className={cn("text-right pr-2 font-mono text-foreground cursor-pointer hover:text-indigo-300 transition-colors rounded", textClasses.summaryValue)}
+                  onClick={() => row.best !== null && onOpenSummaryStatDetail?.(row.key, "allTimeBest")}
+                >
+                  {D(row.best)}
+                </td>
+                <td
+                  className={cn("text-right font-mono text-foreground cursor-pointer hover:text-indigo-300 transition-colors rounded", textClasses.summaryValue)}
+                  onClick={() => (sessionBestByKey.get(row.key) ?? null) !== null && onOpenSummaryStatDetail?.(row.key, "sessionBest")}
+                >
+                  {D(sessionBestByKey.get(row.key) ?? null)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -656,6 +686,9 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                 }
                 const stat1Value = statsIdx >= 0 ? stats.rolling1[statsIdx] ?? null : null
                 const stat2Value = statsIdx >= 0 ? stats.rolling2[statsIdx] ?? null : null
+                const isSinglePb = statsIdx >= 0 && (stats.pbSingle?.[statsIdx] ?? false)
+                const isStat1Pb = statsIdx >= 0 && (stats.pbRolling1?.[statsIdx] ?? false)
+                const isStat2Pb = statsIdx >= 0 && (stats.pbRolling2?.[statsIdx] ?? false)
 
                 return (
                   <Fragment key={row.solve.id}>
@@ -716,6 +749,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                         className={cn(
                           "text-right pr-1.5 py-0.5 font-mono text-foreground transition-colors",
                           textClasses.listValue,
+                          isSinglePb && row.solve.penalty !== "DNF" && "text-green-400",
                           selectedId === row.solve.id &&
                             selectedMetric === "single" &&
                             "text-indigo-300 bg-indigo-500/15"
@@ -732,6 +766,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                         className={cn(
                           "text-right pr-1.5 py-0.5 text-foreground font-mono transition-colors",
                           textClasses.listStat,
+                          isStat1Pb && "text-green-400",
                           stat1Value !== null && "cursor-pointer hover:text-indigo-200",
                           selectedId === row.solve.id &&
                             selectedMetric === "stat1" &&
@@ -750,6 +785,7 @@ const SolveListPanelInner = forwardRef<SolveListPanelHandle, SolveListPanelProps
                         className={cn(
                           "text-right pr-2 py-0.5 text-foreground font-mono transition-colors",
                           textClasses.listStat,
+                          isStat2Pb && "text-green-400",
                           stat2Value !== null && "cursor-pointer hover:text-indigo-200",
                           selectedId === row.solve.id &&
                             selectedMetric === "stat2" &&

@@ -163,6 +163,7 @@ export async function addSolve(
     comp_sim_group: number | null
     phases?: number[] | null
     solve_session_id?: string | null
+    practice_type?: string
   }
 ): Promise<{ data: Solve | null; error?: string }> {
   const supabase = await createClient()
@@ -201,6 +202,7 @@ export async function addSolve(
     scramble: parsed.data.scramble,
     event: parsed.data.event,
     comp_sim_group: parsed.data.comp_sim_group,
+    practice_type: data.practice_type ?? "Solves",
   }
   if (data.solve_session_id) insertData.solve_session_id = data.solve_session_id
   if (data.phases && data.phases.length > 0) insertData.phases = data.phases
@@ -389,7 +391,7 @@ export async function deleteSolve(
 }
 
 /**
- * Delete multiple solves at once. Uses Supabase .in() for a single query.
+ * Delete multiple solves at once. Chunks .in() calls to avoid URL length limits.
  */
 export async function deleteSolves(
   solveIds: string[]
@@ -406,36 +408,63 @@ export async function deleteSolves(
     return { error: "Not authenticated" }
   }
 
-  const { data: affectedSolves, error: affectedError } = await supabase
-    .from("solves")
-    .select("event, solve_session_id")
-    .in("id", solveIds)
-    .eq("user_id", user.id)
+  const CHUNK_SIZE = 200
 
-  if (affectedError) {
-    return { error: affectedError.message }
+  // Fetch affected solves in chunks
+  const affectedSolves: Array<{ event: string; solve_session_id: string | null; timer_session_id: string | null }> = []
+  for (let i = 0; i < solveIds.length; i += CHUNK_SIZE) {
+    const chunk = solveIds.slice(i, i + CHUNK_SIZE)
+    const { data, error } = await supabase
+      .from("solves")
+      .select("event, solve_session_id, timer_session_id")
+      .in("id", chunk)
+      .eq("user_id", user.id)
+    if (error) return { error: error.message }
+    if (data) affectedSolves.push(...data)
   }
 
-  const { error } = await supabase
-    .from("solves")
-    .delete()
-    .in("id", solveIds)
-    .eq("user_id", user.id)
-
-  if (error) {
-    return { error: error.message }
+  // Delete in chunks
+  for (let i = 0; i < solveIds.length; i += CHUNK_SIZE) {
+    const chunk = solveIds.slice(i, i + CHUNK_SIZE)
+    const { error } = await supabase
+      .from("solves")
+      .delete()
+      .in("id", chunk)
+      .eq("user_id", user.id)
+    if (error) return { error: error.message }
   }
 
   const events = new Set<string>()
   const solveSessionIds = new Set<string>()
-  for (const row of ((affectedSolves as Array<Pick<Solve, "event" | "solve_session_id">> | null) ?? [])) {
+  const timerSessionIds = new Set<string>()
+  for (const row of affectedSolves) {
     events.add(row.event)
     if (row.solve_session_id) solveSessionIds.add(row.solve_session_id)
+    if (row.timer_session_id) timerSessionIds.add(row.timer_session_id)
   }
 
+  // Refresh analytics + update sessions.num_solves to reflect actual remaining counts
   await Promise.all([
     ...Array.from(events).map((event) => refreshTimerEventAnalytics(event)),
     ...Array.from(solveSessionIds).map((solveSessionId) => refreshSolveSessionSummary(solveSessionId)),
+    ...Array.from(timerSessionIds).map(async (tsId) => {
+      const { count } = await supabase
+        .from("solves")
+        .select("id", { count: "exact", head: true })
+        .eq("timer_session_id", tsId)
+        .eq("user_id", user.id)
+      const { count: dnfCount } = await supabase
+        .from("solves")
+        .select("id", { count: "exact", head: true })
+        .eq("timer_session_id", tsId)
+        .eq("user_id", user.id)
+        .eq("penalty", "DNF")
+      await supabase
+        .from("sessions")
+        .update({ num_solves: count ?? 0, num_dnf: dnfCount ?? 0 })
+        .eq("timer_session_id", tsId)
+        .eq("user_id", user.id)
+    }),
   ])
 
   return {}

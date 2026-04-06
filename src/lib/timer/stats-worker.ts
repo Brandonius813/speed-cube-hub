@@ -2,6 +2,8 @@ import {
   computeStat,
   computeAllMilestonesSliding,
   buildRollingArraySliding,
+  buildSinglePbFlags,
+  buildPbFlags,
   type Penalty,
   type TimerSolve,
 } from "@/lib/timer/stats"
@@ -78,7 +80,10 @@ function computeSummaryFull(
   cachedRolling2 = buildRollingArraySliding(solves, statCols[1])
 
   cacheValid = true
-  return { best: cachedBestSingle, mean, milestoneRows, rolling1: cachedRolling1, rolling2: cachedRolling2 }
+  const pbSingle = buildSinglePbFlags(solves)
+  const pbRolling1 = buildPbFlags(cachedRolling1)
+  const pbRolling2 = buildPbFlags(cachedRolling2)
+  return { best: cachedBestSingle, mean, milestoneRows, rolling1: cachedRolling1, rolling2: cachedRolling2, pbSingle, pbRolling1, pbRolling2 }
 }
 
 /** Incremental append — O(k log k) per milestone instead of O(n * k log k). */
@@ -137,7 +142,10 @@ function computeSummaryAppend(
       return { key, cur, best }
     })
 
-  return { best: cachedBestSingle, mean, milestoneRows, rolling1: cachedRolling1, rolling2: cachedRolling2 }
+  const pbSingle = buildSinglePbFlags(solves)
+  const pbRolling1 = buildPbFlags(cachedRolling1)
+  const pbRolling2 = buildPbFlags(cachedRolling2)
+  return { best: cachedBestSingle, mean, milestoneRows, rolling1: cachedRolling1, rolling2: cachedRolling2, pbSingle, pbRolling1, pbRolling2 }
 }
 
 function postSnapshot(summary: StatsSummary, startMs: number): void {

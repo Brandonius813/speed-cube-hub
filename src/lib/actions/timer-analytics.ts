@@ -247,6 +247,7 @@ async function refreshEventSummaryMilestones(params: {
     .select("time_ms, penalty")
     .eq("user_id", params.userId)
     .eq("event", params.event)
+    .in("practice_type", ["Solves", "Comp Sim"])
     .order("solved_at", { ascending: true })
     .order("id", { ascending: true })
 

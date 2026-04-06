@@ -27,6 +27,8 @@ import {
   computeStat,
   computeAllMilestonesSliding,
   buildRollingArraySliding,
+  buildSinglePbFlags,
+  buildPbFlags,
 } from "@/lib/timer/stats"
 import {
   SolveListPanel,
@@ -467,12 +469,19 @@ function computeStatsSync(solves: Solve[], statCols: [string, string]): SolveSta
   const rolling1 = buildRollingArraySliding(solves, statCols[0])
   const rolling2 = buildRollingArraySliding(solves, statCols[1])
 
+  const pbSingle = buildSinglePbFlags(solves)
+  const pbRolling1 = buildPbFlags(rolling1)
+  const pbRolling2 = buildPbFlags(rolling2)
+
   return {
     best: valid.length ? Math.min(...valid) : null,
     mean,
     milestoneRows,
     rolling1,
     rolling2,
+    pbSingle,
+    pbRolling1,
+    pbRolling2,
   }
 }
 
@@ -483,6 +492,9 @@ function summaryToStats(summary: StatsSummary): SolveStats {
     milestoneRows: summary.milestoneRows,
     rolling1: summary.rolling1,
     rolling2: summary.rolling2,
+    pbSingle: summary.pbSingle,
+    pbRolling1: summary.pbRolling1,
+    pbRolling2: summary.pbRolling2,
   }
 }
 
@@ -3011,6 +3023,65 @@ export function TimerContent({ viewer }: TimerContentProps) {
     [currentSessionSolves, statCols]
   )
 
+  const handleSummaryStatClick = useCallback(
+    (statKey: string, column: "current" | "allTimeBest" | "sessionBest") => {
+      if (statKey === "single") {
+        // For singles, find the best solve and open its detail modal
+        const targetSolves = column === "sessionBest" ? currentSessionSolves : solvesRef.current
+        let bestSolve: Solve | null = null
+        let bestTime = Infinity
+        for (const s of targetSolves) {
+          const t = getEffectiveSolveMs(s)
+          if (t !== null && t < bestTime) {
+            bestTime = t
+            bestSolve = s
+          }
+        }
+        if (bestSolve) {
+          handleOpenSolveDetail(bestSolve.id)
+        }
+        return
+      }
+
+      // For averages (ao5, ao12, etc.)
+      const windowSize = getStatWindowSize(statKey)
+      if (!windowSize) return
+
+      if (column === "current") {
+        // Current = last N solves from the all-time view
+        const allSolves = solvesRef.current
+        if (allSolves.length < windowSize) return
+        const solveWindow = allSolves.slice(-windowSize)
+        setDetailSolveId(null)
+        setStatDetail({ label: statKey, solves: solveWindow })
+        return
+      }
+
+      // For "allTimeBest" or "sessionBest" — scan rolling array to find best window
+      const targetSolves = column === "sessionBest" ? currentSessionSolves : solvesRef.current
+      if (targetSolves.length < windowSize) return
+
+      // Recompute rolling values for this stat over the target solves
+      const rolling = buildRollingArraySliding(targetSolves, statKey)
+      let bestIdx = -1
+      let bestVal: number | null = null
+      for (let i = 0; i < rolling.length; i++) {
+        const v = rolling[i]
+        if (v !== null && (bestVal === null || v < bestVal)) {
+          bestVal = v
+          bestIdx = i
+        }
+      }
+      if (bestIdx < 0 || bestIdx + 1 < windowSize) return
+
+      const solveWindow = targetSolves.slice(bestIdx + 1 - windowSize, bestIdx + 1)
+      if (solveWindow.length !== windowSize) return
+      setDetailSolveId(null)
+      setStatDetail({ label: statKey, solves: solveWindow })
+    },
+    [currentSessionSolves, handleOpenSolveDetail]
+  )
+
   useEffect(() => {
     if (detailSolveId && !detailSolve) {
       let cancelled = false
@@ -3038,8 +3109,10 @@ export function TimerContent({ viewer }: TimerContentProps) {
     [unsavedSolves]
   )
   const allTimeBestSingleMs = scopedAllTimeAnalytics?.summary?.best_single_ms ?? null
+  const isPbEligiblePracticeType = practiceType === "Solves" || practiceType === "Comp Sim"
   const isSolvePersonalBest = useCallback((solve: Solve | null) => {
     if (!solve) return false
+    if (!isPbEligiblePracticeType) return false
     const selectedTime = getEffectiveSolveMs(solve)
     if (selectedTime === null) return false
     if (allTimeBestSingleMs !== null) {
@@ -3052,7 +3125,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       return best
     }, null)
     return bestTime !== null && selectedTime === bestTime
-  }, [allTimeBestSingleMs, solves])
+  }, [allTimeBestSingleMs, isPbEligiblePracticeType, solves])
 
   const handleShareSolve = useCallback((solve: Solve) => {
     const solveIndex = solves.findIndex((entry) => entry.id === solve.id)
@@ -3300,6 +3373,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
   shortcutSolveRef.current = detailSolve ?? selectedSolve ?? last ?? null
   const lastSinglePb = useMemo(() => {
     if (!last) return null
+    if (!isPbEligiblePracticeType) return null
     const lastEffective = getEffectiveSolveMs(last)
     if (lastEffective === null) return null
     if (allTimeBestSingleMs !== null) {
@@ -3312,7 +3386,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
       }
     }
     return getLastSinglePbCandidate(solves)
-  }, [allTimeBestSingleMs, last, solves])
+  }, [allTimeBestSingleMs, isPbEligiblePracticeType, last, solves])
   const scrambleNavBtn =
     "text-[11px] font-sans tracking-wide px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
   const sp = (eventPointer: React.PointerEvent) => eventPointer.stopPropagation()
@@ -4223,6 +4297,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
             onSetSelectedId={setSelectedId}
             onOpenSolveDetail={handleOpenSolveDetail}
             onOpenStatDetail={handleOpenStatDetail}
+            onOpenSummaryStatDetail={handleSummaryStatClick}
             onSelectSolveCell={handleSelectSolveCell}
             onSetPenalty={setPenalty}
             onDeleteSolve={deleteSolve}

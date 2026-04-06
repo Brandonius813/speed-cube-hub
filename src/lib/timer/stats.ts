@@ -178,3 +178,40 @@ export function buildRollingArraySliding(
 
   return rolling
 }
+
+/**
+ * Build PB flags for an array of rolling stat values.
+ * A position is marked as PB if its value is a new all-time minimum.
+ */
+export function buildPbFlags(values: (number | null)[]): boolean[] {
+  const flags: boolean[] = []
+  let best: number | null = null
+  for (const v of values) {
+    if (v !== null && (best === null || v < best)) {
+      best = v
+      flags.push(true)
+    } else {
+      flags.push(false)
+    }
+  }
+  return flags
+}
+
+/**
+ * Build PB flags for singles (effective times of solves).
+ * Marks each solve that set a new single PB at the time it was done.
+ */
+export function buildSinglePbFlags(solves: TimerSolve[]): boolean[] {
+  const flags: boolean[] = []
+  let best: number | null = null
+  for (const solve of solves) {
+    const t = effectiveTime(solve)
+    if (t !== Infinity && (best === null || t < best)) {
+      best = t
+      flags.push(true)
+    } else {
+      flags.push(false)
+    }
+  }
+  return flags
+}

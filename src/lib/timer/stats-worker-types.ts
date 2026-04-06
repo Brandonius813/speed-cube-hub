@@ -6,6 +6,9 @@ export type StatsSummary = {
   milestoneRows: Array<{ key: string; cur: number | null; best: number | null }>
   rolling1: Array<number | null>
   rolling2: Array<number | null>
+  pbSingle: boolean[]
+  pbRolling1: boolean[]
+  pbRolling2: boolean[]
 }
 
 export type StatsWorkerRequest =

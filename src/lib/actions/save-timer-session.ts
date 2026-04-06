@@ -93,6 +93,7 @@ export async function saveTimerSession(data: {
       penalty: s.penalty,
       scramble: s.scramble,
       event: data.event,
+      practice_type: data.practice_type,
       comp_sim_group: s.comp_sim_group ?? null,
       notes: s.notes ?? null,
       solve_session_id: solveSession.id,
