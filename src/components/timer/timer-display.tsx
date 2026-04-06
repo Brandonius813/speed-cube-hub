@@ -401,6 +401,7 @@ export function TimerDisplay({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Big time display */}
       <div

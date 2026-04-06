@@ -127,6 +127,14 @@ export async function syncSolvesFromDb(
       syncOffset += SYNC_PAGE_SIZE
     }
 
+    // Each page from listRecentEventSolves is oldest-first internally,
+    // but pages are fetched newest-batch-first. Sort the full array to
+    // guarantee oldest-first order across page boundaries.
+    allDbSolves.sort((a, b) => {
+      const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
+      return cmp !== 0 ? cmp : (a.id ?? "").localeCompare(b.id ?? "")
+    })
+
     // Imported datasets can contain one timer_session_id spanning many days.
     // For those sessions, split groups by date so divider labels still render.
     const daysByTimerSessionId = new Map<string, Set<string>>()

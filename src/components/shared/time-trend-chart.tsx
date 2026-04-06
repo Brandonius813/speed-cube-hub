@@ -254,7 +254,7 @@ export function TimeTrendChart({
   }
 
   // Determine a reasonable tick interval for the X axis
-  const tickInterval = Math.max(1, Math.floor(chartData.length / 10)) - 1
+  const tickInterval = points ? "preserveStartEnd" as const : Math.max(1, Math.floor(chartData.length / 10)) - 1
 
   if (embedded) {
     return (
@@ -301,7 +301,7 @@ export function TimeTrendChart({
                     tickLine={false}
                     interval={tickInterval}
                     tickMargin={6}
-                    minTickGap={16}
+                    minTickGap={50}
                     height={26}
                   />
                   <YAxis
@@ -438,7 +438,7 @@ export function TimeTrendChart({
                   tickLine={false}
                   interval={tickInterval}
                   tickMargin={6}
-                  minTickGap={18}
+                  minTickGap={50}
                   height={28}
                 />
                 <YAxis

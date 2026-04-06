@@ -1759,9 +1759,13 @@ export function TimerContent({ viewer }: TimerContentProps) {
           bootOffset += BOOT_PAGE
         }
 
-        // listRecentEventSolves already returns oldest-first (it reverses
-        // internally). The display formula (`solves.length - 1 - displayIndex`)
-        // expects oldest-first so no further reordering is needed.
+        // Each page from listRecentEventSolves is oldest-first internally,
+        // but pages are fetched newest-batch-first. Sort the full array to
+        // guarantee oldest-first order across page boundaries.
+        allBootSolves.sort((a, b) => {
+          const cmp = (a.solved_at ?? "").localeCompare(b.solved_at ?? "")
+          return cmp !== 0 ? cmp : a.id.localeCompare(b.id)
+        })
 
         if (cancelled) return
 
@@ -2057,8 +2061,6 @@ export function TimerContent({ viewer }: TimerContentProps) {
         handlePress(eventKey.timeStamp)
         return
       }
-      if (typing) return
-
       const idleLikePhase = phaseRef.current === "idle" || phaseRef.current === "stopped"
       const shortcutSolve = shortcutSolveRef.current
       const action = idleLikePhase ? matchShortcut(eventKey, shortcutMapRef.current) : null
@@ -2081,7 +2083,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
         }
       }
 
-      if (!typing && phaseRef.current === "running") stopTimer(eventKey.timeStamp)
+      if (phaseRef.current === "running") stopTimer(eventKey.timeStamp)
     }
 
     const up = (eventKey: KeyboardEvent) => {
