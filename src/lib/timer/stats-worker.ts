@@ -1,5 +1,6 @@
 import {
   computeStat,
+  bestStat,
   computeAllMilestonesSliding,
   buildRollingArraySliding,
   buildSinglePbFlags,
@@ -69,7 +70,16 @@ function computeSummaryFull(
     : null
 
   // Use single-pass sliding window for all milestones — O(n * sum(log k_i))
-  const milestoneRows = computeAllMilestonesSliding(solves, milestones)
+  const aoMilestoneRows = computeAllMilestonesSliding(solves, milestones)
+
+  // Prepend mo3 (mean of 3 — no trimming, unlike averages)
+  const mo3Cur = computeStat(solves, "mo3")
+  const mo3Best = bestStat(solves, "mo3")
+  const milestoneRows = [
+    ...(mo3Cur !== null || mo3Best !== null ? [{ key: "mo3", cur: mo3Cur, best: mo3Best }] : []),
+    ...aoMilestoneRows,
+  ]
+
   cachedBestByMilestone = new Map()
   for (const row of milestoneRows) {
     cachedBestByMilestone.set(row.key, row.best)
@@ -122,7 +132,7 @@ function computeSummaryAppend(
   cachedRolling2.push(newRolling2)
 
   // Milestone rows — only compute the newest trailing window per milestone
-  const milestoneRows = milestones
+  const aoRows = milestones
     .filter((n) => solves.length >= n)
     .map((n) => {
       const key = `ao${n}`
@@ -141,6 +151,18 @@ function computeSummaryAppend(
 
       return { key, cur, best }
     })
+
+  // Prepend mo3
+  const mo3Cur = solves.length >= 3 ? computeStat(solves.slice(-3), "mo3") : null
+  let mo3Best = cachedBestByMilestone.get("mo3") ?? null
+  if (mo3Cur !== null && (mo3Best === null || mo3Cur < mo3Best)) {
+    mo3Best = mo3Cur
+  }
+  cachedBestByMilestone.set("mo3", mo3Best)
+  const milestoneRows = [
+    ...(mo3Cur !== null || mo3Best !== null ? [{ key: "mo3", cur: mo3Cur, best: mo3Best }] : []),
+    ...aoRows,
+  ]
 
   const pbSingle = buildSinglePbFlags(solves)
   const pbRolling1 = buildPbFlags(cachedRolling1)

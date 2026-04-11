@@ -25,6 +25,7 @@ import {
   type Penalty,
   type TimerSolve as Solve,
   computeStat,
+  bestStat,
   computeAllMilestonesSliding,
   buildRollingArraySliding,
   buildSinglePbFlags,
@@ -465,7 +466,16 @@ function computeStatsSync(solves: Solve[], statCols: [string, string]): SolveSta
     : null
 
   // Use O(n log k) sliding window instead of O(n²) brute force
-  const milestoneRows = computeAllMilestonesSliding(solves, MILESTONES)
+  const aoMilestoneRows = computeAllMilestonesSliding(solves, MILESTONES)
+
+  // Prepend mo3 (mean of 3 — no trimming, unlike averages)
+  const mo3Cur = computeStat(solves, "mo3")
+  const mo3Best = bestStat(solves, "mo3")
+  const milestoneRows = [
+    ...(mo3Cur !== null || mo3Best !== null ? [{ key: "mo3", cur: mo3Cur, best: mo3Best }] : []),
+    ...aoMilestoneRows,
+  ]
+
   const rolling1 = buildRollingArraySliding(solves, statCols[0])
   const rolling2 = buildRollingArraySliding(solves, statCols[1])
 
@@ -533,7 +543,10 @@ function mergeExactSummaryStats(params: {
   const visibleRowMap = new Map(fallback.milestoneRows.map((row) => [row.key, row]))
   const exactRowMap = new Map(exactRows.map((row) => [row.key, row]))
 
-  const milestoneRows = MILESTONES.map((size) => {
+  // mo3 is computed locally only (not in the DB), so use the visible fallback
+  const mo3Row = visibleRowMap.get("mo3") ?? null
+
+  const aoRows = MILESTONES.map((size) => {
     const key = `ao${size}` as TimerMilestoneKey
     const visibleRow = visibleRowMap.get(key) ?? null
     const exactRow = exactRowMap.get(key) ?? null
@@ -543,6 +556,11 @@ function mergeExactSummaryStats(params: {
       best: exactRow?.best ?? visibleRow?.best ?? null,
     }
   }).filter((row) => row.cur !== null || row.best !== null)
+
+  const milestoneRows = [
+    ...(mo3Row ? [mo3Row] : []),
+    ...aoRows,
+  ]
 
   return {
     best: exactEventSummary?.best_single_ms ?? fallback.best,
