@@ -1,0 +1,26 @@
+{
+  "name": "Speed Cube Hub",
+  "short_name": "Cube Hub",
+  "description": "Track your speedcubing progress, time your solves, and share with the community.",
+  "start_url": "/timer",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0A0A0F",
+  "theme_color": "#0A0A0F",
+  "categories": ["sports", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

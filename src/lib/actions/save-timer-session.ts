@@ -32,6 +32,7 @@ export async function saveTimerSession(data: {
   notes: string | null
   feed_visible: boolean
   session_start_ms: number // timestamp when session started (Date.now())
+  client_session_id?: string | null
   comp_sim?: {
     format: CompSimFormat
     result_seconds: number | null
@@ -43,7 +44,7 @@ export async function saveTimerSession(data: {
     ended_reason: CompSimEndedReason
     cutoff_met: boolean | null
   } | null
-}): Promise<{ error?: string; sessionId?: string; timerSessionId?: string }> {
+}): Promise<{ error?: string; sessionId?: string; timerSessionId?: string; alreadySaved?: boolean }> {
   if (data.solves.length === 0) {
     return { error: "No solves to save." }
   }
@@ -52,6 +53,24 @@ export async function saveTimerSession(data: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return { error: "You must be logged in to save a session." }
+  }
+
+  // Idempotency: if this client_session_id is already saved for this user, return the existing row.
+  // Lets the offline queue safely retry without creating duplicates.
+  if (data.client_session_id) {
+    const { data: existing } = await supabase
+      .from("sessions")
+      .select("id, timer_session_id")
+      .eq("user_id", user.id)
+      .eq("client_session_id", data.client_session_id)
+      .maybeSingle()
+    if (existing) {
+      return {
+        sessionId: existing.id,
+        timerSessionId: existing.timer_session_id ?? undefined,
+        alreadySaved: true,
+      }
+    }
   }
 
   const durationMinutes = Math.max(1, Math.round(data.duration_minutes))
@@ -152,6 +171,7 @@ export async function saveTimerSession(data: {
       feed_visible: data.feed_visible,
       timer_session_id: timerSession.id,
       solve_session_id: solveSession.id,
+      client_session_id: data.client_session_id ?? null,
       comp_sim_format: data.comp_sim?.format ?? null,
       comp_sim_result_seconds: data.comp_sim?.result_seconds ?? null,
       comp_sim_scene: data.comp_sim?.scene ?? null,

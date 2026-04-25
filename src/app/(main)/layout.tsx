@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/shared/navbar"
 import { Footer } from "@/components/shared/footer"
+import { OfflineIndicator } from "@/components/shared/offline-indicator"
 
 export default function MainLayout({
   children,
@@ -11,6 +12,7 @@ export default function MainLayout({
       <Navbar />
       {children}
       <Footer />
+      <OfflineIndicator />
     </div>
   )
 }
