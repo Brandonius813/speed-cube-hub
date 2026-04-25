@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
+import { enqueueSave, generateClientSessionId } from "@/lib/timer/pending-saves"
 import { getCompSimBenchmarks } from "@/lib/actions/sessions"
 import {
   createCompSimEngine,
@@ -215,7 +216,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
     setIsSaving(true)
     try {
       const simStartedAt = simStartedAtRef.current ?? Date.now()
-      const saveResult = await saveTimerSession({
+      const payload = {
         event: eventRef.current,
         solves: snap.solves.map((solve) => ({
           time_ms: solve.time_ms,
@@ -229,6 +230,7 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
         notes: null,
         feed_visible: true,
         session_start_ms: simStartedAt,
+        client_session_id: generateClientSessionId(),
         comp_sim: {
           format: snap.roundConfig.format,
           result_seconds:
@@ -247,15 +249,23 @@ export function useCompSim({ event, config }: UseCompSimOptions): CompSimApi {
           ended_reason: snap.endedReason ?? "completed",
           cutoff_met: snap.cutoffMet,
         },
-      })
+      }
 
-      if (saveResult.sessionId) {
-        const reference = await getCompSimBenchmarks(eventRef.current, saveResult.sessionId)
-        if (!reference.error) {
-          setBenchmarks({
-            previousCompSimResultSeconds: reference.previousCompSimResultSeconds,
-            normalBaselineSeconds: reference.normalBaselineSeconds,
-          })
+      const offlineNow = typeof navigator !== "undefined" && !navigator.onLine
+      if (offlineNow) {
+        await enqueueSave(payload)
+      } else {
+        const saveResult = await saveTimerSession(payload)
+        if (saveResult.error) {
+          await enqueueSave(payload)
+        } else if (saveResult.sessionId) {
+          const reference = await getCompSimBenchmarks(eventRef.current, saveResult.sessionId)
+          if (!reference.error) {
+            setBenchmarks({
+              previousCompSimResultSeconds: reference.previousCompSimResultSeconds,
+              normalBaselineSeconds: reference.normalBaselineSeconds,
+            })
+          }
         }
       }
     } catch {
