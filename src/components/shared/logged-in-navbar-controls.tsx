@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { BarChart3, Bell, ClipboardList, Rss, Trophy, User, Users } from "lucide-react"
+import { BarChart3, Bell, ClipboardList, Rss, Trophy, User } from "lucide-react"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { NavbarNavLink, navbarIconClass, navbarLinkClass, navbarTextClass } from "@/components/shared/nav-links"
@@ -112,7 +112,6 @@ export function LoggedInNavbarControls({
       </Link>
       <NavbarNavLink href="/import" pathname={pathname} label="Import Data" icon={ClipboardList} />
       <NavbarNavLink href="/feed" pathname={pathname} label="Feed" icon={Rss} />
-      <NavbarNavLink href="/clubs" pathname={pathname} label="Clubs" icon={Users} />
       <StatsNavLink pathname={pathname} />
       <NavbarNavLink href="/leaderboards" pathname={pathname} label="Leaderboards" icon={Trophy} />
       <ThemeToggle />
