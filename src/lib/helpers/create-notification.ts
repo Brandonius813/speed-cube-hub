@@ -14,7 +14,8 @@ export async function createNotification(
   userId: string,
   type: Notification["type"],
   actorId: string | null,
-  referenceId: string | null = null
+  referenceId: string | null = null,
+  previewText: string | null = null
 ): Promise<{ success: boolean; error?: string }> {
   const admin = createAdminClient()
 
@@ -23,6 +24,7 @@ export async function createNotification(
     type,
     actor_id: actorId,
     reference_id: referenceId,
+    preview_text: previewText,
   })
 
   if (error) {

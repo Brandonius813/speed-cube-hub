@@ -262,6 +262,52 @@ async function loadFeedHighlights(options: {
     .slice(0, options.mode === "following" ? 3 : options.mode === "clubs" ? 3 : 2)
 }
 
+export async function getFeedEntryById(
+  id: string
+): Promise<{ entry: FeedEntry | null; currentUserId: string | null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const viewerId = user?.id ?? null
+
+  const posts = await loadPosts({ id, viewerId })
+  if (posts.length > 0) {
+    const post = posts[0]
+    return {
+      entry: { ...post, entry_type: "post" as const, entry_created_at: post.created_at },
+      currentUserId: viewerId,
+    }
+  }
+
+  const { data: sessionRow } = await supabase
+    .from("sessions")
+    .select(`
+      *,
+      profile:profiles(
+        display_name,
+        handle,
+        avatar_url
+      )
+    `)
+    .eq("id", id)
+    .maybeSingle()
+
+  if (!sessionRow) {
+    return { entry: null, currentUserId: viewerId }
+  }
+
+  const [hydrated] = await hydrateSessionFeedEntries(
+    [sessionRow as Record<string, unknown>],
+    viewerId
+  )
+  if (!hydrated) {
+    return { entry: null, currentUserId: viewerId }
+  }
+
+  return { entry: hydrated, currentUserId: viewerId }
+}
+
 export async function getFeed(
   options: FeedOptions = {}
 ): Promise<{

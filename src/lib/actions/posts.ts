@@ -16,6 +16,7 @@ type LoadPostsOptions = {
   visibility?: "public" | "club"
   limit?: number
   before?: string | null
+  id?: string
 }
 
 type CreatePostInput = {
@@ -109,9 +110,16 @@ export async function loadPosts(options: LoadPostsOptions = {}): Promise<Post[]>
   let query = supabase
     .from("posts")
     .select(POST_SELECT)
-    .eq("visibility", options.visibility ?? "public")
     .order("created_at", { ascending: false })
     .limit(limit)
+
+  if (options.id) {
+    // Direct id lookup: skip the visibility filter so club-only posts are
+    // reachable from notification permalinks. RLS still gates access.
+    query = query.eq("id", options.id)
+  } else {
+    query = query.eq("visibility", options.visibility ?? "public")
+  }
 
   if (options.clubId) {
     query = query.eq("club_id", options.clubId)

@@ -35,10 +35,17 @@ function getNotificationMessage(notification: Notification): string {
   const actorName = notification.actor?.display_name ?? "Someone"
 
   switch (notification.type) {
-    case "like":
+    case "like": {
+      if (notification.group_count && notification.group_count > 1) {
+        const others = notification.group_count - 1
+        return `${actorName} and ${others} other${others === 1 ? "" : "s"} liked your session`
+      }
       return `${actorName} liked your session`
+    }
     case "comment":
-      return `${actorName} commented on your session`
+      return notification.preview_text
+        ? `${actorName}: "${notification.preview_text}"`
+        : `${actorName} commented on your session`
     case "follow":
       return `${actorName} started following you`
     case "pb":
@@ -54,8 +61,9 @@ function getNotificationLink(notification: Notification): string | null {
         : null
     case "like":
     case "comment":
-      // Could link to the specific session in the feed in the future
-      return "/feed"
+      return notification.reference_id
+        ? `/feed/entry/${notification.reference_id}`
+        : "/feed"
     case "pb":
       return "/practice-stats"
     default:
@@ -74,12 +82,13 @@ export function NotificationsContent({
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  async function handleMarkAsRead(notificationId: string) {
+  async function handleMarkAsRead(notification: Notification) {
+    const ids = notification.group_ids ?? [notification.id]
     // Optimistic update
     setNotifications((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
     )
-    await markAsRead(notificationId)
+    await Promise.all(ids.map((id) => markAsRead(id)))
     // Tell the navbar to update its badge count
     window.dispatchEvent(new Event("notifications-updated"))
   }
@@ -147,7 +156,7 @@ function NotificationCard({
   onMarkAsRead,
 }: {
   notification: Notification
-  onMarkAsRead: (id: string) => void
+  onMarkAsRead: (notification: Notification) => void
 }) {
   const link = getNotificationLink(notification)
   const message = getNotificationMessage(notification)
@@ -163,7 +172,7 @@ function NotificationCard({
 
   function handleClick() {
     if (!notification.read) {
-      onMarkAsRead(notification.id)
+      onMarkAsRead(notification)
     }
   }
 

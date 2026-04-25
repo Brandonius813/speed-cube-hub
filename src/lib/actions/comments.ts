@@ -129,7 +129,8 @@ async function addCommentToTarget(
     .single()
 
   if (ownerRow?.user_id && ownerRow.user_id !== user.id) {
-    await createNotification(ownerRow.user_id, "comment", user.id, normalized.targetId)
+    const preview = trimmed.length > 80 ? `${trimmed.slice(0, 80)}…` : trimmed
+    await createNotification(ownerRow.user_id, "comment", user.id, normalized.targetId, preview)
   }
 
   return { comment: data as Comment }

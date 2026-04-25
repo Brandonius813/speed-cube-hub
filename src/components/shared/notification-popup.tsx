@@ -45,10 +45,17 @@ function getNotificationMessage(notification: Notification): string {
   const actorName = notification.actor?.display_name ?? "Someone"
 
   switch (notification.type) {
-    case "like":
+    case "like": {
+      if (notification.group_count && notification.group_count > 1) {
+        const others = notification.group_count - 1
+        return `${actorName} and ${others} other${others === 1 ? "" : "s"} liked your session`
+      }
       return `${actorName} liked your session`
+    }
     case "comment":
-      return `${actorName} commented on your session`
+      return notification.preview_text
+        ? `${actorName}: "${notification.preview_text}"`
+        : `${actorName} commented on your session`
     case "follow":
       return `${actorName} started following you`
     case "pb":
@@ -64,7 +71,9 @@ function getNotificationLink(notification: Notification): string | null {
         : null
     case "like":
     case "comment":
-      return "/feed"
+      return notification.reference_id
+        ? `/feed/entry/${notification.reference_id}`
+        : "/feed"
     case "pb":
       return "/practice-stats"
     default:
@@ -109,11 +118,12 @@ export function NotificationPopup({
 
   async function handleNotificationClick(notification: Notification) {
     if (!notification.read) {
-      await markAsRead(notification.id)
+      const ids = notification.group_ids ?? [notification.id]
+      await Promise.all(ids.map((id) => markAsRead(id)))
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       )
-      onUnreadCountChange(Math.max(0, unreadCount - 1))
+      onUnreadCountChange(Math.max(0, unreadCount - ids.length))
       window.dispatchEvent(new Event("notifications-updated"))
     }
     const link = getNotificationLink(notification)

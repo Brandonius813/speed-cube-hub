@@ -218,11 +218,17 @@ export type Notification = {
   reference_id: string | null;
   read: boolean;
   created_at: string;
+  preview_text: string | null;
   actor?: {
     display_name: string;
     handle: string;
     avatar_url: string | null;
   };
+  // Set by the grouping pass in getNotifications when multiple unread likes
+  // share the same reference_id. group_ids contains every underlying row id
+  // so the client can mark them all read together.
+  group_count?: number;
+  group_ids?: string[];
 };
 
 export type Club = {
