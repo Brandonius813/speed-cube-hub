@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ComposedChart,
   Bar,
@@ -15,6 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { Solve } from "@/lib/types"
 import { formatTimeMsCentiseconds, getEffectiveTime } from "@/lib/timer/averages"
+import {
+  TrendLegendBar,
+  formatStatLabel,
+} from "@/components/shared/time-trend-legend"
 
 type DataPoint = {
   index: number | string
@@ -35,15 +39,6 @@ function formatTimeMs2(ms: number): string {
   return formatTimeMsCentiseconds(ms)
 }
 
-function formatStatLabel(key: string): string {
-  const n = Number.parseInt(key.slice(2), 10)
-  if (!Number.isFinite(n) || n <= 0) return key
-  if (key.startsWith("ao")) return `Avg ${n}`
-  if (key.startsWith("mo")) return `Mean ${n}`
-  return key
-}
-
-// Compute rolling moX/aoX values for chart lines.
 function rollingStat(times: (number | null)[], key: string): (number | null)[] {
   const n = Number.parseInt(key.slice(2), 10)
   if (!Number.isFinite(n) || n <= 0) {
@@ -122,6 +117,39 @@ function CustomTooltip({
   return null
 }
 
+function ScopeButtons({
+  scope,
+  onScopeChange,
+  size,
+}: {
+  scope: ChartScope
+  onScopeChange?: (next: ChartScope) => void
+  size: "sm" | "xs"
+}) {
+  if (!onScopeChange) return null
+  const klass = size === "xs" ? "h-6 px-2 text-[11px]" : "h-7 px-2 text-xs"
+  return (
+    <>
+      <Button
+        variant={scope === "session" ? "secondary" : "ghost"}
+        size="sm"
+        className={klass}
+        onClick={() => onScopeChange("session")}
+      >
+        Session
+      </Button>
+      <Button
+        variant={scope === "all" ? "secondary" : "ghost"}
+        size="sm"
+        className={klass}
+        onClick={() => onScopeChange("all")}
+      >
+        All Time
+      </Button>
+    </>
+  )
+}
+
 export function TimeTrendChart({
   solves = [],
   points,
@@ -142,8 +170,17 @@ export function TimeTrendChart({
   line2Label?: string
 }) {
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set())
-  const [line1Stat, line2Stat] = statCols
+  const [internalCols, setInternalCols] = useState<[string, string]>(statCols)
   const activeScope: ChartScope = scope === "all" ? "all" : "session"
+
+  const isPointsMode = !!points
+  const [line1Stat, line2Stat] = isPointsMode ? statCols : internalCols
+
+  // Sync internal state if the parent changes statCols (e.g. timer page picker).
+  useEffect(() => {
+    setInternalCols(statCols)
+  }, [statCols[0], statCols[1]])
+
   const line1Label = customLine1Label ?? formatStatLabel(line1Stat)
   const line2Label = customLine2Label ?? formatStatLabel(line2Stat)
 
@@ -175,31 +212,74 @@ export function TimeTrendChart({
     }))
   })()
 
+  const toggleLine = (dataKey: string) => {
+    setHiddenLines((prev) => {
+      const next = new Set(prev)
+      if (next.has(dataKey)) {
+        next.delete(dataKey)
+      } else {
+        next.add(dataKey)
+      }
+      return next
+    })
+  }
+
+  const setStat = (idx: 0 | 1, next: string) => {
+    setInternalCols((prev) => {
+      const copy: [string, string] = [prev[0], prev[1]]
+      copy[idx] = next
+      return copy
+    })
+    // Ensure the line is visible when the user picks a new stat
+    setHiddenLines((prev) => {
+      const key = idx === 0 ? "line1" : "line2"
+      if (!prev.has(key)) return prev
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+  }
+
+  const allowStatPicker = !isPointsMode
+
+  const legendSeries = [
+    {
+      key: "time" as const,
+      label: "Time",
+      color: "#6B7280",
+      hidden: hiddenLines.has("time"),
+      onToggle: () => toggleLine("time"),
+    },
+    {
+      key: "line1" as const,
+      label: line1Label,
+      color: "#EF4444",
+      hidden: hiddenLines.has("line1"),
+      onToggle: () => toggleLine("line1"),
+      pickerStat: allowStatPicker && !customLine1Label ? line1Stat : undefined,
+      onChangeStat: allowStatPicker && !customLine1Label
+        ? (next: string) => setStat(0, next)
+        : undefined,
+    },
+    {
+      key: "line2" as const,
+      label: line2Label,
+      color: "#3B82F6",
+      hidden: hiddenLines.has("line2"),
+      onToggle: () => toggleLine("line2"),
+      pickerStat: allowStatPicker && !customLine2Label ? line2Stat : undefined,
+      onChangeStat: allowStatPicker && !customLine2Label
+        ? (next: string) => setStat(1, next)
+        : undefined,
+    },
+  ]
+
   if (chartData.length === 0) {
     if (embedded) {
       return (
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-1 flex items-center justify-end gap-1">
-            {onScopeChange ? (
-              <>
-                <Button
-                  variant={activeScope === "session" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-6 px-2 text-[11px]"
-                  onClick={() => onScopeChange("session")}
-                >
-                  Session
-                </Button>
-                <Button
-                  variant={activeScope === "all" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-6 px-2 text-[11px]"
-                  onClick={() => onScopeChange("all")}
-                >
-                  All Time
-                </Button>
-              </>
-            ) : null}
+            <ScopeButtons scope={activeScope} onScopeChange={onScopeChange} size="xs" />
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/50 bg-card px-3 text-center text-sm text-muted-foreground">
             No solve data yet.
@@ -213,22 +293,7 @@ export function TimeTrendChart({
           <CardTitle className="text-foreground">Time Trend</CardTitle>
           {onScopeChange ? (
             <div className="flex gap-1">
-              <Button
-                variant={activeScope === "session" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => onScopeChange("session")}
-              >
-                Session
-              </Button>
-              <Button
-                variant={activeScope === "all" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => onScopeChange("all")}
-              >
-                All Time
-              </Button>
+              <ScopeButtons scope={activeScope} onScopeChange={onScopeChange} size="sm" />
             </div>
           ) : null}
         </CardHeader>
@@ -241,45 +306,15 @@ export function TimeTrendChart({
     )
   }
 
-  const toggleLine = (dataKey: string) => {
-    setHiddenLines((prev) => {
-      const next = new Set(prev)
-      if (next.has(dataKey)) {
-        next.delete(dataKey)
-      } else {
-        next.add(dataKey)
-      }
-      return next
-    })
-  }
-
-  // Determine a reasonable tick interval for the X axis
-  const tickInterval = points ? "preserveStartEnd" as const : Math.max(1, Math.floor(chartData.length / 10)) - 1
+  const tickInterval = points
+    ? ("preserveStartEnd" as const)
+    : Math.max(1, Math.floor(chartData.length / 10)) - 1
 
   if (embedded) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <div className="mb-1 flex items-center justify-end gap-1">
-          {onScopeChange ? (
-            <>
-              <Button
-                variant={activeScope === "session" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-6 px-2 text-[11px]"
-                onClick={() => onScopeChange("session")}
-              >
-                Session
-              </Button>
-              <Button
-                variant={activeScope === "all" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-6 px-2 text-[11px]"
-                onClick={() => onScopeChange("all")}
-              >
-                All Time
-              </Button>
-            </>
-          ) : null}
+          <ScopeButtons scope={activeScope} onScopeChange={onScopeChange} size="xs" />
         </div>
         <div className="min-h-0 flex-1 rounded-md border border-border/50 bg-card px-1 pb-1 pt-2">
           <div className="flex h-full min-h-0 flex-col">
@@ -289,11 +324,7 @@ export function TimeTrendChart({
                   data={chartData}
                   margin={{ top: 2, right: 8, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#2A2A3C"
-                    vertical={false}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3C" vertical={false} />
                   <XAxis
                     dataKey="index"
                     tick={{ fill: "#8B8BA3", fontSize: 10 }}
@@ -348,45 +379,7 @@ export function TimeTrendChart({
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-[11px]">
-              <button
-                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => toggleLine("time")}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: hiddenLines.has("time") ? "#4B5563" : "#6B7280" }}
-                />
-                <span className={hiddenLines.has("time") ? "line-through opacity-60" : ""}>
-                  Time
-                </span>
-              </button>
-              <button
-                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => toggleLine("line1")}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: hiddenLines.has("line1") ? "#7F1D1D" : "#EF4444" }}
-                />
-                <span className={hiddenLines.has("line1") ? "line-through opacity-60" : ""}>
-                  {line1Label}
-                </span>
-              </button>
-              <button
-                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => toggleLine("line2")}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: hiddenLines.has("line2") ? "#1E3A8A" : "#3B82F6" }}
-                />
-                <span className={hiddenLines.has("line2") ? "line-through opacity-60" : ""}>
-                  {line2Label}
-                </span>
-              </button>
-            </div>
+            <TrendLegendBar series={legendSeries} embedded />
           </div>
         </div>
       </div>
@@ -399,22 +392,7 @@ export function TimeTrendChart({
         <CardTitle className="text-foreground">Time Trend</CardTitle>
         {onScopeChange ? (
           <div className="flex gap-1">
-            <Button
-              variant={activeScope === "session" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => onScopeChange("session")}
-            >
-              Session
-            </Button>
-            <Button
-              variant={activeScope === "all" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => onScopeChange("all")}
-            >
-              All Time
-            </Button>
+            <ScopeButtons scope={activeScope} onScopeChange={onScopeChange} size="sm" />
           </div>
         ) : null}
       </CardHeader>
@@ -426,11 +404,7 @@ export function TimeTrendChart({
                 data={chartData}
                 margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#2A2A3C"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3C" vertical={false} />
                 <XAxis
                   dataKey="index"
                   tick={{ fill: "#8B8BA3", fontSize: 10 }}
@@ -486,32 +460,7 @@ export function TimeTrendChart({
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-1 flex items-center justify-center gap-3 whitespace-nowrap text-[11px] text-muted-foreground">
-            {[
-              { key: "time", label: "Time", color: "#6B7280" },
-              { key: "line1", label: line1Label, color: "#EF4444" },
-              { key: "line2", label: line2Label, color: "#3B82F6" },
-            ].map((series) => {
-              const hidden = hiddenLines.has(series.key)
-              return (
-                <button
-                  key={series.key}
-                  type="button"
-                  onClick={() => toggleLine(series.key)}
-                  className={`inline-flex items-center gap-1.5 rounded px-1 py-0.5 transition-opacity ${
-                    hidden ? "opacity-35" : "opacity-100"
-                  }`}
-                  title={hidden ? `Show ${series.label}` : `Hide ${series.label}`}
-                >
-                  <span
-                    className="h-2 w-2 rounded-sm"
-                    style={{ backgroundColor: series.color }}
-                  />
-                  <span>{series.label}</span>
-                </button>
-              )
-            })}
-          </div>
+          <TrendLegendBar series={legendSeries} />
         </div>
       </CardContent>
     </Card>
