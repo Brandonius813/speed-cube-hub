@@ -4288,7 +4288,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
           btHandleRef={compSimBtRef}
         />
       ) : (
-        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden lg:pt-2">
           <SolveListPanel
             ref={solveListPanelRef}
             rows={solveRows}
@@ -4478,7 +4478,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
 
           <div className="relative flex-1 order-first lg:order-last min-h-[60vh] lg:min-h-0">
             <div
-              className="absolute left-3 right-3 top-3 z-30 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden sm:right-auto sm:w-56"
+              className="absolute left-3 right-3 top-3 lg:top-8 z-30 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden sm:right-auto sm:w-56"
               onPointerDown={sp}
             >
               {hasActiveSession ? (

@@ -256,7 +256,7 @@ export function TimerTopBar({
       </div>
 
       {/* Scramble row */}
-      <div className="border-b border-border/50">
+      <div className="border-b border-border/50 mb-2 lg:mb-4">
         <ScrambleDisplay
           scramble={scramble}
           event={event}
