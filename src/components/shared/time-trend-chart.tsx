@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ComposedChart,
   Bar,
@@ -35,53 +35,117 @@ export type TrendChartPoint = {
   line2: number | null
 }
 
+// Recharts SVG renders one node per data point per series. Past ~750 points the
+// chart goes from snappy to multi-second on hover/resize for no visible gain
+// (bars are already sub-pixel at our chart widths). Downsample at the chart
+// layer only — the underlying solves array is untouched.
+const MAX_CHART_POINTS = 750
+
 function formatTimeMs2(ms: number): string {
   return formatTimeMsCentiseconds(ms)
 }
 
+// Single-pass sliding-window rolling stat. For ao(N) maintains a sorted array
+// of finite values in the current window plus a DNF count, so each step is
+// O(window) instead of O(window * log window). For mo(N) keeps a running sum.
 function rollingStat(times: (number | null)[], key: string): (number | null)[] {
   const n = Number.parseInt(key.slice(2), 10)
   if (!Number.isFinite(n) || n <= 0) {
-    return times.map(() => null)
+    return new Array(times.length).fill(null)
   }
+  const result: (number | null)[] = new Array(times.length).fill(null)
+  if (times.length < n) return result
 
   const isMo = key.startsWith("mo")
-  const result: (number | null)[] = []
-  for (let i = 0; i < times.length; i++) {
-    if (i < n - 1) {
-      result.push(null)
-      continue
-    }
-    const window = times.slice(i - n + 1, i + 1)
-    if (isMo) {
-      const numericWindow = window.filter((t): t is number => t !== null)
-      if (numericWindow.length !== n) {
-        result.push(null)
-        continue
-      }
-      const moAvg = numericWindow.reduce((acc, t) => acc + t, 0) / n
-      result.push(Math.round(moAvg))
-      continue
-    }
 
-    const nums = window.map((t) => t ?? Infinity)
-    const dnfCount = nums.filter((t) => t === Infinity).length
-    if (dnfCount > 1) {
-      result.push(null)
-      continue
+  if (isMo) {
+    let sum = 0
+    let dnfCount = 0
+    for (let i = 0; i < n; i++) {
+      const v = times[i]
+      if (v === null) dnfCount += 1
+      else sum += v
     }
-
-    const sorted = [...nums].sort((a, b) => a - b)
-    const trimmed = sorted.slice(1, -1)
-    if (trimmed.some((t) => t === Infinity)) {
-      result.push(null)
-      continue
+    result[n - 1] = dnfCount === 0 ? Math.round(sum / n) : null
+    for (let i = n; i < times.length; i++) {
+      const inV = times[i]
+      const outV = times[i - n]
+      if (inV === null) dnfCount += 1
+      else sum += inV
+      if (outV === null) dnfCount -= 1
+      else sum -= outV
+      result[i] = dnfCount === 0 ? Math.round(sum / n) : null
     }
+    return result
+  }
 
-    const aoAvg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length
-    result.push(Math.round(aoAvg))
+  // ao(N): trim best+worst, allow up to 1 DNF (which counts as the worst).
+  const sorted: number[] = []
+  let sum = 0
+  let dnfCount = 0
+
+  const insert = (v: number) => {
+    let lo = 0
+    let hi = sorted.length
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (sorted[mid] < v) lo = mid + 1
+      else hi = mid
+    }
+    sorted.splice(lo, 0, v)
+    sum += v
+  }
+  const remove = (v: number) => {
+    let lo = 0
+    let hi = sorted.length
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (sorted[mid] < v) lo = mid + 1
+      else hi = mid
+    }
+    if (sorted[lo] === v) {
+      sorted.splice(lo, 1)
+      sum -= v
+    }
+  }
+  const computeTrimmed = (): number | null => {
+    if (dnfCount > 1) return null
+    // dnfCount === 0: trim sorted[0] (best) and sorted[len-1] (worst).
+    // dnfCount === 1: trim sorted[0] (best); the DNF is the implicit worst.
+    const trimmedSum =
+      dnfCount === 0
+        ? sum - sorted[0] - sorted[sorted.length - 1]
+        : sum - sorted[0]
+    return Math.round(trimmedSum / (n - 2))
+  }
+
+  for (let i = 0; i < n; i++) {
+    const v = times[i]
+    if (v === null) dnfCount += 1
+    else insert(v)
+  }
+  result[n - 1] = computeTrimmed()
+
+  for (let i = n; i < times.length; i++) {
+    const inV = times[i]
+    const outV = times[i - n]
+    if (inV === null) dnfCount += 1
+    else insert(inV)
+    if (outV === null) dnfCount -= 1
+    else remove(outV)
+    result[i] = computeTrimmed()
   }
   return result
+}
+
+function downsample<T>(arr: T[], maxPoints: number): T[] {
+  if (arr.length <= maxPoints) return arr
+  const stride = Math.ceil(arr.length / maxPoints)
+  const out: T[] = []
+  for (let i = 0; i < arr.length; i += stride) out.push(arr[i])
+  const last = arr[arr.length - 1]
+  if (out[out.length - 1] !== last) out.push(last)
+  return out
 }
 
 function CustomTooltip({
@@ -184,17 +248,29 @@ export function TimeTrendChart({
   const line1Label = customLine1Label ?? formatStatLabel(line1Stat)
   const line2Label = customLine2Label ?? formatStatLabel(line2Stat)
 
-  const chartData: DataPoint[] = (() => {
+  const { chartData, totalPoints, downsampled } = useMemo<{
+    chartData: DataPoint[]
+    totalPoints: number
+    downsampled: boolean
+  }>(() => {
     if (points) {
-      return points.map((point) => ({
+      const data = points.map((point) => ({
         index: point.label,
         time: point.time,
         line1: point.line1,
         line2: point.line2,
       }))
+      const sampled = downsample(data, MAX_CHART_POINTS)
+      return {
+        chartData: sampled,
+        totalPoints: data.length,
+        downsampled: sampled.length < data.length,
+      }
     }
 
-    if (solves.length === 0) return []
+    if (solves.length === 0) {
+      return { chartData: [], totalPoints: 0, downsampled: false }
+    }
 
     const times = solves.map((s) => {
       const t = getEffectiveTime(s)
@@ -204,13 +280,20 @@ export function TimeTrendChart({
     const line1Values = rollingStat(times, line1Stat)
     const line2Values = rollingStat(times, line2Stat)
 
-    return times.map((time, i) => ({
+    const full: DataPoint[] = times.map((time, i) => ({
       index: i + 1,
       time,
       line1: line1Values[i],
       line2: line2Values[i],
     }))
-  })()
+
+    const sampled = downsample(full, MAX_CHART_POINTS)
+    return {
+      chartData: sampled,
+      totalPoints: full.length,
+      downsampled: sampled.length < full.length,
+    }
+  }, [points, solves, line1Stat, line2Stat])
 
   const toggleLine = (dataKey: string) => {
     setHiddenLines((prev) => {
@@ -380,6 +463,11 @@ export function TimeTrendChart({
               </ResponsiveContainer>
             </div>
             <TrendLegendBar series={legendSeries} embedded />
+            {downsampled && (
+              <p className="mt-0.5 text-center text-[10px] italic text-muted-foreground">
+                Sampled to {chartData.length.toLocaleString()} of {totalPoints.toLocaleString()} points
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -461,6 +549,11 @@ export function TimeTrendChart({
             </ResponsiveContainer>
           </div>
           <TrendLegendBar series={legendSeries} />
+          {downsampled && (
+            <p className="mt-0.5 text-center text-[10px] italic text-muted-foreground">
+              Sampled to {chartData.length.toLocaleString()} of {totalPoints.toLocaleString()} points
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
