@@ -244,7 +244,7 @@ export function ProfileContent({
               />
             )}
             {activeTab === "stats" && (
-              <TabStats sessions={sessions} isOwner />
+              <TabStats sessions={sessions} isOwner profileUserId={profile.id} />
             )}
             {activeTab === "cubes" && (
               <TabCubes cubes={profile.cubes ?? []} cubeHistory={profile.cube_history ?? []} isOwner />

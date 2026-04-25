@@ -1,13 +1,21 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSessions } from "@/lib/actions/sessions"
+import { createClient } from "@/lib/supabase/server"
 import type { Session } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
   let sessions: Session[] = []
+  let userId: string | null = null
 
   try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userId = user?.id ?? null
+
     const result = await getSessions()
     sessions = result.data
   } catch (err) {
@@ -25,7 +33,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <DashboardContent initialSessions={sessions} />
+      <DashboardContent initialSessions={sessions} userId={userId} />
     </main>
   )
 }

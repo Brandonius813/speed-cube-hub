@@ -16,8 +16,10 @@ import type { Session } from "@/lib/types"
 
 export function DashboardContent({
   initialSessions,
+  userId,
 }: {
   initialSessions: Session[]
+  userId: string | null
 }) {
   // Compute streak stats from ALL sessions (unfiltered)
   const allStats = useMemo(() => computeSessionStats(initialSessions), [initialSessions])
@@ -141,7 +143,14 @@ export function DashboardContent({
       <EventBreakdownTable sessions={filteredSessions} />
 
       {/* 7. Solve Analytics (timer solve-level charts) */}
-      <SolveAnalytics practicedEvents={practicedEvents} />
+      {userId && (
+        <SolveAnalytics
+          userId={userId}
+          practicedEvents={practicedEvents}
+          range={selectedRange}
+          customRange={customRange}
+        />
+      )}
 
       {/* 8. Session Log */}
       <SessionLog sessions={filteredSessions} />

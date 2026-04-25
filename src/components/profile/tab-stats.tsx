@@ -28,9 +28,11 @@ function parseStatsSubviewParam(raw: string | null, fallbackTab: string | null):
 export function TabStats({
   sessions,
   isOwner,
+  profileUserId,
 }: {
   sessions: Session[]
   isOwner: boolean
+  profileUserId: string
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -100,7 +102,12 @@ export function TabStats({
       </div>
 
       {activeSubview === "general" ? (
-        <GeneralStatsContent sessions={sessions} isOwner={isOwner} onOpenCompSim={() => setSubview("comp-sim")} />
+        <GeneralStatsContent
+          sessions={sessions}
+          isOwner={isOwner}
+          profileUserId={profileUserId}
+          onOpenCompSim={() => setSubview("comp-sim")}
+        />
       ) : (
         <TabCompSim sessions={sessions} isOwner={isOwner} />
       )}
@@ -111,10 +118,12 @@ export function TabStats({
 function GeneralStatsContent({
   sessions,
   isOwner,
+  profileUserId,
   onOpenCompSim,
 }: {
   sessions: Session[]
   isOwner: boolean
+  profileUserId: string
   onOpenCompSim: () => void
 }) {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
@@ -223,7 +232,12 @@ function GeneralStatsContent({
       <DailySolvesChart sessions={filteredSessions} />
       <EventBreakdownTable sessions={filteredSessions} />
 
-      {isOwner && <SolveAnalytics practicedEvents={practicedEvents} />}
+      <SolveAnalytics
+        userId={profileUserId}
+        practicedEvents={practicedEvents}
+        range={selectedRange}
+        customRange={customRange}
+      />
 
       {compSimSessions.length > 0 && (
         <button
