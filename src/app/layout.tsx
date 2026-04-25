@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   title: "Speed Cube Hub - Track Your Cubing Progress",
   description:
     "The ultimate practice tracking platform for competitive speed cubers. Track sessions, see your progress, and share your profile.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Speed Cube Hub",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Cube Hub",
+  },
   icons: {
     icon: [
       {

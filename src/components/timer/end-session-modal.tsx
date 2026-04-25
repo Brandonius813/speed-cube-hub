@@ -6,6 +6,7 @@ import { formatTimeMsCentiseconds } from "@/lib/timer/averages"
 import { bestStat } from "@/lib/timer/stats"
 import { cn, formatDuration, formatDurationInput, parseDuration } from "@/lib/utils"
 import { saveTimerSession } from "@/lib/actions/save-timer-session"
+import { enqueueSave, generateClientSessionId } from "@/lib/timer/pending-saves"
 import type { TimerSolve } from "@/lib/timer/stats"
 
 type SavedSessionPayload = {
@@ -135,7 +136,13 @@ export function EndSessionModal({
         setError('Invalid duration. Use minutes like "10" or h:mm like "1:30".')
         return
       }
-      const result = await saveTimerSession({
+
+      const clientSessionId = generateClientSessionId()
+      const finalTitle =
+        title.trim() ||
+        (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`)
+
+      const payload = {
         event,
         solves: solves.map((s) => ({
           time_ms: s.time_ms,
@@ -151,19 +158,64 @@ export function EndSessionModal({
         notes: notes.trim() || null,
         feed_visible: shareToFeed,
         session_start_ms: sessionStartMs,
-      })
-      if (result.error) {
-        setError(result.error)
+        client_session_id: clientSessionId,
+      }
+
+      const offlineNow = typeof navigator !== "undefined" && !navigator.onLine
+
+      // If the browser already knows we're offline, skip the network attempt and
+      // queue immediately. Otherwise try to save and only queue on failure.
+      if (offlineNow) {
+        try {
+          await enqueueSave(payload)
+          onSaved({
+            title: finalTitle,
+            durationMinutes: parsedDurationMinutes,
+            practiceType,
+            sessionId: clientSessionId,
+            timerSessionId: clientSessionId,
+            numDnf,
+            avgSeconds: avgMs ? avgMs / 1000 : null,
+            bestSeconds: bestMs ? bestMs / 1000 : null,
+          })
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Couldn't save offline. Your solves are still on this device — try again when you reconnect."
+          )
+        }
         return
       }
+
+      const result = await saveTimerSession(payload)
+
+      if (result.error) {
+        // Network reachable but save failed — queue and let the auto-flush retry.
+        try {
+          await enqueueSave(payload)
+          onSaved({
+            title: finalTitle,
+            durationMinutes: parsedDurationMinutes,
+            practiceType,
+            sessionId: clientSessionId,
+            timerSessionId: clientSessionId,
+            numDnf,
+            avgSeconds: avgMs ? avgMs / 1000 : null,
+            bestSeconds: bestMs ? bestMs / 1000 : null,
+          })
+        } catch {
+          setError(result.error)
+        }
+        return
+      }
+
       if (!result.sessionId || !result.timerSessionId) {
         setError("Session saved, but the timer session reference was missing.")
         return
       }
       onSaved({
-        title:
-          title.trim() ||
-          (practiceType === "Solves" ? `${eventName} Solves` : `${eventName} ${practiceType}`),
+        title: finalTitle,
         durationMinutes: parsedDurationMinutes,
         practiceType,
         sessionId: result.sessionId,
