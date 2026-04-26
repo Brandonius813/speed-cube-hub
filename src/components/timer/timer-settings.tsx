@@ -10,6 +10,7 @@ import {
   type TimerSize,
   type TimerUpdateMode,
 } from "@/components/timer/timer-display"
+import { ResetLocalCacheSection } from "@/components/timer/reset-local-cache"
 
 export type InputMode = "timer" | "typing" | "stackmat"
 export type SidebarPosition = "right" | "left" | "bottom" | "hidden"
@@ -404,6 +405,8 @@ export function TimerSettings({
                   ))}
                 </div>
               </div>
+
+              <ResetLocalCacheSection />
             </div>
           </div>
         </div>
