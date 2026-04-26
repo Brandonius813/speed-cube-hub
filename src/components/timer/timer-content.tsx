@@ -99,6 +99,7 @@ import {
   type PaneToolId,
   type TimerPaneTextSize,
 } from "@/components/timer/panes/types"
+import { clearLocalTimerCache } from "@/lib/timer/clear-local-cache"
 import { getLastSinglePbCandidate } from "@/lib/timer/pb-share"
 import type {
   StatsSummary,
@@ -4216,6 +4217,25 @@ export function TimerContent({ viewer }: TimerContentProps) {
                         })}
                       </>
                     )}
+                    <div className="my-1 border-t border-border" />
+                    <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Troubleshooting
+                    </div>
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-muted transition-colors"
+                      onClick={async () => {
+                        const confirmed = window.confirm(
+                          "Reset this device's timer cache?\n\nYour solves are saved in your account and will reload from the server. This only clears the local copy on this device."
+                        )
+                        if (!confirmed) return
+                        await clearLocalTimerCache()
+                        window.location.reload()
+                      }}
+                      title="Clears the timer's local solve cache and reloads from the server. Use if solves show duplicates or wrong sessions."
+                    >
+                      <span className="text-foreground">Reset Local Cache</span>
+                      <span className="font-mono text-[12px] text-muted-foreground">Run</span>
+                    </button>
                   </div>
                 )}
               </div>
