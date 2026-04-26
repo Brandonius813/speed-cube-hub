@@ -1,13 +1,11 @@
 import type { NextConfig } from "next";
-import withSerwistInit from "@serwist/next";
 
-const withSerwist = withSerwistInit({
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  cacheOnNavigation: true,
-  reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
-});
+// NOTE: @serwist/next forces the webpack builder, which broke production builds on
+// Next.js 16 with our `(main)` route group (missing `page_client-reference-manifest.js`).
+// Disabling the PWA wrapper restores Turbopack builds. Files under src/app/sw.ts,
+// public/manifest.webmanifest, src/components/shared/offline-indicator.tsx, and
+// src/lib/timer/pending-saves.ts stay in the repo but are dormant until a Turbopack-
+// compatible PWA path lands.
 
 const nextConfig: NextConfig = {
   reactCompiler: process.env.NODE_ENV === "production",
@@ -54,4 +52,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+export default nextConfig;
