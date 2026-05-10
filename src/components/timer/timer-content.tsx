@@ -2361,7 +2361,7 @@ export function TimerContent({ viewer }: TimerContentProps) {
     setSelectedId(null)
     setDetailSolveId(null)
     setIdle()
-    initStats(eventRef.current, [])
+    initStats(eventRef.current, nextSolves)
     setSessionStartTime(null)
     setSessionElapsed(0)
     setSessionPaused(false)
